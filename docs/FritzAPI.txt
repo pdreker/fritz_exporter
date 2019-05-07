@@ -1,0 +1,1778 @@
+FritzConnection:
+version:            0.6
+model:              FRITZ!Box 7590
+FritzBox API:
+
+Servicename:        Any:1
+
+Servicename:        DeviceConfig:1
+Actionname:         ConfigurationFinished
+                        ('NewStatus', 'out', 'string')
+Actionname:         ConfigurationStarted
+                        ('NewSessionID', 'in', 'string')
+Actionname:         FactoryReset
+Actionname:         GetPersistentData
+                        ('NewPersistentData', 'out', 'string')
+Actionname:         Reboot
+Actionname:         SetPersistentData
+                        ('NewPersistentData', 'in', 'string')
+Actionname:         X_AVM-DE_CreateUrlSID
+                        ('NewX_AVM-DE_UrlSID', 'out', 'string')
+Actionname:         X_AVM-DE_GetConfigFile
+                        ('NewX_AVM-DE_ConfigFileUrl', 'out', 'string')
+                        ('NewX_AVM-DE_Password', 'in', 'string')
+Actionname:         X_AVM-DE_SetConfigFile
+                        ('NewX_AVM-DE_ConfigFileUrl', 'in', 'string')
+                        ('NewX_AVM-DE_Password', 'in', 'string')
+Actionname:         X_GenerateUUID
+                        ('NewUUID', 'out', 'uuid')
+
+Servicename:        DeviceInfo:1
+Actionname:         GetDeviceLog
+                        ('NewDeviceLog', 'out', 'string')
+Actionname:         GetInfo
+                        ('NewDescription', 'out', 'string')
+                        ('NewDeviceLog', 'out', 'string')
+                        ('NewHardwareVersion', 'out', 'string')
+                        ('NewManufacturerName', 'out', 'string')
+                        ('NewManufacturerOUI', 'out', 'string')
+                        ('NewModelName', 'out', 'string')
+                        ('NewProductClass', 'out', 'string')
+                        ('NewProvisioningCode', 'out', 'string')
+                        ('NewSerialNumber', 'out', 'string')
+                        ('NewSoftwareVersion', 'out', 'string')
+                        ('NewSpecVersion', 'out', 'string')
+                        ('NewUpTime', 'out', 'ui4')
+Actionname:         GetSecurityPort
+                        ('NewSecurityPort', 'out', 'ui2')
+Actionname:         SetProvisioningCode
+                        ('NewProvisioningCode', 'in', 'string')
+
+Servicename:        Hosts:1
+Actionname:         GetGenericHostEntry
+                        ('NewActive', 'out', 'boolean')
+                        ('NewAddressSource', 'out', 'string')
+                        ('NewHostName', 'out', 'string')
+                        ('NewIPAddress', 'out', 'string')
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewInterfaceType', 'out', 'string')
+                        ('NewLeaseTimeRemaining', 'out', 'i4')
+                        ('NewMACAddress', 'out', 'string')
+Actionname:         GetHostNumberOfEntries
+                        ('NewHostNumberOfEntries', 'out', 'ui2')
+Actionname:         GetSpecificHostEntry
+                        ('NewActive', 'out', 'boolean')
+                        ('NewAddressSource', 'out', 'string')
+                        ('NewHostName', 'out', 'string')
+                        ('NewIPAddress', 'out', 'string')
+                        ('NewInterfaceType', 'out', 'string')
+                        ('NewLeaseTimeRemaining', 'out', 'i4')
+                        ('NewMACAddress', 'in', 'string')
+Actionname:         X_AVM-DE_GetAutoWakeOnLANByMACAddress
+                        ('NewAutoWOLEnabled', 'out', 'boolean')
+                        ('NewMACAddress', 'in', 'string')
+Actionname:         X_AVM-DE_GetChangeCounter
+                        ('NewX_AVM-DE_ChangeCounter', 'out', 'ui4')
+Actionname:         X_AVM-DE_GetHostListPath
+                        ('NewX_AVM-DE_HostListPath', 'out', 'string')
+Actionname:         X_AVM-DE_GetMeshListPath
+                        ('NewX_AVM-DE_MeshListPath', 'out', 'string')
+Actionname:         X_AVM-DE_GetSpecificHostEntryByIP
+                        ('NewActive', 'out', 'boolean')
+                        ('NewHostName', 'out', 'string')
+                        ('NewIPAddress', 'in', 'string')
+                        ('NewInterfaceType', 'out', 'string')
+                        ('NewMACAddress', 'out', 'string')
+                        ('NewX_AVM-DE_InfoURL', 'out', 'string')
+                        ('NewX_AVM-DE_Model', 'out', 'string')
+                        ('NewX_AVM-DE_Port', 'out', 'ui4')
+                        ('NewX_AVM-DE_Speed', 'out', 'ui4')
+                        ('NewX_AVM-DE_URL', 'out', 'string')
+                        ('NewX_AVM-DE_UpdateAvailable', 'out', 'boolean')
+                        ('NewX_AVM-DE_UpdateSuccessful', 'out', 'string')
+Actionname:         X_AVM-DE_HostDoUpdate
+                        ('NewMACAddress', 'in', 'string')
+Actionname:         X_AVM-DE_HostsCheckUpdate
+Actionname:         X_AVM-DE_SetAutoWakeOnLANByMACAddress
+                        ('NewAutoWOLEnabled', 'in', 'boolean')
+                        ('NewMACAddress', 'in', 'string')
+Actionname:         X_AVM-DE_SetHostNameByMACAddress
+                        ('NewHostName', 'in', 'string')
+                        ('NewMACAddress', 'in', 'string')
+Actionname:         X_AVM-DE_WakeOnLANByMACAddress
+                        ('NewMACAddress', 'in', 'string')
+
+Servicename:        LANConfigSecurity:1
+Actionname:         GetInfo
+                        ('NewAllowedCharsPassword', 'out', 'string')
+                        ('NewMaxCharsPassword', 'out', 'ui2')
+                        ('NewMinCharsPassword', 'out', 'ui2')
+Actionname:         SetConfigPassword
+                        ('NewPassword', 'in', 'string')
+Actionname:         X_AVM-DE_GetAnonymousLogin
+                        ('NewX_AVM-DE_AnonymousLoginEnabled', 'out', 'boolean')
+                        ('NewX_AVM-DE_ButtonLoginEnabled', 'out', 'boolean')
+Actionname:         X_AVM-DE_GetCurrentUser
+                        ('NewX_AVM-DE_CurrentUserRights', 'out', 'string')
+                        ('NewX_AVM-DE_CurrentUsername', 'out', 'string')
+
+Servicename:        LANEthernetInterfaceConfig:1
+Actionname:         GetInfo
+                        ('NewDuplexMode', 'out', 'string')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewMACAddress', 'out', 'string')
+                        ('NewMaxBitRate', 'out', 'string')
+                        ('NewStatus', 'out', 'string')
+Actionname:         GetStatistics
+                        ('NewBytesReceived', 'out', 'ui4')
+                        ('NewBytesSent', 'out', 'ui4')
+                        ('NewPacketsReceived', 'out', 'ui4')
+                        ('NewPacketsSent', 'out', 'ui4')
+Actionname:         SetEnable
+                        ('NewEnable', 'in', 'boolean')
+
+Servicename:        LANHostConfigManagement:1
+Actionname:         GetAddressRange
+                        ('NewMaxAddress', 'out', 'string')
+                        ('NewMinAddress', 'out', 'string')
+Actionname:         GetDNSServers
+                        ('NewDNSServers', 'out', 'string')
+Actionname:         GetIPInterfaceNumberOfEntries
+                        ('NewIPInterfaceNumberOfEntries', 'out', 'ui2')
+Actionname:         GetIPRoutersList
+                        ('NewIPRouters', 'out', 'string')
+Actionname:         GetInfo
+                        ('NewDHCPRelay', 'out', 'boolean')
+                        ('NewDHCPServerConfigurable', 'out', 'boolean')
+                        ('NewDHCPServerEnable', 'out', 'boolean')
+                        ('NewDNSServers', 'out', 'string')
+                        ('NewDomainName', 'out', 'string')
+                        ('NewIPRouters', 'out', 'string')
+                        ('NewMaxAddress', 'out', 'string')
+                        ('NewMinAddress', 'out', 'string')
+                        ('NewReservedAddresses', 'out', 'string')
+                        ('NewSubnetMask', 'out', 'string')
+Actionname:         GetSubnetMask
+                        ('NewSubnetMask', 'out', 'string')
+Actionname:         SetAddressRange
+                        ('NewMaxAddress', 'in', 'string')
+                        ('NewMinAddress', 'in', 'string')
+Actionname:         SetDHCPServerEnable
+                        ('NewDHCPServerEnable', 'in', 'boolean')
+Actionname:         SetIPInterface
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewIPAddress', 'in', 'string')
+                        ('NewIPAddressingType', 'in', 'string')
+                        ('NewSubnetMask', 'in', 'string')
+Actionname:         SetIPRouter
+                        ('NewIPRouters', 'in', 'string')
+Actionname:         SetSubnetMask
+                        ('NewSubnetMask', 'in', 'string')
+
+Servicename:        Layer3Forwarding:1
+Actionname:         AddForwardingEntry
+                        ('NewDestIPAddress', 'in', 'string')
+                        ('NewDestSubnetMask', 'in', 'string')
+                        ('NewForwardingMetric', 'in', 'i4')
+                        ('NewGatewayIPAddress', 'in', 'string')
+                        ('NewInterface', 'in', 'string')
+                        ('NewSourceIPAddress', 'in', 'string')
+                        ('NewSourceSubnetMask', 'in', 'string')
+                        ('NewType', 'in', 'string')
+Actionname:         DeleteForwardingEntry
+                        ('NewDestIPAddress', 'in', 'string')
+                        ('NewDestSubnetMask', 'in', 'string')
+                        ('NewSourceIPAddress', 'in', 'string')
+                        ('NewSourceSubnetMask', 'in', 'string')
+Actionname:         GetDefaultConnectionService
+                        ('NewDefaultConnectionService', 'out', 'string')
+Actionname:         GetForwardNumberOfEntries
+                        ('NewForwardNumberOfEntries', 'out', 'ui2')
+Actionname:         GetGenericForwardingEntry
+                        ('NewDestIPAddress', 'out', 'string')
+                        ('NewDestSubnetMask', 'out', 'string')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewForwardingIndex', 'in', 'ui2')
+                        ('NewForwardingMetric', 'out', 'i4')
+                        ('NewGatewayIPAddress', 'out', 'string')
+                        ('NewInterface', 'out', 'string')
+                        ('NewSourceIPAddress', 'out', 'string')
+                        ('NewSourceSubnetMask', 'out', 'string')
+                        ('NewStatus', 'out', 'string')
+                        ('NewType', 'out', 'string')
+Actionname:         GetSpecificForwardingEntry
+                        ('NewDestIPAddress', 'in', 'string')
+                        ('NewDestSubnetMask', 'in', 'string')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewForwardingMetric', 'out', 'i4')
+                        ('NewGatewayIPAddress', 'out', 'string')
+                        ('NewInterface', 'out', 'string')
+                        ('NewSourceIPAddress', 'in', 'string')
+                        ('NewSourceSubnetMask', 'in', 'string')
+                        ('NewStatus', 'out', 'string')
+                        ('NewType', 'out', 'string')
+Actionname:         SetDefaultConnectionService
+                        ('NewDefaultConnectionService', 'in', 'string')
+Actionname:         SetForwardingEntryEnable
+                        ('NewDestIPAddress', 'in', 'string')
+                        ('NewDestSubnetMask', 'in', 'string')
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewSourceIPAddress', 'in', 'string')
+                        ('NewSourceSubnetMask', 'in', 'string')
+
+Servicename:        ManagementServer:1
+Actionname:         GetInfo
+                        ('NewConnectionRequestURL', 'out', 'string')
+                        ('NewConnectionRequestUsername', 'out', 'string')
+                        ('NewParameterHash', 'out', 'string')
+                        ('NewParameterKey', 'out', 'string')
+                        ('NewPeriodicInformEnable', 'out', 'boolean')
+                        ('NewPeriodicInformInterval', 'out', 'ui4')
+                        ('NewPeriodicInformTime', 'out', 'dateTime')
+                        ('NewURL', 'out', 'string')
+                        ('NewUpgradesManaged', 'out', 'boolean')
+                        ('NewUsername', 'out', 'string')
+Actionname:         SetConnectionRequestAuthentication
+                        ('NewConnectionRequestPassword', 'in', 'string')
+                        ('NewConnectionRequestUsername', 'in', 'string')
+Actionname:         SetManagementServerPassword
+                        ('NewPassword', 'in', 'string')
+Actionname:         SetManagementServerURL
+                        ('NewURL', 'in', 'string')
+Actionname:         SetManagementServerUsername
+                        ('NewUsername', 'in', 'string')
+Actionname:         SetPeriodicInform
+                        ('NewPeriodicInformEnable', 'in', 'boolean')
+                        ('NewPeriodicInformInterval', 'in', 'ui4')
+                        ('NewPeriodicInformTime', 'in', 'dateTime')
+Actionname:         SetUpgradeManagement
+                        ('NewUpgradesManaged', 'in', 'boolean')
+Actionname:         X_AVM-DE_GetTR069FirmwareDownloadEnabled
+                        ('NewTR069FirmwareDownloadEnabled', 'out', 'boolean')
+Actionname:         X_AVM-DE_SetTR069FirmwareDownloadEnabled
+                        ('NewTR069FirmwareDownloadEnabled', 'in', 'boolean')
+Actionname:         X_SetTR069Enable
+                        ('NewTR069Enabled', 'in', 'boolean')
+
+Servicename:        Time:1
+Actionname:         GetInfo
+                        ('NewCurrentLocalTime', 'out', 'dateTime')
+                        ('NewDaylightSavingsEnd', 'out', 'dateTime')
+                        ('NewDaylightSavingsStart', 'out', 'dateTime')
+                        ('NewDaylightSavingsUsed', 'out', 'boolean')
+                        ('NewLocalTimeZone', 'out', 'string')
+                        ('NewLocalTimeZoneName', 'out', 'string')
+                        ('NewNTPServer1', 'out', 'string')
+                        ('NewNTPServer2', 'out', 'string')
+Actionname:         SetNTPServers
+                        ('NewNTPServer1', 'in', 'string')
+                        ('NewNTPServer2', 'in', 'string')
+
+Servicename:        UserInterface:1
+Actionname:         GetInfo
+                        ('NewPasswordRequired', 'out', 'boolean')
+                        ('NewPasswordUserSelectable', 'out', 'boolean')
+                        ('NewUpgradeAvailable', 'out', 'boolean')
+                        ('NewWarrantyDate', 'out', 'dateTime')
+                        ('NewX_AVM-DE_DownloadURL', 'out', 'string')
+                        ('NewX_AVM-DE_InfoURL', 'out', 'string')
+                        ('NewX_AVM-DE_LaborVersion', 'out', 'string')
+                        ('NewX_AVM-DE_UpdateState', 'out', 'string')
+                        ('NewX_AVM-DE_Version', 'out', 'string')
+Actionname:         X_AVM-DE_CheckUpdate
+                        ('NewX_AVM-DE_LaborVersion', 'in', 'string')
+Actionname:         X_AVM-DE_DoManualUpdate
+                        ('NewX_AVM-DE_AllowDowngrade', 'in', 'boolean')
+                        ('NewX_AVM-DE_DownloadURL', 'in', 'string')
+Actionname:         X_AVM-DE_DoPrepareCGI
+                        ('NewX_AVM-DE_CGI', 'out', 'string')
+                        ('NewX_AVM-DE_SessionID', 'out', 'string')
+Actionname:         X_AVM-DE_DoUpdate
+                        ('NewUpgradeAvailable', 'out', 'boolean')
+                        ('NewX_AVM-DE_UpdateState', 'out', 'string')
+Actionname:         X_AVM-DE_GetInfo
+                        ('NewX_AVM-DE_AutoUpdateMode', 'out', 'string')
+                        ('NewX_AVM-DE_CurrentFwVersion', 'out', 'string')
+                        ('NewX_AVM-DE_LastFwVersion', 'out', 'string')
+                        ('NewX_AVM-DE_LastInfoUrl', 'out', 'string')
+                        ('NewX_AVM-DE_UpdateSuccessful', 'out', 'string')
+                        ('NewX_AVM-DE_UpdateTime', 'out', 'dateTime')
+Actionname:         X_AVM-DE_GetInternationalConfig
+                        ('NewX_AVM-DE_Annex', 'out', 'string')
+                        ('NewX_AVM-DE_AnnexList', 'out', 'string')
+                        ('NewX_AVM-DE_Country', 'out', 'string')
+                        ('NewX_AVM-DE_CountryList', 'out', 'string')
+                        ('NewX_AVM-DE_Language', 'out', 'string')
+                        ('NewX_AVM-DE_LanguageList', 'out', 'string')
+Actionname:         X_AVM-DE_SetConfig
+                        ('NewX_AVM-DE_AutoUpdateMode', 'in', 'string')
+Actionname:         X_AVM-DE_SetInternationalConfig
+                        ('NewX_AVM-DE_Annex', 'in', 'string')
+                        ('NewX_AVM-DE_Country', 'in', 'string')
+                        ('NewX_AVM-DE_Language', 'in', 'string')
+
+Servicename:        WANCommonInterfaceConfig:1
+Actionname:         GetCommonLinkProperties
+                        ('NewLayer1DownstreamMaxBitRate', 'out', 'ui4')
+                        ('NewLayer1UpstreamMaxBitRate', 'out', 'ui4')
+                        ('NewPhysicalLinkStatus', 'out', 'string')
+                        ('NewWANAccessType', 'out', 'string')
+Actionname:         GetTotalBytesReceived
+                        ('NewTotalBytesReceived', 'out', 'ui4')
+Actionname:         GetTotalBytesSent
+                        ('NewTotalBytesSent', 'out', 'ui4')
+Actionname:         GetTotalPacketsReceived
+                        ('NewTotalPacketsReceived', 'out', 'ui4')
+Actionname:         GetTotalPacketsSent
+                        ('NewTotalPacketsSent', 'out', 'ui4')
+Actionname:         X_AVM-DE_GetOnlineMonitor
+                        ('NewSyncGroupIndex', 'in', 'ui4')
+                        ('NewSyncGroupMode', 'out', 'string')
+                        ('NewSyncGroupName', 'out', 'string')
+                        ('NewTotalNumberSyncGroups', 'out', 'ui4')
+                        ('Newds_current_bps', 'out', 'string')
+                        ('Newmax_ds', 'out', 'ui4')
+                        ('Newmax_us', 'out', 'ui4')
+                        ('Newmc_current_bps', 'out', 'string')
+                        ('Newprio_default_bps', 'out', 'string')
+                        ('Newprio_high_bps', 'out', 'string')
+                        ('Newprio_low_bps', 'out', 'string')
+                        ('Newprio_realtime_bps', 'out', 'string')
+                        ('Newus_current_bps', 'out', 'string')
+Actionname:         X_AVM-DE_SetWANAccessType
+                        ('NewAccessType', 'in', 'string')
+
+Servicename:        WANDSLInterfaceConfig:1
+Actionname:         GetInfo
+                        ('NewATURCountry', 'out', 'string')
+                        ('NewATURVendor', 'out', 'string')
+                        ('NewDataPath', 'out', 'string')
+                        ('NewDownstreamAttenuation', 'out', 'ui4')
+                        ('NewDownstreamCurrRate', 'out', 'ui4')
+                        ('NewDownstreamMaxRate', 'out', 'ui4')
+                        ('NewDownstreamNoiseMargin', 'out', 'ui4')
+                        ('NewDownstreamPower', 'out', 'ui2')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewStatus', 'out', 'string')
+                        ('NewUpstreamAttenuation', 'out', 'ui4')
+                        ('NewUpstreamCurrRate', 'out', 'i4')
+                        ('NewUpstreamMaxRate', 'out', 'ui4')
+                        ('NewUpstreamNoiseMargin', 'out', 'ui4')
+                        ('NewUpstreamPower', 'out', 'ui2')
+Actionname:         GetStatisticsTotal
+                        ('NewATUCCRCErrors', 'out', 'ui4')
+                        ('NewATUCFECErrors', 'out', 'ui4')
+                        ('NewATUCHECErrors', 'out', 'ui4')
+                        ('NewCRCErrors', 'out', 'ui4')
+                        ('NewCellDelin', 'out', 'ui4')
+                        ('NewErroredSecs', 'out', 'ui4')
+                        ('NewFECErrors', 'out', 'ui4')
+                        ('NewHECErrors', 'out', 'ui4')
+                        ('NewInitErrors', 'out', 'ui4')
+                        ('NewInitTimeouts', 'out', 'ui4')
+                        ('NewLinkRetrain', 'out', 'ui4')
+                        ('NewLossOfFraming', 'out', 'ui4')
+                        ('NewReceiveBlocks', 'out', 'ui4')
+                        ('NewSeverelyErroredSecs', 'out', 'ui4')
+                        ('NewTransmitBlocks', 'out', 'ui4')
+Actionname:         X_AVM-DE_GetDSLDiagnoseInfo
+                        ('NewX_AVM-DE_CableNokDistance', 'out', 'i4')
+                        ('NewX_AVM-DE_DSLActive', 'out', 'boolean')
+                        ('NewX_AVM-DE_DSLDiagnoseState', 'out', 'string')
+                        ('NewX_AVM-DE_DSLLastDiagnoseTime', 'out', 'ui4')
+                        ('NewX_AVM-DE_DSLSignalLossTime', 'out', 'ui4')
+                        ('NewX_AVM-DE_DSLSync', 'out', 'boolean')
+
+Servicename:        WANDSLLinkConfig:1
+Actionname:         GetATMEncapsulation
+                        ('NewATMEncapsulation', 'out', 'string')
+Actionname:         GetAutoConfig
+                        ('NewAutoConfig', 'out', 'boolean')
+Actionname:         GetDSLLinkInfo
+                        ('NewLinkStatus', 'out', 'string')
+                        ('NewLinkType', 'out', 'string')
+Actionname:         GetDestinationAddress
+                        ('NewDestinationAddress', 'out', 'string')
+Actionname:         GetInfo
+                        ('NewATMEncapsulation', 'out', 'string')
+                        ('NewATMPeakCellRate', 'out', 'ui4')
+                        ('NewATMQoS', 'out', 'string')
+                        ('NewATMSustainableCellRate', 'out', 'ui4')
+                        ('NewAutoConfig', 'out', 'boolean')
+                        ('NewDestinationAddress', 'out', 'string')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewLinkStatus', 'out', 'string')
+                        ('NewLinkType', 'out', 'string')
+Actionname:         GetStatistics
+                        ('NewAAL5CRCErrors', 'out', 'ui4')
+                        ('NewATMCRCErrors', 'out', 'ui4')
+                        ('NewATMReceivedBlocks', 'out', 'ui4')
+                        ('NewATMTransmittedBlocks', 'out', 'ui4')
+Actionname:         SetATMEncapsulation
+                        ('NewATMEncapsulation', 'in', 'string')
+Actionname:         SetDSLLinkType
+                        ('NewLinkType', 'in', 'string')
+Actionname:         SetDestinationAddress
+                        ('NewDestinationAddress', 'in', 'string')
+Actionname:         SetEnable
+                        ('NewEnable', 'in', 'boolean')
+
+Servicename:        WANEthernetLinkConfig:1
+Actionname:         GetEthernetLinkStatus
+                        ('NewEthernetLinkStatus', 'out', 'string')
+
+Servicename:        WANIPConnection:1
+Actionname:         AddPortMapping
+                        ('NewEnabled', 'in', 'boolean')
+                        ('NewExternalPort', 'in', 'ui2')
+                        ('NewInternalClient', 'in', 'string')
+                        ('NewInternalPort', 'in', 'ui2')
+                        ('NewLeaseDuration', 'in', 'ui4')
+                        ('NewPortMappingDescription', 'in', 'string')
+                        ('NewProtocol', 'in', 'string')
+                        ('NewRemoteHost', 'in', 'string')
+Actionname:         DeletePortMapping
+                        ('NewExternalPort', 'in', 'ui2')
+                        ('NewProtocol', 'in', 'string')
+                        ('NewRemoteHost', 'in', 'string')
+Actionname:         ForceTermination
+Actionname:         GetConnectionTypeInfo
+                        ('NewConnectionType', 'out', 'string')
+                        ('NewPossibleConnectionTypes', 'out', 'string')
+Actionname:         GetExternalIPAddress
+                        ('NewExternalIPAddress', 'out', 'string')
+Actionname:         GetGenericPortMappingEntry
+                        ('NewEnabled', 'out', 'boolean')
+                        ('NewExternalPort', 'out', 'ui2')
+                        ('NewInternalClient', 'out', 'string')
+                        ('NewInternalPort', 'out', 'ui2')
+                        ('NewLeaseDuration', 'out', 'ui4')
+                        ('NewPortMappingDescription', 'out', 'string')
+                        ('NewPortMappingIndex', 'in', 'ui2')
+                        ('NewProtocol', 'out', 'string')
+                        ('NewRemoteHost', 'out', 'string')
+Actionname:         GetInfo
+                        ('NewConnectionStatus', 'out', 'string')
+                        ('NewConnectionTrigger', 'out', 'string')
+                        ('NewConnectionType', 'out', 'string')
+                        ('NewDNSEnabled', 'out', 'boolean')
+                        ('NewDNSOverrideAllowed', 'out', 'boolean')
+                        ('NewDNSServers', 'out', 'string')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewExternalIPAddress', 'out', 'string')
+                        ('NewLastConnectionError', 'out', 'string')
+                        ('NewMACAddress', 'out', 'string')
+                        ('NewNATEnabled', 'out', 'boolean')
+                        ('NewName', 'out', 'string')
+                        ('NewPossibleConnectionTypes', 'out', 'string')
+                        ('NewRSIPAvailable', 'out', 'boolean')
+                        ('NewRouteProtocolRx', 'out', 'string')
+                        ('NewUptime', 'out', 'ui4')
+Actionname:         GetNATRSIPStatus
+                        ('NewNATEnabled', 'out', 'boolean')
+                        ('NewRSIPAvailable', 'out', 'boolean')
+Actionname:         GetPortMappingNumberOfEntries
+                        ('NewPortMappingNumberOfEntries', 'out', 'ui2')
+Actionname:         GetSpecificPortMappingEntry
+                        ('NewEnabled', 'out', 'boolean')
+                        ('NewExternalPort', 'in', 'ui2')
+                        ('NewInternalClient', 'out', 'string')
+                        ('NewInternalPort', 'out', 'ui2')
+                        ('NewLeaseDuration', 'out', 'ui4')
+                        ('NewPortMappingDescription', 'out', 'string')
+                        ('NewProtocol', 'in', 'string')
+                        ('NewRemoteHost', 'in', 'string')
+Actionname:         GetStatusInfo
+                        ('NewConnectionStatus', 'out', 'string')
+                        ('NewLastConnectionError', 'out', 'string')
+                        ('NewUptime', 'out', 'ui4')
+Actionname:         RequestConnection
+Actionname:         SetConnectionTrigger
+                        ('NewConnectionTrigger', 'in', 'string')
+Actionname:         SetConnectionType
+                        ('NewConnectionType', 'in', 'string')
+Actionname:         SetIdleDisconnectTime
+                        ('NewIdleDisconnectTime', 'in', 'ui4')
+Actionname:         SetRouteProtocolRx
+                        ('NewRouteProtocolRx', 'in', 'string')
+Actionname:         X_GetDNSServers
+                        ('NewDNSServers', 'out', 'string')
+
+Servicename:        WANIPv6FirewallControl:1
+Actionname:         AddPinhole
+                        ('InternalClient', 'in', 'string')
+                        ('InternalPort', 'in', 'ui2')
+                        ('LeaseTime', 'in', 'ui4')
+                        ('Protocol', 'in', 'ui2')
+                        ('RemoteHost', 'in', 'string')
+                        ('RemotePort', 'in', 'ui2')
+                        ('UniqueID', 'out', 'ui2')
+Actionname:         CheckPinholeWorking
+                        ('IsWorking', 'out', 'boolean')
+                        ('UniqueID', 'in', 'ui2')
+Actionname:         DeletePinhole
+                        ('UniqueID', 'in', 'ui2')
+Actionname:         GetFirewallStatus
+                        ('FirewallEnabled', 'out', 'boolean')
+                        ('InboundPinholeAllowed', 'out', 'boolean')
+Actionname:         GetOutboundPinholeTimeout
+                        ('InternalClient', 'in', 'string')
+                        ('InternalPort', 'in', 'ui2')
+                        ('OutboundPinholeTimeout', 'out', 'ui4')
+                        ('Protocol', 'in', 'ui2')
+                        ('RemoteHost', 'in', 'string')
+                        ('RemotePort', 'in', 'ui2')
+Actionname:         GetPinholePackets
+                        ('PinholePackets', 'out', 'ui4')
+                        ('UniqueID', 'in', 'ui2')
+Actionname:         UpdatePinhole
+                        ('NewLeaseTime', 'in', 'ui4')
+                        ('UniqueID', 'in', 'ui2')
+
+Servicename:        WANPPPConnection:1
+Actionname:         AddPortMapping
+                        ('NewEnabled', 'in', 'boolean')
+                        ('NewExternalPort', 'in', 'ui2')
+                        ('NewInternalClient', 'in', 'string')
+                        ('NewInternalPort', 'in', 'ui2')
+                        ('NewLeaseDuration', 'in', 'ui4')
+                        ('NewPortMappingDescription', 'in', 'string')
+                        ('NewProtocol', 'in', 'string')
+                        ('NewRemoteHost', 'in', 'string')
+Actionname:         DeletePortMapping
+                        ('NewExternalPort', 'in', 'ui2')
+                        ('NewProtocol', 'in', 'string')
+                        ('NewRemoteHost', 'in', 'string')
+Actionname:         ForceTermination
+Actionname:         GetConnectionTypeInfo
+                        ('NewConnectionType', 'out', 'string')
+                        ('NewPossibleConnectionTypes', 'out', 'string')
+Actionname:         GetExternalIPAddress
+                        ('NewExternalIPAddress', 'out', 'string')
+Actionname:         GetGenericPortMappingEntry
+                        ('NewEnabled', 'out', 'boolean')
+                        ('NewExternalPort', 'out', 'ui2')
+                        ('NewInternalClient', 'out', 'string')
+                        ('NewInternalPort', 'out', 'ui2')
+                        ('NewLeaseDuration', 'out', 'ui4')
+                        ('NewPortMappingDescription', 'out', 'string')
+                        ('NewPortMappingIndex', 'in', 'ui2')
+                        ('NewProtocol', 'out', 'string')
+                        ('NewRemoteHost', 'out', 'string')
+Actionname:         GetInfo
+                        ('NewAllowedCharsPassword', 'out', 'string')
+                        ('NewAllowedCharsUsername', 'out', 'string')
+                        ('NewConnectionStatus', 'out', 'string')
+                        ('NewConnectionTrigger', 'out', 'string')
+                        ('NewConnectionType', 'out', 'string')
+                        ('NewDNSEnabled', 'out', 'boolean')
+                        ('NewDNSOverrideAllowed', 'out', 'boolean')
+                        ('NewDNSServers', 'out', 'string')
+                        ('NewDownstreamMaxBitRate', 'out', 'ui4')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewExternalIPAddress', 'out', 'string')
+                        ('NewIdleDisconnectTime', 'out', 'ui4')
+                        ('NewLastAuthErrorInfo', 'out', 'string')
+                        ('NewLastConnectionError', 'out', 'string')
+                        ('NewMACAddress', 'out', 'string')
+                        ('NewMaxCharsPassword', 'out', 'ui2')
+                        ('NewMaxCharsUsername', 'out', 'ui2')
+                        ('NewMinCharsPassword', 'out', 'ui2')
+                        ('NewMinCharsUsername', 'out', 'ui2')
+                        ('NewNATEnabled', 'out', 'boolean')
+                        ('NewName', 'out', 'string')
+                        ('NewPPPoEACName', 'out', 'string')
+                        ('NewPPPoEServiceName', 'out', 'string')
+                        ('NewPossibleConnectionTypes', 'out', 'string')
+                        ('NewRSIPAvailable', 'out', 'boolean')
+                        ('NewRemoteIPAddress', 'out', 'string')
+                        ('NewRouteProtocolRx', 'out', 'string')
+                        ('NewTransportType', 'out', 'string')
+                        ('NewUpstreamMaxBitRate', 'out', 'ui4')
+                        ('NewUptime', 'out', 'ui4')
+                        ('NewUserName', 'out', 'string')
+Actionname:         GetLinkLayerMaxBitRates
+                        ('NewDownstreamMaxBitRate', 'out', 'ui4')
+                        ('NewUpstreamMaxBitRate', 'out', 'ui4')
+Actionname:         GetNATRSIPStatus
+                        ('NewNATEnabled', 'out', 'boolean')
+                        ('NewRSIPAvailable', 'out', 'boolean')
+Actionname:         GetPortMappingNumberOfEntries
+                        ('NewPortMappingNumberOfEntries', 'out', 'ui2')
+Actionname:         GetSpecificPortMappingEntry
+                        ('NewEnabled', 'out', 'boolean')
+                        ('NewExternalPort', 'in', 'ui2')
+                        ('NewInternalClient', 'out', 'string')
+                        ('NewInternalPort', 'out', 'ui2')
+                        ('NewLeaseDuration', 'out', 'ui4')
+                        ('NewPortMappingDescription', 'out', 'string')
+                        ('NewProtocol', 'in', 'string')
+                        ('NewRemoteHost', 'in', 'string')
+Actionname:         GetStatusInfo
+                        ('NewConnectionStatus', 'out', 'string')
+                        ('NewLastConnectionError', 'out', 'string')
+                        ('NewUptime', 'out', 'ui4')
+Actionname:         GetUserName
+                        ('NewUserName', 'out', 'string')
+Actionname:         RequestConnection
+Actionname:         SetConnectionTrigger
+                        ('NewConnectionTrigger', 'in', 'string')
+Actionname:         SetConnectionType
+                        ('NewConnectionType', 'in', 'string')
+Actionname:         SetIdleDisconnectTime
+                        ('NewIdleDisconnectTime', 'in', 'ui4')
+Actionname:         SetPassword
+                        ('NewPassword', 'in', 'string')
+Actionname:         SetRouteProtocolRx
+                        ('NewRouteProtocolRx', 'in', 'string')
+Actionname:         SetUserName
+                        ('NewUserName', 'in', 'string')
+Actionname:         X_AVM-DE_GetAutoDisconnectTimeSpan
+                        ('NewX_AVM-DE_DisconnectPreventionEnable', 'out', 'boolean')
+                        ('NewX_AVM-DE_DisconnectPreventionHour', 'out', 'ui2')
+Actionname:         X_AVM-DE_SetAutoDisconnectTimeSpan
+                        ('NewX_AVM-DE_DisconnectPreventionEnable', 'in', 'boolean')
+                        ('NewX_AVM-DE_DisconnectPreventionHour', 'in', 'ui2')
+Actionname:         X_GetDNSServers
+                        ('NewDNSServers', 'out', 'string')
+
+Servicename:        WLANConfiguration:1
+Actionname:         GetBSSID
+                        ('NewBSSID', 'out', 'string')
+Actionname:         GetBasBeaconSecurityProperties
+                        ('NewBasicAuthenticationMode', 'out', 'string')
+                        ('NewBasicEncryptionModes', 'out', 'string')
+Actionname:         GetBeaconAdvertisement
+                        ('NewBeaconAdvertisementEnabled', 'out', 'boolean')
+Actionname:         GetBeaconType
+                        ('NewBeaconType', 'out', 'string')
+Actionname:         GetChannelInfo
+                        ('NewChannel', 'out', 'ui1')
+                        ('NewPossibleChannels', 'out', 'string')
+Actionname:         GetDefaultWEPKeyIndex
+                        ('NewDefaultWEPKeyIndex', 'out', 'ui1')
+Actionname:         GetGenericAssociatedDeviceInfo
+                        ('NewAssociatedDeviceAuthState', 'out', 'boolean')
+                        ('NewAssociatedDeviceIPAddress', 'out', 'string')
+                        ('NewAssociatedDeviceIndex', 'in', 'ui2')
+                        ('NewAssociatedDeviceMACAddress', 'out', 'string')
+                        ('NewX_AVM-DE_SignalStrength', 'out', 'ui1')
+                        ('NewX_AVM-DE_Speed', 'out', 'ui2')
+Actionname:         GetInfo
+                        ('NewAllowedCharsPSK', 'out', 'string')
+                        ('NewAllowedCharsSSID', 'out', 'string')
+                        ('NewBSSID', 'out', 'string')
+                        ('NewBasicAuthenticationMode', 'out', 'string')
+                        ('NewBasicEncryptionModes', 'out', 'string')
+                        ('NewBeaconType', 'out', 'string')
+                        ('NewChannel', 'out', 'ui1')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewMACAddressControlEnabled', 'out', 'boolean')
+                        ('NewMaxBitRate', 'out', 'string')
+                        ('NewMaxCharsPSK', 'out', 'ui1')
+                        ('NewMaxCharsSSID', 'out', 'ui1')
+                        ('NewMinCharsPSK', 'out', 'ui1')
+                        ('NewMinCharsSSID', 'out', 'ui1')
+                        ('NewSSID', 'out', 'string')
+                        ('NewStandard', 'out', 'string')
+                        ('NewStatus', 'out', 'string')
+Actionname:         GetPacketStatistics
+                        ('NewTotalPacketsReceived', 'out', 'ui4')
+                        ('NewTotalPacketsSent', 'out', 'ui4')
+Actionname:         GetSSID
+                        ('NewSSID', 'out', 'string')
+Actionname:         GetSecurityKeys
+                        ('NewKeyPassphrase', 'out', 'string')
+                        ('NewPreSharedKey', 'out', 'string')
+                        ('NewWEPKey0', 'out', 'string')
+                        ('NewWEPKey1', 'out', 'string')
+                        ('NewWEPKey2', 'out', 'string')
+                        ('NewWEPKey3', 'out', 'string')
+Actionname:         GetSpecificAssociatedDeviceInfo
+                        ('NewAssociatedDeviceAuthState', 'out', 'boolean')
+                        ('NewAssociatedDeviceIPAddress', 'out', 'string')
+                        ('NewAssociatedDeviceMACAddress', 'in', 'string')
+                        ('NewX_AVM-DE_SignalStrength', 'out', 'ui1')
+                        ('NewX_AVM-DE_Speed', 'out', 'ui2')
+Actionname:         GetStatistics
+                        ('NewTotalPacketsReceived', 'out', 'ui4')
+                        ('NewTotalPacketsSent', 'out', 'ui4')
+Actionname:         GetTotalAssociations
+                        ('NewTotalAssociations', 'out', 'ui2')
+Actionname:         SetBasBeaconSecurityProperties
+                        ('NewBasicAuthenticationMode', 'in', 'string')
+                        ('NewBasicEncryptionModes', 'in', 'string')
+Actionname:         SetBeaconAdvertisement
+                        ('NewBeaconAdvertisementEnabled', 'in', 'boolean')
+Actionname:         SetBeaconType
+                        ('NewBeaconType', 'in', 'string')
+Actionname:         SetChannel
+                        ('NewChannel', 'in', 'ui1')
+Actionname:         SetConfig
+                        ('NewBasicAuthenticationMode', 'in', 'string')
+                        ('NewBasicEncryptionModes', 'in', 'string')
+                        ('NewBeaconType', 'in', 'string')
+                        ('NewChannel', 'in', 'ui1')
+                        ('NewMACAddressControlEnabled', 'in', 'boolean')
+                        ('NewMaxBitRate', 'in', 'string')
+                        ('NewSSID', 'in', 'string')
+Actionname:         SetDefaultWEPKeyIndex
+                        ('NewDefaultWEPKeyIndex', 'in', 'ui1')
+Actionname:         SetEnable
+                        ('NewEnable', 'in', 'boolean')
+Actionname:         SetSSID
+                        ('NewSSID', 'in', 'string')
+Actionname:         SetSecurityKeys
+                        ('NewKeyPassphrase', 'in', 'string')
+                        ('NewPreSharedKey', 'in', 'string')
+                        ('NewWEPKey0', 'in', 'string')
+                        ('NewWEPKey1', 'in', 'string')
+                        ('NewWEPKey2', 'in', 'string')
+                        ('NewWEPKey3', 'in', 'string')
+Actionname:         X_AVM-DE_GetIPTVOptimized
+                        ('NewX_AVM-DE_IPTVoptimize', 'out', 'boolean')
+Actionname:         X_AVM-DE_GetNightControl
+                        ('NewNightControl', 'out', 'string')
+                        ('NewNightTimeControlNoForcedOff', 'out', 'boolean')
+Actionname:         X_AVM-DE_GetSpecificAssociatedDeviceInfoByIp
+                        ('NewAssociatedDeviceAuthState', 'out', 'boolean')
+                        ('NewAssociatedDeviceIPAddress', 'in', 'string')
+                        ('NewAssociatedDeviceMACAddress', 'out', 'string')
+                        ('NewX_AVM-DE_SignalStrength', 'out', 'ui1')
+                        ('NewX_AVM-DE_Speed', 'out', 'ui2')
+Actionname:         X_AVM-DE_GetWLANExtInfo
+                        ('NewX_AVM-DE_APEnabled', 'out', 'string')
+                        ('NewX_AVM-DE_APType', 'out', 'string')
+                        ('NewX_AVM-DE_EncryptionMode', 'out', 'string')
+                        ('NewX_AVM-DE_LastChangedStamp', 'out', 'ui4')
+                        ('NewX_AVM-DE_NoForcedOff', 'out', 'string')
+                        ('NewX_AVM-DE_TimeRemain', 'out', 'string')
+                        ('NewX_AVM-DE_Timeout', 'out', 'string')
+                        ('NewX_AVM-DE_TimeoutActive', 'out', 'string')
+                        ('NewX_AVM-DE_UserIsolation', 'out', 'string')
+Actionname:         X_AVM-DE_GetWLANHybridMode
+                        ('NewBSSID', 'out', 'string')
+                        ('NewBeaconType', 'out', 'string')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewKeyPassphrase', 'out', 'string')
+                        ('NewManualSpeed', 'out', 'boolean')
+                        ('NewMaxSpeedDS', 'out', 'ui4')
+                        ('NewMaxSpeedUS', 'out', 'ui4')
+                        ('NewSSID', 'out', 'string')
+                        ('NewTrafficMode', 'out', 'string')
+Actionname:         X_AVM-DE_GetWPSInfo
+                        ('NewX_AVM-DE_WPSMode', 'out', 'string')
+                        ('NewX_AVM-DE_WPSStatus', 'out', 'string')
+Actionname:         X_AVM-DE_SetIPTVOptimized
+                        ('NewX_AVM-DE_IPTVoptimize', 'in', 'boolean')
+Actionname:         X_AVM-DE_SetStickSurfEnable
+                        ('NewStickSurfEnable', 'in', 'boolean')
+Actionname:         X_AVM-DE_SetWLANGlobalEnable
+                        ('NewX_AVM-DE_WLANGlobalEnable', 'in', 'boolean')
+Actionname:         X_AVM-DE_SetWLANHybridMode
+                        ('NewBSSID', 'in', 'string')
+                        ('NewBeaconType', 'in', 'string')
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewKeyPassphrase', 'in', 'string')
+                        ('NewManualSpeed', 'in', 'boolean')
+                        ('NewMaxSpeedDS', 'in', 'ui4')
+                        ('NewMaxSpeedUS', 'in', 'ui4')
+                        ('NewSSID', 'in', 'string')
+                        ('NewTrafficMode', 'in', 'string')
+Actionname:         X_AVM-DE_SetWPSConfig
+                        ('NewX_AVM-DE_WPSAPPIN', 'out', 'string')
+                        ('NewX_AVM-DE_WPSClientPIN', 'in', 'string')
+                        ('NewX_AVM-DE_WPSMode', 'in', 'string')
+                        ('NewX_AVM-DE_WPSStatus', 'out', 'string')
+
+Servicename:        WLANConfiguration:2
+Actionname:         GetBSSID
+                        ('NewBSSID', 'out', 'string')
+Actionname:         GetBasBeaconSecurityProperties
+                        ('NewBasicAuthenticationMode', 'out', 'string')
+                        ('NewBasicEncryptionModes', 'out', 'string')
+Actionname:         GetBeaconAdvertisement
+                        ('NewBeaconAdvertisementEnabled', 'out', 'boolean')
+Actionname:         GetBeaconType
+                        ('NewBeaconType', 'out', 'string')
+Actionname:         GetChannelInfo
+                        ('NewChannel', 'out', 'ui1')
+                        ('NewPossibleChannels', 'out', 'string')
+Actionname:         GetDefaultWEPKeyIndex
+                        ('NewDefaultWEPKeyIndex', 'out', 'ui1')
+Actionname:         GetGenericAssociatedDeviceInfo
+                        ('NewAssociatedDeviceAuthState', 'out', 'boolean')
+                        ('NewAssociatedDeviceIPAddress', 'out', 'string')
+                        ('NewAssociatedDeviceIndex', 'in', 'ui2')
+                        ('NewAssociatedDeviceMACAddress', 'out', 'string')
+                        ('NewX_AVM-DE_SignalStrength', 'out', 'ui1')
+                        ('NewX_AVM-DE_Speed', 'out', 'ui2')
+Actionname:         GetInfo
+                        ('NewAllowedCharsPSK', 'out', 'string')
+                        ('NewAllowedCharsSSID', 'out', 'string')
+                        ('NewBSSID', 'out', 'string')
+                        ('NewBasicAuthenticationMode', 'out', 'string')
+                        ('NewBasicEncryptionModes', 'out', 'string')
+                        ('NewBeaconType', 'out', 'string')
+                        ('NewChannel', 'out', 'ui1')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewMACAddressControlEnabled', 'out', 'boolean')
+                        ('NewMaxBitRate', 'out', 'string')
+                        ('NewMaxCharsPSK', 'out', 'ui1')
+                        ('NewMaxCharsSSID', 'out', 'ui1')
+                        ('NewMinCharsPSK', 'out', 'ui1')
+                        ('NewMinCharsSSID', 'out', 'ui1')
+                        ('NewSSID', 'out', 'string')
+                        ('NewStandard', 'out', 'string')
+                        ('NewStatus', 'out', 'string')
+Actionname:         GetPacketStatistics
+                        ('NewTotalPacketsReceived', 'out', 'ui4')
+                        ('NewTotalPacketsSent', 'out', 'ui4')
+Actionname:         GetSSID
+                        ('NewSSID', 'out', 'string')
+Actionname:         GetSecurityKeys
+                        ('NewKeyPassphrase', 'out', 'string')
+                        ('NewPreSharedKey', 'out', 'string')
+                        ('NewWEPKey0', 'out', 'string')
+                        ('NewWEPKey1', 'out', 'string')
+                        ('NewWEPKey2', 'out', 'string')
+                        ('NewWEPKey3', 'out', 'string')
+Actionname:         GetSpecificAssociatedDeviceInfo
+                        ('NewAssociatedDeviceAuthState', 'out', 'boolean')
+                        ('NewAssociatedDeviceIPAddress', 'out', 'string')
+                        ('NewAssociatedDeviceMACAddress', 'in', 'string')
+                        ('NewX_AVM-DE_SignalStrength', 'out', 'ui1')
+                        ('NewX_AVM-DE_Speed', 'out', 'ui2')
+Actionname:         GetStatistics
+                        ('NewTotalPacketsReceived', 'out', 'ui4')
+                        ('NewTotalPacketsSent', 'out', 'ui4')
+Actionname:         GetTotalAssociations
+                        ('NewTotalAssociations', 'out', 'ui2')
+Actionname:         SetBasBeaconSecurityProperties
+                        ('NewBasicAuthenticationMode', 'in', 'string')
+                        ('NewBasicEncryptionModes', 'in', 'string')
+Actionname:         SetBeaconAdvertisement
+                        ('NewBeaconAdvertisementEnabled', 'in', 'boolean')
+Actionname:         SetBeaconType
+                        ('NewBeaconType', 'in', 'string')
+Actionname:         SetChannel
+                        ('NewChannel', 'in', 'ui1')
+Actionname:         SetConfig
+                        ('NewBasicAuthenticationMode', 'in', 'string')
+                        ('NewBasicEncryptionModes', 'in', 'string')
+                        ('NewBeaconType', 'in', 'string')
+                        ('NewChannel', 'in', 'ui1')
+                        ('NewMACAddressControlEnabled', 'in', 'boolean')
+                        ('NewMaxBitRate', 'in', 'string')
+                        ('NewSSID', 'in', 'string')
+Actionname:         SetDefaultWEPKeyIndex
+                        ('NewDefaultWEPKeyIndex', 'in', 'ui1')
+Actionname:         SetEnable
+                        ('NewEnable', 'in', 'boolean')
+Actionname:         SetSSID
+                        ('NewSSID', 'in', 'string')
+Actionname:         SetSecurityKeys
+                        ('NewKeyPassphrase', 'in', 'string')
+                        ('NewPreSharedKey', 'in', 'string')
+                        ('NewWEPKey0', 'in', 'string')
+                        ('NewWEPKey1', 'in', 'string')
+                        ('NewWEPKey2', 'in', 'string')
+                        ('NewWEPKey3', 'in', 'string')
+Actionname:         X_AVM-DE_GetIPTVOptimized
+                        ('NewX_AVM-DE_IPTVoptimize', 'out', 'boolean')
+Actionname:         X_AVM-DE_GetNightControl
+                        ('NewNightControl', 'out', 'string')
+                        ('NewNightTimeControlNoForcedOff', 'out', 'boolean')
+Actionname:         X_AVM-DE_GetSpecificAssociatedDeviceInfoByIp
+                        ('NewAssociatedDeviceAuthState', 'out', 'boolean')
+                        ('NewAssociatedDeviceIPAddress', 'in', 'string')
+                        ('NewAssociatedDeviceMACAddress', 'out', 'string')
+                        ('NewX_AVM-DE_SignalStrength', 'out', 'ui1')
+                        ('NewX_AVM-DE_Speed', 'out', 'ui2')
+Actionname:         X_AVM-DE_GetWLANExtInfo
+                        ('NewX_AVM-DE_APEnabled', 'out', 'string')
+                        ('NewX_AVM-DE_APType', 'out', 'string')
+                        ('NewX_AVM-DE_EncryptionMode', 'out', 'string')
+                        ('NewX_AVM-DE_LastChangedStamp', 'out', 'ui4')
+                        ('NewX_AVM-DE_NoForcedOff', 'out', 'string')
+                        ('NewX_AVM-DE_TimeRemain', 'out', 'string')
+                        ('NewX_AVM-DE_Timeout', 'out', 'string')
+                        ('NewX_AVM-DE_TimeoutActive', 'out', 'string')
+                        ('NewX_AVM-DE_UserIsolation', 'out', 'string')
+Actionname:         X_AVM-DE_GetWLANHybridMode
+                        ('NewBSSID', 'out', 'string')
+                        ('NewBeaconType', 'out', 'string')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewKeyPassphrase', 'out', 'string')
+                        ('NewManualSpeed', 'out', 'boolean')
+                        ('NewMaxSpeedDS', 'out', 'ui4')
+                        ('NewMaxSpeedUS', 'out', 'ui4')
+                        ('NewSSID', 'out', 'string')
+                        ('NewTrafficMode', 'out', 'string')
+Actionname:         X_AVM-DE_GetWPSInfo
+                        ('NewX_AVM-DE_WPSMode', 'out', 'string')
+                        ('NewX_AVM-DE_WPSStatus', 'out', 'string')
+Actionname:         X_AVM-DE_SetIPTVOptimized
+                        ('NewX_AVM-DE_IPTVoptimize', 'in', 'boolean')
+Actionname:         X_AVM-DE_SetStickSurfEnable
+                        ('NewStickSurfEnable', 'in', 'boolean')
+Actionname:         X_AVM-DE_SetWLANGlobalEnable
+                        ('NewX_AVM-DE_WLANGlobalEnable', 'in', 'boolean')
+Actionname:         X_AVM-DE_SetWLANHybridMode
+                        ('NewBSSID', 'in', 'string')
+                        ('NewBeaconType', 'in', 'string')
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewKeyPassphrase', 'in', 'string')
+                        ('NewManualSpeed', 'in', 'boolean')
+                        ('NewMaxSpeedDS', 'in', 'ui4')
+                        ('NewMaxSpeedUS', 'in', 'ui4')
+                        ('NewSSID', 'in', 'string')
+                        ('NewTrafficMode', 'in', 'string')
+Actionname:         X_AVM-DE_SetWPSConfig
+                        ('NewX_AVM-DE_WPSAPPIN', 'out', 'string')
+                        ('NewX_AVM-DE_WPSClientPIN', 'in', 'string')
+                        ('NewX_AVM-DE_WPSMode', 'in', 'string')
+                        ('NewX_AVM-DE_WPSStatus', 'out', 'string')
+
+Servicename:        WLANConfiguration:3
+Actionname:         GetBSSID
+                        ('NewBSSID', 'out', 'string')
+Actionname:         GetBasBeaconSecurityProperties
+                        ('NewBasicAuthenticationMode', 'out', 'string')
+                        ('NewBasicEncryptionModes', 'out', 'string')
+Actionname:         GetBeaconAdvertisement
+                        ('NewBeaconAdvertisementEnabled', 'out', 'boolean')
+Actionname:         GetBeaconType
+                        ('NewBeaconType', 'out', 'string')
+Actionname:         GetChannelInfo
+                        ('NewChannel', 'out', 'ui1')
+                        ('NewPossibleChannels', 'out', 'string')
+Actionname:         GetDefaultWEPKeyIndex
+                        ('NewDefaultWEPKeyIndex', 'out', 'ui1')
+Actionname:         GetGenericAssociatedDeviceInfo
+                        ('NewAssociatedDeviceAuthState', 'out', 'boolean')
+                        ('NewAssociatedDeviceIPAddress', 'out', 'string')
+                        ('NewAssociatedDeviceIndex', 'in', 'ui2')
+                        ('NewAssociatedDeviceMACAddress', 'out', 'string')
+                        ('NewX_AVM-DE_SignalStrength', 'out', 'ui1')
+                        ('NewX_AVM-DE_Speed', 'out', 'ui2')
+Actionname:         GetInfo
+                        ('NewAllowedCharsPSK', 'out', 'string')
+                        ('NewAllowedCharsSSID', 'out', 'string')
+                        ('NewBSSID', 'out', 'string')
+                        ('NewBasicAuthenticationMode', 'out', 'string')
+                        ('NewBasicEncryptionModes', 'out', 'string')
+                        ('NewBeaconType', 'out', 'string')
+                        ('NewChannel', 'out', 'ui1')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewMACAddressControlEnabled', 'out', 'boolean')
+                        ('NewMaxBitRate', 'out', 'string')
+                        ('NewMaxCharsPSK', 'out', 'ui1')
+                        ('NewMaxCharsSSID', 'out', 'ui1')
+                        ('NewMinCharsPSK', 'out', 'ui1')
+                        ('NewMinCharsSSID', 'out', 'ui1')
+                        ('NewSSID', 'out', 'string')
+                        ('NewStandard', 'out', 'string')
+                        ('NewStatus', 'out', 'string')
+Actionname:         GetPacketStatistics
+                        ('NewTotalPacketsReceived', 'out', 'ui4')
+                        ('NewTotalPacketsSent', 'out', 'ui4')
+Actionname:         GetSSID
+                        ('NewSSID', 'out', 'string')
+Actionname:         GetSecurityKeys
+                        ('NewKeyPassphrase', 'out', 'string')
+                        ('NewPreSharedKey', 'out', 'string')
+                        ('NewWEPKey0', 'out', 'string')
+                        ('NewWEPKey1', 'out', 'string')
+                        ('NewWEPKey2', 'out', 'string')
+                        ('NewWEPKey3', 'out', 'string')
+Actionname:         GetSpecificAssociatedDeviceInfo
+                        ('NewAssociatedDeviceAuthState', 'out', 'boolean')
+                        ('NewAssociatedDeviceIPAddress', 'out', 'string')
+                        ('NewAssociatedDeviceMACAddress', 'in', 'string')
+                        ('NewX_AVM-DE_SignalStrength', 'out', 'ui1')
+                        ('NewX_AVM-DE_Speed', 'out', 'ui2')
+Actionname:         GetStatistics
+                        ('NewTotalPacketsReceived', 'out', 'ui4')
+                        ('NewTotalPacketsSent', 'out', 'ui4')
+Actionname:         GetTotalAssociations
+                        ('NewTotalAssociations', 'out', 'ui2')
+Actionname:         SetBasBeaconSecurityProperties
+                        ('NewBasicAuthenticationMode', 'in', 'string')
+                        ('NewBasicEncryptionModes', 'in', 'string')
+Actionname:         SetBeaconAdvertisement
+                        ('NewBeaconAdvertisementEnabled', 'in', 'boolean')
+Actionname:         SetBeaconType
+                        ('NewBeaconType', 'in', 'string')
+Actionname:         SetChannel
+                        ('NewChannel', 'in', 'ui1')
+Actionname:         SetConfig
+                        ('NewBasicAuthenticationMode', 'in', 'string')
+                        ('NewBasicEncryptionModes', 'in', 'string')
+                        ('NewBeaconType', 'in', 'string')
+                        ('NewChannel', 'in', 'ui1')
+                        ('NewMACAddressControlEnabled', 'in', 'boolean')
+                        ('NewMaxBitRate', 'in', 'string')
+                        ('NewSSID', 'in', 'string')
+Actionname:         SetDefaultWEPKeyIndex
+                        ('NewDefaultWEPKeyIndex', 'in', 'ui1')
+Actionname:         SetEnable
+                        ('NewEnable', 'in', 'boolean')
+Actionname:         SetSSID
+                        ('NewSSID', 'in', 'string')
+Actionname:         SetSecurityKeys
+                        ('NewKeyPassphrase', 'in', 'string')
+                        ('NewPreSharedKey', 'in', 'string')
+                        ('NewWEPKey0', 'in', 'string')
+                        ('NewWEPKey1', 'in', 'string')
+                        ('NewWEPKey2', 'in', 'string')
+                        ('NewWEPKey3', 'in', 'string')
+Actionname:         X_AVM-DE_GetIPTVOptimized
+                        ('NewX_AVM-DE_IPTVoptimize', 'out', 'boolean')
+Actionname:         X_AVM-DE_GetNightControl
+                        ('NewNightControl', 'out', 'string')
+                        ('NewNightTimeControlNoForcedOff', 'out', 'boolean')
+Actionname:         X_AVM-DE_GetSpecificAssociatedDeviceInfoByIp
+                        ('NewAssociatedDeviceAuthState', 'out', 'boolean')
+                        ('NewAssociatedDeviceIPAddress', 'in', 'string')
+                        ('NewAssociatedDeviceMACAddress', 'out', 'string')
+                        ('NewX_AVM-DE_SignalStrength', 'out', 'ui1')
+                        ('NewX_AVM-DE_Speed', 'out', 'ui2')
+Actionname:         X_AVM-DE_GetWLANExtInfo
+                        ('NewX_AVM-DE_APEnabled', 'out', 'string')
+                        ('NewX_AVM-DE_APType', 'out', 'string')
+                        ('NewX_AVM-DE_EncryptionMode', 'out', 'string')
+                        ('NewX_AVM-DE_LastChangedStamp', 'out', 'ui4')
+                        ('NewX_AVM-DE_NoForcedOff', 'out', 'string')
+                        ('NewX_AVM-DE_TimeRemain', 'out', 'string')
+                        ('NewX_AVM-DE_Timeout', 'out', 'string')
+                        ('NewX_AVM-DE_TimeoutActive', 'out', 'string')
+                        ('NewX_AVM-DE_UserIsolation', 'out', 'string')
+Actionname:         X_AVM-DE_GetWLANHybridMode
+                        ('NewBSSID', 'out', 'string')
+                        ('NewBeaconType', 'out', 'string')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewKeyPassphrase', 'out', 'string')
+                        ('NewManualSpeed', 'out', 'boolean')
+                        ('NewMaxSpeedDS', 'out', 'ui4')
+                        ('NewMaxSpeedUS', 'out', 'ui4')
+                        ('NewSSID', 'out', 'string')
+                        ('NewTrafficMode', 'out', 'string')
+Actionname:         X_AVM-DE_GetWPSInfo
+                        ('NewX_AVM-DE_WPSMode', 'out', 'string')
+                        ('NewX_AVM-DE_WPSStatus', 'out', 'string')
+Actionname:         X_AVM-DE_SetIPTVOptimized
+                        ('NewX_AVM-DE_IPTVoptimize', 'in', 'boolean')
+Actionname:         X_AVM-DE_SetStickSurfEnable
+                        ('NewStickSurfEnable', 'in', 'boolean')
+Actionname:         X_AVM-DE_SetWLANGlobalEnable
+                        ('NewX_AVM-DE_WLANGlobalEnable', 'in', 'boolean')
+Actionname:         X_AVM-DE_SetWLANHybridMode
+                        ('NewBSSID', 'in', 'string')
+                        ('NewBeaconType', 'in', 'string')
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewKeyPassphrase', 'in', 'string')
+                        ('NewManualSpeed', 'in', 'boolean')
+                        ('NewMaxSpeedDS', 'in', 'ui4')
+                        ('NewMaxSpeedUS', 'in', 'ui4')
+                        ('NewSSID', 'in', 'string')
+                        ('NewTrafficMode', 'in', 'string')
+Actionname:         X_AVM-DE_SetWPSConfig
+                        ('NewX_AVM-DE_WPSAPPIN', 'out', 'string')
+                        ('NewX_AVM-DE_WPSClientPIN', 'in', 'string')
+                        ('NewX_AVM-DE_WPSMode', 'in', 'string')
+                        ('NewX_AVM-DE_WPSStatus', 'out', 'string')
+
+Servicename:        X_AVM-DE_AppSetup:1
+Actionname:         GetAppMessageFilter
+                        ('NewAppId', 'in', 'string')
+                        ('NewFilterList', 'out', 'string')
+Actionname:         GetConfig
+                        ('NewAccessFromInternet', 'out', 'boolean')
+                        ('NewAppRight', 'out', 'string')
+                        ('NewConfigRight', 'out', 'string')
+                        ('NewDialRight', 'out', 'string')
+                        ('NewHomeautoRight', 'out', 'string')
+                        ('NewInternetRights', 'out', 'boolean')
+                        ('NewNasRight', 'out', 'string')
+                        ('NewPhoneRight', 'out', 'string')
+Actionname:         GetInfo
+                        ('NewAllowedCharsAppAVMAddress', 'out', 'string')
+                        ('NewAllowedCharsAppId', 'out', 'string')
+                        ('NewAllowedCharsAppPassword', 'out', 'string')
+                        ('NewAllowedCharsAppUsername', 'out', 'string')
+                        ('NewAllowedCharsCryptAlgos', 'out', 'string')
+                        ('NewAllowedCharsFilter', 'out', 'string')
+                        ('NewAllowedCharsIPSecIdentifier', 'out', 'string')
+                        ('NewAllowedCharsIPSecPreSharedKey', 'out', 'string')
+                        ('NewAllowedCharsIPSecXauthPassword', 'out', 'string')
+                        ('NewAllowedCharsIPSecXauthUsername', 'out', 'string')
+                        ('NewMaxCharsAppDisplayName', 'out', 'ui2')
+                        ('NewMaxCharsAppId', 'out', 'ui2')
+                        ('NewMaxCharsAppPassword', 'out', 'ui2')
+                        ('NewMaxCharsAppUsername', 'out', 'ui2')
+                        ('NewMaxCharsFilter', 'out', 'ui2')
+                        ('NewMaxCharsIPSecIdentifier', 'out', 'ui2')
+                        ('NewMaxCharsIPSecPreSharedKey', 'out', 'ui2')
+                        ('NewMaxCharsIPSecXauthPassword', 'out', 'ui2')
+                        ('NewMaxCharsIPSecXauthUsername', 'out', 'ui2')
+                        ('NewMinCharsAppDisplayName', 'out', 'ui2')
+                        ('NewMinCharsAppId', 'out', 'ui2')
+                        ('NewMinCharsAppPassword', 'out', 'ui2')
+                        ('NewMinCharsAppUsername', 'out', 'ui2')
+                        ('NewMinCharsFilter', 'out', 'ui2')
+                        ('NewMinCharsIPSecIdentifier', 'out', 'ui2')
+                        ('NewMinCharsIPSecPreSharedKey', 'out', 'ui2')
+                        ('NewMinCharsIPSecXauthPassword', 'out', 'ui2')
+                        ('NewMinCharsIPSecXauthUsername', 'out', 'ui2')
+Actionname:         RegisterApp
+                        ('NewAppDeviceMAC', 'in', 'string')
+                        ('NewAppDisplayName', 'in', 'string')
+                        ('NewAppId', 'in', 'string')
+                        ('NewAppInternetRights', 'in', 'boolean')
+                        ('NewAppPassword', 'in', 'string')
+                        ('NewAppRight', 'in', 'string')
+                        ('NewAppUsername', 'in', 'string')
+                        ('NewHomeautoRight', 'in', 'string')
+                        ('NewNasRight', 'in', 'string')
+                        ('NewPhoneRight', 'in', 'string')
+Actionname:         ResetEvent
+                        ('NewEventId', 'in', 'ui4')
+Actionname:         SetAppMessageFilter
+                        ('NewAppId', 'in', 'string')
+                        ('NewFilter', 'in', 'string')
+                        ('NewType', 'in', 'string')
+Actionname:         SetAppMessageReceiver
+                        ('BoxSenderId', 'out', 'string')
+                        ('EncryptionSecret', 'out', 'string')
+                        ('NewAppAVMAddress', 'in', 'string')
+                        ('NewAppAVMPasswordHash', 'in', 'string')
+                        ('NewAppId', 'in', 'string')
+                        ('NewCryptAlgos', 'in', 'string')
+Actionname:         SetAppVPN
+                        ('NewAppId', 'in', 'string')
+                        ('NewIPSecIdentifier', 'in', 'string')
+                        ('NewIPSecPreSharedKey', 'in', 'string')
+                        ('NewIPSecXauthPassword', 'in', 'string')
+                        ('NewIPSecXauthUsername', 'in', 'string')
+Actionname:         SetAppVPNwithPFS
+                        ('NewAppId', 'in', 'string')
+                        ('NewIPSecIdentifier', 'in', 'string')
+                        ('NewIPSecPreSharedKey', 'in', 'string')
+                        ('NewIPSecXauthPassword', 'in', 'string')
+                        ('NewIPSecXauthUsername', 'in', 'string')
+
+Servicename:        X_AVM-DE_Auth:1
+Actionname:         GetInfo
+                        ('NewEnabled', 'out', 'boolean')
+Actionname:         GetState
+                        ('NewState', 'out', 'string')
+Actionname:         SetConfig
+                        ('NewAction', 'in', 'string')
+                        ('NewMethods', 'out', 'string')
+                        ('NewState', 'out', 'string')
+                        ('NewToken', 'out', 'string')
+
+Servicename:        X_AVM-DE_Dect:1
+Actionname:         DectDoUpdate
+                        ('NewID', 'in', 'string')
+Actionname:         GetDectListPath
+                        ('NewDectListPath', 'out', 'string')
+Actionname:         GetGenericDectEntry
+                        ('NewActive', 'out', 'boolean')
+                        ('NewID', 'out', 'string')
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewModel', 'out', 'string')
+                        ('NewName', 'out', 'string')
+                        ('NewUpdateAvailable', 'out', 'boolean')
+                        ('NewUpdateInfo', 'out', 'string')
+                        ('NewUpdateSuccessful', 'out', 'string')
+Actionname:         GetNumberOfDectEntries
+                        ('NewNumberOfEntries', 'out', 'ui2')
+Actionname:         GetSpecificDectEntry
+                        ('NewActive', 'out', 'boolean')
+                        ('NewID', 'in', 'string')
+                        ('NewModel', 'out', 'string')
+                        ('NewName', 'out', 'string')
+                        ('NewUpdateAvailable', 'out', 'boolean')
+                        ('NewUpdateInfo', 'out', 'string')
+                        ('NewUpdateSuccessful', 'out', 'string')
+
+Servicename:        X_AVM-DE_Filelinks:1
+Actionname:         DeleteFilelinkEntry
+                        ('NewID', 'in', 'string')
+Actionname:         GetFilelinkListPath
+                        ('NewFilelinkListPath', 'out', 'string')
+Actionname:         GetGenericFilelinkEntry
+                        ('NewAccessCount', 'out', 'ui2')
+                        ('NewAccessCountLimit', 'out', 'ui2')
+                        ('NewExpire', 'out', 'ui2')
+                        ('NewExpireDate', 'out', 'dateTime')
+                        ('NewID', 'out', 'string')
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewIsDirectory', 'out', 'boolean')
+                        ('NewPath', 'out', 'string')
+                        ('NewUrl', 'out', 'string')
+                        ('NewUsername', 'out', 'string')
+                        ('NewValid', 'out', 'boolean')
+Actionname:         GetNumberOfFilelinkEntries
+                        ('NewNumberOfEntries', 'out', 'ui2')
+Actionname:         GetSpecificFilelinkEntry
+                        ('NewAccessCount', 'out', 'ui2')
+                        ('NewAccessCountLimit', 'out', 'ui2')
+                        ('NewExpire', 'out', 'ui2')
+                        ('NewExpireDate', 'out', 'dateTime')
+                        ('NewID', 'in', 'string')
+                        ('NewIsDirectory', 'out', 'boolean')
+                        ('NewPath', 'out', 'string')
+                        ('NewUrl', 'out', 'string')
+                        ('NewUsername', 'out', 'string')
+                        ('NewValid', 'out', 'boolean')
+Actionname:         NewFilelinkEntry
+                        ('NewAccessCountLimit', 'in', 'ui2')
+                        ('NewExpire', 'in', 'ui2')
+                        ('NewID', 'out', 'string')
+                        ('NewPath', 'in', 'string')
+Actionname:         SetFilelinkEntry
+                        ('NewAccessCountLimit', 'in', 'ui2')
+                        ('NewExpire', 'in', 'ui2')
+                        ('NewID', 'in', 'string')
+
+Servicename:        X_AVM-DE_Homeauto:1
+Actionname:         GetGenericDeviceInfos
+                        ('NewAIN', 'out', 'string')
+                        ('NewDeviceId', 'out', 'ui2')
+                        ('NewDeviceName', 'out', 'string')
+                        ('NewFirmwareVersion', 'out', 'string')
+                        ('NewFunctionBitMask', 'out', 'ui2')
+                        ('NewHkrComfortTemperature', 'out', 'i4')
+                        ('NewHkrComfortVentilStatus', 'out', 'string')
+                        ('NewHkrIsEnabled', 'out', 'string')
+                        ('NewHkrIsTemperature', 'out', 'i4')
+                        ('NewHkrIsValid', 'out', 'string')
+                        ('NewHkrReduceTemperature', 'out', 'i4')
+                        ('NewHkrReduceVentilStatus', 'out', 'string')
+                        ('NewHkrSetTemperature', 'out', 'i4')
+                        ('NewHkrSetVentilStatus', 'out', 'string')
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewManufacturer', 'out', 'string')
+                        ('NewMultimeterEnergy', 'out', 'ui4')
+                        ('NewMultimeterIsEnabled', 'out', 'string')
+                        ('NewMultimeterIsValid', 'out', 'string')
+                        ('NewMultimeterPower', 'out', 'ui4')
+                        ('NewPresent', 'out', 'string')
+                        ('NewProductName', 'out', 'string')
+                        ('NewSwitchIsEnabled', 'out', 'string')
+                        ('NewSwitchIsValid', 'out', 'string')
+                        ('NewSwitchLock', 'out', 'boolean')
+                        ('NewSwitchMode', 'out', 'string')
+                        ('NewSwitchState', 'out', 'string')
+                        ('NewTemperatureCelsius', 'out', 'i4')
+                        ('NewTemperatureIsEnabled', 'out', 'string')
+                        ('NewTemperatureIsValid', 'out', 'string')
+                        ('NewTemperatureOffset', 'out', 'i4')
+Actionname:         GetInfo
+                        ('NewAllowedCharsAIN', 'out', 'string')
+Actionname:         GetSpecificDeviceInfos
+                        ('NewAIN', 'in', 'string')
+                        ('NewDeviceId', 'out', 'ui2')
+                        ('NewDeviceName', 'out', 'string')
+                        ('NewFirmwareVersion', 'out', 'string')
+                        ('NewFunctionBitMask', 'out', 'ui2')
+                        ('NewHkrComfortTemperature', 'out', 'i4')
+                        ('NewHkrComfortVentilStatus', 'out', 'string')
+                        ('NewHkrIsEnabled', 'out', 'string')
+                        ('NewHkrIsTemperature', 'out', 'i4')
+                        ('NewHkrIsValid', 'out', 'string')
+                        ('NewHkrReduceTemperature', 'out', 'i4')
+                        ('NewHkrReduceVentilStatus', 'out', 'string')
+                        ('NewHkrSetTemperature', 'out', 'i4')
+                        ('NewHkrSetVentilStatus', 'out', 'string')
+                        ('NewManufacturer', 'out', 'string')
+                        ('NewMultimeterEnergy', 'out', 'ui4')
+                        ('NewMultimeterIsEnabled', 'out', 'string')
+                        ('NewMultimeterIsValid', 'out', 'string')
+                        ('NewMultimeterPower', 'out', 'ui4')
+                        ('NewPresent', 'out', 'string')
+                        ('NewProductName', 'out', 'string')
+                        ('NewSwitchIsEnabled', 'out', 'string')
+                        ('NewSwitchIsValid', 'out', 'string')
+                        ('NewSwitchLock', 'out', 'boolean')
+                        ('NewSwitchMode', 'out', 'string')
+                        ('NewSwitchState', 'out', 'string')
+                        ('NewTemperatureCelsius', 'out', 'i4')
+                        ('NewTemperatureIsEnabled', 'out', 'string')
+                        ('NewTemperatureIsValid', 'out', 'string')
+                        ('NewTemperatureOffset', 'out', 'i4')
+Actionname:         SetSwitch
+                        ('NewAIN', 'in', 'string')
+                        ('NewSwitchState', 'in', 'string')
+
+Servicename:        X_AVM-DE_Homeplug:1
+Actionname:         DeviceDoUpdate
+                        ('NewMACAddress', 'in', 'string')
+Actionname:         GetGenericDeviceEntry
+                        ('NewActive', 'out', 'boolean')
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewMACAddress', 'out', 'string')
+                        ('NewModel', 'out', 'string')
+                        ('NewName', 'out', 'string')
+                        ('NewUpdateAvailable', 'out', 'boolean')
+                        ('NewUpdateSuccessful', 'out', 'string')
+Actionname:         GetNumberOfDeviceEntries
+                        ('NewNumberOfEntries', 'out', 'ui2')
+Actionname:         GetSpecificDeviceEntry
+                        ('NewActive', 'out', 'boolean')
+                        ('NewMACAddress', 'in', 'string')
+                        ('NewModel', 'out', 'string')
+                        ('NewName', 'out', 'string')
+                        ('NewUpdateAvailable', 'out', 'boolean')
+                        ('NewUpdateSuccessful', 'out', 'string')
+
+Servicename:        X_AVM-DE_MyFritz:1
+Actionname:         DeleteServiceByIndex
+                        ('NewIndex', 'in', 'ui4')
+Actionname:         GetInfo
+                        ('NewDeviceRegistered', 'out', 'boolean')
+                        ('NewDynDNSName', 'out', 'string')
+                        ('NewEnabled', 'out', 'boolean')
+                        ('NewPort', 'out', 'ui4')
+Actionname:         GetNumberOfServices
+                        ('NewNumberOfServices', 'out', 'ui4')
+Actionname:         GetServiceByIndex
+                        ('NewDynDnsLabel', 'out', 'string')
+                        ('NewEnabled', 'out', 'boolean')
+                        ('NewHostName', 'out', 'string')
+                        ('NewIPv4Addresses', 'out', 'string')
+                        ('NewIPv4ForwardingWarning', 'out', 'ui1')
+                        ('NewIPv6Addresses', 'out', 'string')
+                        ('NewIPv6InterfaceIDs', 'out', 'string')
+                        ('NewIndex', 'in', 'ui4')
+                        ('NewMACAddress', 'out', 'string')
+                        ('NewName', 'out', 'string')
+                        ('NewPort', 'out', 'ui4')
+                        ('NewScheme', 'out', 'string')
+                        ('NewStatus', 'out', 'ui4')
+                        ('NewType', 'out', 'string')
+                        ('NewURLPath', 'out', 'string')
+Actionname:         SetServiceByIndex
+                        ('NewEnabled', 'in', 'boolean')
+                        ('NewHostName', 'in', 'string')
+                        ('NewIPv4Address', 'in', 'string')
+                        ('NewIPv6Address', 'in', 'string')
+                        ('NewIPv6InterfaceID', 'in', 'string')
+                        ('NewIndex', 'in', 'ui4')
+                        ('NewMACAddress', 'in', 'string')
+                        ('NewName', 'in', 'string')
+                        ('NewPort', 'in', 'ui4')
+                        ('NewScheme', 'in', 'string')
+                        ('NewType', 'in', 'string')
+                        ('NewURLPath', 'in', 'string')
+
+Servicename:        X_AVM-DE_OnTel:1
+Actionname:         AddPhonebook
+                        ('NewPhonebookExtraID', 'in', 'string')
+                        ('NewPhonebookName', 'in', 'string')
+Actionname:         DeleteByIndex
+                        ('NewIndex', 'in', 'ui2')
+Actionname:         DeletePhonebook
+                        ('NewPhonebookExtraID', 'in', 'string')
+                        ('NewPhonebookID', 'in', 'ui2')
+Actionname:         DeletePhonebookEntry
+                        ('NewPhonebookEntryID', 'in', 'ui4')
+                        ('NewPhonebookID', 'in', 'ui2')
+Actionname:         DeletePhonebookEntryUID
+                        ('NewPhonebookEntryUniqueID', 'in', 'ui4')
+                        ('NewPhonebookID', 'in', 'ui2')
+Actionname:         GetCallList
+                        ('NewCallListURL', 'out', 'string')
+Actionname:         GetDECTHandsetInfo
+                        ('NewDectID', 'in', 'ui2')
+                        ('NewHandsetName', 'out', 'string')
+                        ('NewPhonebookID', 'out', 'ui2')
+Actionname:         GetDECTHandsetList
+                        ('NewDectIDList', 'out', 'string')
+Actionname:         GetDeflection
+                        ('NewDeflectionId', 'in', 'ui2')
+                        ('NewDeflectionToNumber', 'out', 'string')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewMode', 'out', 'string')
+                        ('NewNumber', 'out', 'string')
+                        ('NewOutgoing', 'out', 'string')
+                        ('NewPhonebookID', 'out', 'ui2')
+                        ('NewType', 'out', 'string')
+Actionname:         GetDeflections
+                        ('NewDeflectionList', 'out', 'string')
+Actionname:         GetInfo
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewLastConnect', 'out', 'string')
+                        ('NewName', 'out', 'string')
+                        ('NewServiceId', 'out', 'string')
+                        ('NewStatus', 'out', 'string')
+                        ('NewUrl', 'out', 'string')
+                        ('NewUsername', 'out', 'string')
+Actionname:         GetInfoByIndex
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewLastConnect', 'out', 'string')
+                        ('NewName', 'out', 'string')
+                        ('NewServiceId', 'out', 'string')
+                        ('NewStatus', 'out', 'string')
+                        ('NewUrl', 'out', 'string')
+                        ('NewUsername', 'out', 'string')
+Actionname:         GetNumberOfDeflections
+                        ('NewNumberOfDeflections', 'out', 'ui2')
+Actionname:         GetNumberOfEntries
+                        ('NewOnTelNumberOfEntries', 'out', 'ui2')
+Actionname:         GetPhonebook
+                        ('NewPhonebookExtraID', 'out', 'string')
+                        ('NewPhonebookID', 'in', 'ui2')
+                        ('NewPhonebookName', 'out', 'string')
+                        ('NewPhonebookURL', 'out', 'string')
+Actionname:         GetPhonebookEntry
+                        ('NewPhonebookEntryData', 'out', 'string')
+                        ('NewPhonebookEntryID', 'in', 'ui4')
+                        ('NewPhonebookID', 'in', 'ui2')
+Actionname:         GetPhonebookEntryUID
+                        ('NewPhonebookEntryData', 'out', 'string')
+                        ('NewPhonebookEntryUniqueID', 'in', 'ui4')
+                        ('NewPhonebookID', 'in', 'ui2')
+Actionname:         GetPhonebookList
+                        ('NewPhonebookList', 'out', 'string')
+Actionname:         SetConfig
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewName', 'in', 'string')
+                        ('NewPassword', 'in', 'string')
+                        ('NewServiceId', 'in', 'string')
+                        ('NewUrl', 'in', 'string')
+                        ('NewUsername', 'in', 'string')
+Actionname:         SetConfigByIndex
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewName', 'in', 'string')
+                        ('NewPassword', 'in', 'string')
+                        ('NewServiceId', 'in', 'string')
+                        ('NewUrl', 'in', 'string')
+                        ('NewUsername', 'in', 'string')
+Actionname:         SetDECTHandsetPhonebook
+                        ('NewDectID', 'in', 'ui2')
+                        ('NewPhonebookID', 'in', 'ui2')
+Actionname:         SetDeflectionEnable
+                        ('NewDeflectionId', 'in', 'ui2')
+                        ('NewEnable', 'in', 'boolean')
+Actionname:         SetEnable
+                        ('NewEnable', 'in', 'boolean')
+Actionname:         SetEnableByIndex
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewIndex', 'in', 'ui2')
+Actionname:         SetPhonebookEntry
+                        ('NewPhonebookEntryData', 'in', 'string')
+                        ('NewPhonebookEntryID', 'in', 'ui4')
+                        ('NewPhonebookID', 'in', 'ui2')
+Actionname:         SetPhonebookEntryUID
+                        ('NewPhonebookEntryData', 'in', 'string')
+                        ('NewPhonebookEntryUniqueID', 'out', 'ui4')
+                        ('NewPhonebookID', 'in', 'ui2')
+
+Servicename:        X_AVM-DE_RemoteAccess:1
+Actionname:         GetDDNSInfo
+                        ('NewDomain', 'out', 'string')
+                        ('NewEnabled', 'out', 'boolean')
+                        ('NewMode', 'out', 'string')
+                        ('NewProviderName', 'out', 'string')
+                        ('NewServerIPv4', 'out', 'string')
+                        ('NewServerIPv6', 'out', 'string')
+                        ('NewStatusIPv4', 'out', 'string')
+                        ('NewStatusIPv6', 'out', 'string')
+                        ('NewUpdateURL', 'out', 'string')
+                        ('NewUsername', 'out', 'string')
+Actionname:         GetDDNSProviders
+                        ('NewProviderList', 'out', 'string')
+Actionname:         GetInfo
+                        ('NewEnabled', 'out', 'boolean')
+                        ('NewPort', 'out', 'string')
+                        ('NewUsername', 'out', 'string')
+Actionname:         SetConfig
+                        ('NewEnabled', 'in', 'boolean')
+                        ('NewPassword', 'in', 'string')
+                        ('NewPort', 'in', 'string')
+                        ('NewUsername', 'in', 'string')
+Actionname:         SetDDNSConfig
+                        ('NewDomain', 'in', 'string')
+                        ('NewEnabled', 'in', 'boolean')
+                        ('NewMode', 'in', 'string')
+                        ('NewPassword', 'in', 'string')
+                        ('NewProviderName', 'in', 'string')
+                        ('NewServerIPv4', 'in', 'string')
+                        ('NewServerIPv6', 'in', 'string')
+                        ('NewUpdateURL', 'in', 'string')
+                        ('NewUsername', 'in', 'string')
+Actionname:         SetEnable
+                        ('NewEnabled', 'in', 'boolean')
+                        ('NewPort', 'out', 'string')
+
+Servicename:        X_AVM-DE_Speedtest:1
+Actionname:         GetInfo
+                        ('NewEnableTcp', 'out', 'boolean')
+                        ('NewEnableUdp', 'out', 'boolean')
+                        ('NewEnableUdpBidirect', 'out', 'boolean')
+                        ('NewPortTcp', 'out', 'ui4')
+                        ('NewPortUdp', 'out', 'ui4')
+                        ('NewPortUdpBidirect', 'out', 'ui4')
+                        ('NewWANEnableTcp', 'out', 'boolean')
+                        ('NewWANEnableUdp', 'out', 'boolean')
+Actionname:         SetConfig
+                        ('NewEnableTcp', 'in', 'boolean')
+                        ('NewEnableUdp', 'in', 'boolean')
+                        ('NewEnableUdpBidirect', 'in', 'boolean')
+                        ('NewWANEnableTcp', 'in', 'boolean')
+                        ('NewWANEnableUdp', 'in', 'boolean')
+
+Servicename:        X_AVM-DE_Storage:1
+Actionname:         GetInfo
+                        ('NewFTPEnable', 'out', 'boolean')
+                        ('NewFTPStatus', 'out', 'string')
+                        ('NewFTPWANEnable', 'out', 'boolean')
+                        ('NewFTPWANPort', 'out', 'ui2')
+                        ('NewFTPWANSSLOnly', 'out', 'boolean')
+                        ('NewSMBEnable', 'out', 'boolean')
+Actionname:         GetUserInfo
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewUsername', 'out', 'string')
+                        ('NewX_AVM-DE_NetworkAccessReadOnly', 'out', 'boolean')
+Actionname:         RequestFTPServerWAN
+                        ('NewFTPWANLifetime', 'out', 'ui4')
+                        ('NewFTPWANPort', 'out', 'ui2')
+Actionname:         SetFTPServer
+                        ('NewFTPEnable', 'in', 'boolean')
+Actionname:         SetFTPServerWAN
+                        ('NewFTPWANEnable', 'in', 'boolean')
+                        ('NewFTPWANSSLOnly', 'in', 'boolean')
+Actionname:         SetSMBServer
+                        ('NewSMBEnable', 'in', 'boolean')
+Actionname:         SetUserConfig
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewPassword', 'in', 'string')
+                        ('NewX_AVM-DE_NetworkAccessReadOnly', 'in', 'boolean')
+
+Servicename:        X_AVM-DE_TAM:1
+Actionname:         DeleteMessage
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewMessageIndex', 'in', 'ui2')
+Actionname:         GetInfo
+                        ('NewCapacity', 'out', 'ui4')
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewName', 'out', 'string')
+                        ('NewStatus', 'out', 'ui2')
+                        ('NewStick', 'out', 'ui2')
+                        ('NewTAMRunning', 'out', 'boolean')
+Actionname:         GetList
+                        ('NewTAMList', 'out', 'string')
+Actionname:         GetMessageList
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewURL', 'out', 'string')
+Actionname:         MarkMessage
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewMarkedAsRead', 'in', 'boolean')
+                        ('NewMessageIndex', 'in', 'ui2')
+Actionname:         SetEnable
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewIndex', 'in', 'ui2')
+
+Servicename:        X_AVM-DE_UPnP:1
+Actionname:         GetInfo
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewUPnPMediaServer', 'out', 'boolean')
+Actionname:         SetConfig
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewUPnPMediaServer', 'in', 'boolean')
+
+Servicename:        X_AVM-DE_WebDAVClient:1
+Actionname:         GetInfo
+                        ('NewEnable', 'out', 'boolean')
+                        ('NewHostURL', 'out', 'string')
+                        ('NewMountpointName', 'out', 'string')
+                        ('NewUsername', 'out', 'string')
+Actionname:         SetConfig
+                        ('NewEnable', 'in', 'boolean')
+                        ('NewHostURL', 'in', 'string')
+                        ('NewMountpointName', 'in', 'string')
+                        ('NewPassword', 'in', 'string')
+                        ('NewUsername', 'in', 'string')
+
+Servicename:        X_VoIP:1
+Actionname:         GetExistingVoIPNumbers
+                        ('NewExistingVoIPNumbers', 'out', 'ui2')
+Actionname:         GetInfo
+                        ('NewFaxT38Enable', 'out', 'boolean')
+                        ('NewVoiceCoding', 'out', 'string')
+Actionname:         GetInfoEx
+                        ('NewVoIPNumberAllowedChars', 'out', 'string')
+                        ('NewVoIPNumberMaxChars', 'out', 'ui2')
+                        ('NewVoIPNumberMinChars', 'out', 'ui2')
+                        ('NewVoIPPasswordAllowedChars', 'out', 'string')
+                        ('NewVoIPPasswordMaxChars', 'out', 'ui2')
+                        ('NewVoIPPasswordMinChars', 'out', 'ui2')
+                        ('NewVoIPRegistrarAllowedChars', 'out', 'string')
+                        ('NewVoIPRegistrarMaxChars', 'out', 'ui2')
+                        ('NewVoIPRegistrarMinChars', 'out', 'ui2')
+                        ('NewVoIPSTUNServerAllowedChars', 'out', 'string')
+                        ('NewVoIPSTUNServerMaxChars', 'out', 'ui2')
+                        ('NewVoIPSTUNServerMinChars', 'out', 'ui2')
+                        ('NewVoIPUsernameAllowedChars', 'out', 'string')
+                        ('NewVoIPUsernameMaxChars', 'out', 'ui2')
+                        ('NewVoIPUsernameMinChars', 'out', 'ui2')
+                        ('NewX_AVM-DE_ClientPasswordAllowedChars', 'out', 'string')
+                        ('NewX_AVM-DE_ClientPasswordMaxChars', 'out', 'ui2')
+                        ('NewX_AVM-DE_ClientPasswordMinChars', 'out', 'ui2')
+                        ('NewX_AVM-DE_ClientUsernameAllowedChars', 'out', 'string')
+                        ('NewX_AVM-DE_ClientUsernameMaxChars', 'out', 'ui2')
+                        ('NewX_AVM-DE_ClientUsernameMinChars', 'out', 'ui2')
+Actionname:         GetMaxVoIPNumbers
+                        ('NewMaxVoIPNumbers', 'out', 'ui2')
+Actionname:         GetVoIPCommonAreaCode
+                        ('NewVoIPAreaCode', 'out', 'string')
+Actionname:         GetVoIPCommonCountryCode
+                        ('NewVoIPCountryCode', 'out', 'string')
+Actionname:         GetVoIPEnableAreaCode
+                        ('NewVoIPAccountIndex', 'in', 'ui2')
+                        ('NewVoIPEnableAreaCode', 'out', 'boolean')
+Actionname:         GetVoIPEnableCountryCode
+                        ('NewVoIPAccountIndex', 'in', 'ui2')
+                        ('NewVoIPEnableCountryCode', 'out', 'boolean')
+Actionname:         SetConfig
+                        ('NewFaxT38Enable', 'in', 'boolean')
+                        ('NewVoiceCoding', 'in', 'string')
+Actionname:         SetVoIPCommonAreaCode
+                        ('NewVoIPAreaCode', 'in', 'string')
+Actionname:         SetVoIPCommonCountryCode
+                        ('NewVoIPCountryCode', 'in', 'string')
+Actionname:         SetVoIPEnableAreaCode
+                        ('NewVoIPAccountIndex', 'in', 'ui2')
+                        ('NewVoIPEnableAreaCode', 'in', 'boolean')
+Actionname:         SetVoIPEnableCountryCode
+                        ('NewVoIPAccountIndex', 'in', 'ui2')
+                        ('NewVoIPEnableCountryCode', 'in', 'boolean')
+Actionname:         X_AVM-DE_AddVoIPAccount
+                        ('NewVoIPAccountIndex', 'in', 'ui2')
+                        ('NewVoIPNumber', 'in', 'string')
+                        ('NewVoIPOutboundProxy', 'in', 'string')
+                        ('NewVoIPPassword', 'in', 'string')
+                        ('NewVoIPRegistrar', 'in', 'string')
+                        ('NewVoIPSTUNServer', 'in', 'string')
+                        ('NewVoIPUsername', 'in', 'string')
+Actionname:         X_AVM-DE_DelVoIPAccount
+                        ('NewVoIPAccountIndex', 'in', 'ui2')
+Actionname:         X_AVM-DE_DeleteClient
+                        ('NewX_AVM-DE_ClientIndex', 'in', 'ui2')
+Actionname:         X_AVM-DE_DialGetConfig
+                        ('NewX_AVM-DE_PhoneName', 'out', 'string')
+Actionname:         X_AVM-DE_DialHangup
+Actionname:         X_AVM-DE_DialNumber
+                        ('NewX_AVM-DE_PhoneNumber', 'in', 'string')
+Actionname:         X_AVM-DE_DialSetConfig
+                        ('NewX_AVM-DE_PhoneName', 'in', 'string')
+Actionname:         X_AVM-DE_GetClient
+                        ('NewX_AVM-DE_ClientIndex', 'in', 'ui2')
+                        ('NewX_AVM-DE_ClientRegistrar', 'out', 'string')
+                        ('NewX_AVM-DE_ClientRegistrarPort', 'out', 'ui2')
+                        ('NewX_AVM-DE_ClientUsername', 'out', 'string')
+                        ('NewX_AVM-DE_OutGoingNumber', 'out', 'string')
+                        ('NewX_AVM-DE_PhoneName', 'out', 'string')
+Actionname:         X_AVM-DE_GetClient2
+                        ('NewX_AVM-DE_ClientId', 'out', 'string')
+                        ('NewX_AVM-DE_ClientIndex', 'in', 'ui2')
+                        ('NewX_AVM-DE_ClientRegistrar', 'out', 'string')
+                        ('NewX_AVM-DE_ClientRegistrarPort', 'out', 'ui2')
+                        ('NewX_AVM-DE_ClientUsername', 'out', 'string')
+                        ('NewX_AVM-DE_InternalNumber', 'out', 'string')
+                        ('NewX_AVM-DE_OutGoingNumber', 'out', 'string')
+                        ('NewX_AVM-DE_PhoneName', 'out', 'string')
+Actionname:         X_AVM-DE_GetClient3
+                        ('NewX_AVM-DE_ClientId', 'out', 'string')
+                        ('NewX_AVM-DE_ClientIndex', 'in', 'ui2')
+                        ('NewX_AVM-DE_ClientRegistrar', 'out', 'string')
+                        ('NewX_AVM-DE_ClientRegistrarPort', 'out', 'ui2')
+                        ('NewX_AVM-DE_ClientUsername', 'out', 'string')
+                        ('NewX_AVM-DE_DelayedCallNotification', 'out', 'boolean')
+                        ('NewX_AVM-DE_ExternalRegistration', 'out', 'boolean')
+                        ('NewX_AVM-DE_InComingNumbers', 'out', 'string')
+                        ('NewX_AVM-DE_InternalNumber', 'out', 'string')
+                        ('NewX_AVM-DE_OutGoingNumber', 'out', 'string')
+                        ('NewX_AVM-DE_PhoneName', 'out', 'string')
+Actionname:         X_AVM-DE_GetClientByClientId
+                        ('NewX_AVM-DE_ClientId', 'out', 'string')
+                        ('NewX_AVM-DE_ClientIndex', 'out', 'ui2')
+                        ('NewX_AVM-DE_ClientRegistrar', 'out', 'string')
+                        ('NewX_AVM-DE_ClientRegistrarPort', 'out', 'ui2')
+                        ('NewX_AVM-DE_ClientUsername', 'out', 'string')
+                        ('NewX_AVM-DE_DelayedCallNotification', 'out', 'boolean')
+                        ('NewX_AVM-DE_ExternalRegistration', 'out', 'boolean')
+                        ('NewX_AVM-DE_InComingNumbers', 'out', 'string')
+                        ('NewX_AVM-DE_InternalNumber', 'out', 'string')
+                        ('NewX_AVM-DE_OutGoingNumber', 'out', 'string')
+                        ('NewX_AVM-DE_PhoneName', 'out', 'string')
+Actionname:         X_AVM-DE_GetClients
+                        ('NewX_AVM-DE_ClientList', 'out', 'string')
+Actionname:         X_AVM-DE_GetNumberOfClients
+                        ('NewX_AVM-DE_NumberOfClients', 'out', 'ui2')
+Actionname:         X_AVM-DE_GetNumberOfNumbers
+                        ('NewNumberOfNumbers', 'out', 'ui4')
+Actionname:         X_AVM-DE_GetNumbers
+                        ('NewNumberList', 'out', 'string')
+Actionname:         X_AVM-DE_GetPhonePort
+                        ('NewIndex', 'in', 'ui2')
+                        ('NewX_AVM-DE_PhoneName', 'out', 'string')
+Actionname:         X_AVM-DE_GetVoIPAccount
+                        ('NewVoIPAccountIndex', 'in', 'ui2')
+                        ('NewVoIPNumber', 'out', 'string')
+                        ('NewVoIPOutboundProxy', 'out', 'string')
+                        ('NewVoIPPassword', 'out', 'string')
+                        ('NewVoIPRegistrar', 'out', 'string')
+                        ('NewVoIPSTUNServer', 'out', 'string')
+                        ('NewVoIPUsername', 'out', 'string')
+Actionname:         X_AVM-DE_GetVoIPCommonAreaCode
+                        ('NewX_AVM-DE_OKZ', 'out', 'string')
+                        ('NewX_AVM-DE_OKZPrefix', 'out', 'string')
+Actionname:         X_AVM-DE_GetVoIPCommonCountryCode
+                        ('NewX_AVM-DE_LKZ', 'out', 'string')
+                        ('NewX_AVM-DE_LKZPrefix', 'out', 'string')
+Actionname:         X_AVM-DE_SetClient
+                        ('NewX_AVM-DE_ClientIndex', 'in', 'ui2')
+                        ('NewX_AVM-DE_ClientPassword', 'in', 'string')
+                        ('NewX_AVM-DE_OutGoingNumber', 'in', 'string')
+                        ('NewX_AVM-DE_PhoneName', 'in', 'string')
+Actionname:         X_AVM-DE_SetClient2
+                        ('NewX_AVM-DE_ClientId', 'in', 'string')
+                        ('NewX_AVM-DE_ClientIndex', 'in', 'ui2')
+                        ('NewX_AVM-DE_ClientPassword', 'in', 'string')
+                        ('NewX_AVM-DE_OutGoingNumber', 'in', 'string')
+                        ('NewX_AVM-DE_PhoneName', 'in', 'string')
+Actionname:         X_AVM-DE_SetClient3
+                        ('NewX_AVM-DE_ClientId', 'in', 'string')
+                        ('NewX_AVM-DE_ClientIndex', 'in', 'ui2')
+                        ('NewX_AVM-DE_ClientPassword', 'in', 'string')
+                        ('NewX_AVM-DE_ExternalRegistration', 'in', 'boolean')
+                        ('NewX_AVM-DE_InComingNumbers', 'in', 'string')
+                        ('NewX_AVM-DE_OutGoingNumber', 'in', 'string')
+                        ('NewX_AVM-DE_PhoneName', 'in', 'string')
+Actionname:         X_AVM-DE_SetClient4
+                        ('NewX_AVM-DE_ClientId', 'in', 'string')
+                        ('NewX_AVM-DE_ClientIndex', 'in', 'ui2')
+                        ('NewX_AVM-DE_ClientPassword', 'in', 'string')
+                        ('NewX_AVM-DE_ClientUsername', 'in', 'string')
+                        ('NewX_AVM-DE_InComingNumbers', 'in', 'string')
+                        ('NewX_AVM-DE_InternalNumber', 'out', 'string')
+                        ('NewX_AVM-DE_OutGoingNumber', 'in', 'string')
+                        ('NewX_AVM-DE_PhoneName', 'in', 'string')
+Actionname:         X_AVM-DE_SetDelayedCallNotification
+                        ('NewX_AVM-DE_ClientIndex', 'in', 'ui2')
+                        ('NewX_AVM-DE_DelayedCallNotification', 'in', 'boolean')
+Actionname:         X_AVM-DE_SetVoIPCommonAreaCode
+                        ('NewX_AVM-DE_OKZ', 'in', 'string')
+                        ('NewX_AVM-DE_OKZPrefix', 'in', 'string')
+Actionname:         X_AVM-DE_SetVoIPCommonCountryCode
+                        ('NewX_AVM-DE_LKZ', 'in', 'string')
+                        ('NewX_AVM-DE_LKZPrefix', 'in', 'string')
+
