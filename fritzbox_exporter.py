@@ -37,7 +37,8 @@ class FritzBoxCollector(object):
         update_result = self.conn.call_action('UserInterface:1', 'GetInfo')
         fritzbox_update = GaugeMetricFamily('fritzbox_update_available', 'FritzBox update available', labels=['Serial', 'NewSoftwareVersion'])
         upd_available = 1 if update_result['NewUpgradeAvailable'] == '1' else 0
-        fritzbox_update.add_metric([fb_serial, update_result['NewX_AVM-DE_Version']], upd_available)
+        new_software_version = "n/a" if update_result['NewX_AVM-DE_Version'] is None else update_result['NewX_AVM-DE_Version']
+        fritzbox_update.add_metric([fb_serial, new_software_version], upd_available)
         yield fritzbox_update
 
         lanstatus_result = self.conn.call_action('LANEthernetInterfaceConfig:1', 'GetInfo')
