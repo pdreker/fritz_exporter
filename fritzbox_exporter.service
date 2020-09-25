@@ -1,0 +1,10 @@
+[Unit]
+Description=fritz.box Exporter
+
+[Service]
+Environment=FRITZ_HOST="fritz.box" FRITZ_USER=monitor FRITZ_PASS="..pleasechangeme.."
+User=lee
+ExecStart=/home/lee/src/fritzbox_exporter/venv/bin/python3 /home/lee/src/fritzbox_exporter/fritzbox_exporter.py
+
+[Install]
+WantedBy=default.target
