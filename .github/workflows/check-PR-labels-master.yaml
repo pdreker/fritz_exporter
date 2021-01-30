@@ -14,4 +14,4 @@ jobs:
         with:
           mode: exactly
           count: 1
-          labels: "semver:patch, semver:minor, semver:major, semver:prepatch, semver:preminor, semver:premajor"
+          labels: "semver_patch, semver_minor, semver_major, semver_prepatch, semver_preminor, semver_premajor"
