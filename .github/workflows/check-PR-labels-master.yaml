@@ -13,4 +13,4 @@ jobs:
     - uses: NathanielHill/check-pr-label-action@v4.0.0
       with:
         github-token: '${{ secrets.GITHUB_TOKEN }}'
-        valid-labels: 'semver_patch, semver_minor, semver_major'
+        valid-labels: 'patch, minor, major'
