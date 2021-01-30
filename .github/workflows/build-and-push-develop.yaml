@@ -15,6 +15,6 @@ jobs:
       if: success()
       run: |
         image=ghcr.io/pdreker/fritzbox_exporter:develop
-        echo ${{ secrets.GITHUB_TOKEN }} | docker login -u pdreker --password-stdin ghcr.io
+        echo ${{ secrets.GHCR_PAT }} | docker login -u pdreker --password-stdin ghcr.io
         docker build -t $image .
         docker push $image
