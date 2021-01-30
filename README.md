@@ -1,6 +1,6 @@
 # Fritz!Box exporter for prometheus
 
-Simple and straight forward exporter for AVM Fritz!Box metrics. As of now this has tons of assumptions behind it, so it may or may not work against your Fritz!Box. It has been tested against an AVM Fritz!Box 7590 (DSL). If you have another box and data is missing, please file an issue or PR on GitHub.
+Simple and straight forward exporter for AVM Fritz!Box metrics. This exporter uses the Fritz!Box API (via python module "fritzconnection") as opposed to using UPnP. As of now this has tons of assumptions behind it, so it may or may not work against your Fritz!Box. It has been tested against an AVM Fritz!Box 7590 (DSL). If you have another box and data is missing, please file an issue or PR on GitHub.
 
 ## Building and running
 
@@ -13,26 +13,34 @@ Simple and straight forward exporter for AVM Fritz!Box metrics. As of now this h
 A requirements.txt file is included with the source. Install the requirements using `pip install -r requirements.txt`, preferably inside a virtual environment so your local python packages are not messed up.
 
 ### System Service
-This exporter can directly be run from a shell. Set the environment vars as describe in the configuration section of this README and run "python3 -m fritzbox_exporter" from the code directory. PRs for systemd unit files will gladly be accepted ;-)
+This exporter can directly be run from a shell. Set the environment vars as describe in the configuration section of this README and run "python3 -m fritzbox_exporter" from the code directory.
+There is a sample systemd unit file included in the docs directory.
 
 ### Docker
 The recommended way to run this exporter is from a docker container. The included Dockerfile will build the exporter using an python:alpine container using python3.
 
 To build execute
 
-```docker build -t fritzbox_exporter:latest .```
+```bash
+docker build -t fritzbox_exporter:latest .
+```
 
 from inside the source directory.
 
 To run the resulting image use
 
-```docker run -d --name fritzbox_exporter -p <PORT>:<FRITZ_EXPORTER_PORT> -e FRITZ_USER=<YOUR_FRITZ_USER> -e FRITZ_PASS=<YOUR_FRITZ_PASS> fritzbox_exporter:latest```
+```bash
+docker run -d --name fritzbox_exporter -p <PORT>:<FRITZ_EXPORTER_PORT> -e FRITZ_USER=<YOUR_FRITZ_USER> -e FRITZ_PASS=<YOUR_FRITZ_PASS> fritzbox_exporter:latest
+```
 
 Verify correct operation:
 
-```curl localhost:<FRITZ_EXPORTER_PORT>```
+```bash
+curl localhost:<FRITZ_EXPORTER_PORT>
+```
 
-```# HELP python_gc_objects_collected_total Objects collected during gc
+```text
+# HELP python_gc_objects_collected_total Objects collected during gc
 # TYPE python_gc_objects_collected_total counter
 python_gc_objects_collected_total{generation="0"} 481.0
 python_gc_objects_collected_total{generation="1"} 112.0
@@ -58,7 +66,7 @@ Configuration is done completely via environment vars.
 
 ## Copyright
 
-Copyright 2019 Patrick Dreker <patrick@dreker.de>
+Copyright 2019-2021 Patrick Dreker <patrick@dreker.de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
