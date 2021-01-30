@@ -54,7 +54,7 @@ Configuration is done completely via environment vars.
 | FRITZ_HOST   | Hostname or IP where the Fritz!Box can be reached. | fritz.box |
 | FRITZ_USER   | Username for authentication | none |
 | FRITZ_PASS   | Password for authentication | none |
-| FRITZ_EXPORTER_PORT | Listening port for the exporter | 8765 |
+| FRITZ_EXPORTER_PORT | Listening port for the exporter | 9787 |
 
 ## Copyright
 

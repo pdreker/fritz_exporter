@@ -122,6 +122,6 @@ if __name__ == '__main__':
 
     REGISTRY.register(FritzBoxCollector(os.getenv('FRITZ_HOST', 'fritz.box'), os.getenv('FRITZ_USER'), os.getenv('FRITZ_PASS')))
     # Start up the server to expose the metrics.
-    start_http_server(os.getenv('FRITZ_EXPORTER_PORT', 8765))
+    start_http_server(os.getenv('FRITZ_EXPORTER_PORT', 9787))
     while(True):
         time.sleep(10000)
