@@ -5,4 +5,4 @@ services:
     image: fritzbox_exporter
     build: .
     ports:
-      - 8765:8765
+      - "9787:9787"
