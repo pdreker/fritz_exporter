@@ -1,0 +1,17 @@
+name: check PR labels
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [ "opened", "synchronize", "labeled", "unlabeled" ]
+
+jobs:
+  check_labels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mheap/github-action-required-labels@v1
+        with:
+          mode: exactly
+          count: 1
+          labels: "semver:patch, semver:minor, semver:major, semver:prepatch, semver:preminor, semver:premajor"
