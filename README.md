@@ -7,7 +7,7 @@ Simple and straight forward exporter for AVM Fritz!Box metrics. This exporter us
 ### Requirements
 
 * Python >=3.6
-* fritzconnection >= 0.6.5
+* fritzconnection >= 1.0.0
 * prometheus-client >= 0.6.0
 
 A requirements.txt file is included with the source. Install the requirements using `pip install -r requirements.txt`, preferably inside a virtual environment so your local python packages are not messed up.
