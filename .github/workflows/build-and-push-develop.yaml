@@ -1,0 +1,21 @@
+name: Build Docker image
+
+on:
+  push:
+    branches:
+    - develop
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+    needs: create-tag
+    name: Build Docker Image
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build Docker Image
+      if: success()
+      run: |
+        image=ghcr.io/pdreker/fritzbox_exporter:develop
+        echo ${{ secrets.GITHUB_TOKEN }} | docker login -u pdreker --password-stdin ghcr.io
+        docker build -t $image .
+        docker push $image

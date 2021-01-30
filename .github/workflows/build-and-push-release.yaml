@@ -1,0 +1,30 @@
+name: Build Docker image
+
+on:
+  push:
+    branches:
+    - master
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+    name: Build Docker Image
+    steps:
+      - name: Update SemVer
+        id: update_semver
+        uses: K-Phoen/semver-release-action@master
+        with:
+          release_branch: master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v2
+
+      - name: Build Docker Image
+        if: success()
+        run: |
+          image=ghcr.io/pdreker/fritzbox_exporter
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login -u pdreker --password-stdin ghcr.io
+          docker build -t $image:${{ steps.update_semver.outputs.tag }} .
+          docker tag $image:${{ steps.update_semver.outputs.tag }} $image:latest
+          docker push $image:${{ steps.update_semver.outputs.tag }}
+          docker push $image:latest
