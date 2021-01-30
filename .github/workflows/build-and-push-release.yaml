@@ -15,7 +15,13 @@ jobs:
     - id: bump
       uses: zwaldowski/match-label-action@v2
       with:
-        allowed: semver_premajor,semver_preminor,semver_prepatch,semver_major,semver_minor,semver_patch
+        allowed: >
+          semver_premajor
+          semver_preminor
+          semver_prepatch
+          semver_major
+          semver_minor
+          semver_patch
     - id: trim-label
       run: |
         echo -n "::set-outpute name=bump::$(echo ${{ steps.bump.outputs.match }} | sed -r -e 's/semver_(.+)/\1/')
