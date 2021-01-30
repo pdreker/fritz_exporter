@@ -3,7 +3,7 @@ name: Build Docker image
 on:
   pull_request:
     branches:
-      - main
+      - master
     types:
       - closed
 
