@@ -6,25 +6,37 @@ on:
     - master
 
 jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    name: Get SemVer from Labels
+    steps:
+    - id: bump
+      uses: zwaldowski/match-label-action@v1
+      with:
+        allowed: semver:major,semver:minor,semver:patch
+    - id: trim-label
+      run: |
+        echo -n "::set-outpute name=bump::$(echo ${{ steps.bump.outputs.match }} | sed -r -e 's/semver:(.+)/\1/')
+    - id: get-version
+      uses: zwaldowski/semver-release-action@v1
+      with:
+        bump: ${{ steps.trim-label.outputs.bump }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+  
   build-docker:
     runs-on: ubuntu-latest
+    needs: get-version
     name: Build Docker Image
     steps:
-      - name: Update SemVer
-        id: update_semver
-        uses: K-Phoen/semver-release-action@master
-        with:
-          release_branch: master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v2
 
-      - name: Build Docker Image
-        if: success()
-        run: |
-          image=ghcr.io/pdreker/fritzbox_exporter
-          echo ${{ secrets.GHCR_PAT }} | docker login -u pdreker --password-stdin ghcr.io
-          docker build -t $image:${{ steps.update_semver.outputs.tag }} .
-          docker tag $image:${{ steps.update_semver.outputs.tag }} $image:latest
-          docker push $image:${{ steps.update_semver.outputs.tag }}
-          docker push $image:latest
+    - name: Build Docker Image
+      if: success()
+      run: |
+        image=ghcr.io/pdreker/fritzbox_exporter
+        semver=${{ needs.get-version.outputs.version }}
+        echo ${{ secrets.GHCR_PAT }} | docker login -u pdreker --password-stdin ghcr.io
+        docker build -t $image:$semver .
+        docker push $image:semver
