@@ -13,7 +13,7 @@ jobs:
     name: Get SemVer from Labels
     steps:
     - id: bump
-      uses: zwaldowski/match-label-action@v1
+      uses: zwaldowski/match-label-action@v2
       with:
         allowed: semver_premajor,semver_preminor,semver_prepatch,semver_major,semver_minor,semver_patch
     - id: trim-label
