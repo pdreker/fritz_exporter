@@ -21,8 +21,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v2
 
-      # Fetch docker tag
-
       - name: Build Docker Image
         if: success()
         run: |
