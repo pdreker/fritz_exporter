@@ -16,7 +16,7 @@ jobs:
       id: pr-labels
       uses: joerick/pr-labels-action@v1.0.6
     - id: trim-label
-      if: contains(steps.pr-labels.outputs.labels, ' semver_'
+      if: contains(steps.pr-labels.outputs.labels, ' semver_')
       run: |
         echo -n "::set-outpute name=bump::$(echo ${{ steps.pr-labels.outputs.labels }} | sed -r -e 's/ semver_([a-zA-Z0-9]+) /\1/')
     - id: get-version
