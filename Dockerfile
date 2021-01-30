@@ -1,21 +1,26 @@
-# Python support can be specified down to the minor or micro version
-# (e.g. 3.6 or 3.6.3).
-# OS Support also exists for jessie & stretch (slim and full).
-# See https://hub.docker.com/r/library/python/ for all supported Python
-# tags from Docker Hub.
-FROM python:alpine
-
-LABEL Name=fritzbox_exporter Version=0.0.1
-EXPOSE 8765
+# build will install pipenv and generate a requirements.txt
+# This will take care of reproducible builds based on Pipfile.lock
+FROM python:3.9-alpine AS build
 
 WORKDIR /app
-ADD . /app
+ENV PIP_NO_CACHE_DIR="true"
 
-# Using pip:
-RUN apk add --no-cache libxml2 libxslt && \
-    apk add --no-cache --virtual .build-deps gcc musl-dev libxml2-dev libxslt-dev && \
-    python3 -m pip --no-cache-dir install -r requirements.txt && \
-    apk del .build-deps
+COPY Pipfile* /app/
+COPY fritzbox_exporter.py /app/
+
+RUN pip --no-cache-dir install pipenv && \
+    pipenv lock --keep-outdated --requirements > requirements.txt
+
+
+# Pull the generated requirements.txt and install into system using pip
+FROM python:3.9-alpine
+
+LABEL Name=fritzbox_exporter
+EXPOSE 9787
+
+WORKDIR /app
+COPY --from=build /app /app
+RUN pip install -r requirements.txt
 
 USER nobody
 CMD ["python3", "-m", "fritzbox_exporter"]
