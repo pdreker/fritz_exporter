@@ -1,9 +1,10 @@
 name: Build Docker image
 
 on:
-  push:
+  pull_request:
     branches:
-    - develop
+    - master
+    types: ['opened', 'synchronized']
 
 jobs:
   build-docker:
@@ -14,7 +15,8 @@ jobs:
     - name: Build Docker Image
       if: success()
       run: |
-        image=ghcr.io/pdreker/fritzbox_exporter:develop
+        image=ghcr.io/pdreker/fritzbox_exporter
+        tag=develop
         echo ${{ secrets.GHCR_PAT }} | docker login -u pdreker --password-stdin ghcr.io
-        docker build -t $image .
-        docker push $image
+        docker build -t $image:$tag .
+        docker push $image:$tag
