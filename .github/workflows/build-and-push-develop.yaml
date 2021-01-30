@@ -1,10 +1,9 @@
-name: Build Docker image
+name: Build Dev Docker image
 
 on:
   pull_request:
     branches:
     - master
-    types: ['opened', 'synchronized']
 
 jobs:
   build-docker:
