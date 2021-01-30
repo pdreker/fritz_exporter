@@ -8,7 +8,6 @@ on:
 jobs:
   build-docker:
     runs-on: ubuntu-latest
-    needs: create-tag
     name: Build Docker Image
     steps:
     - uses: actions/checkout@v2
