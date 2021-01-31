@@ -22,4 +22,4 @@ COPY --from=build /app /app
 RUN pip install -r requirements.txt
 
 USER nobody
-CMD ["python3", "-m", "fritzbox_exporter"]
+CMD ["python3", "-m", "fritz_exporter"]
