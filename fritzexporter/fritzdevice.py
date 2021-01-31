@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from fritzexporter.fritzcapabilities import FritzCapabilities, FritzCapability
 import logging
 import sys
 
@@ -29,104 +30,39 @@ class FritzDevice():
         self.host = host
         self.serial = "n/a"
         self.model = "n/a"
-        self.capabilities = {
-            "HAS_DEVICE_INFO": False,
-            "HAS_HOST_NUMBER_OF_ENTRIES": False,
-            "HAS_HOST_GET_GENERIC_ENTRY": False,
-            "HAS_USER_INTERFACE": False,
-            "HAS_LAN_CONFIG_INFO": False,
-            "HAS_LAN_CONFIG_STATS": False,
-            "HAS_WAN_DSL_INTERFACE_CONFIG": False,
-            "HAS_WAN_PPP_STATUS_INFO": False,
-            "HAS_WAN_COMMON_INTERFACE_LINK_PROPERTIES": False,
-            "HAS_WAN_COMMON_INTERFACE_BYTES": False,
-            "HAS_WAN_COMMON_INTERFACE_PACKETS": False,
-        }
 
         try:
             self.fc = FritzConnection(address=host, user=user, password=password)
         except ConnectionError as e:
             logger.critical(f'unable to connect to {host}: {str(e)}', exc_info=True)
             sys.exit(1)
-        
-        self.getDeviceInfo()
-        self.getCapabilities()
 
-        if not any(self.capabilities):
+        self.capabilities = FritzCapabilities(self)
+
+        self.getDeviceInfo()
+
+        if self.capabilities.empty():
             logger.critical(f'Device {host} has no detected capabilities. Exiting. ')
             sys.exit(1)
-
 
     def getDeviceInfo(self):            
         try:
             device_info = self.fc.call_action('DeviceInfo', 'GetInfo')
-            self.serial = device_info['NewserialNumber']
+            self.serial = device_info['NewSerialNumber']
             self.model = device_info['NewModelName']
 
         except (FritzServiceError, FritzActionError):
             logger.error(f'Fritz Device {self.host} does not provide basic device info (Service: DeviceInfo1, Action: GetInfo). serial number and model name will be unavailable.', exc_info=True)
 
-    def getCapabilities(self):
-        if self.checkServiceAction('DeviceInfo1'):
-            self.capabilities["HAS_DEVICE_INFO"] = True
-            logger.debug(f'Device {self.host} detected HAS_DEVICE_INFO')
-        if self.checkServiceAction('Hosts1', 'GetHostNumberOfEntries'):
-            self.capabilities["HAS_HOST_NUMBER_OF_ENTRIES"] = True
-            logger.debug(f'Device {self.host} detected HAS_HOST_NUMBER_OF_ENTRIES')
-        if self.checkServiceAction('Hosts1', 'GetGenericHostEntry'):
-            self.capabilities["HAS_HOST_GET_GENERIC_ENTRY"] = True
-            logger.debug(f'Device {self.host} detected HAS_HOST_GET_GENERIC_ENTRY')
-        if self.checkServiceAction('UserInterface1'):
-            self.capabilities["HAS_USER_INTERFACE"] = True
-            logger.debug(f'Device {self.host} detected HAS_USER_INTERFACE')
-        if self.checkServiceAction('LANEthernetInterfaceConfig1'):
-            self.capabilities["HAS_LAN_CONFIG_INFO"] = True
-            logger.debug(f'Device {self.host} detected HAS_LAN_CONFIG_INFO')
-        if self.checkServiceAction('LANEthernetInterfaceConfig1', 'GetStatistics'):
-            self.capabilities["HAS_LAN_CONFIG_STATS"] = True
-            logger.debug(f'Device {self.host} detected HAS_LAN_CONFIG_STATS')
-        if self.checkServiceAction('WANDSLInterfaceConfig1'):
-            self.capabilities["HAS_WAN_DSL_INTERFACE_CONFIG"] = True
-            logger.debug(f'Device {self.host} detected HAS_WAN_DSL_INTERFACE_CONFIG')
-        if self.checkServiceAction('WANPPPConnection1', 'GetStatusInfo'):
-            self.capabilities["HAS_WAN_PPP_STATUS_INFO"] = True
-            logger.debug(f'Device {self.host} detected HAS_WAN_PPP_STATUS_INFO')
-        if self.checkServiceAction('WANCommonInterfaceConfig1', 'GetCommonLinkProperties'):
-            self.capabilities["HAS_WAN_COMMON_INTERFACE_LINK_PROPERTIES"] = True
-            logger.debug(f'Device {self.host} detected HAS_WAN_COMMON_INTERFACE_LINK_PROPERTIES')
-
-        if self.checkServiceAction('WANCommonInterfaceConfig1', 'GetTotalBytesReceived')and self.checkServiceAction('WANCommonInterfaceConfig1', 'GetTotalBytesSent'):
-            self.capabilities["HAS_WAN_COMMON_INTERFACE_BYTES"] = True
-            logger.debug(f'Device {self.host} detected HAS_WAN_COMMON_INTERFACE_BYTES')
-        if self.checkServiceAction('WANCommonInterfaceConfig1', 'GETTotalPacketsReceived') and self.checkServiceAction('WANCommonInterfaceConfig1', 'GetTotalPacketsSent'):
-            self.capabilities["HAS_WAN_COMMON_INTERFACE_PACKETS"] = True
-            logger.debug(f'Device {self.host} detected HAS_WAN_COMMON_INTERFACE_PACKETS')
-
-    def checkServiceAction(self, service, action='GetInfo'):
-        return (service in self.fc.services) and (action in self.fc.services[service].actions)
-
 class FritzCollector(object):
     def __init__(self):
         self.devices = []
-        self.capabilities = {
-            "HAS_DEVICE_INFO": False,
-            "HAS_HOST_NUMBER_OF_ENTRIES": False,
-            "HAS_HOST_GET_GENERIC_ENTRY": False,
-            "HAS_USER_INTERFACE": False,
-            "HAS_LAN_CONFIG_INFO": False,
-            "HAS_LAN_CONFIG_STATS": False,
-            "HAS_WAN_DSL_INTERFACE_CONFIG": False,
-            "HAS_WAN_PPP_STATUS_INFO": False,
-            "HAS_WAN_COMMON_INTERFACE_LINK_PROPERTIES": False,
-            "HAS_WAN_COMMON_INTERFACE_BYTES": False,
-            "HAS_WAN_COMMON_INTERFACE_PACKETS": False,
-        }
+        self.capabilities = FritzCapabilities()
 
     def register(self, fritzdev):
         self.devices.append(fritzdev)
         logger.debug(f'registered device {fritzdev.host} ({fritzdev.model}) to collector')
-        for capa, value in self.capabilities.items():
-            self.capabilities[capa] = self.capabilities[capa] or fritzdev.capabilities[capa]
+        self.capabilities.merge(fritzdev.capabilities)
 
     def collect(self):        
         if not self.devices:
@@ -138,7 +74,7 @@ class FritzCollector(object):
             for dev in self.devices:
                 if dev.capabilities["HAS_DEVICE_INFO"]:
                     info_result = dev.fc.call_action('DeviceInfo:1', 'GetInfo')
-                    fritz_uptime.add_metric([info_result['NewModelName'], info_result['NewSoftwareVersion'], info_result['NewserialNumber']], info_result['NewUpTime'])
+                    fritz_uptime.add_metric([info_result['NewModelName'], info_result['NewSoftwareVersion'], info_result['NewSerialNumber']], info_result['NewUpTime'])
             yield fritz_uptime
 
         if self.capabilities["HAS_USER_INTERFACE"]:
@@ -167,28 +103,24 @@ class FritzCollector(object):
 
         # LAN Config Statistics
         if self.capabilities["HAS_LAN_CONFIG_STATS"]:
-            fritz_lan_brx = CounterMetricFamily('fritz_lan_received_bytes', 'LAN bytes received', labels=['serial'])
-            fritz_lan_btx = CounterMetricFamily('fritz_lan_transmitted_bytes', 'LAN bytes transmitted', labels=['serial'])
-            fritz_lan_prx = CounterMetricFamily('fritz_lan_received_packets_total', 'LAN packets received', labels=['serial'])
-            fritz_lan_ptx = CounterMetricFamily('fritz_lan_transmitted_packets_total', 'LAN packets transmitted', labels=['serial'])
+            fritz_lan_bytes = CounterMetricFamily('fritz_lan_data_bytes', 'LAN bytes received', labels=['serial', 'direction'])
+            fritz_lan_packets = CounterMetricFamily('fritz_lan_packets_total', 'LAN packets transmitted', labels=['serial', 'direction'])
             for dev in self.devices:
                 if dev.capabilities["HAS_LAN_CONFIG_STATS"]:
                     lanstats_result = dev.fc.call_action('LANEthernetInterfaceConfig:1', 'GetStatistics')
-                    fritz_lan_brx.add_metric([dev.serial], lanstats_result['NewBytesReceived'])
-                    fritz_lan_btx.add_metric([dev.serial], lanstats_result['NewBytesSent'])
-                    fritz_lan_prx.add_metric([dev.serial], lanstats_result['NewPacketsReceived'])
-                    fritz_lan_ptx.add_metric([dev.serial], lanstats_result['NewPacketsSent'])
-            yield fritz_lan_brx
-            yield fritz_lan_btx
-            yield fritz_lan_prx
-            yield fritz_lan_ptx
+                    fritz_lan_bytes.add_metric([dev.serial, 'rx'], lanstats_result['NewBytesReceived'])
+                    fritz_lan_bytes.add_metric([dev.serial, 'tx'], lanstats_result['NewBytesSent'])
+                    fritz_lan_packets.add_metric([dev.serial, 'rx'], lanstats_result['NewPacketsReceived'])
+                    fritz_lan_packets.add_metric([dev.serial], 'tx', lanstats_result['NewPacketsSent'])
+            yield fritz_lan_bytes
+            yield fritz_lan_packets
 
         # WAN DSL Config Info
         if self.capabilities["HAS_WAN_DSL_INTERFACE_CONFIG"]:
             fritz_dsl_enable = GaugeMetricFamily('fritz_dsl_status_enabled', 'DSL enabled', labels=['serial'])
-            fritz_dsl_datarate = GaugeMetricFamily('fritz_dsl_datarate_kbps', 'DSL datarate in kbps', labels= ['serial', 'Direction', 'Type'])
-            fritz_dsl_noisemargin = GaugeMetricFamily('fritz_dsl_noise_margin_dB', 'Noise Margin in dB', labels=['serial', 'Direction'])
-            fritz_dsl_attenuation = GaugeMetricFamily('fritz_dsl_attenuation_dB', 'Line attenuation in dB', labels=['serial', 'Direction'])
+            fritz_dsl_datarate = GaugeMetricFamily('fritz_dsl_datarate_kbps', 'DSL datarate in kbps', labels= ['serial', 'direction', 'type'])
+            fritz_dsl_noisemargin = GaugeMetricFamily('fritz_dsl_noise_margin_dB', 'Noise Margin in dB', labels=['serial', 'direction'])
+            fritz_dsl_attenuation = GaugeMetricFamily('fritz_dsl_attenuation_dB', 'Line attenuation in dB', labels=['serial', 'direction'])
             fritz_dsl_status = GaugeMetricFamily('fritz_dsl_status', 'DSL status', labels=['serial'])
             for dev in self.devices:
                 if dev.capabilities["HAS_WAN_DSL_INTERFACE_CONFIG"]:
@@ -198,14 +130,14 @@ class FritzCollector(object):
                     dslstatus = 1 if fritz_dslinfo_result['NewStatus'] == 'Up' else 0
                     fritz_dsl_status.add_metric([dev.serial], dslstatus)
 
-                    fritz_dsl_datarate.add_metric([dev.serial, 'up', 'curr'], fritz_dslinfo_result['NewUpstreamCurrRate'])
-                    fritz_dsl_datarate.add_metric([dev.serial, 'down','curr'], fritz_dslinfo_result['NewDownstreamCurrRate'])
-                    fritz_dsl_datarate.add_metric([dev.serial, 'up', 'max'], fritz_dslinfo_result['NewUpstreamMaxRate'])
-                    fritz_dsl_datarate.add_metric([dev.serial, 'down','max'], fritz_dslinfo_result['NewDownstreamMaxRate'])
-                    fritz_dsl_noisemargin.add_metric([dev.serial, 'up'], fritz_dslinfo_result['NewUpstreamNoiseMargin']/10)
-                    fritz_dsl_noisemargin.add_metric([dev.serial, 'down'], fritz_dslinfo_result['NewDownstreamNoiseMargin']/10)
-                    fritz_dsl_attenuation.add_metric([dev.serial, 'up'], fritz_dslinfo_result['NewUpstreamAttenuation']/10)
-                    fritz_dsl_attenuation.add_metric([dev.serial, 'down'], fritz_dslinfo_result['NewDownstreamAttenuation']/10)
+                    fritz_dsl_datarate.add_metric([dev.serial, 'tx', 'curr'], fritz_dslinfo_result['NewUpstreamCurrRate'])
+                    fritz_dsl_datarate.add_metric([dev.serial, 'rx','curr'], fritz_dslinfo_result['NewDownstreamCurrRate'])
+                    fritz_dsl_datarate.add_metric([dev.serial, 'tx', 'max'], fritz_dslinfo_result['NewUpstreamMaxRate'])
+                    fritz_dsl_datarate.add_metric([dev.serial, 'rx','max'], fritz_dslinfo_result['NewDownstreamMaxRate'])
+                    fritz_dsl_noisemargin.add_metric([dev.serial, 'tx'], fritz_dslinfo_result['NewUpstreamNoiseMargin']/10)
+                    fritz_dsl_noisemargin.add_metric([dev.serial, 'rx'], fritz_dslinfo_result['NewDownstreamNoiseMargin']/10)
+                    fritz_dsl_attenuation.add_metric([dev.serial, 'tx'], fritz_dslinfo_result['NewUpstreamAttenuation']/10)
+                    fritz_dsl_attenuation.add_metric([dev.serial, 'rx'], fritz_dslinfo_result['NewDownstreamAttenuation']/10)
 
             yield fritz_dsl_enable
             yield fritz_dsl_status
