@@ -14,7 +14,7 @@ jobs:
     - name: Build Docker Image
       if: success()
       run: |
-        image=ghcr.io/pdreker/fritzbox_exporter
+        image=ghcr.io/pdreker/fritz_exporter
         tag=develop
         echo ${{ secrets.GHCR_PAT }} | docker login -u pdreker --password-stdin ghcr.io
         docker build -t $image:$tag .

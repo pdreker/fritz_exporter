@@ -2,9 +2,9 @@
 Description=fritz.box Exporter
 
 [Service]
-Environment=FRITZ_HOST="fritz.box" FRITZ_USER=monitor FRITZ_PASS="..pleasechangeme.."
+Environment=FRITZ_EXPORTER_CONFIG="192.168.178.1,user1,password1"
 User=lee
-ExecStart=/home/lee/src/fritzbox_exporter/venv/bin/python3 /home/lee/src/fritzbox_exporter/fritzbox_exporter.py
+ExecStart=/home/lee/src/fritzbox_exporter/venv/bin/python3 /home/lee/src/fritzbox_exporter/fritz_exporter.py
 
 [Install]
 WantedBy=default.target
