@@ -5,8 +5,7 @@ FROM python:3.9-alpine AS build
 WORKDIR /app
 ENV PIP_NO_CACHE_DIR="true"
 
-COPY Pipfile* /app/
-COPY fritzbox_exporter.py /app/
+COPY . /app/
 
 RUN pip --no-cache-dir install pipenv && \
     pipenv lock --keep-outdated --requirements > requirements.txt
