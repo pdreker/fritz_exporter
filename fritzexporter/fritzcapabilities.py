@@ -70,7 +70,7 @@ class DeviceInfo(FritzCapability):
         self.requirements.append(('DeviceInfo1', 'GetInfo'))
 
     def createMetrics(self):
-        self.metrics['uptime'] = CounterMetricFamily('fritz_uptime', 'FritzBox uptime, system info in labels', labels=['modelname', 'softwareversion', 'serial'], unit='seconds_total')
+        self.metrics['uptime'] = CounterMetricFamily('fritz_uptime', 'FritzBox uptime, system info in labels', labels=['modelname', 'softwareversion', 'serial'], unit='seconds')
 
     def _getMetricValues(self, device):
         info_result = device.fc.call_action('DeviceInfo:1', 'GetInfo')
@@ -83,7 +83,7 @@ class HostNumberOfEntries(FritzCapability):
         self.requirements.append(('Hosts1', 'GetHostNumberOfEntries'))
 
     def createMetrics(self):
-        self.metrics['numhosts'] = GaugeMetricFamily('fritz_known_devices', 'Number of devices in hosts table', labels=['serial'], unit='count_total')
+        self.metrics['numhosts'] = GaugeMetricFamily('fritz_known_devices', 'Number of devices in hosts table', labels=['serial'], unit='count')
 
     def _getMetricValues(self, device):
         num_hosts_result = device.fc.call_action('Hosts1', 'GetHostNumberOfEntries')
@@ -175,7 +175,7 @@ class LanInterfaceConfigStatistics(FritzCapability):
 
     def createMetrics(self):
         self.metrics['lanbytes'] =  CounterMetricFamily('fritz_lan_data', 'LAN bytes received', labels=['serial', 'direction'], unit='bytes')
-        self.metrics['lanpackets'] = CounterMetricFamily('fritz_lan_packet', 'LAN packets transmitted', labels=['serial', 'direction'], unit='count_total')
+        self.metrics['lanpackets'] = CounterMetricFamily('fritz_lan_packet', 'LAN packets transmitted', labels=['serial', 'direction'], unit='count')
 
     def _getMetricValues(self, device):
         lanstats_result = device.fc.call_action('LANEthernetInterfaceConfig:1', 'GetStatistics')
@@ -225,7 +225,7 @@ class WanPPPConnectionStatus(FritzCapability):
         self.requirements.append(('WANPPPConnection1', 'GetStatusInfo'))
 
     def createMetrics(self):
-        self.metrics['uptime'] = GaugeMetricFamily('fritz_ppp_connection_uptime', 'PPP connection uptime', labels=['serial'], unit='seconds_total')
+        self.metrics['uptime'] = GaugeMetricFamily('fritz_ppp_connection_uptime', 'PPP connection uptime', labels=['serial'], unit='seconds')
         self.metrics['connected'] = GaugeMetricFamily('fritz_ppp_connection_state', 'PPP connection state', labels=['serial', 'last_error'])
 
     def _getMetricValues(self, device):
@@ -262,7 +262,7 @@ class WanCommonInterfaceDataBytes(FritzCapability):
         self.requirements.append(('WANCommonInterfaceConfig1', 'GetTotalBytesSent'))
 
     def createMetrics(self):
-        self.metrics['wanbytes'] = CounterMetricFamily('fritz_wan_data', 'WAN data in bytes', labels=['serial', 'direction'], unit='bytes_total')
+        self.metrics['wanbytes'] = CounterMetricFamily('fritz_wan_data', 'WAN data in bytes', labels=['serial', 'direction'], unit='bytes')
 
     def _getMetricValues(self, device):
         fritz_wan_result = device.fc.call_action('WANCommonInterfaceConfig:1', 'GetTotalBytesReceived')
@@ -280,7 +280,7 @@ class WanCommonInterfaceDataPackets(FritzCapability):
         self.requirements.append(('WANCommonInterfaceConfig1', 'GetTotalPacketsSent'))
 
     def createMetrics(self):
-        self.metrics['wanpackets'] = CounterMetricFamily('fritz_wan_data_packets', 'WAN data in packets', labels=['serial', 'direction'], unit='count_total')
+        self.metrics['wanpackets'] = CounterMetricFamily('fritz_wan_data_packets', 'WAN data in packets', labels=['serial', 'direction'], unit='count')
 
     def _getMetricValues(self, device):
         fritz_wan_result = device.fc.call_action('WANCommonInterfaceConfig:1', 'GetTotalPacketsReceived')
@@ -301,8 +301,8 @@ def wlanCreateMetricsFactory(obj_ref, name):
     m_name = name.replace('.', '_')
     obj_ref.metrics['wlanstatus']  = GaugeMetricFamily(f'fritz_wifi_{m_name}_status', f'Status of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid'])
     obj_ref.metrics['wlanchannel'] = GaugeMetricFamily(f'fritz_wifi_{m_name}_channel', f'Channel of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid'])
-    obj_ref.metrics['wlanassocs']  = GaugeMetricFamily(f'fritz_wifi_{m_name}_associations', f'Number of associations (devices) of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid'], unit='count_total')
-    obj_ref.metrics['wlanpackets'] = GaugeMetricFamily(f'fritz_wifi_{m_name}_packets', f'Amount of packets of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid', 'direction'], unit='count_total')
+    obj_ref.metrics['wlanassocs']  = GaugeMetricFamily(f'fritz_wifi_{m_name}_associations', f'Number of associations (devices) of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid'], unit='count')
+    obj_ref.metrics['wlanpackets'] = GaugeMetricFamily(f'fritz_wifi_{m_name}_packets', f'Amount of packets of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid', 'direction'], unit='count')
 
 def wlanGetMetricsFactory(obj_ref, index, device):
         wlan_result = device.fc.call_action(f'WLANConfiguration{index}', 'GetInfo')
