@@ -225,7 +225,7 @@ class WanPPPConnectionStatus(FritzCapability):
         self.requirements.append(('WANPPPConnection1', 'GetStatusInfo'))
 
     def createMetrics(self):
-        self.metrics['uptime'] = GaugeMetricFamily('fritz_ppp_connection_uptime', 'PPP connection uptime', labels=['serial'], unit='seconds')
+        self.metrics['uptime'] = CounterMetricFamily('fritz_ppp_connection_uptime', 'PPP connection uptime', labels=['serial'], unit='seconds')
         self.metrics['connected'] = GaugeMetricFamily('fritz_ppp_connection_state', 'PPP connection state', labels=['serial', 'last_error'])
 
     def _getMetricValues(self, device):
@@ -302,7 +302,7 @@ def wlanCreateMetricsFactory(obj_ref, name):
     obj_ref.metrics['wlanstatus']  = GaugeMetricFamily(f'fritz_wifi_{m_name}_status', f'Status of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid'])
     obj_ref.metrics['wlanchannel'] = GaugeMetricFamily(f'fritz_wifi_{m_name}_channel', f'Channel of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid'])
     obj_ref.metrics['wlanassocs']  = GaugeMetricFamily(f'fritz_wifi_{m_name}_associations', f'Number of associations (devices) of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid'], unit='count')
-    obj_ref.metrics['wlanpackets'] = GaugeMetricFamily(f'fritz_wifi_{m_name}_packets', f'Amount of packets of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid', 'direction'], unit='count')
+    obj_ref.metrics['wlanpackets'] = CounterMetricFamily(f'fritz_wifi_{m_name}_packets', f'Amount of packets of the {name} WiFi', labels=['serial', 'enabled', 'standard', 'ssid', 'direction'], unit='count')
 
 def wlanGetMetricsFactory(obj_ref, index, device):
         wlan_result = device.fc.call_action(f'WLANConfiguration{index}', 'GetInfo')
