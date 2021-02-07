@@ -70,38 +70,68 @@ class DeviceInfo(FritzCapability):
         self.requirements.append(('DeviceInfo1', 'GetInfo'))
 
     def createMetrics(self):
-        logger.debug(f'Creating metrics objects for {type(self).__name__}')
         self.metrics['uptime'] = CounterMetricFamily('fritz_uptime', 'FritzBox uptime, system info in labels', labels=['modelname', 'softwareversion', 'serial'])
 
     def _getMetricValues(self, device):
-        logger.debug(f'Populating metrics objects for {type(self).__name__}')
         info_result = device.fc.call_action('DeviceInfo:1', 'GetInfo')
-        logger.debug(f'Collected metrics objects for {type(self).__name__}')
         self.metrics['uptime'].add_metric([info_result['NewModelName'], info_result['NewSoftwareVersion'], info_result['NewSerialNumber']], info_result['NewUpTime'])
-        logger.debug(f'Yielding metrics objects for {type(self).__name__}')
         yield self.metrics['uptime']
 
-#class HostNumberOfEntries(FritzCapability):
+class HostNumberOfEntries(FritzCapability):
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(('Hosts1', 'GetHostNumberOfEntries'))
+
+    def createMetrics(self):
+        self.metrics['numhosts'] = GaugeMetricFamily('fritz_known_devices_total', 'Number of devices in hosts table', labels=['serial'])
+
+    def _getMetricValues(self, device):
+        num_hosts_result = device.fc.call_action('Hosts1', 'GetHostNumberOfEntries')
+        self.metrics['numhosts'].add_metric([device.serial], num_hosts_result['NewHostNumberOfEntries'])
+        yield self.metrics['numhosts']
+        
+#class HostInfo(FritzCapability):
 #    def __init__(self) -> None:
 #        super().__init__()
 #        self.requirements.append(('Hosts1', 'GetHostNumberOfEntries'))
-#
-#    def createMetrics(self):
-#        pass
-#
-#    def _getMetricValues(self, device):
-#        pass
-        
-#class HostGetGenericEntry(FritzCapability):
-#    def __init__(self) -> None:
-#        super().__init__()
 #        self.requirements.append(('Hosts1', 'GetGenericHostEntry'))
+#        self.requirements.append(('Hosts1', 'X_AVM-DE_GetSpecificHostEntryByIP'))
 #
 #    def createMetrics(self):
-#        pass
+#        self.metrics['hostactive'] = GaugeMetricFamily('fritz_host_active', 'Indicates that the device is curently active', labels=['serial', 'ip_address', 'mac_address', 'hostname', 'interface', 'port', 'model'])
+#        self.metrics['hostspeed']  = GaugeMetricFamily('fritz_host_speed', 'Connection speed of the device', labels=['serial', 'ip_address', 'mac_address', 'hostname', 'interface', 'port', 'model'])
 #
 #    def _getMetricValues(self, device):
-#        pass
+#        num_hosts_result = device.fc.call_action('Hosts1', 'GetHostNumberOfEntries')
+#        logger.debug(f'Fetching host information for device serial {device.serial} (hosts found: {num_hosts_result["NewHostNumberOfEntries"]}')
+#        for host_index in range(num_hosts_result['NewHostNumberOfEntries']):
+#            logger.debug(f'Fetching generic host information for host number {host_index}')
+#            host_result = device.fc.call_action('Hosts1', 'GetGenericHostEntry', NewIndex=host_index)
+#            
+#            host_ip = host_result['NewIPAddress']
+#            host_mac = host_result['NewMACAddress']
+#            host_name = host_result['NewHostName']
+#            
+#            if host_ip != "":
+#                logger.debug(f'Fetching extended AVM host information for host number {host_index} by IP {host_ip}')
+#                avm_host_result = device.fc.call_action('Hosts1', 'X_AVM-DE_GetSpecificHostEntryByIP', NewIPAddress=host_ip)
+#                host_interface = avm_host_result['NewInterfaceType']
+#                host_port = str(avm_host_result['NewX_AVM-DE_Port'])
+#                host_model = avm_host_result['NewX_AVM-DE_Model']
+#                host_speed = avm_host_result['NewX_AVM-DE_Speed']
+#            else:
+#                logger.debug(f'Unable to fetch extended AVM host information for host number {host_index}: no IP found')
+#                host_interface = "n/a"
+#                host_port = "n/a"
+#                host_model = "n/a"
+#                host_speed = 0
+#
+#            host_active = 1.0 if host_result['NewActive'] else 0.0
+#            self.metrics['hostactive'].add_metric([device.serial, host_ip, host_mac, host_name, host_interface, host_port, host_model], host_active)
+#            self.metrics['hostspeed'].add_metric([device.serial, host_ip, host_mac, host_name, host_interface, host_port, host_model], host_speed)
+#
+#            yield self.metrics['hostactive']
+#            yield self.metrics['hostspeed']
 
 class UserInterface(FritzCapability):
     def __init__(self) -> None:
