@@ -30,6 +30,6 @@ jobs:
         run: |
           image=pdreker/fritz_exporter
           tag=${{ steps.update_semver.outputs.tag }}
-          echo ${{secrets.DOCKER_HUB }} | docker login -u pdreker --password-stdin hub.docker.com
+          echo ${{secrets.DOCKER_HUB }} | docker login -u pdreker --password-stdin
           docker buildx build --platform linux/arm/v6,linux/armv7,linux/amd64,linux/arm64 -t $image:$tag --push .
           docker buildx build --platform linux/arm/v6,linux/armv7,linux/amd64,linux/arm64 -t $image:latest --push .
