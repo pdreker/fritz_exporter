@@ -20,12 +20,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v2
-
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
       - name: Build Docker Image
         if: success()
         run: |
-          image=ghcr.io/pdreker/fritzbox_exporter
+          image=pdreker/fritz_exporter
           tag=${{ steps.update_semver.outputs.tag }}
-          echo ${{secrets.GHCR_PAT }} | docker login -u pdreker --password-stdin ghcr.io
-          docker build -t $image:$tag .
-          docker push $image:$tag
+          echo ${{secrets.DOCKER_HUB }} | docker login -u pdreker --password-stdin hub.docker.com
+          docker buildx build --platform linux/arm/v6,linux/armv7,linux/amd64,linux/arm64 -t $image:$tag --push .
+          docker buildx build --platform linux/arm/v6,linux/armv7,linux/amd64,linux/arm64 -t $image:latest --push .

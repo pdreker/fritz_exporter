@@ -2,7 +2,7 @@ version: '2.1'
 
 services:
   fritzbox_exporter:
-    image: fritzbox_exporter
+    image: fritz_exporter
     build:
       context: .
       dockerfile: Dockerfile

@@ -6,7 +6,6 @@ WORKDIR /app
 ENV PIP_NO_CACHE_DIR="true"
 
 COPY Pipfile* /app/
-COPY fritzbox_exporter.py /app/
 
 RUN pip --no-cache-dir install pipenv && \
     pipenv lock --keep-outdated --requirements > requirements.txt
@@ -19,8 +18,12 @@ LABEL Name=fritzbox_exporter
 EXPOSE 9787
 
 WORKDIR /app
-COPY --from=build /app /app
+
+COPY --from=build /app/requirements.txt /app/requirements.txt
 RUN pip install -r requirements.txt
 
+COPY fritzexporter/ /app/fritzexporter
+COPY fritz_exporter.py /app/fritz_exporter.py
+
 USER nobody
-CMD ["python3", "-m", "fritzbox_exporter"]
+CMD ["python3", "-m", "fritz_exporter"]
