@@ -22,7 +22,7 @@ from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from requests.exceptions import ConnectionError
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARN)
 
 class FritzDevice():
 

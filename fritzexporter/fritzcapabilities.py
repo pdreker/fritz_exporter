@@ -4,7 +4,7 @@ from abc import ABC, abstractclassmethod, abstractmethod
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARN)
 
 class FritzCapability(ABC):
     capabilities = []

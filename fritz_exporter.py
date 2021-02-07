@@ -26,7 +26,7 @@ from fritzexporter.fritzdevice import FritzCollector, FritzDevice
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARN)
 
 def main():
     fritz_config_env = os.getenv('FRITZ_EXPORTER_CONFIG')
