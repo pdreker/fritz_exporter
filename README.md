@@ -14,7 +14,7 @@ This current version of the exporter has completely reworked how this exports me
 
 * the metrics prefix has changed from `fritzbox_` to `fritz_`
 * all labels have been converted to lower-case (e.g. `Serial` -> `serial`) to be in line with the common usage of labels
-* some matrics have been renamed to better reflect their content
+* some metrics have been renamed to better reflect their content
 
 ## Metrics
 
@@ -22,14 +22,16 @@ The following groups of metrics are currently available:
 
 * Base Information (Model, Serial, Software Version, Uptime)
 * Software Information (Update available)
-* LAN Statistics (Ethernet only)
-* WAN Statistics
-* DSL Statistics
-* PPP Statistics
+* LAN statistics (Ethernet only)
+* WAN statistics
+* DSL statistics
+* PPP statistics
+* WiFi statistics
+* WAN Layer1 (physical link) statistics
 
-WiFi statistics are next on the list...
+Thre is code in `fritzexporter/fritzcapabilities.py` to extract information about ever single host the device knows about but it is completely disabled as of now as polling the information can take 20-30 seconds depending on your network setup. If you want to test this out simply uncomment that code and rebuild the docker image.
 
-If there are information missing or not displayed on your specific device, please open an issue.
+If there is any information missing or not displayed on your specific device, please open an issue.
 
 ## Building and running
 
@@ -46,7 +48,17 @@ A Pipfile for `pipenv` ist included with the source. So after install `pipenv` y
 This exporter can directly be run from a shell. Set the environment vars as describe in the configuration section of this README and run "python3 -m fritzbox_exporter" from the code directory.
 There is a sample systemd unit file included in the docs directory.
 
-### Docker
+### Docker Hub images
+
+Release images are automatically pushed to Docker Hub and are built for linux/amd64, linux/arm/v6, linux/arm/v7 and linux/arm64, the latter three being useful for e.g. Raspberry Pi type systems.
+
+To run simply use
+
+```bash
+docker run -d -e FRITZ_EXPORTER_CONFIG="192.168.178.1,username,password" -p 9787:9787 --name fritz_exporter pdreker/fritz_exporter
+```
+
+### Build the Docker image yourself
 
 The recommended way to run this exporter is from a docker container. The included Dockerfile will build the exporter using an python:alpine container using python3.
 
