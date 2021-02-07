@@ -70,7 +70,7 @@ class DeviceInfo(FritzCapability):
         self.requirements.append(('DeviceInfo1', 'GetInfo'))
 
     def createMetrics(self):
-        self.metrics['uptime'] = CounterMetricFamily('fritz_uptime', 'FritzBox uptime, system info in labels', labels=['modelname', 'softwareversion', 'serial'])
+        self.metrics['uptime'] = CounterMetricFamily('fritz_uptime', 'FritzBox uptime, system info in labels', labels=['modelname', 'softwareversion', 'serial'], unit='seconds_total')
 
     def _getMetricValues(self, device):
         info_result = device.fc.call_action('DeviceInfo:1', 'GetInfo')
@@ -83,7 +83,7 @@ class HostNumberOfEntries(FritzCapability):
         self.requirements.append(('Hosts1', 'GetHostNumberOfEntries'))
 
     def createMetrics(self):
-        self.metrics['numhosts'] = GaugeMetricFamily('fritz_known_devices_total', 'Number of devices in hosts table', labels=['serial'])
+        self.metrics['numhosts'] = GaugeMetricFamily('fritz_known_devices', 'Number of devices in hosts table', labels=['serial'], unit='count_total')
 
     def _getMetricValues(self, device):
         num_hosts_result = device.fc.call_action('Hosts1', 'GetHostNumberOfEntries')
@@ -174,8 +174,8 @@ class LanInterfaceConfigStatistocs(FritzCapability):
         self.requirements.append(('LANEthernetInterfaceConfig1', 'GetStatistics'))
 
     def createMetrics(self):
-        self.metrics['lanbytes'] =  CounterMetricFamily('fritz_lan_data_bytes', 'LAN bytes received', labels=['serial', 'direction'])
-        self.metrics['lanpackets'] = CounterMetricFamily('fritz_lan_packets_total', 'LAN packets transmitted', labels=['serial', 'direction'])
+        self.metrics['lanbytes'] =  CounterMetricFamily('fritz_lan_data', 'LAN bytes received', labels=['serial', 'direction'], unit='bytes')
+        self.metrics['lanpackets'] = CounterMetricFamily('fritz_lan_packet', 'LAN packets transmitted', labels=['serial', 'direction'], unit='count_total')
 
     def _getMetricValues(self, device):
         lanstats_result = device.fc.call_action('LANEthernetInterfaceConfig:1', 'GetStatistics')
@@ -193,9 +193,9 @@ class WanDSLInterfaceConfig(FritzCapability):
 
     def createMetrics(self):
         self.metrics['enable']  = GaugeMetricFamily('fritz_dsl_status_enabled', 'DSL enabled', labels=['serial'])
-        self.metrics['datarate']  = GaugeMetricFamily('fritz_dsl_datarate_kbps', 'DSL datarate in kbps', labels= ['serial', 'direction', 'type'])
-        self.metrics['noisemargin']  = GaugeMetricFamily('fritz_dsl_noise_margin_dB', 'Noise Margin in dB', labels=['serial', 'direction'])
-        self.metrics['attenuation']  = GaugeMetricFamily('fritz_dsl_attenuation_dB', 'Line attenuation in dB', labels=['serial', 'direction'])
+        self.metrics['datarate']  = GaugeMetricFamily('fritz_dsl_datarate', 'DSL datarate in kbps', labels= ['serial', 'direction', 'type'], unit='kbps')
+        self.metrics['noisemargin']  = GaugeMetricFamily('fritz_dsl_noise_margin', 'Noise Margin in dB', labels=['serial', 'direction'], unit='dB')
+        self.metrics['attenuation']  = GaugeMetricFamily('fritz_dsl_attenuation', 'Line attenuation in dB', labels=['serial', 'direction'], unit='dB')
         self.metrics['status']  = GaugeMetricFamily('fritz_dsl_status', 'DSL status', labels=['serial'])
 
     def _getMetricValues(self, device):
@@ -225,8 +225,8 @@ class WanPPPConnectionStatus(FritzCapability):
         self.requirements.append(('WANPPPConnection1', 'GetStatusInfo'))
 
     def createMetrics(self):
-        self.metrics['uptime'] = GaugeMetricFamily('fritz_ppp_connection_uptime', 'PPP connection uptime', labels=['serial'])
-        self.metrics['connected'] = GaugeMetricFamily('fritz_ppp_conection_state', 'PPP connection state', labels=['serial', 'last_error'])
+        self.metrics['uptime'] = GaugeMetricFamily('fritz_ppp_connection_uptime', 'PPP connection uptime', labels=['serial'], unit='seconds_total')
+        self.metrics['connected'] = GaugeMetricFamily('fritz_ppp_connection_state', 'PPP connection state', labels=['serial', 'last_error'])
 
     def _getMetricValues(self, device):
         fritz_pppstatus_result = device.fc.call_action('WANPPPConnection:1', 'GetStatusInfo')
@@ -236,17 +236,25 @@ class WanPPPConnectionStatus(FritzCapability):
         yield self.metrics['uptime']
         yield self.metrics['connected']
 
-#class WanCommonInterfaceConfig(FritzCapability):
-#    def __init__(self) -> None:
-#        super().__init__()
-#        self.requirements.append(('WANCommonInterfaceConfig1', 'GetCommonLinkProperties'))
-#
-#    def createMetrics(self):
-#        pass
-#
-#    def _getMetricValues(self, device):
-#        pass
+class WanCommonInterfaceConfig(FritzCapability):
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(('WANCommonInterfaceConfig1', 'GetCommonLinkProperties'))
 
+    def createMetrics(self):
+        self.metrics['wanconfig'] = GaugeMetricFamily('fritz_wan_max_bitrate', 'max bitrate at the physical layer', labels=['serial', 'wantype', 'direction'], unit='bps')
+        self.metrics['wanlinkstatus'] = GaugeMetricFamily('fritz_wan_phys_link_status', 'link status at the physical layer', labels=['serial', 'wantype'])
+
+    def _getMetricValues(self, device):
+        wanstatus_result = device.fc.call_action('WANCommonInterfaceConfig1', 'GetCommonLinkProperties')
+        self.metrics['wanconfig'].add_metric([device.serial, wanstatus_result['NewWANAccessType'], 'tx'], wanstatus_result['NewLayer1UpstreamMaxBitRate'])
+        self.metrics['wanconfig'].add_metric([device.serial, wanstatus_result['NewWANAccessType'], 'rx'], wanstatus_result['NewLayer1DownstreamMaxBitRate'])
+        l1_status = wanstatus_result['NewPhysicalLinkStatus']
+        wanstatus = 1 if l1_status == "Up" else: 0
+        self.metrics['wanlinkstatus'].add_metric([device.serial, wanstatus_result['NewWANAccessType']], wanstatus)
+
+        yield self.metrics['wanconfig']
+        yield self.metrics['wanlinkstatus']
 class WanCommonInterfaceDataBytes(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
