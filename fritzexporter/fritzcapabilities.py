@@ -200,7 +200,7 @@ class WanDSLInterfaceConfig(FritzCapability):
 
     def _getMetricValues(self, device):
         fritz_dslinfo_result = device.fc.call_action('WANDSLInterfaceConfig:1', 'GetInfo')
-        self.metrics['enable'] .add_metric([device.serial], fritz_dslinfo_result['NewEnable'])
+        self.metrics['enable'].add_metric([device.serial], fritz_dslinfo_result['NewEnable'])
         
         dslstatus = 1 if fritz_dslinfo_result['NewStatus'] == 'Up' else 0
         self.metrics['status'].add_metric([device.serial], dslstatus)
