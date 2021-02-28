@@ -1,6 +1,7 @@
 import logging
 from abc import ABC, abstractclassmethod, abstractmethod
 
+from fritzconnection.core.exceptions import ActionError, ServiceError
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,16 @@ class FritzCapability(ABC):
     def checkCapability(self, device):
         self.present = all([ (service in device.fc.services) and (action in device.fc.services[service].actions) for (service, action) in self.requirements ])
         logger.debug(f'Capability {type(self).__name__} set to {self.present} on device {device.host}')
+
+        # It seems some boxes report service/actions they don't actually support. So try calling the requirements, and if it throws "InvalidService" or "InvalidAction", disable this again.
+        if self.present:
+            for (svc, action) in self.requirements:
+                try:
+                    device.fc.call_action(svc, action)
+                except (ServiceError, ActionError) as e:
+                    logger.warn(f'disabling metrics at service {svc}, action {action} - fritzconnection.call_action returned {e}')
+                    self.present = False
+
 
     def getMetrics(self, devices, name):
         for device in devices:
@@ -200,7 +211,7 @@ class WanDSLInterfaceConfig(FritzCapability):
 
     def _getMetricValues(self, device):
         fritz_dslinfo_result = device.fc.call_action('WANDSLInterfaceConfig:1', 'GetInfo')
-        self.metrics['enable'] .add_metric([device.serial], fritz_dslinfo_result['NewEnable'])
+        self.metrics['enable'].add_metric([device.serial], fritz_dslinfo_result['NewEnable'])
         
         dslstatus = 1 if fritz_dslinfo_result['NewStatus'] == 'Up' else 0
         self.metrics['status'].add_metric([device.serial], dslstatus)
