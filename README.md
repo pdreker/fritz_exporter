@@ -33,6 +33,10 @@ Thre is code in `fritzexporter/fritzcapabilities.py` to extract information abou
 
 If there is any information missing or not displayed on your specific device, please open an issue.
 
+## Grafana Dashboard
+
+There is a simple Grafana dashboard avaliable at <https://grafana.com/grafana/dashboards/13983>
+
 ## Building and running
 
 ### Requirements
@@ -120,6 +124,24 @@ NOTE: If you are using WiFi Mesh all your devices should have the same username 
 |--------------|-------------|---------|
 | FRITZ_EXPORTER_CONFIG   | Comma separated "hostname","user","password" triplets | none |
 | FRITZ_EXPORTER_PORT | Listening port for the exporter | 9787 |
+
+## Helping out
+
+If your device delivers some metrics which are not yet scraped by this exporter you can either create a Pull Request, which will be gladly accepted ;-)
+
+Alternatively you can use the following commands and the litlle helper script in the root of this repository to let me know of metrics:
+```bash
+fritzconnection -i <FRITZ-IP> -s # Lists available services
+fritzconnection -i <FRITZ-IP> -S <ServiceName> # Lists available action for a service
+python -m fritz_export_helper <FRITZ-IP> <USERNAME> <PASSWORD> <ServiceName> <ActionName> # Will output the data returned from the device in a readable format
+```
+
+If you have found something you need/want, open an issue provide the following infos:
+
+1. Model of Device (e.g. FritzBox DSL 7590)
+2. ServiceName and ActionName
+3. Output from fritz_export_helper (make sure, there is not secret data, like password or WiFi passwords in there, before sending!)
+4. What output you need/want and a little bit of info of the environment (Cable, DSL, Hybrid LTE Mode, ... whatever might be relevant)
 
 ## Disclaimer
 
