@@ -28,12 +28,10 @@ logger.setLevel(logging.WARN)
 
 
 def main():
-    fritz_config_env = os.getenv('FRITZ_EXPORTER_CONFIG')
-    if fritz_config_env is None:
-        logger.critical('FRITZ_EXPORTER_CONFIG is not set. Exiting.')
-        sys.exit(1)
-    else:
-        fritzcollector = FritzCollector()
+    fritzcollector = FritzCollector()
+
+    if 'FRITZ_EXPORTER_CONFIG' in os.environ:
+        fritz_config_env = os.getenv('FRITZ_EXPORTER_CONFIG')
         fritz_config = [x.strip() for x in fritz_config_env.split(',')]
         configs = int(len(fritz_config) / 3)
         for device in range(configs):
@@ -41,6 +39,14 @@ def main():
             username = fritz_config.pop(0)
             password = fritz_config.pop(0)
             fritzcollector.register(FritzDevice(address, username, password))
+    elif 'FRITZ_HOSTNAME' and 'FRITZ_USERNAME' and 'FRITZ_PASSWORD' in os.environ:
+        address = os.getenv('FRITZ_HOSTNAME')
+        username = os.getenv('FRITZ_USERNAME')
+        password = os.getenv('FRITZ_PASSWORD')
+        fritzcollector.register(FritzDevice(address, username, password))
+    else:
+        logger.critical('no ENV variables set. Exiting.')
+        sys.exit(1)
 
     REGISTRY.register(fritzcollector)
 
