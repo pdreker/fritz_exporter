@@ -16,8 +16,6 @@ import asyncio
 import logging
 import os
 import sys
-import time
-from pprint import pprint
 
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
@@ -28,20 +26,27 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARN)
 
-def main():
-    fritz_config_env = os.getenv('FRITZ_EXPORTER_CONFIG')
-    if fritz_config_env == None:
-        logger.critical('FRITZ_EXPORTER_CONFIG is not set. Exiting.')
-        sys.exit(1)
-    else:
-        fritz_config = [ x.strip() for x in fritz_config_env.split(',') ]
-        # if the next idiom looks like magic: https://stackoverflow.com/questions/23286254/how-to-convert-a-list-to-a-list-of-tuples
-        conf_it = [iter(fritz_config)] * 3
-        device_config = zip(*conf_it) # now tuples of (host, user, password)
 
+def main():
     fritzcollector = FritzCollector()
-    for device in device_config:
-        fritzcollector.register(FritzDevice(device[0], device[1], device[2]))
+
+    if 'FRITZ_EXPORTER_CONFIG' in os.environ:
+        fritz_config_env = os.getenv('FRITZ_EXPORTER_CONFIG')
+        fritz_config = [x.strip() for x in fritz_config_env.split(',')]
+        configs = int(len(fritz_config) / 3)
+        for device in range(configs):
+            address = fritz_config.pop(0)
+            username = fritz_config.pop(0)
+            password = fritz_config.pop(0)
+            fritzcollector.register(FritzDevice(address, username, password))
+    elif 'FRITZ_HOSTNAME' and 'FRITZ_USERNAME' and 'FRITZ_PASSWORD' in os.environ:
+        address = os.getenv('FRITZ_HOSTNAME')
+        username = os.getenv('FRITZ_USERNAME')
+        password = os.getenv('FRITZ_PASSWORD')
+        fritzcollector.register(FritzDevice(address, username, password))
+    else:
+        logger.critical('no ENV variables set. Exiting.')
+        sys.exit(1)
 
     REGISTRY.register(fritzcollector)
 
@@ -55,6 +60,6 @@ def main():
     finally:
         loop.close()
 
+
 if __name__ == '__main__':
     main()
-

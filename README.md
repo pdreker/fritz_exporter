@@ -106,6 +106,8 @@ Configuration is done via environment vars.
 
 The main configuration is done inside the environment variable `FRITZ_EXPORTER_CONFIG`. This variable must contain the comma-separated address, username and password for the device. If you need multiple devices simply repeat the three values for the other devices.
 
+An alternative it to use The three environment variables `FRITZ_HOSTNAME`, `FRITZ_USERNAME` and `FRITZ_PASSWORD`, This way you lose the ability to monitor multiple devices with one exporter but gain the ability To put `FRITZ_PASSWORD` into a kubernetes secret like shown in [Kubernetes deployment](#kubernetes-deployment).
+
 Example for a single device (at 192.168.178.1 username monitoring and the password "mysupersecretpassword"):
 
 ```bash
@@ -124,6 +126,53 @@ NOTE: If you are using WiFi Mesh all your devices should have the same username 
 |--------------|-------------|---------|
 | FRITZ_EXPORTER_CONFIG   | Comma separated "hostname","user","password" triplets | none |
 | FRITZ_EXPORTER_PORT | Listening port for the exporter | 9787 |
+
+## Kubernetes deployment
+
+Put the Fritz!Box password into a kubernetes secret
+```bash
+kubectl create secret generic fritzbox-password --from-literal=password='mysupersecretpassword'
+```
+then deploy the exporter with a deployment
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fritzbox-exporter
+  labels:
+    app: fritzbox-exporter
+spec:
+  selector:
+    matchLabels:
+      app: fritzbox-exporter
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /
+        prometheus.io/port: "9787"
+      labels:
+        app: fritzbox-exporter
+    spec:
+      containers:
+      - name: fritzbox-exporter
+        image: pdreker/fritz_exporter:latest
+        imagePullPolicy: Always
+        env:
+        - name:  FRITZ_HOST
+          value: "192.168.178.1"
+        - name:  FRITZ_USER
+          value: "monitoring"
+        - name:  FRITZ_EXPORTER_PORT
+          value: "9787"
+        - name:  FRITZ_PASS
+          valueFrom:
+            secretKeyRef:
+              name: fritzbox-password
+              key:  password
+        ports:
+        - containerPort: 9787
+```
 
 ## Helping out
 
