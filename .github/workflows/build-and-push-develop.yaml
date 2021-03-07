@@ -1,9 +1,9 @@
 name: Build Dev Docker image
 
 on:
-  pull_request:
+  push:
     branches:
-    - master
+    - develop
 
 jobs:
   build-docker:
