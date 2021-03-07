@@ -52,7 +52,7 @@ def main():
 
     port = os.getenv('FRITZ_EXPORTER_PORT', 9787)
     logger.info(f'Starting listener at {port}')
-    start_http_server(port)
+    start_http_server(int(port))
 
     loop = asyncio.get_event_loop()
     try:

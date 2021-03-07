@@ -159,13 +159,13 @@ spec:
         image: pdreker/fritz_exporter:latest
         imagePullPolicy: Always
         env:
-        - name:  FRITZ_HOST
+        - name:  FRITZ_HOSTNAME
           value: "192.168.178.1"
-        - name:  FRITZ_USER
+        - name:  FRITZ_USERNAME
           value: "monitoring"
         - name:  FRITZ_EXPORTER_PORT
           value: "9787"
-        - name:  FRITZ_PASS
+        - name:  FRITZ_PASSWORD
           valueFrom:
             secretKeyRef:
               name: fritzbox-password
