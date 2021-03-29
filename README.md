@@ -8,7 +8,7 @@ It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 an
 
 ## WARNING
 
-This current version of the exporter has completely reworked how this exports metrics! If you have used this exporter in the past, you will get a completely new set of metrics.
+This current version (1.0.0 and later) of the exporter has completely reworked how this exports metrics! If you have used this exporter in the past, you will get a completely new set of metrics.
 
 ### Changes
 
@@ -29,9 +29,13 @@ The following groups of metrics are currently available:
 * WiFi statistics
 * WAN Layer1 (physical link) statistics
 
-Thre is code in `fritzexporter/fritzcapabilities.py` to extract information about ever single host the device knows about but it is completely disabled as of now as polling the information can take 20-30 seconds depending on your network setup. If you want to test this out simply uncomment that code and rebuild the docker image.
+There is code in `fritzexporter/fritzcapabilities.py` to extract information about ever single host the device knows about but it is completely disabled as of now as polling the information can take 20-30 seconds depending on your network setup. If you want to test this out simply uncomment that code and rebuild the docker image.
 
 If there is any information missing or not displayed on your specific device, please open an issue.
+
+## Known problems
+
+* It seems like Fritz!OS does not internally count the packets for the Guest WiFi. So even though those counters are there they are always 0. This seems to be a problem with Fritz!OS and not the exporter. The counters are delivered nontheless, just in case this gets fixed by AVM.
 
 ## Grafana Dashboard
 
