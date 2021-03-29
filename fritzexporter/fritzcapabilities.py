@@ -284,6 +284,23 @@ class WanCommonInterfaceDataBytes(FritzCapability):
         self.metrics['wanbytes'].add_metric([device.serial, 'down'], wan_bytes_rx)
         yield self.metrics['wanbytes']
 
+class WanCommonInterfaceByteRate(FritzCapability):
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(('WANCommonIFC1', 'GetAddonInfos'))
+
+    def createMetrics(self):
+        self.metrics['wanbyterate'] = GaugeMetricFamily('fritz_wan_datarate', 'Current WAN data rate in bytes/s', labels=['serial', 'direction'], unit='bytes')
+
+    def _getMetricValues(self, device):
+        fritz_wan_result = device.fc.call_action('WANCommonIFC1', 'GetAddonInfos')
+        wan_byterate_rx = fritz_wan_result['NewByteReceiveRate']
+        wan_byterate_tx = fritz_wan_result['NewByteSendRate']
+        self.metrics['wanbyterate'].add_metric([device.serial, 'rx'], wan_byterate_rx)
+        self.metrics['wanbyterate'].add_metric([device.serial, 'tx'], wan_byterate_tx)
+        yield self.metrics['wanbyterate']
+
+
 class WanCommonInterfaceDataPackets(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
