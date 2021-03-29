@@ -155,7 +155,7 @@ class UserInterface(FritzCapability):
     def _getMetricValues(self, device):
         update_result = device.fc.call_action('UserInterface:1', 'GetInfo')
         upd_available = 1 if update_result['NewUpgradeAvailable'] else 0
-        new_software_version = "n/a" if update_result['NewUpgradeAvailable'] else update_result['NewX_AVM-DE_Version']
+        new_software_version = update_result['NewX_AVM-DE_Version'] if update_result['NewUpgradeAvailable'] else 'n/a'
         self.metrics['update'].add_metric([device.serial, new_software_version], upd_available)
         yield self.metrics['update']
 
