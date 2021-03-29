@@ -29,7 +29,7 @@ The following groups of metrics are currently available:
 * WiFi statistics
 * WAN Layer1 (physical link) statistics
 
-Thre is code in `fritzexporter/fritzcapabilities.py` to extract information about ever single host the device knows about but it is completely disabled as of now as polling the information can take 20-30 seconds depending on your network setup. If you want to test this out simply uncomment that code and rebuild the docker image.
+There is code in `fritzexporter/fritzcapabilities.py` to extract information about ever single host the device knows about but it is completely disabled as of now as polling the information can take 20-30 seconds depending on your network setup. If you want to test this out simply uncomment that code and rebuild the docker image.
 
 If there is any information missing or not displayed on your specific device, please open an issue.
 
