@@ -33,11 +33,11 @@
         },
         "fritzconnection": {
             "hashes": [
-                "sha256:13950067ef211b64a8e13ec90779d13cca67a7104e1e8080f5957638a1552181",
-                "sha256:f89905eaa0db740ad431fad3551f08ac3b0c23189b926b499116791029213127"
+                "sha256:093f4b6663cfd4e89af6d5402eb26cd13e4cfa5e8ddb3b80ca0bcb04abe5426b",
+                "sha256:b6376ea9608b44fdadcf434da19c98a689fddce458912ca3e9f42f7acd21bd25"
             ],
             "index": "pypi",
-            "version": "==1.4.0"
+            "version": "==1.4.2"
         },
         "idna": {
             "hashes": [
@@ -65,11 +65,11 @@
         },
         "urllib3": {
             "hashes": [
-                "sha256:1b465e494e3e0d8939b50680403e3aedaa2bc434b7d5af64dfd3c958d7f5ae80",
-                "sha256:de3eedaad74a2683334e282005cd8d7f22f4d55fa690a2a1020a416cb0a47e73"
+                "sha256:2f4da4594db7e1e110a944bb1b551fdf4e6c136ad42e4234131391e21eb5b0df",
+                "sha256:e7b021f7241115872f92f43c6508082facffbd1c048e3c6e2bb9c2a157e28937"
             ],
             "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4' and python_version < '4'",
-            "version": "==1.26.3"
+            "version": "==1.26.4"
         }
     },
     "develop": {}
