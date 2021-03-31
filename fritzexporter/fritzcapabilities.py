@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractclassmethod, abstractmethod
 
-from fritzconnection.core.exceptions import ActionError, ServiceError
+from fritzconnection.core.exceptions import ActionError, ServiceError, FritzInternalError
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class FritzCapability(ABC):
             for (svc, action) in self.requirements:
                 try:
                     device.fc.call_action(svc, action)
-                except (ServiceError, ActionError) as e:
+                except (ServiceError, ActionError, FritzInternalError) as e:
                     logger.warn(f'disabling metrics at service {svc}, action {action} - fritzconnection.call_action returned {e}')
                     self.present = False
 
@@ -67,7 +67,7 @@ class FritzCapabilities():
     def merge(self, other_caps):
         for cap in self.capabilities:
             self.capabilities[cap].present = self.capabilities[cap].present or other_caps.capabilities[cap].present
-        
+
     def empty(self):
         return not any([ cap.present for cap in list(self.capabilities.values()) ])
 
@@ -100,7 +100,7 @@ class HostNumberOfEntries(FritzCapability):
         num_hosts_result = device.fc.call_action('Hosts1', 'GetHostNumberOfEntries')
         self.metrics['numhosts'].add_metric([device.serial], num_hosts_result['NewHostNumberOfEntries'])
         yield self.metrics['numhosts']
-        
+
 #class HostInfo(FritzCapability):
 #    def __init__(self) -> None:
 #        super().__init__()
@@ -118,11 +118,11 @@ class HostNumberOfEntries(FritzCapability):
 #        for host_index in range(num_hosts_result['NewHostNumberOfEntries']):
 #            logger.debug(f'Fetching generic host information for host number {host_index}')
 #            host_result = device.fc.call_action('Hosts1', 'GetGenericHostEntry', NewIndex=host_index)
-#            
+#
 #            host_ip = host_result['NewIPAddress']
 #            host_mac = host_result['NewMACAddress']
 #            host_name = host_result['NewHostName']
-#            
+#
 #            if host_ip != "":
 #                logger.debug(f'Fetching extended AVM host information for host number {host_index} by IP {host_ip}')
 #                avm_host_result = device.fc.call_action('Hosts1', 'X_AVM-DE_GetSpecificHostEntryByIP', NewIPAddress=host_ip)
@@ -212,7 +212,7 @@ class WanDSLInterfaceConfig(FritzCapability):
     def _getMetricValues(self, device):
         fritz_dslinfo_result = device.fc.call_action('WANDSLInterfaceConfig:1', 'GetInfo')
         self.metrics['enable'].add_metric([device.serial], fritz_dslinfo_result['NewEnable'])
-        
+
         dslstatus = 1 if fritz_dslinfo_result['NewStatus'] == 'Up' else 0
         self.metrics['status'].add_metric([device.serial], dslstatus)
         self.metrics['datarate'].add_metric([device.serial, 'tx', 'curr'], fritz_dslinfo_result['NewUpstreamCurrRate'])
@@ -224,11 +224,11 @@ class WanDSLInterfaceConfig(FritzCapability):
         self.metrics['attenuation'].add_metric([device.serial, 'tx'], fritz_dslinfo_result['NewUpstreamAttenuation']/10)
         self.metrics['attenuation'].add_metric([device.serial, 'rx'], fritz_dslinfo_result['NewDownstreamAttenuation']/10)
 
-        yield self.metrics['enable'] 
-        yield self.metrics['status'] 
-        yield self.metrics['datarate'] 
-        yield self.metrics['noisemargin'] 
-        yield self.metrics['attenuation'] 
+        yield self.metrics['enable']
+        yield self.metrics['status']
+        yield self.metrics['datarate']
+        yield self.metrics['noisemargin']
+        yield self.metrics['attenuation']
 
 class WanPPPConnectionStatus(FritzCapability):
     def __init__(self) -> None:

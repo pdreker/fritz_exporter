@@ -36,6 +36,7 @@ If there is any information missing or not displayed on your specific device, pl
 ## Known problems
 
 * It seems like Fritz!OS does not internally count the packets for the Guest WiFi. So even though those counters are there they are always 0. This seems to be a problem with Fritz!OS and not the exporter. The counters are delivered nontheless, just in case this gets fixed by AVM.
+* If you receive `Fatal Python error: init_interp_main: can't initialize time` when running the container you may have to update libseccomp on your Docker host. This issue mainly happens on Raspberry Pi and is triggered by a version of libseccomp2 which is too old. See <https://askubuntu.com/questions/1263284/apt-update-throws-signature-error-in-ubuntu-20-04-container-on-arm> (Method 2) and <https://github.com/pdreker/fritzbox_exporter/issues/38>
 
 ## Grafana Dashboard
 
@@ -110,7 +111,7 @@ Configuration is done via environment vars.
 
 The main configuration is done inside the environment variable `FRITZ_EXPORTER_CONFIG`. This variable must contain the comma-separated address, username and password for the device. If you need multiple devices simply repeat the three values for the other devices.
 
-An alternative it to use The three environment variables `FRITZ_HOSTNAME`, `FRITZ_USERNAME` and `FRITZ_PASSWORD`, This way you lose the ability to monitor multiple devices with one exporter but gain the ability To put `FRITZ_PASSWORD` into a kubernetes secret like shown in [Kubernetes deployment](#kubernetes-deployment).
+An alternative is to use The three environment variables `FRITZ_HOSTNAME`, `FRITZ_USERNAME` and `FRITZ_PASSWORD`, This way you lose the ability to monitor multiple devices with one exporter but gain the ability To put `FRITZ_PASSWORD` into a kubernetes secret like shown in [Kubernetes deployment](#kubernetes-deployment).
 
 Example for a single device (at 192.168.178.1 username monitoring and the password "mysupersecretpassword"):
 
