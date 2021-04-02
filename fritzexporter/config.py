@@ -2,7 +2,7 @@ import logging
 import yaml
 import os
 
-from .exceptions import ConfigFileUnreadableError, ConfigError
+from .exceptions import ConfigFileUnreadableError, ConfigError, DeviceNamesNotUniqueWarning
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,6 +58,16 @@ def check_config(config):
             if any(required not in config['devices'][0] for required in ['hostname', 'username', 'password']):
                 logger.critical('Device specified but either hostname, username or password are missing')
                 raise ConfigError('Device specified but either hostname, username or password are missing')
+
+            for index, dev in enumerate(config['devices']):
+                if 'name' not in dev or dev['name'] == '':
+                    dev['name'] = f'fritz-{index}'
+
+            devicenames = [dev['name'] for dev in config['devices']]
+            if len(devicenames) != len(set(devicenames)):
+                logger.warning('Device names are not unique')
+                raise DeviceNamesNotUniqueWarning('Device names are not unique')
+
     else:
         logger.critical('No config found.')
         raise ConfigError('No config found.')

@@ -4,3 +4,7 @@ class ConfigError(Exception):
 
 class ConfigFileUnreadableError(Exception):
     pass
+
+
+class DeviceNamesNotUniqueWarning(Exception):
+    pass

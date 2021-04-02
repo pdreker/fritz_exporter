@@ -21,7 +21,7 @@ from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
 from fritzexporter.fritzdevice import FritzCollector, FritzDevice
-from fritzexporter.exceptions import ConfigError, ConfigFileUnreadableError
+from fritzexporter.exceptions import ConfigError, ConfigFileUnreadableError, DeviceNamesNotUniqueWarning
 from .config import get_config, check_config
 
 logging.basicConfig(level=logging.INFO)
@@ -43,9 +43,11 @@ def main():
     except (ConfigError, ConfigFileUnreadableError) as e:
         print(e)
         sys.exit(1)
+    except DeviceNamesNotUniqueWarning:
+        pass
 
     for dev in config['devices']:
-        fritzcollector.register(FritzDevice(dev['hostname'], dev['username'], dev['password']))
+        fritzcollector.register(FritzDevice(dev['hostname'], dev['username'], dev['password'], dev['name']))
 
     REGISTRY.register(fritzcollector)
 
