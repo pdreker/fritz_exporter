@@ -1,10 +1,11 @@
 # Example Config File for Fritz-Exporter
+port: 9787
 devices:
   - name: Fritz!Box 7590 Router
-    host: fritz.box
-    user: prometheus
+    hostname: fritz.box
+    username: prometheus
     password: prometheus
   - name: Repeater Wohnzimmer
-    host: repeater-Wohnzimmer
-    user: prometheus
+    hostname: repeater-Wohnzimmer
+    username: prometheus
     password: prometheus
