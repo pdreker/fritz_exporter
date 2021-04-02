@@ -36,7 +36,8 @@ If there is any information missing or not displayed on your specific device, pl
 ## Known problems
 
 * It seems like Fritz!OS does not internally count the packets for the Guest WiFi. So even though those counters are there they are always 0. This seems to be a problem with Fritz!OS and not the exporter. The counters are delivered nontheless, just in case this gets fixed by AVM.
-* If you receive `Fatal Python error: init_interp_main: can't initialize time` when running the container you may have to update libseccomp on your Docker host. This issue mainly happens on Raspberry Pi and is triggered by a version of libseccomp2 which is too old. See <https://askubuntu.com/questions/1263284/apt-update-throws-signature-error-in-ubuntu-20-04-container-on-arm> (Method 2) and <https://github.com/pdreker/fritzbox_exporter/issues/38>
+* If you receive `Fatal Python error: init_interp_main: can't initialize time` when running the container you may have to update libseccomp on your Docker host. This issue mainly happens on Raspberry Pi and is triggered by a version of libseccomp2 which is too old. See <https://askubuntu.com/questions/1263284/apt-update-throws-signature-error-in-ubuntu-20-04-container-on-arm> (Method 2) and <https://github.com/pdreker/fritzbox_exporter/issues/38>.
+* On some boxes LAN Packet counters are stuck at 0 even though the box reports the stats as available.
 
 ## Grafana Dashboard
 
