@@ -14,7 +14,7 @@ parser.add_argument('action_args', nargs='?', help='Optional arguments to call (
 
 args = parser.parse_args()
 
-#print(f'Would call IP: {args.fritz_ip}, user: {args.username}, password: {args.password}, service: {args.service}, action: {args.action}')
+# print(f'Would call IP: {args.fritz_ip}, user: {args.username}, password: {args.password}, service: {args.service}, action: {args.action}')
 fc = FritzConnection(address=args.fritz_ip, user=args.username, password=args.password)
 
 try:
