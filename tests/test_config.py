@@ -1,10 +1,8 @@
-from _pytest.monkeypatch import monkeypatch
 import pytest
-
-from pytest import MonkeyPatch
 
 from fritzexporter.config import get_config, check_config
 from fritzexporter.exceptions import ConfigError, ConfigFileUnreadableError
+
 
 class TestReadConfig:
     def test_file_not_found(self):
@@ -23,6 +21,7 @@ class TestReadConfig:
         with pytest.raises(ConfigError):
             get_config(testfile)
 
+
 class TestFileConfigs:
     def test_empty_file(self):
         testfile = 'tests/conffiles/empty.yaml'
@@ -34,7 +33,7 @@ class TestFileConfigs:
     def test_empty_devices(self):
         testfile = 'tests/conffiles/emptydevices.yaml'
         config = get_config(testfile)
-        
+
         with pytest.raises(ConfigError):
             check_config(config)
 
@@ -85,6 +84,7 @@ class TestFileConfigs:
 
         check_config(config)
 
+
 class TestEnvConfig:
     def test_env_config(self, monkeypatch):
         monkeypatch.setenv('FRITZ_HOSTNAME', 'hostname.local')
@@ -126,4 +126,3 @@ class TestEnvConfig:
         }
 
         assert config == expected
-    

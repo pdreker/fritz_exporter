@@ -1,11 +1,11 @@
 # Copyright 2019-2021 Patrick Dreker <patrick@dreker.de>
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,10 +15,8 @@
 import asyncio
 from fritzexporter.exceptions import ConfigError, ConfigFileUnreadableError
 import logging
-import os
 import sys
 import argparse
-import yaml
 
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
@@ -30,6 +28,7 @@ from .config import get_config, check_config
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARN)
+
 
 def main():
     fritzcollector = FritzCollector()
@@ -59,6 +58,7 @@ def main():
         loop.run_forever()
     finally:
         loop.close()
+
 
 if __name__ == '__main__':
     main()

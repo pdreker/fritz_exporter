@@ -8,6 +8,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARN)
 
+
 def get_config(config_file_path):
     config = None
     if config_file_path:
@@ -16,7 +17,7 @@ def get_config(config_file_path):
                 config = yaml.safe_load(config_file)
         except IOError as e:
             logger.critical('Config file specified but could not be read.')
-            raise ConfigFileUnreadableError
+            raise ConfigFileUnreadableError(e)
     else:
         if all(required in os.environ for required in ['FRITZ_USERNAME', 'FRITZ_PASSWORD']):
             hostname = os.getenv('FRITZ_HOSTNAME') if 'FRITZ_HOSTNAME' in os.environ else 'fritz.box'
@@ -38,8 +39,9 @@ def get_config(config_file_path):
         else:
             logger.critical('No config file specified and required env variables missing!')
             raise ConfigError('No config file specified and required env variables missing!')
-    
+
     return config
+
 
 def check_config(config):
     # Sanity check config object: exporter_port must be 1 <= exporter_port <= 65535 and there must be at least one device with hostname, username and password.
