@@ -383,8 +383,9 @@ def wlanConsructorFactory(obj_ref, index):
     obj_ref.requirements.append((f'WLANConfiguration{index}', 'GetPacketStatistics'))
 
 
-def wlanCreateMetricsFactory(obj_ref, name):
-    m_name = name.replace('.', '_')
+def wlanCreateMetricsFactory(obj_ref):
+    m_name = obj_ref.wifi_type.replace('.', '_')
+    name = obj_ref.wifi_type
     obj_ref.metrics['wlanstatus'] = GaugeMetricFamily(f'fritz_wifi_{m_name}_status', f'Status of the {name} WiFi',
                                                       labels=['serial', 'friendly_name', 'enabled', 'standard', 'ssid'])
     obj_ref.metrics['wlanchannel'] = GaugeMetricFamily(f'fritz_wifi_{m_name}_channel', f'Channel of the {name} WiFi',
@@ -419,37 +420,71 @@ def wlanGetMetricsFactory(obj_ref, index, device):
     yield obj_ref.metrics['wlanpackets']
 
 
-class WlanConfigurationInfo2_4GHz(FritzCapability):
+# The standard specifies, that there may be 5 WiFi networks losted here.
+# This still feels "wrong" to hardcode 5 WiFi objects, but fixing this may
+# require a more in depth approach to how capabilities are organized/checked.
+# An object callback in check capabilities may be the way out.
+
+class WlanConfigurationInfo1(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
         wlanConsructorFactory(self, 1)
+        self.wifi_type = '2.4GHz'
 
     def createMetrics(self):
-        wlanCreateMetricsFactory(self, '2.4GHz')
+        wlanCreateMetricsFactory(self)
 
     def _getMetricValues(self, device):
         yield from wlanGetMetricsFactory(self, 1, device)
 
 
-class WlanConfigurationInfo5GHz(FritzCapability):
+class WlanConfigurationInfo2(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
         wlanConsructorFactory(self, 2)
+        self.wifi_type = '5GHz'
 
     def createMetrics(self):
-        wlanCreateMetricsFactory(self, '5GHz')
+        wlanCreateMetricsFactory(self)
 
     def _getMetricValues(self, device):
         yield from wlanGetMetricsFactory(self, 2, device)
 
 
-class WlanConfigurationInfoGuest(FritzCapability):
+class WlanConfigurationInfo3(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
         wlanConsructorFactory(self, 3)
+        self.wifi_type = 'guest'
 
     def createMetrics(self):
-        wlanCreateMetricsFactory(self, 'guest')
+        wlanCreateMetricsFactory(self)
 
     def _getMetricValues(self, device):
         yield from wlanGetMetricsFactory(self, 3, device)
+
+
+class WlanConfigurationInfo4(FritzCapability):
+    def __init__(self) -> None:
+        super().__init__()
+        wlanConsructorFactory(self, 4)
+        self.wifi_type = 'unkown1'
+
+    def createMetrics(self):
+        wlanCreateMetricsFactory(self)
+
+    def _getMetricValues(self, device):
+        yield from wlanGetMetricsFactory(self, 4, device)
+
+
+class WlanConfigurationInfo5(FritzCapability):
+    def __init__(self) -> None:
+        super().__init__()
+        wlanConsructorFactory(self, 5)
+        self.wifi_type = 'unkown2'
+
+    def createMetrics(self):
+        wlanCreateMetricsFactory(self)
+
+    def _getMetricValues(self, device):
+        yield from wlanGetMetricsFactory(self, 5, device)
