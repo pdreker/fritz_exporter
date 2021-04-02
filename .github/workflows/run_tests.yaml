@@ -88,9 +88,7 @@ jobs:
         script: |
           const output = `#### PyTest Results \`${{steps.pytest.outcome}}\`
           <details><summary>Show Results</summary>
-          \`\`\`
-          ${process.env.PYTEST_REPORT}
-          \`\`\`
+          \`${process.env.PYTEST_REPORT}\`
           </details>
 
           *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
