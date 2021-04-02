@@ -24,14 +24,18 @@ jobs:
       id: flake8
       continue-on-error: true
       run: |
-        pipenv run lint
+        pipenv run lint | tee lint.log
+        rescode = ${PIPESTATUS[0]}
+        echo "::set-output name=lint::$(cat lint.log)"
+        exit $rescode
 
     - name: 'Flake8 Comment PR'
       uses: actions/github-script@0.3.0
       if: |
-        github.event_name == 'pull_request'
+        github.event_name == 'pull_request' &&
+        steps.flake8.outcome != 'success'
       env:
-        FLAKE_REPORT: "flake8:\n${{steps.flake8.outputs.stdout}}"
+        FLAKE_REPORT: "flake8:\n${{steps.flake8.outputs.lint}}"
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
@@ -68,13 +72,17 @@ jobs:
       id: pytest
       continue-on-error: true
       run: |
-        pipenv run test
+        pipenv run test | tee test.log
+        rescode = ${PIPESTATUS[0]}
+        echo "::set-output name=tests::$(cat test.log)"
+        exit $rescode
+
     - name: 'PyTest Comment PR'
       uses: actions/github-script@0.3.0
       if: |
         github.event_name == 'pull_request'
       env:
-        PYTEST_REPORT: "PyTest:\n${{steps.pytest.outputs.stdout}}"
+        PYTEST_REPORT: "PyTest:\n${{steps.pytest.outputs.tests}}"
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
