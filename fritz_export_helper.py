@@ -1,6 +1,6 @@
 import argparse
 from fritzconnection import FritzConnection
-from fritzconnection.core.exceptions import ActionError, ServiceError
+from fritzconnection.core.exceptions import ActionError, ServiceError, FritzInternalError
 from pprint import pprint
 
 parser = argparse.ArgumentParser(description='Check actions against Fritz TR-064 API and pretty print the results.')
@@ -19,5 +19,5 @@ try:
     result = fc.call_action(args.service, args.action)
     print('--------------------------------\nRESULT:')
     pprint(result)
-except (ServiceError, ActionError) as e:
+except (ServiceError, ActionError, FritzInternalError) as e:
     print(f'Calling service {args.service} with action {args.action} returned an error: {e}')
