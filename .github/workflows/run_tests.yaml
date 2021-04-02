@@ -29,31 +29,6 @@ jobs:
         echo "::set-output name=lint::$(cat lint.log)"
         exit $rescode
 
-    - name: 'Flake8 Comment PR'
-      uses: actions/github-script@0.3.0
-      if: |
-        github.event_name == 'pull_request' &&
-        steps.flake8.outcome != 'success'
-      env:
-        FLAKE_REPORT: "flake8:\n${{steps.flake8.outputs.lint}}"
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const output = `#### Flake8 Results \`${{steps.flake8.outcome}}\`
-          <details><summary>Show Results</summary>
-
-          \`\`\`${process.env.FLAKE_REPORT}\`\`\`
-
-          </details>
-
-          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
-
-          github.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: output})
-
   run-pytest:
     runs-on: ubuntu-latest
     name: Run PyTest
@@ -76,25 +51,3 @@ jobs:
         rescode=${PIPESTATUS[0]}
         echo "::set-output name=tests::$(cat test.log)"
         exit $rescode
-
-    - name: 'PyTest Comment PR'
-      uses: actions/github-script@0.3.0
-      if: |
-        github.event_name == 'pull_request'
-      env:
-        PYTEST_REPORT: "${{steps.pytest.outputs.tests}}"
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          const output = `#### PyTest Results \`${{steps.pytest.outcome}}\`
-          <details><summary>Show Results</summary>
-          \`${process.env.PYTEST_REPORT}\`
-          </details>
-
-          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
-
-          github.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: output})
