@@ -6,11 +6,11 @@ The exporter should work with Fritz!Box and Fritz!Repeater Devices (and maybe ot
 
 It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
 
-## WARNING
+## Upgrade Notes
 
-This current version (1.0.0 and later) of the exporter has completely reworked how this exports metrics! If you have used this exporter in the past, you will get a completely new set of metrics.
+### v1.0.0
 
-### Changes
+Version 1.0.0 of the exporter has completely reworked how this exports metrics! If you have used this exporter in the past, you will get a completely new set of metrics.
 
 * the metrics prefix has changed from `fritzbox_` to `fritz_`
 * all labels have been converted to lower-case (e.g. `Serial` -> `serial`) to be in line with the common usage of labels
