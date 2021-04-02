@@ -30,8 +30,6 @@ jobs:
       uses: actions/github-script@0.3.0
       if: |
         github.event_name == 'pull_request'
-        # &&
-        #steps.flake8.outcome != 'success'
       env:
         FLAKE_REPORT: "flake8:\n${{steps.flake8.outputs.stdout}}"
       with:
@@ -75,8 +73,6 @@ jobs:
       uses: actions/github-script@0.3.0
       if: |
         github.event_name == 'pull_request'
-        #&&
-        #steps.pytest.outcome != 'success'
       env:
         PYTEST_REPORT: "PyTest:\n${{steps.pytest.outputs.stdout}}"
       with:
