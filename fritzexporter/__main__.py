@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import asyncio
-from fritzexporter.exceptions import ConfigError, ConfigFileUnreadableError
 import logging
 import sys
 import argparse
@@ -22,7 +21,7 @@ from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
 from fritzexporter.fritzdevice import FritzCollector, FritzDevice
-
+from fritzexporter.exceptions import ConfigError, ConfigFileUnreadableError
 from .config import get_config, check_config
 
 logging.basicConfig(level=logging.INFO)
