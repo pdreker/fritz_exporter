@@ -1,0 +1,10 @@
+exporter_port: 123456
+devices:
+  - name: Fritz!Box 7590 Router
+    hostname: fritz.box
+    username: prometheus1
+    password: prometheus2
+  - name: Repeater Wohnzimmer
+    hostname: repeater-Wohnzimmer
+    username: prometheus3
+    password: prometheus4
