@@ -1,0 +1,4 @@
+devices:
+  - name: Fritz!Box 7590 Router
+    hostname: fritz.box
+    password: prometheus

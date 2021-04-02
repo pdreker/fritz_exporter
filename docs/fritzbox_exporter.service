@@ -1,10 +1,10 @@
 [Unit]
-Description=fritz.box Exporter
+Description=Fritz Exporter
 
 [Service]
-Environment=FRITZ_EXPORTER_CONFIG="192.168.178.1,user1,password1"
+Environment=FRITZ_USERNAME="user1",FRITZ_PASSWORD="mypassword"
 User=lee
-ExecStart=/home/lee/src/fritzbox_exporter/venv/bin/python3 /home/lee/src/fritzbox_exporter/fritz_exporter.py
+ExecStart=/home/lee/src/fritzbox_exporter/venv/bin/python3 -m fritz_exporter
 
 [Install]
 WantedBy=default.target

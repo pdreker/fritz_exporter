@@ -6,6 +6,8 @@ services:
     container_name: fritz-exporter
     restart: always
     environment:
-      FRITZ_EXPORTER_CONFIG: 'fritz.box,prometheus,prompassword,repeater01,prometheus,prompassword'
+      FRITZ_HOSTNAME: 'fritz.box'
+      FRITZ_USERNAME: 'prometheus'
+      FRITZ_PASSWORD: 'prompassword'
     ports:
       - "9787:9787"

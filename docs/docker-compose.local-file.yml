@@ -3,12 +3,11 @@ version: "3.8"
 services:
   fritz-exporter:
     image: fritz_exporter:local
+    command: --config /fritz-exporter.yml
     build: ../
     container_name: fritz-exporter
     restart: always
-    environment:
-      FRITZ_HOSTNAME: 'fritz.box'
-      FRITZ_USERNAME: 'prometheus'
-      FRITZ_PASSWORD: 'prompassword'
     ports:
       - "9787:9787"
+    volumes:
+      - "/path/to/fritz-exporter.yml:/fritz-exporter.yml"
