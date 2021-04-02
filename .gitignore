@@ -3,3 +3,4 @@ __pycache__
 launch.json
 settings.json
 .idea
+docs/docker-compose.secret.yml
