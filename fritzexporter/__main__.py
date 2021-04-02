@@ -33,7 +33,7 @@ def main():
     fritzcollector = FritzCollector()
 
     parser = argparse.ArgumentParser(description='Fritz Exporter for Prometheus using the TR-064 API')
-    parser.add_argument('--config', type=str, help='Path to config file (./fritz-exporter.yaml)')
+    parser.add_argument('--config', type=str, help='Path to config file')
 
     args = parser.parse_args()
 

@@ -34,7 +34,7 @@ export FRITZ_PASSWORD='mysipersecretpassword'
 
 ### Config file
 
-The default location for the config file is `/app/fritz-exporter.yaml` (`/app` is the working directory of the exporter, so `./fritz-exporter.yaml` will pick up the file.)
+To use the config file you have to specify the the location of the config and mount the appropriate file into the container. The location can be specified by using the `--config` parameter.
 
 ## plain Docker (docker run)
 
@@ -51,7 +51,7 @@ This will use the default hostname of `fritz.box`for the device and use the defa
 If you are monitoring multiple device you must use the config file method like this:
 
 ```bash
-docker run -d -v ./fritz-exporter.yaml:/app/fritz-exporter.yaml -p 9787:9787 --name fritz_exporter pdreker/fritz_exporter
+docker run -d -v /path/to/fritz-exporter.yaml:/app/fritz-exporter.yaml -p 9787:9787 --name fritz_exporter pdreker/fritz_exporter --config /app/fritz-exporter.yaml
 ```
 
 See the example config file provided at docs/fritz-exporter.yml
@@ -62,10 +62,10 @@ While `docker-compose.hub.yml' will run the published image from Docker Hub. If 
 
 ## Kubernetes deployment
 
-Put the Fritz!Box password into a kubernetes secret
+Put the configuration file into a kubernetes secret like this:
 
 ```bash
-kubectl create secret generic fritzbox-password --from-literal=password='mysupersecretpassword'
+kubectl create secret generic fritz-exporter-config --from-file=fritz-exporter.yaml
 ```
 
 then deploy the exporter with a deployment
@@ -88,25 +88,24 @@ spec:
         prometheus.io/path: /
         prometheus.io/port: "9787"
       labels:
-        app: fritzbox-exporter
+        app: fritz-exporter
     spec:
       containers:
-      - name: fritzbox-exporter
+      - name: fritz-exporter
+        args:
+        - '--config'
+        - '/etc/fritz-exporter/fritz-exporter.yaml'
         image: pdreker/fritz_exporter:latest
         imagePullPolicy: Always
-        env:
-        - name:  FRITZ_HOSTNAME
-          value: "192.168.178.1"
-        - name:  FRITZ_USERNAME
-          value: "monitoring"
-        - name:  FRITZ_EXPORTER_PORT
-          value: "9787"
-        - name:  FRITZ_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: fritzbox-password
-              key:  password
-        ports:
+        volumeMounts:
+        - name: config
+          mountPath: /etc/fritz-exporter
+          readOnly: true
+      volumes:
+      - name: config
+        secret:
+          secretName: fritz-exporter-config
+      ports:
         - containerPort: 9787
 ```
 
@@ -115,6 +114,7 @@ spec:
 * Python >=3.6
 * fritzconnection >= 1.0.0
 * prometheus-client >= 0.6.0
+* PyYAML
 
 A Pipfile for `pipenv` ist included with the source. So after installing `pipenv` you can just type `pipenv install` inside the source directory and a virtual environment for running the exporter will be configured for you.
 
