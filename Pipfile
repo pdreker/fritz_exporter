@@ -6,8 +6,11 @@ name = "pypi"
 [packages]
 prometheus-client = ">=0.6.0"
 fritzconnection = ">=1.0.0"
+pyyaml = "*"
 
 [dev-packages]
+pytest = "*"
+pytest-mock = "*"
 
 [requires]
 python_version = "3.9"
