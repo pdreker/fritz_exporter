@@ -82,15 +82,14 @@ jobs:
       if: |
         github.event_name == 'pull_request'
       env:
-        PYTEST_REPORT: "PyTest:\n${{steps.pytest.outputs.tests}}"
+        PYTEST_REPORT: "${{steps.pytest.outputs.tests}}"
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const output = `#### PyTest Results \`${{steps.pytest.outcome}}\`
           <details><summary>Show Results</summary>
-
-          \`\`\`${process.env.PYTEST_REPORT}\`\`\`
-
+          \`\`\`${process.env.PYTEST_REPORT}
+          \`\`\`
           </details>
 
           *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
