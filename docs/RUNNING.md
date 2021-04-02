@@ -58,7 +58,11 @@ See the example config file provided at docs/fritz-exporter.yml
 
 ## docker-compose
 
-While `docker-compose.hub.yml' will run the published image from Docker Hub. If you are not making changes to the code you will probably want to run from the published image.
+There are some docker-compose sample files in the `docs/` directory:
+
+* `docker-compose.hub.yml` - Runs with environment config from the official docker hub image
+* `docker-compose.local.yml` - Runs with environment config from a locally built image
+* `docker-compose.local-file.yml` - Runs with config file from local build
 
 ## Kubernetes deployment
 
