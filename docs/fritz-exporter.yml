@@ -1,0 +1,10 @@
+# Example Config File for Fritz-Exporter
+devices:
+  - name: Fritz!Box 7590 Router
+    host: fritz.box
+    user: prometheus
+    password: prometheus
+  - name: Repeater Wohnzimmer
+    host: repeater-Wohnzimmer
+    user: prometheus
+    password: prometheus
