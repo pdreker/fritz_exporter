@@ -26,10 +26,11 @@ logger.setLevel(logging.WARN)
 
 class FritzDevice():
 
-    def __init__(self, host, user, password) -> None:
+    def __init__(self, host, user, password, name) -> None:
         self.host = host
         self.serial = "n/a"
         self.model = "n/a"
+        self.friendly_name = name
 
         try:
             self.fc = FritzConnection(address=host, user=user, password=password)

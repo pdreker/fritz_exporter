@@ -1,7 +1,7 @@
 import pytest
 
 from fritzexporter.config import get_config, check_config
-from fritzexporter.exceptions import ConfigError, ConfigFileUnreadableError
+from fritzexporter.exceptions import ConfigError, ConfigFileUnreadableError, DeviceNamesNotUniqueWarning
 
 
 class TestReadConfig:
@@ -56,6 +56,13 @@ class TestFileConfigs:
         config = get_config(testfile)
 
         with pytest.raises(ConfigError):
+            check_config(config)
+
+    def test_namesnotunique(self):
+        testfile = 'tests/conffiles/namesnotunique.yaml'
+        config = get_config(testfile)
+
+        with pytest.raises(DeviceNamesNotUniqueWarning):
             check_config(config)
 
     def test_valid_file(self):
