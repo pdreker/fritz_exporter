@@ -8,6 +8,15 @@ It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 an
 
 ## Upgrade Notes
 
+### v1.1.0
+
+Version 1.1.0 changes the `direction` labels of some metrics to consistently use `tx` (transmitted, upstream) and `rx` (received, downstream). Before this change the labels were `up` and `down` respectively.
+
+Affected metrics:
+
+* fritz_wan_data
+* fritz_wan_data_packets
+
 ### v1.0.0
 
 Version 1.0.0 of the exporter has completely reworked how this exports metrics! If you have used this exporter in the past, you will get a completely new set of metrics.

@@ -297,8 +297,8 @@ class WanCommonInterfaceDataBytes(FritzCapability):
         wan_bytes_rx = fritz_wan_result['NewTotalBytesReceived']
         fritz_wan_result = device.fc.call_action('WANCommonInterfaceConfig:1', 'GetTotalBytesSent')
         wan_bytes_tx = fritz_wan_result['NewTotalBytesSent']
-        self.metrics['wanbytes'].add_metric([device.serial, 'up'], wan_bytes_tx)
-        self.metrics['wanbytes'].add_metric([device.serial, 'down'], wan_bytes_rx)
+        self.metrics['wanbytes'].add_metric([device.serial, 'tx'], wan_bytes_tx)
+        self.metrics['wanbytes'].add_metric([device.serial, 'rx'], wan_bytes_rx)
         yield self.metrics['wanbytes']
 
 class WanCommonInterfaceByteRate(FritzCapability):
@@ -332,8 +332,8 @@ class WanCommonInterfaceDataPackets(FritzCapability):
         wan_packets_rx = fritz_wan_result['NewTotalPacketsReceived']
         fritz_wan_result = device.fc.call_action('WANCommonInterfaceConfig:1', 'GetTotalPacketsSent')
         wan_packets_tx = fritz_wan_result['NewTotalPacketsSent']
-        self.metrics['wanpackets'].add_metric([device.serial, 'up'], wan_packets_tx)
-        self.metrics['wanpackets'].add_metric([device.serial, 'down'], wan_packets_rx)
+        self.metrics['wanpackets'].add_metric([device.serial, 'tx'], wan_packets_tx)
+        self.metrics['wanpackets'].add_metric([device.serial, 'rx'], wan_packets_rx)
         yield self.metrics['wanpackets']
 
 
