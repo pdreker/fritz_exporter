@@ -67,6 +67,10 @@ To run simply use
 docker run -d -e FRITZ_EXPORTER_CONFIG="192.168.178.1,username,password" -p 9787:9787 --name fritz_exporter pdreker/fritz_exporter
 ```
 
+### Docker compose
+
+There are two example docker-compose files in the docs folder. The file `docker-compose.local.yml` will build and run the exporter from the local directory while `docker-compose.hub.yml' will run the published image from Docker Hub. If you are not making changes to the code you will probably want to run from the published image.
+
 ### Build the Docker image yourself
 
 The recommended way to run this exporter is from a docker container. The included Dockerfile will build the exporter using an python:alpine container using python3.
