@@ -42,7 +42,7 @@ def get_config():
     if args.config:
         try:
             with open(args.config, 'r') as config_file:
-                config = yaml.safe_load(config_file.readlines())
+                config = yaml.safe_load(config_file)
         except IOError as e:
             logger.critical('Config file specified but could not be read.')
             raise ConfigFileUnreadableError
