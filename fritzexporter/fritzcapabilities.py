@@ -230,6 +230,23 @@ class WanDSLInterfaceConfig(FritzCapability):
         yield self.metrics['noisemargin']
         yield self.metrics['attenuation']
 
+class WanDSLInterfaceConfigAVM(FritzCapability):
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(('WANDSLInterfaceConfig1', 'X_AVM-DE_GetDSLInfo'))
+
+    def createMetrics(self):
+        self.metrics['fec'] = CounterMetricFamily('fritz_dsl_fec_errors_count', 'Number of Forward Error Correction Errors', labels=['serial'])
+        self.metrics['crc'] = CounterMetricFamily('fritz_dsl_crc_errors_count', 'Number of CRC Errors', labels=['serial'])
+
+    def _getMetricValues(self, device):
+        fritz_avm_dsl_result = device.fc.call_action('WANDSLInterfaceConfig1', 'X_AVM-DE_GetDSLInfo')
+        self.metrics['fec'].add_metric([device.serial], fritz_avm_dsl_result['NewFECErrors'])
+        self.metrics['crc'].add_metric([device.serial], fritz_avm_dsl_result['NewCRCErrors'])
+
+        yield self.metrics['fec']
+        yield self.metrics['crc']
+
 class WanPPPConnectionStatus(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
