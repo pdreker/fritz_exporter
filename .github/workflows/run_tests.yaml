@@ -23,7 +23,7 @@ jobs:
     - name: Lint with flake8
       id: flake8
       run: |
-        flake8 .
+        pipenv run lint
 
     - name: 'Flake8 Comment PR'
       uses: actions/github-script@0.3.0
@@ -65,7 +65,7 @@ jobs:
     - name: Run pytest
       id: pytest
       run: |
-        python -m pytest .
+        pipenv run test
     - name: 'PyTest Comment PR'
       uses: actions/github-script@0.3.0
       if: github.event_name == 'pull_request'
