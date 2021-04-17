@@ -408,7 +408,7 @@ def wlanGetMetricsFactory(obj_ref, index, device):
     yield obj_ref.metrics['wlanpackets']
 
 
-# The standard specifies, that there may be 5 WiFi networks losted here.
+# The standard specifies, that there may be 5 WiFi networks here.
 # This still feels "wrong" to hardcode 5 WiFi objects, but fixing this may
 # require a more in depth approach to how capabilities are organized/checked.
 # An object callback in check capabilities may be the way out.
