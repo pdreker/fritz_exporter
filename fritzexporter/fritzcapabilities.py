@@ -425,7 +425,7 @@ def wlanGetMetricsFactory(obj_ref, index, device):
 # require a more in depth approach to how capabilities are organized/checked.
 # An object callback in check capabilities may be the way out.
 
-class WlanConfigurationInfo1(FritzCapability):
+class WlanConfigurationFactory(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
         wlanConsructorFactory(self, 1)
