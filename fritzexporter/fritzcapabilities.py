@@ -10,18 +10,30 @@ logger.setLevel(logging.WARN)
 
 class FritzCapability(ABC):
     capabilities = []
+    subclasses = []
 
     def __init__(self) -> None:
         self.present = False
         self.requirements = []
         self.metrics = {}
+        FritzCapability.register(self)
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
+        FritzCapability.subclasses.append(cls)
+
+    @classmethod
+    def register(cls):
         FritzCapability.capabilities.append(cls)
 
     def checkCapability(self, device):
-        self.present = all([(service in device.fc.services) and (action in device.fc.services[service].actions) for (service, action) in self.requirements])
+        self.present = all(
+            [
+                (service in device.fc.services) and
+                (action in device.fc.services[service].actions)
+                for (service, action) in self.requirements
+            ]
+        )
         logger.debug(f'Capability {type(self).__name__} set to {self.present} on device {device.host}')
 
         # It seems some boxes report service/actions they don't actually support. So try calling the requirements,
@@ -50,7 +62,7 @@ class FritzCapability(ABC):
 
 class FritzCapabilities():
     def __init__(self, device=None) -> None:
-        self.capabilities = {capability.__name__: capability() for capability in FritzCapability.capabilities}
+        self.capabilities = {subclass.__name__: subclass() for subclass in FritzCapability.subclasses}
         if device:
             self.checkPresent(device)
 
