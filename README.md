@@ -40,7 +40,7 @@ There is a simple Grafana dashboard avaliable at <https://grafana.com/grafana/da
 
 #### Label changes
 
-Version 2.0.0 changes the `direction` labels of some metrics to consistently use `tx` (transmitted, upstream) and `rx` (received, downstream). Before this change the labels were `up` and `down` respectively.
+Version 2.0.0 changes the `direction` labels of some metrics to consistently use `tx` (transmitted, upstream) and `rx` (received, downstream). Before this change the labels were `up` and `down` respectively, while other metrics used `tx`and `rx`.
 
 Affected metrics:
 

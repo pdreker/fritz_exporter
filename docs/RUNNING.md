@@ -29,7 +29,7 @@ Example for a device (at 192.168.178.1 username monitoring and the password "mys
 export FRITZ_NAME='My Fritz!Box'
 export FRITZ_HOSTNAME='192.168.178.1'
 export FRITZ_USERNAME='monitoring'
-export FRITZ_PASSWORD='mysipersecretpassword'
+export FRITZ_PASSWORD='mysupersecretpassword'
 ```
 
 ### Config file
