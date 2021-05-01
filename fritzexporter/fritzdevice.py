@@ -22,6 +22,9 @@ class FritzDevice():
                 'Password is longer than 32 characters! '
                 'Login may not succeed, please see README!')
 
+        if len(password) > 32:
+            logger.warning('Password is longer than 32 characters! Login may not succeed, please see README!')
+
         try:
             self.fc = FritzConnection(address=host, user=user, password=password)
         except ConnectionError as e:
