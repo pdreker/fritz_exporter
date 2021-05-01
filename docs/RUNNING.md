@@ -36,6 +36,21 @@ export FRITZ_PASSWORD='mysupersecretpassword'
 
 To use the config file you have to specify the the location of the config and mount the appropriate file into the container. The location can be specified by using the `--config` parameter.
 
+```yaml
+# Full example config file for Fritz-Exporter
+exporter_port: 9787 # optional
+log_level: DEBUG # optional
+devices:
+  - name: Fritz!Box 7590 Router # optional
+    hostname: fritz.box
+    username: prometheus
+    password: prometheus
+  - name: Repeater Wohnzimmer # optional
+    hostname: repeater-Wohnzimmer
+    username: prometheus
+    password: prometheus
+```
+
 ## plain Docker (docker run)
 
 Release images are automatically pushed to Docker Hub and are built for linux/amd64, linux/arm/v6, linux/arm/v7 and linux/arm64, the latter three being useful for e.g. Raspberry Pi type systems.
