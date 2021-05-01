@@ -1,5 +1,6 @@
 # Example Config File for Fritz-Exporter
 exporter_port: 9787
+log_level: DEBUG
 devices:
   - name: Fritz!Box 7590 Router
     hostname: fritz.box
