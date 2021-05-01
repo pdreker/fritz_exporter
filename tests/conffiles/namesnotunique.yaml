@@ -1,0 +1,11 @@
+# Example Config File for Fritz-Exporter
+exporter_port: 9787
+devices:
+  - name: Bla
+    hostname: fritz.box
+    username: prometheus1
+    password: prometheus2
+  - name: Bla
+    hostname: repeater-Wohnzimmer
+    username: prometheus3
+    password: prometheus4

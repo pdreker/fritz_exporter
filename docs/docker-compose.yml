@@ -1,8 +1,0 @@
-version: '2.1'
-
-services:
-  fritzbox_exporter:
-    image: fritz_exporter
-    build: .
-    ports:
-      - "9787:9787"

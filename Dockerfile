@@ -23,7 +23,6 @@ COPY --from=build /app/requirements.txt /app/requirements.txt
 RUN pip install -r requirements.txt
 
 COPY fritzexporter/ /app/fritzexporter
-COPY fritz_exporter.py /app/fritz_exporter.py
 
 USER nobody
-CMD ["python3", "-m", "fritz_exporter"]
+ENTRYPOINT ["python3", "-m", "fritzexporter"]

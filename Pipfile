@@ -6,8 +6,16 @@ name = "pypi"
 [packages]
 prometheus-client = ">=0.6.0"
 fritzconnection = ">=1.0.0"
+pyyaml = "*"
 
 [dev-packages]
+pytest = "*"
+pytest-mock = "*"
+flake8 = "*"
 
 [requires]
 python_version = "3.9"
+
+[scripts]
+test = "python -m pytest ."
+lint = "flake8 ."

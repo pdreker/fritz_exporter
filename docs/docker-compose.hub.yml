@@ -1,0 +1,13 @@
+# Example file for running tzhe exporter from the published image at hub.docker.com
+version: "3.8"
+services:
+  fritz-exporter:
+    image: pdreker/fritz_exporter:latest
+    container_name: fritz-exporter
+    restart: always
+    environment:
+      FRITZ_HOSTNAME: 'fritz.box'
+      FRITZ_USERNAME: 'prometheus'
+      FRITZ_PASSWORD: 'prompassword'
+    ports:
+      - "9787:9787"
