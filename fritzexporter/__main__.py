@@ -21,7 +21,11 @@ from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
 from fritzexporter.fritzdevice import FritzCollector, FritzDevice
-from fritzexporter.exceptions import ConfigError, ConfigFileUnreadableError, DeviceNamesNotUniqueWarning
+from fritzexporter.exceptions import (
+    ConfigError,
+    ConfigFileUnreadableError,
+    DeviceNamesNotUniqueWarning)
+
 from .config import get_config, check_config
 
 ch = logging.StreamHandler()
@@ -35,10 +39,12 @@ logger.addHandler(ch)
 def main():
     fritzcollector = FritzCollector()
 
-    parser = argparse.ArgumentParser(description='Fritz Exporter for Prometheus using the TR-064 API')
+    parser = argparse.ArgumentParser(
+        description='Fritz Exporter for Prometheus using the TR-064 API')
     parser.add_argument('--config', type=str, help='Path to config file')
     levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
-    parser.add_argument('--log-level', default='INFO', choices=levels, help='Set log-level (default: INFO)')
+    parser.add_argument(
+        '--log-level', default='INFO', choices=levels, help='Set log-level (default: INFO)')
     args = parser.parse_args()
 
     if args.log_level:
@@ -62,7 +68,8 @@ def main():
 
     for dev in config['devices']:
         logger.info(f'registering {dev["hostname"]} to collector')
-        fritzcollector.register(FritzDevice(dev['hostname'], dev['username'], dev['password'], dev['name']))
+        fritzcollector.register(
+            FritzDevice(dev['hostname'], dev['username'], dev['password'], dev['name']))
 
     REGISTRY.register(fritzcollector)
 

@@ -19,7 +19,8 @@ def get_config(config_file_path):
         logger.info(f'Read configuration from {config_file_path}')
     else:
         if all(required in os.environ for required in ['FRITZ_USERNAME', 'FRITZ_PASSWORD']):
-            hostname = os.getenv('FRITZ_HOSTNAME') if 'FRITZ_HOSTNAME' in os.environ else 'fritz.box'
+            hostname = os.getenv('FRITZ_HOSTNAME') if (
+                'FRITZ_HOSTNAME' in os.environ) else 'fritz.box'
             name = os.getenv('FRITZ_NAME') if 'FRITZ_NAME' in os.environ else 'Fritz!Box'
             exporter_port = int(os.getenv('FRITZ_PORT')) if 'FRITZ_PORT' in os.environ else 9787
             username = os.getenv('FRITZ_USERNAME')
@@ -44,7 +45,8 @@ def get_config(config_file_path):
 
 
 def check_config(config):  # noqa: C901
-    # Sanity check config object: exporter_port must be 1 <= exporter_port <= 65535 and there must be at least one device with hostname, username and password.
+    # Sanity check config object: exporter_port must be 1 <= exporter_port <= 65535 and
+    # there must be at least one device with hostname, username and password.
     if config:
         if 'log_level' in config:
             if config['log_level'] not in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
@@ -59,13 +61,19 @@ def check_config(config):  # noqa: C901
             logger.critical('No devices found in config. Exiting.')
             raise ConfigError('No devices found in config. Exiting.')
         else:
-            if any(required not in config['devices'][0] for required in ['hostname', 'username', 'password']):
-                logger.critical('Device specified but either hostname, username or password are missing')
-                raise ConfigError('Device specified but either hostname, username or password are missing')
+            if any(
+                required not in config['devices'][0]
+                for required in ['hostname', 'username', 'password']
+            ):
+                logger.critical('Device specified but either hostname, '
+                                'username or password are missing')
+                raise ConfigError('Device specified but either hostname, '
+                                  'username or password are missing')
 
             for index, dev in enumerate(config['devices']):
                 if 'name' not in dev or dev['name'] == '':
-                    logger.info(f'No name specified for {dev["hostname"]} - setting name to fritz-{index}')
+                    logger.info(f'No name specified for {dev["hostname"]} '
+                                '- setting name to fritz-{index}')
                     dev['name'] = f'fritz-{index}'
 
             devicenames = [dev['name'] for dev in config['devices']]
