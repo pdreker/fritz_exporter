@@ -32,7 +32,9 @@ class FritzDevice():
         self.friendly_name = name
 
         if len(password) > 32:
-            logger.warning('Password is longer than 32 characters! Login may not succeed, please see README!')
+            logger.warning(
+                'Password is longer than 32 characters! '
+                'Login may not succeed, please see README!')
 
         try:
             self.fc = FritzConnection(address=host, user=user, password=password)
@@ -44,7 +46,9 @@ class FritzDevice():
         self.capabilities = FritzCapabilities(self)
 
         self.getDeviceInfo()
-        logger.info(f'Read capabilities for {host}, got serial {self.serial}, model name {self.model}')
+        logger.info(
+            f'Read capabilities for {host}, got serial '
+            f'{self.serial}, model name {self.model}')
         if self.capabilities.empty():
             logger.critical(f'Device {host} has no detected capabilities. Exiting. ')
             sys.exit(1)
@@ -57,7 +61,8 @@ class FritzDevice():
 
         except (FritzServiceError, FritzActionError):
             logger.exception(
-                f'Fritz Device {self.host} does not provide basic device info (Service: DeviceInfo1, Action: GetInfo).'
+                f'Fritz Device {self.host} does not provide basic device '
+                'info (Service: DeviceInfo1, Action: GetInfo).'
                 'Serial number and model name will be unavailable.', exc_info=True
             )
 
