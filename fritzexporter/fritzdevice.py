@@ -20,7 +20,7 @@ from fritzconnection import FritzConnection
 from fritzconnection.core.exceptions import FritzActionError, FritzServiceError
 from requests.exceptions import ConnectionError
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('fritzexporter.fritzdevice')
 logger.setLevel(logging.WARN)
 
 
@@ -38,13 +38,14 @@ class FritzDevice():
         try:
             self.fc = FritzConnection(address=host, user=user, password=password)
         except ConnectionError as e:
-            logger.critical(f'unable to connect to {host}: {str(e)}', exc_info=True)
+            logger.exception(f'unable to connect to {host}: {str(e)}', exc_info=True)
             sys.exit(1)
 
+        logger.info(f'Connection to {host} successful, reading capabilities')
         self.capabilities = FritzCapabilities(self)
 
         self.getDeviceInfo()
-
+        logger.info(f'Read capabilities for {host}, got serial {self.serial}, model name {self.model}')
         if self.capabilities.empty():
             logger.critical(f'Device {host} has no detected capabilities. Exiting. ')
             sys.exit(1)
@@ -56,8 +57,10 @@ class FritzDevice():
             self.model = device_info['NewModelName']
 
         except (FritzServiceError, FritzActionError):
-            logger.error(f'Fritz Device {self.host} does not provide basic device info (Service: DeviceInfo1, Action: GetInfo).'
-                         'Serial number and model name will be unavailable.', exc_info=True)
+            logger.exception(
+                f'Fritz Device {self.host} does not provide basic device info (Service: DeviceInfo1, Action: GetInfo).'
+                'Serial number and model name will be unavailable.', exc_info=True
+            )
 
 
 class FritzCollector(object):

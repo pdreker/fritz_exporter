@@ -4,8 +4,7 @@ import os
 
 from .exceptions import ConfigFileUnreadableError, ConfigError, DeviceNamesNotUniqueWarning
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('fritzexporter.config')
 logger.setLevel(logging.WARN)
 
 
@@ -16,8 +15,9 @@ def get_config(config_file_path):
             with open(config_file_path, 'r') as config_file:
                 config = yaml.safe_load(config_file)
         except IOError as e:
-            logger.critical('Config file specified but could not be read.')
+            logger.exceptions('Config file specified but could not be read.' + e)
             raise ConfigFileUnreadableError(e)
+        logger.info(f'Read configuration from {config_file_path}')
     else:
         if all(required in os.environ for required in ['FRITZ_USERNAME', 'FRITZ_PASSWORD']):
             hostname = os.getenv('FRITZ_HOSTNAME') if 'FRITZ_HOSTNAME' in os.environ else 'fritz.box'
@@ -36,6 +36,7 @@ def get_config(config_file_path):
                     }
                 ]
             }
+            logger.info('No configuration file specified: configuration read from environment')
         else:
             logger.critical('No config file specified and required env variables missing!')
             raise ConfigError('No config file specified and required env variables missing!')
@@ -61,6 +62,7 @@ def check_config(config):
 
             for index, dev in enumerate(config['devices']):
                 if 'name' not in dev or dev['name'] == '':
+                    logger.info(f'No name specified for {dev["hostname"]} - setting name to fritz-{index}')
                     dev['name'] = f'fritz-{index}'
 
             devicenames = [dev['name'] for dev in config['devices']]

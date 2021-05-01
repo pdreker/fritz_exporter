@@ -24,8 +24,11 @@ from fritzexporter.fritzdevice import FritzCollector, FritzDevice
 from fritzexporter.exceptions import ConfigError, ConfigFileUnreadableError, DeviceNamesNotUniqueWarning
 from .config import get_config, check_config
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+ch = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s %(levelname)8s %(name)s | %(message)s')
+ch.setFormatter(formatter)
+
+logger = logging.getLogger('fritzexporter')
 logger.setLevel(logging.WARN)
 
 
@@ -41,12 +44,13 @@ def main():
         config = get_config(args.config)
         check_config(config)
     except (ConfigError, ConfigFileUnreadableError) as e:
-        print(e)
+        logger.exception(e)
         sys.exit(1)
     except DeviceNamesNotUniqueWarning:
         pass
 
     for dev in config['devices']:
+        logger.info(f'registering {dev["hostname"]} to collector')
         fritzcollector.register(FritzDevice(dev['hostname'], dev['username'], dev['password'], dev['name']))
 
     REGISTRY.register(fritzcollector)
@@ -54,6 +58,7 @@ def main():
     logger.info(f'Starting listener at {config["exporter_port"]}')
     start_http_server(int(config["exporter_port"]))
 
+    logger.info('Entering async main loop - exporter is ready')
     loop = asyncio.get_event_loop()
     try:
         loop.run_forever()

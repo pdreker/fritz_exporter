@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from fritzconnection.core.exceptions import ActionError, ServiceError, FritzInternalError
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('fritzexporter.fritzcapability')
 logger.setLevel(logging.WARN)
 
 
@@ -20,6 +20,7 @@ class FritzCapability(ABC):
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
+        logger.debug(f'Capability subclass {cls.__name__} registered')
         FritzCapability.subclasses.append(cls)
 
     @classmethod
@@ -43,7 +44,7 @@ class FritzCapability(ABC):
                 try:
                     device.fc.call_action(svc, action)
                 except (ServiceError, ActionError, FritzInternalError) as e:
-                    logger.warn(f'disabling metrics at service {svc}, action {action} - fritzconnection.call_action returned {e}')
+                    logger.warn(f'disabling metrics at service {svc}, action {action} - fritzconnection.call_action returned {str(e)}')
                     self.present = False
 
     def getMetrics(self, devices, name):
