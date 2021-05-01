@@ -16,7 +16,7 @@ class FritzCapability(ABC):
         self.present = False
         self.requirements = []
         self.metrics = {}
-        FritzCapability.register(self)
+        FritzCapability.register()
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -48,6 +48,7 @@ class FritzCapability(ABC):
 
     def getMetrics(self, devices, name):
         for device in devices:
+            logger.debug(f'Fetching {name} metrics for {device.host}: {device.capabilities[name].present}')
             if device.capabilities[name].present:
                 yield from self._getMetricValues(device)
 
@@ -377,79 +378,94 @@ class WanCommonInterfaceDataPackets(FritzCapability):
         yield self.metrics['wanpackets']
 
 
-def wlanConsructorFactory(obj_ref, index):
-    obj_ref.requirements.append((f'WLANConfiguration{index}', 'GetInfo'))
-    obj_ref.requirements.append((f'WLANConfiguration{index}', 'GetTotalAssociations'))
-    obj_ref.requirements.append((f'WLANConfiguration{index}', 'GetPacketStatistics'))
-
-
-def wlanCreateMetricsFactory(obj_ref, name):
-    m_name = name.replace('.', '_')
-    obj_ref.metrics['wlanstatus'] = GaugeMetricFamily(f'fritz_wifi_{m_name}_status', f'Status of the {name} WiFi',
-                                                      labels=['serial', 'friendly_name', 'enabled', 'standard', 'ssid'])
-    obj_ref.metrics['wlanchannel'] = GaugeMetricFamily(f'fritz_wifi_{m_name}_channel', f'Channel of the {name} WiFi',
-                                                       labels=['serial', 'friendly_name', 'enabled', 'standard', 'ssid'])
-    obj_ref.metrics['wlanassocs'] = GaugeMetricFamily(f'fritz_wifi_{m_name}_associations', f'Number of associations (devices) of the {name} WiFi',
-                                                      labels=['serial', 'friendly_name', 'enabled', 'standard', 'ssid'], unit='count')
-    obj_ref.metrics['wlanpackets'] = CounterMetricFamily(f'fritz_wifi_{m_name}_packets', f'Amount of packets of the {name} WiFi',
-                                                         labels=['serial', 'friendly_name', 'enabled', 'standard', 'ssid', 'direction'], unit='count')
-
-
-def wlanGetMetricsFactory(obj_ref, index, device):
-    wlan_result = device.fc.call_action(f'WLANConfiguration{index}', 'GetInfo')
-    wlan_status = 1 if wlan_result['NewStatus'] == "Up" else 0
-    wlan_enabled = '1' if wlan_result['NewEnable'] else '0'
-    obj_ref.metrics['wlanstatus'].add_metric([device.serial, device.friendly_name, wlan_enabled,
-                                             wlan_result['NewStandard'], wlan_result['NewSSID']], wlan_status)
-    obj_ref.metrics['wlanchannel'].add_metric([device.serial, device.friendly_name, wlan_enabled, wlan_result['NewStandard'],
-                                              wlan_result['NewSSID']], wlan_result['NewChannel'])
-    assoc_results = device.fc.call_action(f'WLANConfiguration{index}', 'GetTotalAssociations')
-    obj_ref.metrics['wlanassocs'].add_metric([device.serial, device.friendly_name, wlan_enabled, wlan_result['NewStandard'],
-                                             wlan_result['NewSSID']], assoc_results['NewTotalAssociations'])
-
-    packet_stats_result = device.fc.call_action(f'WLANConfiguration{index}', 'GetPacketStatistics')
-    obj_ref.metrics['wlanpackets'].add_metric([device.serial, device.friendly_name, wlan_enabled, wlan_result['NewStandard'], wlan_result['NewSSID'], 'rx'],
-                                              packet_stats_result['NewTotalPacketsReceived'])
-    obj_ref.metrics['wlanpackets'].add_metric([device.serial, device.friendly_name, wlan_enabled, wlan_result['NewStandard'], wlan_result['NewSSID'], 'tx'],
-                                              packet_stats_result['NewTotalPacketsSent'])
-
-    yield obj_ref.metrics['wlanstatus']
-    yield obj_ref.metrics['wlanchannel']
-    yield obj_ref.metrics['wlanassocs']
-    yield obj_ref.metrics['wlanpackets']
-
-
-class WlanConfigurationInfo2_4GHz(FritzCapability):
+class WlanConfigurationInfo(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        wlanConsructorFactory(self, 1)
+        self.wifi_type = ['2.4GHz', '5GHz', 'Guest', 'WLAN4']
+        self.wifi_present = [False, False, False, False]
+
+    def checkCapability(self, device):
+        for wlan in range(len(self.wifi_present)):
+            service = f'WLANConfiguration{wlan + 1}'
+            requirements = [(service, 'GetInfo'), (service, 'GetTotalAssociations'), (service, 'GetPacketStatistics')]
+            logger.debug(f'WLANCapability {type(self).__name__} checking {service} on {device.host}')
+            self.wifi_present[wlan] = all([
+                (service in device.fc.services) and
+                (action in device.fc.services[service].actions)
+                for (service, action) in requirements
+            ])
+            logger.debug(f'WLANCapability {type(self).__name__} in WLAN {wlan} set to {self.wifi_present[wlan]} on device {device.host}')
+            if self.wifi_present[wlan]:
+                for (svc, action) in requirements:
+                    try:
+                        device.fc.call_action(svc, action)
+                    except (ServiceError, ActionError, FritzInternalError) as e:
+                        logger.warn(f'disabling metrics at service {svc}, action {action} - fritzconnection.call_action returned {e}')
+                        self.wifi_present[wlan - 1] = False
+        self.present = any(self.wifi_present)
 
     def createMetrics(self):
-        wlanCreateMetricsFactory(self, '2.4GHz')
+        self.metrics['wlanstatus'] = GaugeMetricFamily('fritz_wifi_status', 'Status of WiFi',
+                                                       labels=['serial', 'friendly_name', 'enabled', 'standard', 'ssid', 'wifi_index', 'wifi_name'])
+        self.metrics['wlanchannel'] = GaugeMetricFamily('fritz_wifi_channel', 'Channel of WiFi',
+                                                        labels=['serial', 'friendly_name', 'enabled', 'standard', 'ssid', 'wifi_index', 'wifi_name'])
+        self.metrics['wlanassocs'] = GaugeMetricFamily('fritz_wifi_associations', 'Number of associations (devices) in WiFi',
+                                                       labels=['serial', 'friendly_name', 'enabled', 'standard', 'ssid',
+                                                               'wifi_index', 'wifi_name'], unit='count')
+        self.metrics['wlanpackets'] = CounterMetricFamily('fritz_wifi_packets', 'Amount of packets in WiFi',
+                                                          labels=['serial', 'friendly_name', 'enabled', 'standard',
+                                                                  'ssid', 'direction', 'wifi_index', 'wifi_name'], unit='count')
 
     def _getMetricValues(self, device):
-        yield from wlanGetMetricsFactory(self, 1, device)
+        logger.debug(f'WLANConfigurationInfo._getMetricValues called: {device.host} - {self.__class__.__name__}')
+        for index, wlan in enumerate(device.capabilities[self.__class__.__name__].wifi_present):
+            logger.debug(f'WLANConfigurationInfo._getMetricValues checking WLAN {index} (enabled: {wlan}) on {device.host}')
+            if wlan:
+                logger.debug(f'WLANCapability._getMetrics fetching metrics for {device.host}: {index}')
+                wlan_result = device.fc.call_action(f'WLANConfiguration{index+1}', 'GetInfo')
+                wlan_status = 1 if wlan_result['NewStatus'] == "Up" else 0
+                wlan_enabled = '1' if wlan_result['NewEnable'] else '0'
+                self.metrics['wlanstatus'].add_metric(
+                    [
+                        device.serial, device.friendly_name, wlan_enabled, wlan_result['NewStandard'], wlan_result['NewSSID'],
+                        str(index + 1), self.wifi_type[index]
+                    ],
+                    wlan_status
+                )
+                self.metrics['wlanchannel'].add_metric(
+                    [
+                        device.serial, device.friendly_name, wlan_enabled, wlan_result['NewStandard'],
+                        wlan_result['NewSSID'], str(index + 1), self.wifi_type[index]
+                    ],
+                    wlan_result['NewChannel']
+                )
 
+                assoc_results = device.fc.call_action(f'WLANConfiguration{index+1}', 'GetTotalAssociations')
+                self.metrics['wlanassocs'].add_metric(
+                    [
+                        device.serial, device.friendly_name, wlan_enabled, wlan_result['NewStandard'],
+                        wlan_result['NewSSID'], str(index + 1), self.wifi_type[index]
+                    ],
+                    assoc_results['NewTotalAssociations']
+                )
 
-class WlanConfigurationInfo5GHz(FritzCapability):
-    def __init__(self) -> None:
-        super().__init__()
-        wlanConsructorFactory(self, 2)
+                packet_stats_result = device.fc.call_action(f'WLANConfiguration{index+1}', 'GetPacketStatistics')
+                self.metrics['wlanpackets'].add_metric(
+                    [
+                        device.serial, device.friendly_name, wlan_enabled, wlan_result['NewStandard'],
+                        wlan_result['NewSSID'], 'rx', str(index + 1), self.wifi_type[index]
+                    ],
+                    packet_stats_result['NewTotalPacketsReceived']
+                )
+                self.metrics['wlanpackets'].add_metric(
+                    [
+                        device.serial, device.friendly_name, wlan_enabled, wlan_result['NewStandard'],
+                        wlan_result['NewSSID'], 'tx', str(index + 1), self.wifi_type[index]
+                    ],
+                    packet_stats_result['NewTotalPacketsSent']
+                )
 
-    def createMetrics(self):
-        wlanCreateMetricsFactory(self, '5GHz')
-
-    def _getMetricValues(self, device):
-        yield from wlanGetMetricsFactory(self, 2, device)
-
-
-class WlanConfigurationInfoGuest(FritzCapability):
-    def __init__(self) -> None:
-        super().__init__()
-        wlanConsructorFactory(self, 3)
-
-    def createMetrics(self):
-        wlanCreateMetricsFactory(self, 'guest')
-
-    def _getMetricValues(self, device):
-        yield from wlanGetMetricsFactory(self, 3, device)
+        yield self.metrics['wlanstatus']
+        yield self.metrics['wlanchannel']
+        yield self.metrics['wlanassocs']
+        yield self.metrics['wlanpackets']

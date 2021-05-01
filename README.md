@@ -28,7 +28,7 @@ If there is any information missing or not displayed on your specific device, pl
 * It seems like Fritz!OS does not internally count the packets for the Guest WiFi. So even though those counters are there they are always 0. This seems to be a problem with Fritz!OS and not the exporter. The counters are delivered nontheless, just in case this gets fixed by AVM.
 * If you receive `Fatal Python error: init_interp_main: can't initialize time` when running the container you may have to update libseccomp on your Docker host. This issue mainly happens on Raspberry Pi and is triggered by a version of libseccomp2 which is too old. See <https://askubuntu.com/questions/1263284/apt-update-throws-signature-error-in-ubuntu-20-04-container-on-arm> (Method 2) and <https://github.com/pdreker/fritzbox_exporter/issues/38>.
 * On some boxes LAN Packet counters are stuck at 0 even though the box reports the stats as available.
-* The Fritz!OS does not allow passwords longer than 32 characters (as of 07.22). If you try to insert a longer password, the admin ui will discard the 33rd character and all following. The UI will also cut your inserted password down to 32 characters. So you will be able to login with the long password. However, the exporter does not alter your password and requests will result in a 401 Unauthorized. So please be aware and choose a suitable password.
+* Fritz!OS does not allow passwords longer than 32 characters (as of 07.25). If you try to use a longer password, the admin ui will discard all characters after the 32nd. The UI will also cut your inserted password down to 32 characters. So you will be able to login in the UI with the long password. The exporter however does not alter your password and requests will result in a 401 Unauthorized. So please be aware of this limit and choose a suitable password.
 
 ## Grafana Dashboard
 
@@ -40,7 +40,7 @@ There is a simple Grafana dashboard avaliable at <https://grafana.com/grafana/da
 
 #### Label changes
 
-Version 2.0.0 changes the `direction` labels of some metrics to consistently use `tx` (transmitted, upstream) and `rx` (received, downstream). Before this change the labels were `up` and `down` respectively.
+Version 2.0.0 changes the `direction` labels of some metrics to consistently use `tx` (transmitted, upstream) and `rx` (received, downstream). Before this change the labels were `up` and `down` respectively, while other metrics used `tx`and `rx`.
 
 Affected metrics:
 
@@ -50,6 +50,10 @@ Affected metrics:
 #### Config changes
 
 Multi device configuration was dropped from the environment configuration. The `FRITZ_EXPORTER_CONFIG` environment variable was removed completely. When using environment configuration this exporter now only supports a single device. For multi device support please use the new config file option.
+
+#### WiFi metrics changes
+
+All WiFi metrics have been merged. So e.g. fritz_wifi_2_4GHz_* is changed to fritz_wifi_* and two labels (wifi_index and wifi_name) are added to the metrics.
 
 ### v1.0.0
 
