@@ -5,7 +5,6 @@ from fritzconnection.core.exceptions import ActionError, ServiceError, FritzInte
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 logger = logging.getLogger('fritzexporter.fritzcapability')
-logger.setLevel(logging.WARN)
 
 
 class FritzCapability(ABC):

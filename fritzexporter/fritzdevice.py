@@ -21,7 +21,6 @@ from fritzconnection.core.exceptions import FritzActionError, FritzServiceError
 from requests.exceptions import ConnectionError
 
 logger = logging.getLogger('fritzexporter.fritzdevice')
-logger.setLevel(logging.WARN)
 
 
 class FritzDevice():

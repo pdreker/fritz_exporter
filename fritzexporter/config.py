@@ -5,7 +5,6 @@ import os
 from .exceptions import ConfigFileUnreadableError, ConfigError, DeviceNamesNotUniqueWarning
 
 logger = logging.getLogger('fritzexporter.config')
-logger.setLevel(logging.WARN)
 
 
 def get_config(config_file_path):
@@ -44,9 +43,13 @@ def get_config(config_file_path):
     return config
 
 
-def check_config(config):
+def check_config(config):  # noqa: C901
     # Sanity check config object: exporter_port must be 1 <= exporter_port <= 65535 and there must be at least one device with hostname, username and password.
     if config:
+        if 'log_level' in config:
+            if config['log_level'] not in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+                logger.critical('log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL')
+                raise ConfigError('log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL')
         if 'exporter_port' not in config:
             config['exporter_port'] = '9787'
         elif int(config['exporter_port']) < 1 or int(config['exporter_port']) > 65535:

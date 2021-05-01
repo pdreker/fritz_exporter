@@ -29,7 +29,7 @@ formatter = logging.Formatter('%(asctime)s %(levelname)8s %(name)s | %(message)s
 ch.setFormatter(formatter)
 
 logger = logging.getLogger('fritzexporter')
-logger.setLevel(logging.WARN)
+logger.addHandler(ch)
 
 
 def main():
@@ -37,8 +37,12 @@ def main():
 
     parser = argparse.ArgumentParser(description='Fritz Exporter for Prometheus using the TR-064 API')
     parser.add_argument('--config', type=str, help='Path to config file')
-
+    levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+    parser.add_argument('--log-level', default='INFO', choices=levels, help='Set log-level (default: INFO)')
     args = parser.parse_args()
+
+    if args.log_level:
+        log_level = getattr(logging, args.log_level)
 
     try:
         config = get_config(args.config)
@@ -48,6 +52,13 @@ def main():
         sys.exit(1)
     except DeviceNamesNotUniqueWarning:
         pass
+
+    if 'log_level' in config:
+        print('LOG LEVEL READ FROM CONFIG')
+        log_level = getattr(logging, config['log_level'])
+        loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+        for log in loggers:
+            log.setLevel(log_level)
 
     for dev in config['devices']:
         logger.info(f'registering {dev["hostname"]} to collector')
