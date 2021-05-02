@@ -1,0 +1,1453 @@
+{
+      "description": "Demo Dashboard for stats from fritz_exporter (https://github.com/pdreker/fritzbox_exporter)",
+      "editable": true,
+      "graphTooltip": 0,
+      "panels": [
+         {
+            "collapse": true,
+            "collapsed": false,
+            "gridPos": {
+               "h": 8,
+               "w": 12,
+               "x": 0,
+               "y": 0
+            },
+            "id": 2,
+            "showTitle": true,
+            "title": "General",
+            "titleSize": "h6",
+            "type": "row"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "mappings": [
+                     {
+                        "text": "Offline",
+                        "type": 1,
+                        "value": "0"
+                     },
+                     {
+                        "text": "Online",
+                        "type": 1,
+                        "value": "1"
+                     }
+                  ],
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "red"
+                        },
+                        {
+                           "color": "green",
+                           "value": 0.10000000000000001
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 0
+            },
+            "id": 3,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "area",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_wan_phys_link_status{friendly_name=\"$device\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "DSL Link Status",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "mappings": [
+                     {
+                        "text": "Offline",
+                        "type": 1,
+                        "value": "0"
+                     },
+                     {
+                        "text": "Online",
+                        "type": 1,
+                        "value": "1"
+                     }
+                  ],
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "red"
+                        },
+                        {
+                           "color": "green",
+                           "value": 0.10000000000000001
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 2
+            },
+            "id": 4,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "area",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_dsl_status{friendly_name=\"$device\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "DSL Status",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "mappings": [
+                     {
+                        "text": "Offline",
+                        "type": 1,
+                        "value": "0"
+                     },
+                     {
+                        "text": "Online",
+                        "type": 1,
+                        "value": "1"
+                     }
+                  ],
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "red"
+                        },
+                        {
+                           "color": "green",
+                           "value": 0.10000000000000001
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 4
+            },
+            "id": 5,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "area",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_ppp_connection_state{friendly_name=\"$device\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "PPP Status",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "thresholds": {
+                     "mode": "absolute",
+                     "steps": [
+                        {
+                           "color": "green"
+                        }
+                     ]
+                  },
+                  "unit": "dtdurations"
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 3,
+               "x": 6
+            },
+            "id": 6,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_ppp_connection_uptime_seconds_total{friendly_name=\"$device\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "PPP Uptime",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "mappings": [
+                     {
+                        "text": "Disabled",
+                        "type": 1,
+                        "value": "0"
+                     },
+                     {
+                        "text": "Enabled",
+                        "type": 1,
+                        "value": "1"
+                     }
+                  ],
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "red"
+                        },
+                        {
+                           "color": "green",
+                           "value": 0.10000000000000001
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 9
+            },
+            "id": 7,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_dsl_status_enabled{friendly_name=\"$device\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "DSL Enabled",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "mappings": [
+                     {
+                        "text": "Offline",
+                        "type": 1,
+                        "value": "0"
+                     },
+                     {
+                        "text": "Online",
+                        "type": 1,
+                        "value": "1"
+                     }
+                  ],
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "red"
+                        },
+                        {
+                           "color": "green",
+                           "value": 0.10000000000000001
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 11
+            },
+            "id": 8,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_lan_status{friendly_name=\"$device\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "LAN Status",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "mappings": [
+                     {
+                        "text": "Disabled",
+                        "type": 1,
+                        "value": "0"
+                     },
+                     {
+                        "text": "Enabled",
+                        "type": 1,
+                        "value": "1"
+                     }
+                  ],
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "red"
+                        },
+                        {
+                           "color": "green",
+                           "value": 0.10000000000000001
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 13
+            },
+            "id": 9,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_lan_status_enabled{friendly_name=~\"$device\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "LAN Enabled",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "mappings": [
+                     {
+                        "text": "No",
+                        "type": 1,
+                        "value": "0"
+                     },
+                     {
+                        "text": "Yes",
+                        "type": 1,
+                        "value": "1"
+                     }
+                  ],
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "green"
+                        },
+                        {
+                           "color": "red",
+                           "value": 0.10000000000000001
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 15
+            },
+            "id": 10,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_update_available{friendly_name=\"$device\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "Update available",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "gridPos": {
+               "h": 5,
+               "w": 3,
+               "x": 17
+            },
+            "id": 11,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "area",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_known_devices_count{friendly_name=\"$device\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "Known Devices",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "thresholds": {
+                     "mode": "absolute",
+                     "steps": [
+                        {
+                           "color": "green"
+                        }
+                     ]
+                  },
+                  "unit": "dtdurations"
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 4,
+               "x": 20
+            },
+            "id": 12,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "min(fritz_uptime_seconds_total{friendly_name=\"$device\"}) without(softwareversion)",
+                  "format": "time_series"
+               }
+            ],
+            "title": "Uptime",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "collapse": true,
+            "collapsed": false,
+            "gridPos": {
+               "h": 8,
+               "w": 12,
+               "x": 0,
+               "y": 6
+            },
+            "id": 13,
+            "showTitle": true,
+            "title": "LAN",
+            "titleSize": "h6",
+            "type": "row"
+         },
+         {
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "min": 0,
+                  "thresholds": {
+                     "mode": "absolute"
+                  },
+                  "unit": "binBps"
+               }
+            },
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+               "h": 8,
+               "w": 12,
+               "x": 0,
+               "y": 7
+            },
+            "hiddenSeries": false,
+            "id": 14,
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "percentage": false,
+            "points": false,
+            "renderer": "flot",
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "irate(fritz_lan_data_bytes_total{friendly_name=\"$device\"}[10m])",
+                  "format": "time_series",
+                  "legendFormat": "{{ direction }}"
+               }
+            ],
+            "title": "LAN bytes/s",
+            "tooltip": {
+               "value_type": "individual"
+            },
+            "transparent": false,
+            "type": "graph"
+         },
+         {
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "min": 0,
+                  "thresholds": {
+                     "mode": "absolute"
+                  }
+               }
+            },
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+               "h": 8,
+               "w": 12,
+               "x": 12,
+               "y": 7
+            },
+            "hiddenSeries": false,
+            "id": 15,
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "percentage": false,
+            "points": false,
+            "renderer": "flot",
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "irate(fritz_lan_packet_count_total{friendly_name=\"$device\"}[10m])",
+                  "format": "time_series",
+                  "legendFormat": "{{ direction }}"
+               }
+            ],
+            "title": "LAN packet/s",
+            "tooltip": {
+               "value_type": "individual"
+            },
+            "transparent": false,
+            "type": "graph"
+         },
+         {
+            "collapse": true,
+            "collapsed": false,
+            "gridPos": {
+               "h": 8,
+               "w": 12,
+               "x": 0,
+               "y": 15
+            },
+            "id": 16,
+            "showTitle": true,
+            "title": "Wifi",
+            "titleSize": "h6",
+            "type": "row"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "mappings": [
+                     {
+                        "text": "Disabled",
+                        "type": 1,
+                        "value": "0"
+                     },
+                     {
+                        "text": "Enabled",
+                        "type": 1,
+                        "value": "1"
+                     }
+                  ],
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "red"
+                        },
+                        {
+                           "color": "green",
+                           "value": 0.10000000000000001
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 0,
+               "y": 16
+            },
+            "id": 17,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "name"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_wifi_status{friendly_name=~\"$device\", wifi_name=\"$wifi\"}",
+                  "format": "time_series",
+                  "legendFormat": "{{ enabled }}"
+               }
+            ],
+            "title": "Wifi Enabled",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "green"
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 2,
+               "y": 16
+            },
+            "id": 18,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "name"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_wifi_status{friendly_name=~\"$device\", wifi_name=\"$wifi\"}",
+                  "format": "time_series",
+                  "legendFormat": "{{ ssid }}"
+               }
+            ],
+            "title": "SSID",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "green"
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 4,
+               "y": 16
+            },
+            "id": 19,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_wifi_channel{friendly_name=~\"$device\", wifi_name=\"$wifi\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "Channel",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "mappings": [
+                     {
+                        "text": "Off",
+                        "type": 1,
+                        "value": "0"
+                     },
+                     {
+                        "text": "On",
+                        "type": 1,
+                        "value": "1"
+                     }
+                  ],
+                  "thresholds": {
+                     "steps": [
+                        {
+                           "color": "red"
+                        },
+                        {
+                           "color": "green",
+                           "value": 0.10000000000000001
+                        }
+                     ]
+                  }
+               }
+            },
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 0,
+               "y": 21
+            },
+            "id": 20,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_wifi_status{friendly_name=~\"$device\", wifi_name=\"$wifi\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "Status",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 2,
+               "y": 21
+            },
+            "id": 21,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "area",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_wifi_associations_count{friendly_name=~\"$device\", wifi_name=\"$wifi\"}",
+                  "format": "time_series"
+               }
+            ],
+            "title": "Associations",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "gridPos": {
+               "h": 5,
+               "w": 2,
+               "x": 4,
+               "y": 21
+            },
+            "id": 22,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "name"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_wifi_status{friendly_name=~\"$device\", wifi_name=\"$wifi\"}",
+                  "format": "time_series",
+                  "legendFormat": "802.11{{ standard }}"
+               }
+            ],
+            "title": "Wifi standard",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "min": 0,
+                  "thresholds": {
+                     "mode": "absolute"
+                  }
+               }
+            },
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+               "h": 10,
+               "w": 9,
+               "x": 6,
+               "y": 16
+            },
+            "hiddenSeries": false,
+            "id": 23,
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "percentage": false,
+            "points": false,
+            "renderer": "flot",
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "irate(fritz_wifi_packets_count_total{friendly_name=\"$device\", wifi_name=\"$wifi\"}[10m])",
+                  "format": "time_series",
+                  "legendFormat": "{{ direction }}"
+               }
+            ],
+            "title": "Packets/s",
+            "tooltip": {
+               "value_type": "individual"
+            },
+            "transparent": false,
+            "type": "graph"
+         },
+         {
+            "bars": true,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "min": 0,
+                  "thresholds": {
+                     "mode": "absolute"
+                  }
+               }
+            },
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+               "h": 10,
+               "w": 9,
+               "x": 15,
+               "y": 16
+            },
+            "hiddenSeries": false,
+            "id": 24,
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "percentage": false,
+            "points": false,
+            "renderer": "flot",
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_wifi_associations_count{friendly_name=\"$device\", wifi_name=\"$wifi\"}",
+                  "format": "time_series",
+                  "legendFormat": "associations"
+               }
+            ],
+            "title": "Associations",
+            "tooltip": {
+               "value_type": "individual"
+            },
+            "transparent": false,
+            "type": "graph"
+         },
+         {
+            "collapse": true,
+            "collapsed": false,
+            "gridPos": {
+               "h": 8,
+               "w": 12,
+               "x": 0,
+               "y": 26
+            },
+            "id": 25,
+            "showTitle": true,
+            "title": "WAN",
+            "titleSize": "h6",
+            "type": "row"
+         },
+         {
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "min": 0,
+                  "thresholds": {
+                     "mode": "absolute"
+                  },
+                  "unit": "binBps"
+               }
+            },
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+               "h": 8,
+               "w": 12,
+               "x": 0,
+               "y": 27
+            },
+            "hiddenSeries": false,
+            "id": 26,
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "percentage": false,
+            "points": false,
+            "renderer": "flot",
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "irate(fritz_wan_data_bytes_total{friendly_name=\"$device\"}[10m])",
+                  "format": "time_series",
+                  "legendFormat": "{{ direction }}"
+               }
+            ],
+            "title": "WAN bytes/s",
+            "tooltip": {
+               "value_type": "individual"
+            },
+            "transparent": false,
+            "type": "graph"
+         },
+         {
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "min": 0,
+                  "thresholds": {
+                     "mode": "absolute"
+                  }
+               }
+            },
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+               "h": 8,
+               "w": 12,
+               "x": 12,
+               "y": 27
+            },
+            "hiddenSeries": false,
+            "id": 27,
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "percentage": false,
+            "points": false,
+            "renderer": "flot",
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "irate(fritz_wan_data_packets_count_total{friendly_name=\"$device\"}[10m])",
+                  "format": "time_series",
+                  "legendFormat": "{{ direction }}"
+               }
+            ],
+            "title": "WAN packet/s",
+            "tooltip": {
+               "value_type": "individual"
+            },
+            "transparent": false,
+            "type": "graph"
+         },
+         {
+            "collapse": true,
+            "collapsed": false,
+            "gridPos": {
+               "h": 8,
+               "w": 12,
+               "x": 0,
+               "y": 35
+            },
+            "id": 28,
+            "showTitle": true,
+            "title": "DSL Link",
+            "titleSize": "h6",
+            "type": "row"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "thresholds": {
+                     "mode": "absolute",
+                     "steps": [
+                        {
+                           "color": "green"
+                        }
+                     ]
+                  },
+                  "unit": "Kbits"
+               }
+            },
+            "gridPos": {
+               "h": 6,
+               "w": 8,
+               "x": 0,
+               "y": 36
+            },
+            "id": 29,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "area",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_dsl_datarate_kbps{type=\"curr\", friendly_name=\"$device\"}",
+                  "format": "time_series",
+                  "legendFormat": "{{ direction }}"
+               }
+            ],
+            "title": "Current linkrate",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "thresholds": {
+                     "mode": "absolute",
+                     "steps": [
+                        {
+                           "color": "green"
+                        }
+                     ]
+                  },
+                  "unit": "Kbits"
+               }
+            },
+            "gridPos": {
+               "h": 6,
+               "w": 8,
+               "x": 0,
+               "y": 42
+            },
+            "id": 30,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "none",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_dsl_datarate_kbps{type=\"max\", friendly_name=\"$device\"}",
+                  "format": "time_series",
+                  "legendFormat": "{{ direction }}"
+               }
+            ],
+            "title": "Max linkrate",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "thresholds": {
+                     "mode": "absolute",
+                     "steps": [
+                        {
+                           "color": "green"
+                        }
+                     ]
+                  },
+                  "unit": "dB"
+               }
+            },
+            "gridPos": {
+               "h": 6,
+               "w": 8,
+               "x": 8,
+               "y": 36
+            },
+            "id": 31,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "area",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_dsl_attenuation_dB{friendly_name=\"$device\"}",
+                  "format": "time_series",
+                  "legendFormat": "{{ direction }}"
+               }
+            ],
+            "title": "DSL attenuation",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "datasource": "$datasource",
+            "fieldConfig": {
+               "defaults": {
+                  "thresholds": {
+                     "mode": "absolute",
+                     "steps": [
+                        {
+                           "color": "green"
+                        }
+                     ]
+                  },
+                  "unit": "dB"
+               }
+            },
+            "gridPos": {
+               "h": 6,
+               "w": 8,
+               "x": 8,
+               "y": 42
+            },
+            "id": 32,
+            "options": {
+               "colorMode": "value",
+               "graphMode": "area",
+               "justifyMode": "auto",
+               "orientation": "auto",
+               "reduceOptions": {
+                  "calcs": [
+                     "lastNotNull"
+                  ],
+                  "values": false
+               },
+               "textMode": "auto"
+            },
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "fritz_dsl_noise_margin_dB{friendly_name=\"$device\"}",
+                  "format": "time_series",
+                  "legendFormat": "{{ direction }}"
+               }
+            ],
+            "title": "DSL noise margin",
+            "transparent": false,
+            "type": "stat"
+         },
+         {
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": "$datasource",
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+               "h": 12,
+               "w": 8,
+               "x": 16,
+               "y": 36
+            },
+            "hiddenSeries": false,
+            "id": 33,
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "percentage": false,
+            "points": false,
+            "renderer": "flot",
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+               {
+                  "datasource": "$datasource",
+                  "expr": "rate(fritz_dsl_crc_errors_count_total{friendly_name=\"$device\"}[10m])",
+                  "format": "time_series",
+                  "legendFormat": "FEC"
+               },
+               {
+                  "datasource": "$datasource",
+                  "expr": "rate(fritz_dsl_fec_errors_count_total{friendly_name=\"$device\"}[10m])",
+                  "format": "time_series",
+                  "legendFormat": "CRC"
+               }
+            ],
+            "title": "DSL Error Rates",
+            "tooltip": {
+               "value_type": "individual"
+            },
+            "transparent": false,
+            "type": "graph"
+         }
+      ],
+      "schemaVersion": 25,
+      "style": "dark",
+      "tags": [ ],
+      "templating": {
+         "list": [
+            {
+               "current": {
+                  "text": "Prometheus",
+                  "value": "Prometheus"
+               },
+               "hide": 0,
+               "label": null,
+               "name": "datasource",
+               "options": [ ],
+               "query": "prometheus",
+               "refresh": 1,
+               "regex": "",
+               "type": "datasource"
+            },
+            {
+               "hide": 0,
+               "label": "Device",
+               "name": "device",
+               "query": "label_values(fritz_update_available, friendly_name)",
+               "refresh": 2,
+               "type": "query"
+            },
+            {
+               "hide": 0,
+               "label": "WiFi Network",
+               "name": "wifi",
+               "query": "label_values(fritz_wifi_status, wifi_name)",
+               "refresh": 2,
+               "type": "query"
+            }
+         ]
+      },
+      "time": {
+         "from": "now-1h",
+         "to": "now"
+      },
+      "title": "Fritz!Exporter"
+   }
