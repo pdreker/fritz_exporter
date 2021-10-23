@@ -25,8 +25,12 @@ def get_config(config_file_path):
             exporter_port = int(os.getenv('FRITZ_PORT')) if 'FRITZ_PORT' in os.environ else 9787
             username = os.getenv('FRITZ_USERNAME')
             password = os.getenv('FRITZ_PASSWORD')
+            log_level = os.getenv('FRITZ_LOG_LEVEL','INFO')
+            check_log_level(log_level)
+
             config = {
                 'exporter_port': exporter_port,
+                'log_level': log_level,
                 'devices': [
                     {
                         'name': name,
@@ -43,15 +47,18 @@ def get_config(config_file_path):
 
     return config
 
+def check_log_level(log_level):
+    if log_level not in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+        logger.critical('log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL')
+        raise ConfigError('log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL')
+
 
 def check_config(config):  # noqa: C901
     # Sanity check config object: exporter_port must be 1 <= exporter_port <= 65535 and
     # there must be at least one device with hostname, username and password.
     if config:
         if 'log_level' in config:
-            if config['log_level'] not in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
-                logger.critical('log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL')
-                raise ConfigError('log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL')
+            check_log_level(config['log_level'])
         if 'exporter_port' not in config:
             config['exporter_port'] = '9787'
         elif int(config['exporter_port']) < 1 or int(config['exporter_port']) > 65535:

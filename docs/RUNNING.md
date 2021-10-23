@@ -20,6 +20,7 @@ If you only need a single device this is the easiest way to configure the export
 | FRITZ_USERNAME | Username to authenticate on the device | none |
 | FRITZ_PASSWORD | Password to use for authentication | none |
 | FRITZ_PORT   | Listening port for the exporter | 9787 |
+| FRITZ_LOG_LEVEL | Application log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` | INFO 
 
 When using the environment vars you can only specify a single device. If you need multiple devices please use the config file.
 
