@@ -1,4 +1,5 @@
 docs/docker-compose.secret.yml
+fritz-mixin/vendor/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
