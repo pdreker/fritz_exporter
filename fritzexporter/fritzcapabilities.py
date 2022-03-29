@@ -703,70 +703,133 @@ class WlanConfigurationInfo(FritzCapability):
         yield self.metrics["wlanpackets"]
 
 
-"""
 class HostInfo(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(('Hosts1', 'GetHostNumberOfEntries'))
-        self.requirements.append(('Hosts1', 'GetGenericHostEntry'))
-        self.requirements.append(('Hosts1', 'X_AVM-DE_GetSpecificHostEntryByIP'))
+        self.requirements.append(("Hosts1", "GetHostNumberOfEntries"))
+        self.requirements.append(("Hosts1", "GetGenericHostEntry"))
+        self.requirements.append(("Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP"))
+
+    def checkCapability(self, device):
+        self.present = all(
+            [
+                (service in device.fc.services) and (action in device.fc.services[service].actions)
+                for (service, action) in self.requirements
+            ]
+        )
+        logger.debug(
+            f"Capability {type(self).__name__} set to {self.present} on device {device.host}"
+        )
+
+        # It seems some boxes report service/actions they don't actually support.
+        # So try calling the requirements, and if it throws "InvalidService",
+        # "InvalidAction" or "FritzInternalError" disable this again.
+        if self.present:
+            for (svc, action) in self.requirements:
+                try:
+                    if action == "GetHostNumberOfEntries":
+                        device.fc.call_action(svc, action)
+                    elif action == "GetGenericHostEntry":
+                        device.fc.call_action(svc, action, arguments={"NewIndex": 1})
+                    elif action == "X_AVM-DE_GetSpecificHostEntryByIP":
+                        pass
+                except (ServiceError, ActionError, FritzInternalError) as e:
+                    logger.warn(
+                        f"disabling metrics at service {svc}, action {action} - "
+                        f"fritzconnection.call_action returned {str(e)}"
+                    )
+                    self.present = False
 
     def createMetrics(self):
-        self.metrics['hostactive'] = GaugeMetricFamily(
-            'fritz_host_active', 'Indicates that the device is curently active',
+        self.metrics["hostactive"] = GaugeMetricFamily(
+            "fritz_host_active",
+            "Indicates that the device is curently active",
             labels=[
-                'serial', 'ip_address', 'mac_address', 'hostname', 'interface', 'port', 'model'
-            ])
-        self.metrics['hostspeed'] = GaugeMetricFamily(
-            'fritz_host_speed', 'Connection speed of the device',
+                "serial",
+                "ip_address",
+                "mac_address",
+                "hostname",
+                "interface",
+                "port",
+                "model",
+            ],
+        )
+        self.metrics["hostspeed"] = GaugeMetricFamily(
+            "fritz_host_speed",
+            "Connection speed of the device",
             labels=[
-                'serial', 'ip_address', 'mac_address', 'hostname', 'interface', 'port', 'model'
-            ])
+                "serial",
+                "ip_address",
+                "mac_address",
+                "hostname",
+                "interface",
+                "port",
+                "model",
+            ],
+        )
 
     def _getMetricValues(self, device):
-        num_hosts_result = device.fc.call_action('Hosts1', 'GetHostNumberOfEntries')
+        num_hosts_result = device.fc.call_action("Hosts1", "GetHostNumberOfEntries")
         logger.debug(
-            f'Fetching host information for device serial {device.serial} '
-            f'(hosts found: {num_hosts_result["NewHostNumberOfEntries"]}')
-        for host_index in range(num_hosts_result['NewHostNumberOfEntries']):
-            logger.debug(f'Fetching generic host information for host number {host_index}')
+            f"Fetching host information for device serial {device.serial} "
+            f'(hosts found: {num_hosts_result["NewHostNumberOfEntries"]}'
+        )
+        for host_index in range(num_hosts_result["NewHostNumberOfEntries"]):
+            logger.debug(f"Fetching generic host information for host number {host_index}")
             host_result = device.fc.call_action(
-                'Hosts1', 'GetGenericHostEntry', NewIndex=host_index)
-            host_ip = host_result['NewIPAddress']
-            host_mac = host_result['NewMACAddress']
-            host_name = host_result['NewHostName']
+                "Hosts1", "GetGenericHostEntry", NewIndex=host_index
+            )
+            host_ip = host_result["NewIPAddress"]
+            host_mac = host_result["NewMACAddress"]
+            host_name = host_result["NewHostName"]
             if host_ip != "":
                 logger.debug(
-                    f'Fetching extended AVM host information for '
-                    f'host number {host_index} by IP {host_ip}')
+                    "Fetching extended AVM host information for "
+                    f"host number {host_index} by IP {host_ip}"
+                )
                 avm_host_result = device.fc.call_action(
-                    'Hosts1', 'X_AVM-DE_GetSpecificHostEntryByIP', NewIPAddress=host_ip)
-                host_interface = avm_host_result['NewInterfaceType']
-                host_port = str(avm_host_result['NewX_AVM-DE_Port'])
-                host_model = avm_host_result['NewX_AVM-DE_Model']
-                host_speed = avm_host_result['NewX_AVM-DE_Speed']
+                    "Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP", NewIPAddress=host_ip
+                )
+                host_interface = avm_host_result["NewInterfaceType"]
+                host_port = str(avm_host_result["NewX_AVM-DE_Port"])
+                host_model = avm_host_result["NewX_AVM-DE_Model"]
+                host_speed = avm_host_result["NewX_AVM-DE_Speed"]
             else:
                 logger.debug(
-                    'Unable to fetch extended AVM host information for host '
-                    f'number {host_index}: no IP found')
+                    "Unable to fetch extended AVM host information for host "
+                    f"number {host_index}: no IP found"
+                )
                 host_interface = "n/a"
                 host_port = "n/a"
                 host_model = "n/a"
                 host_speed = 0
-            host_active = 1.0 if host_result['NewActive'] else 0.0
-            self.metrics['hostactive'].add_metric(
+            host_active = 1.0 if host_result["NewActive"] else 0.0
+            self.metrics["hostactive"].add_metric(
                 [
-                    device.serial, host_ip, host_mac, host_name,
-                    host_interface, host_port, host_model
-                ], host_active)
-            self.metrics['hostspeed'].add_metric(
+                    device.serial,
+                    host_ip,
+                    host_mac,
+                    host_name,
+                    host_interface,
+                    host_port,
+                    host_model,
+                ],
+                host_active,
+            )
+            self.metrics["hostspeed"].add_metric(
                 [
-                    device.serial, host_ip, host_mac, host_name,
-                    host_interface, host_port, host_model
-                ], host_speed)
-            yield self.metrics['hostactive']
-            yield self.metrics['hostspeed']
-"""
+                    device.serial,
+                    host_ip,
+                    host_mac,
+                    host_name,
+                    host_interface,
+                    host_port,
+                    host_model,
+                ],
+                host_speed,
+            )
+            yield self.metrics["hostactive"]
+            yield self.metrics["hostspeed"]
 
 
 # Copyright 2019-2022 Patrick Dreker <patrick@dreker.de>
