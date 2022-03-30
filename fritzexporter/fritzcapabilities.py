@@ -75,9 +75,11 @@ class FritzCapability(ABC):
 
 
 class FritzCapabilities:
-    def __init__(self, device: Optional[FritzDevice] = None) -> None:
+    def __init__(self, device=None, host_info=False) -> None:
         self.capabilities = {
-            subclass.__name__: subclass() for subclass in FritzCapability.subclasses
+            subclass.__name__: subclass()
+            for subclass in FritzCapability.subclasses
+            if (host_info or subclass.__name__ != "HostInfo")
         }
         if device:
             self.checkPresent(device)

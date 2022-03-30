@@ -58,7 +58,9 @@ def main():
     for dev in config["devices"]:
         logger.info(f'registering {dev["hostname"]} to collector')
         fritzcollector.register(
-            FritzDevice(dev["hostname"], dev["username"], dev["password"], dev["name"])
+            FritzDevice(
+                dev["hostname"], dev["username"], dev["password"], dev["name"], dev["host_info"]
+            )
         )
 
     REGISTRY.register(fritzcollector)

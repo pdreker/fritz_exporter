@@ -10,7 +10,9 @@ logger = logging.getLogger("fritzexporter.fritzdevice")
 
 
 class FritzDevice:
-    def __init__(self, host: str, user: str, password: str, name: str) -> None:
+    def __init__(
+        self, host: str, user: str, password: str, name: str, host_info: bool = False
+    ) -> None:
         self.host: str = host
         self.serial: str = "n/a"
         self.model: str = "n/a"
@@ -28,12 +30,17 @@ class FritzDevice:
             sys.exit(1)
 
         logger.info(f"Connection to {host} successful, reading capabilities")
-        self.capabilities: FritzCapabilities = FritzCapabilities(self)
+        self.capabilities = FritzCapabilities(self, host_info)
 
         self.getDeviceInfo()
         logger.info(
             f"Read capabilities for {host}, got serial " f"{self.serial}, model name {self.model}"
         )
+        if host_info:
+            logger.warn(
+                f"HostInfo Capability enabled on device {host}. "
+                "This may consume a lot of resources!"
+            )
         if self.capabilities.empty():
             logger.critical(f"Device {host} has no detected capabilities. Exiting. ")
             sys.exit(1)
@@ -56,7 +63,7 @@ class FritzDevice:
 class FritzCollector:
     def __init__(self):
         self.devices: list[FritzDevice] = []
-        self.capabilities: FritzCapabilities = FritzCapabilities()
+        self.capabilities: FritzCapabilities = FritzCapabilities(host_info=True)
 
     def register(self, fritzdev):
         self.devices.append(fritzdev)
