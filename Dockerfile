@@ -1,6 +1,6 @@
 # build will install pipenv and generate a requirements.txt
 # This will take care of reproducible builds based on Pipfile.lock
-FROM python:3.9-alpine AS build
+FROM python:3.10-alpine AS build
 
 WORKDIR /app
 ENV PIP_NO_CACHE_DIR="true"
