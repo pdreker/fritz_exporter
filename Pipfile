@@ -13,6 +13,7 @@ pytest = "*"
 pytest-mock = "*"
 flake8 = "*"
 mypy = "*"
+black = "*"
 
 [requires]
 python_version = "3"
@@ -20,3 +21,6 @@ python_version = "3"
 [scripts]
 test = "python -m pytest ."
 lint = "flake8 ."
+
+[pipenv]
+allow_prereleases = true
