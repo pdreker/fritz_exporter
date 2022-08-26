@@ -7,14 +7,14 @@ from .exceptions import ConfigFileUnreadableError, ConfigError, DeviceNamesNotUn
 logger = logging.getLogger("fritzexporter.config")
 
 
-def get_config(config_file_path):
+def get_config(config_file_path: str):
     config = None
     if config_file_path:
         try:
             with open(config_file_path, "r") as config_file:
                 config = yaml.safe_load(config_file)
         except IOError as e:
-            logger.exceptions("Config file specified but could not be read." + e)
+            logger.exception("Config file specified but could not be read." + str(e))
             raise ConfigFileUnreadableError(e)
         logger.info(f"Read configuration from {config_file_path}")
     else:
@@ -23,7 +23,7 @@ def get_config(config_file_path):
                 os.getenv("FRITZ_HOSTNAME") if ("FRITZ_HOSTNAME" in os.environ) else "fritz.box"
             )
             name = os.getenv("FRITZ_NAME") if "FRITZ_NAME" in os.environ else "Fritz!Box"
-            exporter_port = int(os.getenv("FRITZ_PORT")) if "FRITZ_PORT" in os.environ else 9787
+            exporter_port = int(os.getenv("FRITZ_PORT", "")) if "FRITZ_PORT" in os.environ else 9787
             username = os.getenv("FRITZ_USERNAME")
             password = os.getenv("FRITZ_PASSWORD")
             log_level = os.getenv("FRITZ_LOG_LEVEL", "INFO")
@@ -50,7 +50,7 @@ def check_log_level(log_level):
         raise ConfigError("log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL")
 
 
-def check_config(config):  # noqa: C901
+def check_config(config: dict):  # noqa: C901
     # Sanity check config object: exporter_port must be 1 <= exporter_port <= 65535 and
     # there must be at least one device with hostname, username and password.
     if config:
@@ -94,7 +94,7 @@ def check_config(config):  # noqa: C901
         raise ConfigError("No config found.")
 
 
-# Copyright 2019-2021 Patrick Dreker <patrick@dreker.de>
+# Copyright 2019-2022 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

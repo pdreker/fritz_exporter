@@ -1,20 +1,25 @@
+from __future__ import annotations
+
 import logging
 from abc import ABC, abstractmethod
+from typing import Optional, Type, Union
 
 from fritzconnection.core.exceptions import ActionError, ServiceError, FritzInternalError
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
+
+from fritzexporter.fritzdevice import FritzDevice
 
 logger = logging.getLogger("fritzexporter.fritzcapability")
 
 
 class FritzCapability(ABC):
-    capabilities = []
-    subclasses = []
+    capabilities: list[FritzCapability] = []
+    subclasses: list[Type[FritzCapability]] = []
 
     def __init__(self) -> None:
-        self.present = False
-        self.requirements = []
-        self.metrics = {}
+        self.present: bool = False
+        self.requirements: list[tuple[str, str]] = []
+        self.metrics: dict[str, Union[CounterMetricFamily, GaugeMetricFamily]] = {}
         FritzCapability.register()
 
     def __init_subclass__(cls, **kwargs):
@@ -26,7 +31,7 @@ class FritzCapability(ABC):
     def register(cls):
         FritzCapability.capabilities.append(cls)
 
-    def checkCapability(self, device):
+    def checkCapability(self, device: FritzDevice):
         self.present = all(
             [
                 (service in device.fc.services) and (action in device.fc.services[service].actions)
@@ -51,7 +56,7 @@ class FritzCapability(ABC):
                     )
                     self.present = False
 
-    def getMetrics(self, devices, name):
+    def getMetrics(self, devices: list[FritzDevice], name: str):
         for device in devices:
             logger.debug(
                 f"Fetching {name} metrics for {device.host}: {device.capabilities[name].present}"
@@ -60,16 +65,16 @@ class FritzCapability(ABC):
                 yield from self._getMetricValues(device)
 
     @abstractmethod
-    def createMetrics():
+    def createMetrics(self):
         pass
 
     @abstractmethod
-    def _getMetricValues(self, device):
+    def _getMetricValues(self, device: FritzDevice):
         pass
 
 
 class FritzCapabilities:
-    def __init__(self, device=None) -> None:
+    def __init__(self, device: Optional[FritzDevice] = None) -> None:
         self.capabilities = {
             subclass.__name__: subclass() for subclass in FritzCapability.subclasses
         }
@@ -88,7 +93,7 @@ class FritzCapabilities:
     def items(self):
         return self.capabilities.items()
 
-    def merge(self, other_caps):
+    def merge(self, other_caps: FritzCapabilities):
         for cap in self.capabilities:
             self.capabilities[cap].present = (
                 self.capabilities[cap].present or other_caps.capabilities[cap].present
@@ -97,7 +102,7 @@ class FritzCapabilities:
     def empty(self):
         return not any([cap.present for cap in list(self.capabilities.values())])
 
-    def checkPresent(self, device):
+    def checkPresent(self, device: FritzDevice):
         for c in self.capabilities:
             self.capabilities[c].checkCapability(device)
 
@@ -115,7 +120,7 @@ class DeviceInfo(FritzCapability):
             unit="seconds",
         )
 
-    def _getMetricValues(self, device):
+    def _getMetricValues(self, device: FritzDevice):
         info_result = device.fc.call_action("DeviceInfo:1", "GetInfo")
         self.metrics["uptime"].add_metric(
             [
@@ -764,7 +769,7 @@ class HostInfo(FritzCapability):
 """
 
 
-# Copyright 2019-2021 Patrick Dreker <patrick@dreker.de>
+# Copyright 2019-2022 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
