@@ -18,12 +18,6 @@ class FritzDevice:
 
         if len(password) > 32:
             logger.warning(
-                "Password is longer than 32 characters! "
-                "Login may not succeed, please see README!"
-            )
-
-        if len(password) > 32:
-            logger.warning(
                 "Password is longer than 32 characters! Login may not succeed, please see README!"
             )
 
