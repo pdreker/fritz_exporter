@@ -12,9 +12,10 @@ pyyaml = "*"
 pytest = "*"
 pytest-mock = "*"
 flake8 = "*"
+mypy = "*"
 
 [requires]
-python_version = "3.9"
+python_version = "3"
 
 [scripts]
 test = "python -m pytest ."
