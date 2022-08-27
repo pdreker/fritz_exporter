@@ -10,7 +10,7 @@ WORKDIR /app
 
 COPY Pipfile* /app/
 RUN pip --no-cache-dir install pipenv && \
-    pipenv sync -d && \
+    pipenv sync && \
     chown -R nobody /app
 
 COPY fritzexporter/ /app/fritzexporter
