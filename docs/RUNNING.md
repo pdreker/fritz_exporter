@@ -20,7 +20,10 @@ If you only need a single device this is the easiest way to configure the export
 | FRITZ_USERNAME | Username to authenticate on the device | none |
 | FRITZ_PASSWORD | Password to use for authentication | none |
 | FRITZ_PORT   | Listening port for the exporter | 9787 |
-| FRITZ_LOG_LEVEL | Application log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` | INFO 
+| FRITZ_LOG_LEVEL | Application log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` | INFO |
+| FRITZ_HOST_INFO | Enable extended information about all WiFi hosts | False |
+
+**WARNING** setting `FRITZ_HOST_INFO` to `true` will collect extended information about every device known your fritz device, which can take a long time. If you really want or need the extended stats please make sure, that your scraping interval and timeouts are set accordingly.
 
 When using the environment vars you can only specify a single device. If you need multiple devices please use the config file.
 
@@ -46,11 +49,14 @@ devices:
     hostname: fritz.box
     username: prometheus
     password: prometheus
+    host_info: True
   - name: Repeater Wohnzimmer # optional
     hostname: repeater-Wohnzimmer
     username: prometheus
     password: prometheus
 ```
+
+**WARNING** setting `host_info` to `true` will collect extended information about every device known your fritz device, which can take a long time. If you really want or need the extended stats pleade make sure, that your scraping interval and timeouts are set accordingly.
 
 ## plain Docker (docker run)
 
