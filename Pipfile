@@ -7,15 +7,23 @@ name = "pypi"
 prometheus-client = ">=0.6.0"
 fritzconnection = ">=1.0.0"
 pyyaml = "*"
+requests = "*"
 
 [dev-packages]
 pytest = "*"
 pytest-mock = "*"
 flake8 = "*"
+mypy = "*"
+black = "*"
+types-pyyaml = "*"
+types-requests = "*"
 
 [requires]
-python_version = "3.9"
+python_version = "3"
 
 [scripts]
 test = "python -m pytest ."
 lint = "flake8 ."
+
+[pipenv]
+allow_prereleases = true

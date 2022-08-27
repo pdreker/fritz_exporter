@@ -53,7 +53,7 @@ Multi device configuration was dropped from the environment configuration. The `
 
 #### WiFi metrics changes
 
-All WiFi metrics have been merged. So e.g. fritz_wifi_2_4GHz_* is changed to fritz_wifi_* and two labels (wifi_index and wifi_name) are added to the metrics.
+All WiFi metrics have been merged. So e.g. `fritz_wifi_2_4GHz_*` is changed to `fritz_wifi_*` and two labels (wifi_index and wifi_name) are added to the metrics.
 
 ### v1.0.0
 
@@ -88,7 +88,7 @@ Fritz! and AVM are registered trademarks of AVM GmbH. This project is not associ
 
 ## Copyright
 
-Copyright 2019-2021 Patrick Dreker <patrick@dreker.de>
+Copyright 2019-2022 Patrick Dreker <patrick@dreker.de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
