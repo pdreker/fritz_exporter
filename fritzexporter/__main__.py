@@ -67,7 +67,7 @@ def main():
     start_http_server(int(config["exporter_port"]))
 
     logger.info("Entering async main loop - exporter is ready")
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
     try:
         loop.run_forever()
     finally:

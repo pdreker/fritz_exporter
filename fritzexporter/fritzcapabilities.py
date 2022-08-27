@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Type, Union
+from typing import Optional, Type, Union, TYPE_CHECKING
 
 from fritzconnection.core.exceptions import ActionError, ServiceError, FritzInternalError
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
-from fritzexporter.fritzdevice import FritzDevice
+if TYPE_CHECKING:
+    from fritzexporter.fritzdevice import FritzDevice
 
 logger = logging.getLogger("fritzexporter.fritzcapability")
 
