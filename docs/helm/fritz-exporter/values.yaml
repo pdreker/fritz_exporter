@@ -20,7 +20,7 @@ config: {}
 replicaCount: 1
 
 image:
-  repository: pdreker/fritz-exporter
+  repository: pdreker/fritz_exporter
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
