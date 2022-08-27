@@ -17,6 +17,7 @@ class FritzDevice:
         self.serial: str = "n/a"
         self.model: str = "n/a"
         self.friendly_name: str = name
+        self.host_info: bool = host_info
 
         if len(password) > 32:
             logger.warning(

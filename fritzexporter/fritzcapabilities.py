@@ -77,9 +77,7 @@ class FritzCapability(ABC):
 class FritzCapabilities:
     def __init__(self, device: Optional[FritzDevice] = None, host_info=False) -> None:
         self.capabilities = {
-            subclass.__name__: subclass()
-            for subclass in FritzCapability.subclasses
-            if (host_info or subclass.__name__ != "HostInfo")
+            subclass.__name__: subclass() for subclass in FritzCapability.subclasses
         }
         if device:
             self.checkPresent(device)
@@ -714,7 +712,7 @@ class HostInfo(FritzCapability):
         self.requirements.append(("Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP"))
 
     def checkCapability(self, device):
-        self.present = all(
+        self.present = device.host_info and all(
             [
                 (service in device.fc.services) and (action in device.fc.services[service].actions)
                 for (service, action) in self.requirements
