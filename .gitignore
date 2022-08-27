@@ -149,3 +149,5 @@ cython_debug/
 
 # Local History for Visual Studio Code
 .history/
+docs/helm/fritz-exporter/values-orbital.yaml
+docs/helm/fritz-exporter/pullsecret.yaml

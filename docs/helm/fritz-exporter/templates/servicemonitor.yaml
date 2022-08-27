@@ -26,4 +26,8 @@ spec:
   namespaceSelector:
     matchNames:
       - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fritz-exporter
+      app.kubernetes.io/instance: fritz
 {{- end }}
