@@ -40,7 +40,7 @@ class FritzCapability(ABC):
             ]
         )
         logger.debug(
-            f"Capability {type(self).__name__} set to " "{self.present} on device {device.host}"
+            f"Capability {type(self).__name__} set to {self.present} on device {device.host}"
         )
 
         # It seems some boxes report service/actions they don't actually support.
@@ -541,7 +541,7 @@ class WlanConfigurationInfo(FritzCapability):
             )
             logger.debug(
                 f"WLANCapability {type(self).__name__} in WLAN {wlan} set "
-                "to {self.wifi_present[wlan]} on device {device.host}"
+                f"to {self.wifi_present[wlan]} on device {device.host}"
             )
             if self.wifi_present[wlan]:
                 for (svc, action) in requirements:
