@@ -10,7 +10,8 @@ WORKDIR /app
 
 COPY Pipfile* /app/
 RUN pip --no-cache-dir install pipenv && \
-    pipenv sync --system
+    pipenv sync --system && \
+    mkdir /etc/fritz
 
 COPY fritzexporter/ /app/fritzexporter
 

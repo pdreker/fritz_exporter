@@ -27,6 +27,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
+          workingDir: /app
           args:
             - "--config"
             - "/app/config.yaml"
@@ -50,7 +51,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: config
-              mountPath: "/app/"
+              mountPath: "/etc/fritz"
               readOnly: true
       volumes:
         - name: config
