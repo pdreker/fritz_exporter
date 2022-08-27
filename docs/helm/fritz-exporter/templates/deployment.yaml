@@ -30,7 +30,7 @@ spec:
           workingDir: /app
           args:
             - "--config"
-            - "/app/config.yaml"
+            - "/etc/fritz/config.yaml"
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -39,14 +39,6 @@ spec:
             - name: metrics
               containerPort: 9787
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:

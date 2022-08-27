@@ -14,6 +14,9 @@ spec:
       {{- with .Values.serviceMonitor.interval }}
       interval: {{ . }}
       {{- end }}
+      {{- with .Values.serviceMonitor.scrapeTimeout }}
+      scrapeTimeout: {{ . }}
+      {{- end }}
       path: /metrics
       {{- with .Values.serviceMonitor.relabelings }}
       relabelings:

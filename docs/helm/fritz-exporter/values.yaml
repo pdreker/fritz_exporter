@@ -33,6 +33,7 @@ serviceMonitor:
   enabled: true
   namespace: ""
   interval: 60
+  scrapeTimeout: 30s
   relabelings: ""
   metricRelabelings: ""
 
