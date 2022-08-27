@@ -8,10 +8,11 @@
             "name": "Python: Module",
             "type": "python",
             "request": "launch",
-            "module": "fritz_exporter",
-            "env": {
-                "FRITZ_EXPORTER_CONFIG": "fritz.box,someuser,somepassword"
-            }
+            "module": "fritzexporter",
+            "args": [
+                "--config",
+                "../fritz-exporter.yml"
+            ],
         }
     ]
 }

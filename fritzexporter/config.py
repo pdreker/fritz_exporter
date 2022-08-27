@@ -28,18 +28,29 @@ def get_config(config_file_path: str):
             password = os.getenv("FRITZ_PASSWORD")
             log_level = os.getenv("FRITZ_LOG_LEVEL", "INFO")
             check_log_level(log_level)
+            host_info = os.getenv("FRITZ_HOST_INFO", "False")
 
             config = {
                 "exporter_port": exporter_port,
                 "log_level": log_level,
                 "devices": [
-                    {"name": name, "hostname": hostname, "username": username, "password": password}
+                    {
+                        "name": name,
+                        "hostname": hostname,
+                        "username": username,
+                        "password": password,
+                        "host_info": host_info,
+                    }
                 ],
             }
             logger.info("No configuration file specified: configuration read from environment")
         else:
             logger.critical("No config file specified and required env variables missing!")
             raise ConfigError("No config file specified and required env variables missing!")
+
+    for dev in config["devices"]:
+        if "host_info" not in dev:
+            dev["host_info"] = False
 
     return config
 
