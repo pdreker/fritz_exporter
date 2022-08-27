@@ -2,6 +2,21 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Use this to specify your config file. You can just put the YAMl for the config here.
+config: {}
+# exporter_port: 9787 # optional
+# log_level: DEBUG # optional
+# devices:
+#   - name: Fritz!Box 7590 Router # optional
+#     hostname: fritz.box
+#     username: prometheus
+#     password: prometheus
+#     host_info: True
+#   - name: Repeater Wohnzimmer # optional
+#     hostname: repeater-Wohnzimmer
+#     username: prometheus
+#     password: prometheus
+
 replicaCount: 1
 
 image:
@@ -37,13 +52,12 @@ podSecurityContext:
   # fsGroup: 2000
 
 securityContext:
-  {}
   # capabilities:
   #   drop:
   #   - ALL
   # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+  runAsNonRoot: true
+  runAsUser: 65534
 
 service:
   type: ClusterIP
