@@ -29,10 +29,15 @@ If there is any information missing or not displayed on your specific device, pl
 * If you receive `Fatal Python error: init_interp_main: can't initialize time` when running the container you may have to update libseccomp on your Docker host. This issue mainly happens on Raspberry Pi and is triggered by a version of libseccomp2 which is too old. See <https://askubuntu.com/questions/1263284/apt-update-throws-signature-error-in-ubuntu-20-04-container-on-arm> (Method 2) and <https://github.com/pdreker/fritzbox_exporter/issues/38>.
 * On some boxes LAN Packet counters are stuck at 0 even though the box reports the stats as available.
 * Fritz!OS does not allow passwords longer than 32 characters (as of 07.25). If you try to use a longer password, the admin ui will discard all characters after the 32nd. The UI will also cut your inserted password down to 32 characters. So you will be able to login in the UI with the long password. The exporter however does not alter your password and requests will result in a 401 Unauthorized. So please be aware of this limit and choose a suitable password.
+* Collecting HostInfo (disabled by default) can be abysmally slow and will cause some load on the device. It works, but is currently not recommended. If you enable this, make sure your scrape_timeouts are set appropriately (30s should be OK for most setups, but YMMV)
 
 ## Grafana Dashboard
 
 There is a simple Grafana dashboard avaliable at <https://grafana.com/grafana/dashboards/13983>
+
+## Helm Chart
+
+There is a (rather crude) Helm chart under `docs/helm` in the repository. It will deploy the exporter and also create a service monitor for Prometheus Operator to automatically scrape the exporter.
 
 ## Upgrade Notes (potentially breaking changes)
 
@@ -53,7 +58,7 @@ Multi device configuration was dropped from the environment configuration. The `
 
 #### WiFi metrics changes
 
-All WiFi metrics have been merged. So e.g. fritz_wifi_2_4GHz_* is changed to fritz_wifi_* and two labels (wifi_index and wifi_name) are added to the metrics.
+All WiFi metrics have been merged. So e.g. `fritz_wifi_2_4GHz_*` is changed to `fritz_wifi_*` and two labels (wifi_index and wifi_name) are added to the metrics.
 
 ### v1.0.0
 
@@ -88,7 +93,7 @@ Fritz! and AVM are registered trademarks of AVM GmbH. This project is not associ
 
 ## Copyright
 
-Copyright 2019-2021 Patrick Dreker <patrick@dreker.de>
+Copyright 2019-2022 Patrick Dreker <patrick@dreker.de>
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
