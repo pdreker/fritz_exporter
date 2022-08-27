@@ -10,9 +10,8 @@ WORKDIR /app
 
 COPY Pipfile* /app/
 RUN pip --no-cache-dir install pipenv && \
-    pipenv sync && \
-    chown -R nobody /app
+    pipenv sync --system
 
 COPY fritzexporter/ /app/fritzexporter
 
-ENTRYPOINT ["pipenv", "run", "python", "-m", "fritzexporter"]
+ENTRYPOINT ["python", "-m", "fritzexporter"]
