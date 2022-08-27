@@ -103,10 +103,12 @@ class TestEnvConfig:
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
         monkeypatch.setenv("FRITZ_NAME", "My Fritz Device")
         monkeypatch.setenv("FRITZ_PORT", "12345")
+        monkeypatch.setenv("FRITZ_LOG_LEVEL", "INFO")
 
         config = get_config(None)
         expected = {
             "exporter_port": 12345,
+            "log_level": "INFO",
             "devices": [
                 {
                     "name": "My Fritz Device",
@@ -126,6 +128,7 @@ class TestEnvConfig:
         config = get_config(None)
         expected = {
             "exporter_port": 9787,
+            "log_level": "INFO",
             "devices": [
                 {
                     "name": "Fritz!Box",
