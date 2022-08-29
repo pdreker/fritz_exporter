@@ -21,7 +21,7 @@ If you only need a single device this is the easiest way to configure the export
 | FRITZ_PASSWORD | Password to use for authentication | none |
 | FRITZ_PORT   | Listening port for the exporter | 9787 |
 | FRITZ_LOG_LEVEL | Application log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` | INFO |
-| FRITZ_HOST_INFO | Enable extended information about all WiFi hosts | False |
+| FRITZ_HOST_INFO | Enable extended information about all WiFi hosts. Only "true" or "1" will enable this feature | False |
 
 **WARNING** setting `FRITZ_HOST_INFO` to `true` will collect extended information about every device known your fritz device, which can take a long time. If you really want or need the extended stats please make sure, that your scraping interval and timeouts are set accordingly.
 
