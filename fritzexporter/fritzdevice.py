@@ -40,7 +40,7 @@ class FritzDevice:
         if host_info:
             logger.warn(
                 f"HostInfo Capability enabled on device {host}. "
-                "This may consume a lot of resources!"
+                "This may consume a lot of resources and will cause very slow requests!"
             )
         if self.capabilities.empty():
             logger.critical(f"Device {host} has no detected capabilities. Exiting. ")
