@@ -28,7 +28,12 @@ def get_config(config_file_path: str):
             password = os.getenv("FRITZ_PASSWORD")
             log_level = os.getenv("FRITZ_LOG_LEVEL", "INFO")
             check_log_level(log_level)
-            host_info = os.getenv("FRITZ_HOST_INFO", "False")
+            host_info_str: str = os.getenv("FRITZ_HOST_INFO", "False")
+
+            if host_info_str.lower() in ["true", "1"]:
+                host_info = True
+            else:
+                host_info = False
 
             config = {
                 "exporter_port": exporter_port,
