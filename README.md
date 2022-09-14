@@ -6,6 +6,22 @@ The exporter should work with Fritz!Box and Fritz!Repeater Devices (and maybe ot
 
 It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
 
+## Attention - Prometheus required
+
+As the scope of this exporter lies on a typical home device, this also means that there are a lot of people interested in it, who may not have had any contact with [Prometheus](https://prometheus.io/). As a result if this there have been some misunderstandings in the past, how this all works.
+
+To avoid frustration you will need to know this:
+
+**You must setup and configure Prometheus separately!** If you are running in plain docker or docker-compose there is a docker-compose setup for Prometheus at <https://github.com/vegasbrianc/prometheus> which also includes Grafana to actually produce dashboards. This may work out of the box or can be used as a starting point.
+
+The whole setup required is:
+
+* fritz_exporter: connects to your Fritz device, reads the metrics and makes them available in a format Prometheus understands
+* prometheus: connects to the exporter at regular time intervals, reads the data and stores it in its database
+* grafana: connects to prometheus and can query the database of metrics for timeseries and create dashboards from it.
+
+**You cannot connect grafana to the exporter directly. This will not work**.
+
 ## Metrics
 
 The following groups of metrics are currently available:
