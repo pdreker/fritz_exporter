@@ -1,0 +1,23 @@
+
+version: "3.8"
+services:
+  fritz-exporter:
+    image: pdreker/fritz_exporter:latest
+    container_name: fritz-exporter
+    restart: unless-stopped
+    environment:
+      FRITZ_HOSTNAME: '192.168.178.1'
+      FRITZ_USERNAME: 'xxxxx'
+      FRITZ_PASSWORD: 'xxxx'
+    #ports:
+    #  - "9787:9787"
+
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+    ports:
+      - 9090:9090
