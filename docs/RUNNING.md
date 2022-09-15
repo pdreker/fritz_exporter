@@ -85,6 +85,7 @@ There are some docker-compose sample files in the `docs/` directory:
 * `docker-compose.hub.yml` - Runs with environment config from the official docker hub image
 * `docker-compose.local.yml` - Runs with environment config from a locally built image
 * `docker-compose.local-file.yml` - Runs with config file from local build
+* `compose-with-prometheus/docker-compose.yml` - Runs a compose stack, which also has prometheus, if you do not have prometheus already. Also contains a prometheus.yml config file for prometheus itself. This is considered a starting point, but should normally run out-of-the box. Uses the environment config variant for the exporter.
 
 ## Kubernetes deployment
 
