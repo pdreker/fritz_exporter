@@ -1,6 +1,6 @@
 # Running the exporter
 
-It is recommended to run the exporter from a Docker container. Build system for Docker is included in this repository (see docs/BUILD.md) or you can use the offical Docker image from <https://hub.docker.com/pdreker/fritz_exporter>
+It is recommended to run the exporter from a Docker container. Build system for Docker is included in this repository (see docs/BUILD.md) or you can use the offical Docker image from <https://hub.docker.com/r/pdreker/fritz_exporter>
 
 ## Configuration
 
