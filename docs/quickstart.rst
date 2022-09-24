@@ -66,6 +66,9 @@ Next run ``docker compose up -d`` which should start the 3 services. Use ``docke
   3b4a78035327   pdreker/fritz_exporter:v2.1.1   "python -m fritzexpo…"   3 seconds ago   Up 2 seconds   0.0.0.0:9787->9787/tcp   fritz-exporter
   9c7473367721   grafana/grafana:9.1.6           "/run.sh"                3 seconds ago   Up 2 seconds   0.0.0.0:3000->3000/tcp   grafana
 
+Checking Prometheus
+-------------------
+
 Point your browser to http://localhost:9090/ to access the prometheus UI and navigate to Status -> Targets. You should see the fritz-exporter Target (the exporter) being **Up**. If the ``Last Scrape`` Column says "never", wait for a minute and reload.
 
 .. image:: _static/prometheus_target.png
@@ -73,6 +76,9 @@ Point your browser to http://localhost:9090/ to access the prometheus UI and nav
 If your prometheus show the exporter as a **Up** you should also be able to see some metrics if you navigate back to the prometheus start page and enter ``fritz`` into the search bar and see some metrics via the autocompletion.
 
 .. image:: _static/fritz_metrics.png
+
+Configuring Grafana
+-------------------
 
 Now you can point your browser to http://localhost:3000/ to access Grafana. Login with username "admin" and password "admin" and set a new password (and make sure you do not forget that password). Once logged into Grafana go to "Configuration" (small Gear icon at the bottom end of the left sidebar) -> "Data Sources".
 
