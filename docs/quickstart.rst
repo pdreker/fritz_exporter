@@ -19,7 +19,7 @@ Create an empty directory ``fritz-exporter`` and place a file ``docker-compose.y
   version: "3.8"
   services:
     fritz-exporter:
-      image: pdreker/fritz_exporter:v2.1.1
+      image: pdreker/fritz_exporter:2
       container_name: fritz-exporter
       restart: unless-stopped
       environment:

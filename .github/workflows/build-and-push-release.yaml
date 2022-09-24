@@ -27,10 +27,21 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: generate docker tags
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-      - name: Run image
+      - name: Setup poetry
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: 1.2.1
@@ -38,12 +49,15 @@ jobs:
         run: |
           V_VERSION=${{ steps.update_semver.outputs.tag }}
           poetry version "${V_VERSION//v/}"
-          poetry lock --no-update
-      - name: Commit pyproject.toml back to repo
+      - name: Update Helm Chart.yaml
+        uses: mikefarah/yq@v4.27.5
+        with:
+          cmd: yq '.appVersion = "${{ steps.update_semver.outputs.tag }}"' -i helm/fritz-exporter/Chart.yaml
+      - name: Commit pyproject.toml and Chart.yaml back to repo
         run: |
           git config --local user.name github-actions
           git config --local user.email github-actions@github.com
-          git add pyproject.toml poetry.lock
+          git add pyproject.toml helm/fritz-exporter/Chart.yaml
           git commit -m "Update pyproject.toml for version ${{ steps.update_semver.outputs.tag }}"
       - name: Push pyproject.toml back to master
         uses: ad-m/github-push-action@master
@@ -63,11 +77,9 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB }}
       - name: Build and push
-        env:
-          TAG: ${{ steps.update_semver.outputs.tag }}
         uses: docker/build-push-action@v3
         with:
           push: true
           context: .
           platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64/v8
-          tags: ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE }}:${{ env.TAG }}
+          tags: ${{ steps.meta.outputs.tags }}
