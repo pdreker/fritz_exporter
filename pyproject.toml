@@ -1,0 +1,31 @@
+[project]
+name = "fritzexporter"
+authors = [{name = "pdreker", email = "patrick@dreker.de"}]
+dynamic = ["version", "description"]
+
+[tool.poetry]
+name = "fritz-exporter"
+version = "2.1.1"
+description = "Prometheus exporter for AVM Fritz! Devices"
+authors = ["Patrick Dreker <patrick@dreker.de>"]
+license = "Apache 2.0"
+readme = "README.md"
+packages = [{include = "fritzexporter"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+prometheus-client = ">=0.6.0"
+fritzconnection = ">=1.0.0"
+pyyaml = "*"
+requests = "*"
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.8.0"
+pytest = "*"
+pytest-mock = "*"
+types-pyyaml = "*"
+types-requests = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
