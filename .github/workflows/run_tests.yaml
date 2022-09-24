@@ -47,7 +47,7 @@ jobs:
         id: pytest
         continue-on-error: true
         run: |
-          pytest | tee test.log
+          python -m pytest . | tee test.log
           rescode=${PIPESTATUS[0]}
           echo "::set-output name=tests::$(cat test.log)"
           exit $rescode
