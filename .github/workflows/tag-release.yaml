@@ -49,7 +49,6 @@ jobs:
           github_token: ${{ secrets.MASTER_PUSH_TOKEN }}
           branch: ${{ github.ref }}
       - name: Push SemVer release tag
-        id: update_semver
         uses: K-Phoen/semver-release-action@master
         with:
           release_branch: master
