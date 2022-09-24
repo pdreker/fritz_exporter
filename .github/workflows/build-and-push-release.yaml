@@ -23,6 +23,17 @@ jobs:
           release_branch: master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: generate docker tags
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
       - uses: actions/checkout@v3
         with:
           persist-credentials: false
@@ -62,11 +73,9 @@ jobs:
           username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB }}
       - name: Build and push
-        env:
-          TAG: ${{ steps.update_semver.outputs.tag }}
         uses: docker/build-push-action@v3
         with:
           push: true
           context: .
           platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64/v8
-          tags: ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE }}:${{ env.TAG }}
+          tags: ${{ steps.meta.outputs.tags }}
