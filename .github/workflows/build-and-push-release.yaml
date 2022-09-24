@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-      - name: Run image
+      - name: Setup poetry
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: 1.2.1
@@ -38,12 +38,11 @@ jobs:
         run: |
           V_VERSION=${{ steps.update_semver.outputs.tag }}
           poetry version "${V_VERSION//v/}"
-          poetry lock --no-update
       - name: Commit pyproject.toml back to repo
         run: |
           git config --local user.name github-actions
           git config --local user.email github-actions@github.com
-          git add pyproject.toml poetry.lock
+          git add pyproject.toml
           git commit -m "Update pyproject.toml for version ${{ steps.update_semver.outputs.tag }}"
       - name: Push pyproject.toml back to master
         uses: ad-m/github-push-action@master
