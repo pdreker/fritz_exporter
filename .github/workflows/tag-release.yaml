@@ -1,4 +1,4 @@
-name: Build Docker image
+name: Tag release
 
 on:
   pull_request:
@@ -8,39 +8,23 @@ on:
       - closed
 
 jobs:
-  build-docker:
+  tag-release:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged
-    name: Build Docker Image (release)
-    env:
-      DOCKERHUB_USERNAME: pdreker
-      IMAGE: fritz_exporter
+    name: Tag release
     steps:
-      - name: Update SemVer
+      - name: Compute next SemVer
         id: update_semver
         uses: K-Phoen/semver-release-action@master
         with:
           release_branch: master
+          release_strategy: none
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v3
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: generate docker tags
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: |
-            ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
       - name: Setup poetry
         uses: abatilo/actions-poetry@v2
         with:
@@ -64,22 +48,10 @@ jobs:
         with:
           github_token: ${{ secrets.MASTER_PUSH_TOKEN }}
           branch: ${{ github.ref }}
-      - name: generate requirements.txt
-        run: poetry export -f requirements.txt --output requirements.txt
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Login to DockerHub
-        uses: docker/login-action@v2
+      - name: Push SemVer release tag
+        id: update_semver
+        uses: K-Phoen/semver-release-action@master
         with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB }}
-      - name: Build and push
-        uses: docker/build-push-action@v3
-        with:
-          push: true
-          context: .
-          platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64/v8
-          tags: ${{ steps.meta.outputs.tags }}
+          release_branch: master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
