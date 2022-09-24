@@ -30,7 +30,8 @@ It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 an
 
 .. note::
   **Prometheus required**
-  As the scope of this exporter lies on a typical home device, this also means that there are a lot of people interested in it, who may not have had any contact with [Prometheus](https://prometheus.io/). As a result if this there have been some misunderstandings in the past, how this all works.
+
+  As the scope of this exporter lies on a typical home device, this also means that there are a lot of people interested in it, who may not have had any contact with `Prometheus <https://prometheus.io/>`_. As a result if this there have been some misunderstandings in the past, how this all works.
 
   To avoid frustration you will need to know this:
 
@@ -42,9 +43,9 @@ It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 an
   * prometheus: connects to the exporter at regular time intervals, reads the data and stores it in its database
   * grafana: connects to prometheus and can query the database of metrics for timeseries and create dashboards from it.
 
-  **You cannot connect grafana to the exporter directly. This will not work**.
+  Check out the :ref:`quickstart`
 
-  To help you with getting started there is a docker-compose setup with a basic prometheus configuration under `docs/compose-with-prometheus` as a starting point.
+  **You cannot connect grafana to the exporter directly. This will not work**.
 
 Metrics
 -------
