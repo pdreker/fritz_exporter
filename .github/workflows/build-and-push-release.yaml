@@ -23,6 +23,10 @@ jobs:
           release_branch: master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
       - name: generate docker tags
         id: meta
         uses: docker/metadata-action@v4
@@ -34,10 +38,6 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=raw,value=latest
-      - uses: actions/checkout@v3
-        with:
-          persist-credentials: false
-          fetch-depth: 0
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
