@@ -6,7 +6,7 @@ The recommended way to run this exporter is from a docker container. The include
 Building and running from a local image
 ---------------------------------------
 
-To build clone the repository from GitHub, enter the repository and execute
+To build clone the repository from `GitHub <https://github.com/pdreker/fritz_exporter>`_, enter the repository and execute
 
 .. code-block:: bash
 
