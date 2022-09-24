@@ -10,6 +10,7 @@ on:
 jobs:
   build-docker:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged
     name: Build Docker Image (release)
     env:
       DOCKERHUB_USERNAME: pdreker
