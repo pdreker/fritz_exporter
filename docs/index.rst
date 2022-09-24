@@ -43,7 +43,7 @@ It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 an
   * prometheus: connects to the exporter at regular time intervals, reads the data and stores it in its database
   * grafana: connects to prometheus and can query the database of metrics for timeseries and create dashboards from it.
 
-  Check out the :ref:`quickstart`
+  Check out the :ref:`quickstart`, which will bring up a simple and limited Prometheus, Grafana and exporter setup.
 
   **You cannot connect grafana to the exporter directly. This will not work**.
 
