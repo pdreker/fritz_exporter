@@ -6,6 +6,10 @@ The exporter should work with Fritz!Box and Fritz!Repeater Devices (and maybe ot
 
 It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
 
+## Running
+
+As the README has been getting rather large please check the `docs/` directory in the repository at <https://github.com/pdreker/fritz_exporter> for information about getting this exporter going.
+
 ## Attention - Prometheus required
 
 As the scope of this exporter lies on a typical home device, this also means that there are a lot of people interested in it, who may not have had any contact with [Prometheus](https://prometheus.io/). As a result if this there have been some misunderstandings in the past, how this all works.
