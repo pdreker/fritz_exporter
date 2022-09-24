@@ -10,7 +10,10 @@ on:
 jobs:
   build-docker:
     runs-on: ubuntu-latest
-    name: Build Docker Image
+    name: Build Docker Image (release)
+    env:
+      DOCKERHUB_USERNAME: pdreker
+      IMAGE: fritz_exporter
     steps:
       - name: Update SemVer
         id: update_semver
@@ -20,16 +23,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.10
+      - name: Run image
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: 1.2.1
+      - name: generate requirements.txt
+        run: poetry export -f requirements.txt --output requirements.txt
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v1
-      - name: Build Docker Image
-        if: success()
-        run: |
-          image=pdreker/fritz_exporter
-          tag=${{ steps.update_semver.outputs.tag }}
-          echo ${{secrets.DOCKER_HUB }} | docker login -u pdreker --password-stdin
-          docker buildx build --platform linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64/v8 -t $image:$tag --push .
-          docker buildx build --platform linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64/v8 -t $image:latest --push .
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: $DOCKERHUB_USERNAME
+          password: ${{ secrets.DOCKER_HUB }}
+      - name: Build and push
+        env:
+          TAG: ${{ steps.update_semver.outputs.tag }}
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          context: .
+          platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64/v8
+          tags: $DOCKERHUB_USERNAME/$IMAGE:$TAG
