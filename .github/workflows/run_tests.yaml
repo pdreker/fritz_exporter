@@ -15,15 +15,19 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
+      - name: Setup poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: 1.2.1
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install flake8 pytest
+          poetry install
       - name: Lint with flake8
         id: flake8
         continue-on-error: true
         run: |
-          flake8 . | tee lint.log
+          poetry run flake8 . | tee lint.log
           rescode=${PIPESTATUS[0]}
           echo "::set-output name=lint::$(cat lint.log)"
           exit $rescode
@@ -31,7 +35,7 @@ jobs:
         id: pytest
         continue-on-error: true
         run: |
-          python -m pytest . | tee test.log
+          poetry run python -m pytest . | tee test.log
           rescode=${PIPESTATUS[0]}
           echo "::set-output name=tests::$(cat test.log)"
           exit $rescode
