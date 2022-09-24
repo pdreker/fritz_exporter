@@ -79,7 +79,7 @@ There is a Grafana dashboard available at https://grafana.com/grafana/dashboards
 Helm Chart
 ----------
 
-There is a (rather crude) Helm chart under `helm` in the `repository <https://github.com/pdreker/fritz_exporter>`. It will deploy the exporter and also create a service monitor for Prometheus Operator to automatically scrape the exporter.
+There is a (rather crude) Helm chart under ``helm`` in the `repository <https://github.com/pdreker/fritz_exporter>`_. It will deploy the exporter and also create a service monitor for Prometheus Operator to automatically scrape the exporter.
 
 Helping out
 -----------

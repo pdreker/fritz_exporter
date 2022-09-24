@@ -1,7 +1,7 @@
 Docker images
 =============
 
-Docker images for this exporter are available from `Docker Hub <https://hub.docker.com/r/pdreker/fritz_exporter>`. The images are built for amd64, arm6, arm7 and arm8/64, so they should run on almost all relevant platforms (Intel, Raspberry Pi (basically any version) and Apple Silicon).
+Docker images for this exporter are available from `Docker Hub <https://hub.docker.com/r/pdreker/fritz_exporter>`_. The images are built for amd64, arm6, arm7 and arm8/64, so they should run on almost all relevant platforms (Intel, Raspberry Pi (basically any version) and Apple Silicon).
 
 Tags
 ----
