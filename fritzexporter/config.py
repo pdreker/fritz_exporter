@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 import yaml
 import os
 
@@ -7,7 +8,7 @@ from .exceptions import ConfigFileUnreadableError, ConfigError, DeviceNamesNotUn
 logger = logging.getLogger("fritzexporter.config")
 
 
-def get_config(config_file_path: str):
+def get_config(config_file_path: str) -> Optional[dict]:
     config = None
     if config_file_path:
         try:
@@ -53,7 +54,10 @@ def get_config(config_file_path: str):
             logger.critical("No config file specified and required env variables missing!")
             raise ConfigError("No config file specified and required env variables missing!")
 
-    for dev in config["devices"]:
+    if config is None:
+        return config
+
+    for dev in config.get("devices", []):
         if "host_info" not in dev:
             dev["host_info"] = False
 
@@ -66,7 +70,7 @@ def check_log_level(log_level):
         raise ConfigError("log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL")
 
 
-def check_config(config: dict):  # noqa: C901
+def check_config(config: dict):
     # Sanity check config object: exporter_port must be 1 <= exporter_port <= 65535 and
     # there must be at least one device with hostname, username and password.
     if config:

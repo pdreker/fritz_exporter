@@ -77,12 +77,14 @@ class TestFileConfigs:
             "devices": [
                 {
                     "name": "Fritz!Box 7590 Router",
+                    "host_info": False,
                     "hostname": "fritz.box",
                     "username": "prometheus1",
                     "password": "prometheus2",
                 },
                 {
                     "name": "Repeater Wohnzimmer",
+                    "host_info": False,
                     "hostname": "repeater-Wohnzimmer",
                     "username": "prometheus3",
                     "password": "prometheus4",
@@ -111,6 +113,7 @@ class TestEnvConfig:
             "log_level": "INFO",
             "devices": [
                 {
+                    "host_info": False,
                     "name": "My Fritz Device",
                     "hostname": "hostname.local",
                     "username": "SomeUserName",
@@ -132,6 +135,7 @@ class TestEnvConfig:
             "devices": [
                 {
                     "name": "Fritz!Box",
+                    "host_info": False,
                     "hostname": "fritz.box",
                     "username": "SomeUserName",
                     "password": "AnInterestingPassword",
