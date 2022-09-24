@@ -31,7 +31,7 @@ It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 an
 .. note::
   **Prometheus required**
 
-  As the scope of this exporter lies on a typical home device, this also means that there are a lot of people interested in it, who may not have had any contact with `Prometheus <https://prometheus.io/>`_. As a result if this there have been some misunderstandings in the past, how this all works.
+  As the scope of this exporter lies on a typical home device, this also means that there are a lot of people interested in it, who may not have had any contact with `Prometheus <https://prometheus.io/>`_. As a result of this there have been some misunderstandings in the past, how this all works.
 
   To avoid frustration you will need to know this:
 
