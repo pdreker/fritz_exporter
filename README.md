@@ -6,9 +6,9 @@ The exporter should work with Fritz!Box and Fritz!Repeater Devices (and maybe ot
 
 It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
 
-## Running
+## Documentation
 
-As the README has been getting rather large please check the `docs/` directory in the repository at <https://github.com/pdreker/fritz_exporter> for information about getting this exporter going.
+Check out the full documentation at [ReadTheDocs](https://fritz-exporter.readthedocs.io/)
 
 ## Attention - Prometheus required
 

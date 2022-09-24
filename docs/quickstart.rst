@@ -75,7 +75,7 @@ Point your browser to http://localhost:9090/ to access the prometheus UI and nav
 
 .. image:: _static/prometheus_target.png
 
-If your prometheus show the exporter as a **Up** you should also be able to see some metrics if you navigate back to the prometheus start page and enter ``fritz`` into the search bar and see some metrics via the autocompletion.
+If your prometheus shows the exporter as a **Up** you should also be able to see some metrics via the autocompletion if you navigate back to the prometheus start page and enter ``fritz`` into the search bar.
 
 .. image:: _static/fritz_metrics.png
 
