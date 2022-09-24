@@ -39,7 +39,7 @@ To run the exporter from docker-compose create an empty directory ``fritz-export
   version: "3.8"
   services:
     fritz-exporter:
-      image: pdreker/fritz_exporter:latest
+      image: pdreker/fritz_exporter:2
       container_name: fritz-exporter
       restart: always
       environment:
@@ -61,7 +61,7 @@ Create an empty directory ``fritz-exporter`` and put a file ``docker-compose.yml
   version: "3.8"
   services:
     fritz-exporter:
-      image: pdreker/fritz_exporter:latest
+      image: pdreker/fritz_exporter:2
       command: --config /fritz-exporter.yml
       build: ../
       container_name: fritz-exporter
