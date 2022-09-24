@@ -31,6 +31,18 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: 1.2.1
+      - name: Update version in pyproject.toml
+        run: |
+          V_VERSION=${{ steps.update_semver.outputs.tag }}
+          poetry version "${V_VERSION//v/}"
+          poetry lock --no-update
+      - name: Commit pyproject.toml back to repo
+        run: |
+          git config --local user.name github-actions
+          git config --local user.email github-actions@github.com
+          git add pyproject.toml poetry.lock
+          git commit -m "Update pyproject.toml for version ${{ steps.update_semver.outputs.tag }}"
+          git push
       - name: generate requirements.txt
         run: poetry export -f requirements.txt --output requirements.txt
       - name: Set up QEMU
