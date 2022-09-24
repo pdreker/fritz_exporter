@@ -24,6 +24,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
@@ -42,7 +45,11 @@ jobs:
           git config --local user.email github-actions@github.com
           git add pyproject.toml poetry.lock
           git commit -m "Update pyproject.toml for version ${{ steps.update_semver.outputs.tag }}"
-          git push
+      - name: Push pyproject.toml back to master
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.MASTER_PUSH_TOKEN }}
+          branch: ${{ github.ref }}
       - name: generate requirements.txt
         run: poetry export -f requirements.txt --output requirements.txt
       - name: Set up QEMU
