@@ -35,7 +35,7 @@ It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 an
 
   To avoid frustration you will need to know this:
 
-  **You must setup and configure Prometheus separately!** If you are running in plain docker or docker-compose there is a docker-compose setup for Prometheus at <https://github.com/vegasbrianc/prometheus> which also includes Grafana to actually produce dashboards. This may work out of the box or can be used as a starting point.
+  **You must setup and configure Prometheus separately!** If you are running in plain docker or docker-compose there is a docker-compose setup for Prometheus at https://github.com/vegasbrianc/prometheus which also includes Grafana to actually produce dashboards. This may work out of the box or can be used as a starting point.
 
   The whole setup required is:
 
