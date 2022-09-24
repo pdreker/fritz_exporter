@@ -4,11 +4,12 @@ on:
   pull_request:
     branches:
       - develop
+      - master
 
 jobs:
   run-checks:
     runs-on: ubuntu-latest
-    name: Run Flake8 linter
+    name: Run Unit Tests
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
