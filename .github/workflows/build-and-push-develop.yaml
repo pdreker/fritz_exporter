@@ -30,7 +30,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
-          username: $DOCKERHUB_USERNAME
+          username: ${{ env.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB }}
       - name: Build and push
         env:
@@ -40,4 +40,4 @@ jobs:
           push: true
           context: .
           platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64/v8
-          tags: $DOCKERHUB_USERNAME/$IMAGE:$TAG
+          tags: ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE }}:${{ env.TAG }}
