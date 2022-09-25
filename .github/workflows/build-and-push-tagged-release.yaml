@@ -24,7 +24,6 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=raw,value=latest
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
