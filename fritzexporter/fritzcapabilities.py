@@ -790,8 +790,6 @@ class HostInfo(FritzCapability):
                         device.fc.call_action(svc, action)
                     elif action == "GetGenericHostEntry":
                         device.fc.call_action(svc, action, arguments={"NewIndex": 1})
-                    elif action == "X_AVM-DE_GetSpecificHostEntryByIP":
-                        pass
                 except (ServiceError, ActionError, FritzInternalError) as e:
                     logger.warn(
                         f"disabling metrics at service {svc}, action {action} - "
