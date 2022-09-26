@@ -110,7 +110,7 @@ class ExporterConfig:
             DeviceConfig.from_config(dev) for dev in config.get("devices", [])
         ]
 
-        return ExporterConfig(exporter_port=exporter_port, log_level=log_level, devices=devices)
+        return cls(exporter_port=exporter_port, log_level=log_level, devices=devices)
 
 
 @define
@@ -141,7 +141,7 @@ class DeviceConfig:
         name = device.get("name", "")
         host_info = device.get("host_info", False)
 
-        return DeviceConfig(
+        return cls(
             hostname=hostname,
             username=username,
             password=password,
