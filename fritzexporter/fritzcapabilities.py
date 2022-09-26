@@ -474,6 +474,8 @@ class WanCommonInterfaceConfig(FritzCapability):
 
 
 class WanCommonInterfaceDataBytes(FritzCapability):
+    WAN_COMMON_INTERFACE_SERVICE: str = "WANCommonInterfaceConfig:1"
+
     def __init__(self) -> None:
         super().__init__()
         self.requirements.append(("WANCommonInterfaceConfig1", "GetTotalBytesReceived"))
@@ -489,11 +491,11 @@ class WanCommonInterfaceDataBytes(FritzCapability):
 
     def _getMetricValues(self, device):
         fritz_wan_result = device.fc.call_action(
-            "WANCommonInterfaceConfig:1", "GetTotalBytesReceived"
+            self.WAN_COMMON_INTERFACE_SERVICE, "GetTotalBytesReceived"
         )
         wan_bytes_rx = fritz_wan_result["NewTotalBytesReceived"]
         fritz_wan_result = device.fc.call_action(
-            "WANCommonInterfaceConfig:1", "GetTotalBytesSent"
+            self.WAN_COMMON_INTERFACE_SERVICE, "GetTotalBytesSent"
         )
         wan_bytes_tx = fritz_wan_result["NewTotalBytesSent"]
         self.metrics["wanbytes"].add_metric(
@@ -532,6 +534,8 @@ class WanCommonInterfaceByteRate(FritzCapability):
 
 
 class WanCommonInterfaceDataPackets(FritzCapability):
+    WAN_COMMON_INTERFACE_SERVICE: str = "WANCommonInterfaceConfig:1"
+
     def __init__(self) -> None:
         super().__init__()
         self.requirements.append(
@@ -549,11 +553,11 @@ class WanCommonInterfaceDataPackets(FritzCapability):
 
     def _getMetricValues(self, device):
         fritz_wan_result = device.fc.call_action(
-            "WANCommonInterfaceConfig:1", "GetTotalPacketsReceived"
+            self.WAN_COMMON_INTERFACE_SERVICE, "GetTotalPacketsReceived"
         )
         wan_packets_rx = fritz_wan_result["NewTotalPacketsReceived"]
         fritz_wan_result = device.fc.call_action(
-            "WANCommonInterfaceConfig:1", "GetTotalPacketsSent"
+            self.WAN_COMMON_INTERFACE_SERVICE, "GetTotalPacketsSent"
         )
         wan_packets_tx = fritz_wan_result["NewTotalPacketsSent"]
         self.metrics["wanpackets"].add_metric(
