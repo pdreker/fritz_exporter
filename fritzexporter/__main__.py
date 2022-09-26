@@ -1,19 +1,19 @@
+import argparse
 import asyncio
 import logging
 import sys
-import argparse
 
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
-from fritzexporter.fritzdevice import FritzCollector, FritzDevice
 from fritzexporter.exceptions import (
     ConfigError,
     ConfigFileUnreadableError,
     DeviceNamesNotUniqueWarning,
 )
+from fritzexporter.fritzdevice import FritzCollector, FritzDevice
 
-from .config import get_config, check_config
+from .config import check_config, get_config
 
 ch = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s %(levelname)8s %(name)s | %(message)s")
@@ -32,7 +32,10 @@ def main():
     parser.add_argument("--config", type=str, help="Path to config file")
     levels = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
     parser.add_argument(
-        "--log-level", default="INFO", choices=levels, help="Set log-level (default: INFO)"
+        "--log-level",
+        default="INFO",
+        choices=levels,
+        help="Set log-level (default: INFO)",
     )
     args = parser.parse_args()
 
@@ -59,7 +62,11 @@ def main():
         logger.info(f'registering {dev["hostname"]} to collector')
         fritzcollector.register(
             FritzDevice(
-                dev["hostname"], dev["username"], dev["password"], dev["name"], dev["host_info"]
+                dev["hostname"],
+                dev["username"],
+                dev["password"],
+                dev["name"],
+                dev["host_info"],
             )
         )
 

@@ -13,7 +13,7 @@ from .exceptions import (
 logger = logging.getLogger("fritzexporter.config")
 
 
-def get_config(config_file_path: str) -> Optional[dict]:
+def get_config(config_file_path: Optional[str]) -> Optional[dict]:
     config = None
     if config_file_path:
         try:
