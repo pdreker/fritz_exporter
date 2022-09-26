@@ -2,7 +2,7 @@
 
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=coverage)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter)
 
-![ReadTheDocs](https://readthedocs.org/projects/docs/badge/?version=latest) ![Dependabot](https://img.shields.io/badge/dependabot-025E8C?style=flat&logo=dependabot&logoColor=white)
+![ReadTheDocs](https://readthedocs.org/projects/docs/badge/?version=latest) ![Dependabot](https://img.shields.io/badge/dependabot-025E8C?style=flat&logo=dependabot&logoColor=white) ![Tests](https://img.shields.io/github/workflow/status/pdreker/fritz_exporter/Run%20Tests/develop?label=Tests) ![Build](https://img.shields.io/github/workflow/status/pdreker/fritz_exporter/Build%20Dev%20Docker%20image/develop)
 
 This is a prometheus exporter for AVM Fritz! home network devices commonly found in Europe. This exporter uses the devices builtin TR-064 API via the fritzconnection python module.
 
