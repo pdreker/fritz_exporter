@@ -1,15 +1,3 @@
-class ConfigError(Exception):
-    pass
-
-
-class ConfigFileUnreadableError(Exception):
-    pass
-
-
-class DeviceNamesNotUniqueWarning(Exception):
-    pass
-
-
 # Copyright 2019-2022 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
