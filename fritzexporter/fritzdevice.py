@@ -1,10 +1,11 @@
-from fritzexporter.fritzcapabilities import FritzCapabilities
 import logging
 import sys
 
 from fritzconnection import FritzConnection
 from fritzconnection.core.exceptions import FritzActionError, FritzServiceError
 from requests.exceptions import ConnectionError
+
+from fritzexporter.fritzcapabilities import FritzCapabilities
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
 
@@ -25,7 +26,9 @@ class FritzDevice:
             )
 
         try:
-            self.fc: FritzConnection = FritzConnection(address=host, user=user, password=password)
+            self.fc: FritzConnection = FritzConnection(
+                address=host, user=user, password=password
+            )
         except ConnectionError as e:
             logger.exception(f"unable to connect to {host}: {str(e)}", exc_info=True)
             sys.exit(1)
@@ -35,7 +38,8 @@ class FritzDevice:
 
         self.getDeviceInfo()
         logger.info(
-            f"Read capabilities for {host}, got serial " f"{self.serial}, model name {self.model}"
+            f"Read capabilities for {host}, got serial "
+            f"{self.serial}, model name {self.model}"
         )
         if host_info:
             logger.warn(
@@ -68,7 +72,9 @@ class FritzCollector:
 
     def register(self, fritzdev):
         self.devices.append(fritzdev)
-        logger.debug(f"registered device {fritzdev.host} ({fritzdev.model}) to collector")
+        logger.debug(
+            f"registered device {fritzdev.host} ({fritzdev.model}) to collector"
+        )
         self.capabilities.merge(fritzdev.capabilities)
 
     def collect(self):
