@@ -49,13 +49,11 @@ def _read_config_from_env() -> dict:
     if log_level:
         config["log_level"] = log_level
 
-    config["devices"] = {}
-    config["devices"]["username"] = username
-    config["devices"]["password"] = password
-    config["devices"]["host_info"] = host_info
-    config["devices"]["name"] = name
+    config["devices"] = []
+    device = {"username": username, "password": password, "host_info": host_info, "name": name}
     if hostname:
-        config["devices"]["hostname"] = hostname
+        device["hostname"] = hostname
+    config["devices"].append(device)
 
     logger.info("No configuration file specified: configuration read from environment")
 
@@ -80,6 +78,7 @@ class ExporterConfig:
             validators.ge(1024),
             validators.le(65535),
         ],
+        converter=int,
     )
     log_level: str = field(default="INFO")
     devices: list[DeviceConfig] = field(factory=list)
