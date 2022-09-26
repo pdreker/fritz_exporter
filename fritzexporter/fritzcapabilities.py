@@ -85,7 +85,7 @@ class FritzCapabilities:
             subclass.__name__: subclass() for subclass in FritzCapability.subclasses
         }
         if device:
-            self.checkPresent(device)
+            self.check_present(device)
 
     def __iter__(self):
         return iter(self.capabilities)
@@ -108,7 +108,7 @@ class FritzCapabilities:
     def empty(self):
         return not any([cap.present for cap in list(self.capabilities.values())])
 
-    def checkPresent(self, device: FritzDevice):
+    def check_present(self, device: FritzDevice):
         for c in self.capabilities:
             self.capabilities[c].checkCapability(device)
 

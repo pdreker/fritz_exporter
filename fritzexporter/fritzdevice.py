@@ -36,10 +36,9 @@ class FritzDevice:
         logger.info(f"Connection to {host} successful, reading capabilities")
         self.capabilities = FritzCapabilities(self, host_info)
 
-        self.getDeviceInfo()
+        self.get_device_info()
         logger.info(
-            f"Read capabilities for {host}, got serial "
-            f"{self.serial}, model name {self.model}"
+            f"Read capabilities for {host}, got serial {self.serial}, model name {self.model}"
         )
         if host_info:
             logger.warn(
@@ -50,7 +49,7 @@ class FritzDevice:
             logger.critical(f"Device {host} has no detected capabilities. Exiting. ")
             sys.exit(1)
 
-    def getDeviceInfo(self):
+    def get_device_info(self):
         try:
             device_info: dict[str, str] = self.fc.call_action("DeviceInfo", "GetInfo")
             self.serial: str = device_info["NewSerialNumber"]
