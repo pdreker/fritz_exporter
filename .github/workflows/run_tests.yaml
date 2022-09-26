@@ -41,7 +41,7 @@ jobs:
         id: pytest
         continue-on-error: true
         run: |
-          poetry run python -m pytest --cov=fritzexporter --cov-report=xml --cov-branch . | tee test.log
+          poetry run python -m pytest --cov=. --cov-report=xml --cov-branch . | tee test.log
           rescode=${PIPESTATUS[0]}
           echo "::set-output name=tests::$(cat test.log)"
           exit $rescode
