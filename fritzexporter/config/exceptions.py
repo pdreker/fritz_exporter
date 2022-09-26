@@ -1,24 +1,28 @@
-class ConfigError(Exception):
+class ExporterException(Exception):
     pass
 
 
-class EmptyConfigError(Exception):
+class ConfigError(ExporterException):
     pass
 
 
-class ConfigFileUnreadableError(Exception):
+class EmptyConfigError(ExporterException):
     pass
 
 
-class DeviceNamesNotUniqueWarning(Exception):
+class ConfigFileUnreadableError(ExporterException):
     pass
 
 
-class NoDevicesFoundError(Exception):
+class DeviceNamesNotUniqueWarning(ExporterException):
     pass
 
 
-class FritzPasswordTooLongError(Exception):
+class NoDevicesFoundError(ExporterException):
+    pass
+
+
+class FritzPasswordTooLongError(ExporterException):
     pass
 
 

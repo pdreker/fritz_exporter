@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import yaml
-from attrs import define, field, validators
-from exceptions import (
+from attrs import define, field, validators, converters
+from .exceptions import (
     ConfigError,
     ConfigFileUnreadableError,
     EmptyConfigError,
@@ -17,59 +17,58 @@ from exceptions import (
 logger = logging.getLogger("fritzexporter.config")
 
 
-def get_config(config_file_path: Optional[str]) -> dict:
-    config = {}
-    if config_file_path:
-        try:
-            with open(config_file_path, "r") as config_file:
-                config = yaml.safe_load(config_file)
-        except IOError as e:
-            logger.exception("Config file specified but could not be read." + str(e))
-            raise ConfigFileUnreadableError(e)
-        logger.info(f"Read configuration from {config_file_path}")
-    else:
-        if all(
-            required in os.environ for required in ["FRITZ_USERNAME", "FRITZ_PASSWORD"]
-        ):
-            hostname = (
-                os.getenv("FRITZ_HOSTNAME")
-                if ("FRITZ_HOSTNAME" in os.environ)
-                else "fritz.box"
-            )
-            name = (
-                os.getenv("FRITZ_NAME") if "FRITZ_NAME" in os.environ else "Fritz!Box"
-            )
-            exporter_port = (
-                int(os.getenv("FRITZ_PORT", "")) if "FRITZ_PORT" in os.environ else 9787
-            )
-            username = os.getenv("FRITZ_USERNAME")
-            password = os.getenv("FRITZ_PASSWORD")
-            log_level = os.getenv("FRITZ_LOG_LEVEL", "INFO")
-            host_info_str: str = os.getenv("FRITZ_HOST_INFO", "False")
-
-            if host_info_str.lower() in ["true", "1"]:
-                host_info = True
-            else:
-                host_info = False
-
-            config = {
-                "exporter_port": exporter_port,
-                "log_level": log_level,
-                "devices": [
-                    {
-                        "name": name,
-                        "hostname": hostname,
-                        "username": username,
-                        "password": password,
-                        "host_info": host_info,
-                    }
-                ],
-            }
-            logger.info(
-                "No configuration file specified: configuration read from environment"
-            )
+def _read_config_file(config_file_path: str) -> dict:
+    try:
+        with open(config_file_path, "r") as config_file:
+            config = yaml.safe_load(config_file)
+    except IOError as e:
+        logger.exception("Config file specified but could not be read." + str(e))
+        raise ConfigFileUnreadableError(e)
+    logger.info(f"Read configuration from {config_file_path}")
 
     return config
+
+
+def _read_config_from_env() -> dict:
+    if not all(required in os.environ for required in ["FRITZ_USERNAME", "FRITZ_PASSWORD"]):
+        logger.critical("Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!")
+        raise ConfigError("Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!")
+
+    exporter_port = os.getenv("FRITZ_PORT")
+    log_level = os.getenv("FRITZ_LOG_LEVEL")
+
+    hostname = os.getenv("FRITZ_HOSTNAME")
+    name: str = os.getenv("FRITZ_NAME", "Fritz!Box")
+    username = os.getenv("FRITZ_USERNAME")
+    password = os.getenv("FRITZ_PASSWORD")
+    host_info: str = os.getenv("FRITZ_HOST_INFO", "False")
+
+    config: dict[Any, Any] = {}
+    if exporter_port:
+        config["exporter_port"] = exporter_port
+    if log_level:
+        config["log_level"] = log_level
+
+    config["devices"] = {}
+    config["devices"]["username"] = username
+    config["devices"]["password"] = password
+    config["devices"]["host_info"] = host_info
+    config["devices"]["name"] = name
+    if hostname:
+        config["devices"]["hostname"] = hostname
+
+    logger.info("No configuration file specified: configuration read from environment")
+
+    return config
+
+
+def get_config(config_file_path: Optional[str]) -> ExporterConfig:
+    config = {}
+    if config_file_path:
+        config = _read_config_file(config_file_path)
+    else:
+        config = _read_config_from_env()
+    return ExporterConfig.from_config(config)
 
 
 @define
@@ -83,17 +82,13 @@ class ExporterConfig:
         ],
     )
     log_level: str = field(default="INFO")
-    devices: list[DeviceConfig] = []
+    devices: list[DeviceConfig] = field(factory=list)
 
     @log_level.validator
     def check_log_level(self, attribute, value):
         if value not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-            logger.critical(
-                "log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL"
-            )
-            raise ConfigError(
-                "log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL"
-            )
+            logger.critical("log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL")
+            raise ConfigError("log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL")
 
     @devices.validator
     def check_devices(self, attribute, value):
@@ -108,9 +103,7 @@ class ExporterConfig:
     def from_config(cls, config) -> ExporterConfig:
         if config is None:
             logger.exception("No config found (check Env vars or config file).")
-            raise EmptyConfigError(
-                "Reading config file returned empty config. Check file content."
-            )
+            raise EmptyConfigError("Reading config file returned empty config. Check file content.")
 
         exporter_port = config.get("exporter_port", 9787)
         log_level = config.get("log_level", "INFO")
@@ -118,20 +111,16 @@ class ExporterConfig:
             DeviceConfig.from_config(dev) for dev in config.get("devices", [])
         ]
 
-        return ExporterConfig(
-            exporter_port=exporter_port, log_level=log_level, devices=devices
-        )
+        return ExporterConfig(exporter_port=exporter_port, log_level=log_level, devices=devices)
 
 
 @define
 class DeviceConfig:
-    hostname: str = field(
-        validator=validators.min_len(1), converter=lambda x: str.lower(x)
-    )
+    hostname: str = field(validator=validators.min_len(1), converter=lambda x: str.lower(x))
     username: str = field(validator=validators.min_len(1))
     password: str = field(validator=validators.min_len(1))
     name: str = ""
-    host_info: bool = False
+    host_info: bool = field(default=False, converter=converters.to_bool)
 
     @password.validator
     def check_password(self, attr, val):
@@ -147,7 +136,7 @@ class DeviceConfig:
 
     @classmethod
     def from_config(cls, device) -> DeviceConfig:
-        hostname = device.get("hostname", "")
+        hostname = device.get("hostname", "fritz.box")
         username = device.get("username", "")
         password = device.get("password", "")
         name = device.get("name", "")
