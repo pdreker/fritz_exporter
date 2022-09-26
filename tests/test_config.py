@@ -5,7 +5,6 @@ from fritzexporter.config import (
     ConfigError,
     EmptyConfigError,
     ConfigFileUnreadableError,
-    DeviceNamesNotUniqueWarning,
     NoDevicesFoundError,
 )
 
@@ -35,31 +34,31 @@ class TestFileConfigs:
         testfile = "tests/conffiles/empty.yaml"
 
         with pytest.raises(EmptyConfigError):
-            config = get_config(testfile)
+            _ = get_config(testfile)
 
     def test_empty_devices(self):
         testfile = "tests/conffiles/emptydevices.yaml"
 
         with pytest.raises(NoDevicesFoundError):
-            config = get_config(testfile)
+            _ = get_config(testfile)
 
     def test_malformed_device(self):
         testfile = "tests/conffiles/malformeddevice.yaml"
 
         with pytest.raises(ValueError):
-            config = get_config(testfile)
+            _ = get_config(testfile)
 
     def test_nodevices(self):
         testfile = "tests/conffiles/nodevices.yaml"
 
         with pytest.raises(NoDevicesFoundError):
-            config = get_config(testfile)
+            _ = get_config(testfile)
 
     def test_invalidport(self):
         testfile = "tests/conffiles/invalidport.yaml"
 
         with pytest.raises(ValueError):
-            config = get_config(testfile)
+            _ = get_config(testfile)
 
     def test_valid_file(self):
         testfile = "tests/conffiles/validconfig.yaml"
