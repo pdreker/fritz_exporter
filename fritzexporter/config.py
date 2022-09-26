@@ -1,9 +1,14 @@
 import logging
-from typing import Optional
-import yaml
 import os
+from typing import Optional
 
-from .exceptions import ConfigFileUnreadableError, ConfigError, DeviceNamesNotUniqueWarning
+import yaml
+
+from .exceptions import (
+    ConfigError,
+    ConfigFileUnreadableError,
+    DeviceNamesNotUniqueWarning,
+)
 
 logger = logging.getLogger("fritzexporter.config")
 
@@ -19,12 +24,20 @@ def get_config(config_file_path: str) -> Optional[dict]:
             raise ConfigFileUnreadableError(e)
         logger.info(f"Read configuration from {config_file_path}")
     else:
-        if all(required in os.environ for required in ["FRITZ_USERNAME", "FRITZ_PASSWORD"]):
+        if all(
+            required in os.environ for required in ["FRITZ_USERNAME", "FRITZ_PASSWORD"]
+        ):
             hostname = (
-                os.getenv("FRITZ_HOSTNAME") if ("FRITZ_HOSTNAME" in os.environ) else "fritz.box"
+                os.getenv("FRITZ_HOSTNAME")
+                if ("FRITZ_HOSTNAME" in os.environ)
+                else "fritz.box"
             )
-            name = os.getenv("FRITZ_NAME") if "FRITZ_NAME" in os.environ else "Fritz!Box"
-            exporter_port = int(os.getenv("FRITZ_PORT", "")) if "FRITZ_PORT" in os.environ else 9787
+            name = (
+                os.getenv("FRITZ_NAME") if "FRITZ_NAME" in os.environ else "Fritz!Box"
+            )
+            exporter_port = (
+                int(os.getenv("FRITZ_PORT", "")) if "FRITZ_PORT" in os.environ else 9787
+            )
             username = os.getenv("FRITZ_USERNAME")
             password = os.getenv("FRITZ_PASSWORD")
             log_level = os.getenv("FRITZ_LOG_LEVEL", "INFO")
@@ -49,10 +62,16 @@ def get_config(config_file_path: str) -> Optional[dict]:
                     }
                 ],
             }
-            logger.info("No configuration file specified: configuration read from environment")
+            logger.info(
+                "No configuration file specified: configuration read from environment"
+            )
         else:
-            logger.critical("No config file specified and required env variables missing!")
-            raise ConfigError("No config file specified and required env variables missing!")
+            logger.critical(
+                "No config file specified and required env variables missing!"
+            )
+            raise ConfigError(
+                "No config file specified and required env variables missing!"
+            )
 
     if config is None:
         return config
@@ -66,8 +85,12 @@ def get_config(config_file_path: str) -> Optional[dict]:
 
 def check_log_level(log_level):
     if log_level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-        logger.critical("log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL")
-        raise ConfigError("log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL")
+        logger.critical(
+            "log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL"
+        )
+        raise ConfigError(
+            "log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL"
+        )
 
 
 def check_config(config: dict):
@@ -90,10 +113,12 @@ def check_config(config: dict):
                 for required in ["hostname", "username", "password"]
             ):
                 logger.critical(
-                    "Device specified but either hostname, " "username or password are missing"
+                    "Device specified but either hostname, "
+                    "username or password are missing"
                 )
                 raise ConfigError(
-                    "Device specified but either hostname, " "username or password are missing"
+                    "Device specified but either hostname, "
+                    "username or password are missing"
                 )
 
             for index, dev in enumerate(config["devices"]):
