@@ -27,6 +27,8 @@ types-pyyaml = "*"
 types-requests = "*"
 flake8 = "^5.0.4"
 mypy = "^0.971"
+coverage = "^6.4.4"
+pytest-cov = "^3.0.0"
 
 [build-system]
 requires = ["poetry-core"]
