@@ -11,5 +11,9 @@
     "esbonio.sphinx.confDir": "",
     "githubPullRequests.ignoredPullRequestBranches": [
         "develop"
-    ]
+    ],
+    "sonarlint.connectedMode.project": {
+        "connectionId": "SonarCloud Private",
+        "projectKey": "pdreker_fritz_exporter"
+    }
 }
