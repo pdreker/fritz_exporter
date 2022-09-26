@@ -1,6 +1,6 @@
 import pytest
 
-from fritzexporter.config import get_config, check_config
+from fritzexporter.config import check_config, get_config
 from fritzexporter.exceptions import (
     ConfigError,
     ConfigFileUnreadableError,
