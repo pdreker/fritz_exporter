@@ -6,14 +6,11 @@ import sys
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
-from fritzexporter.exceptions import (
-    ConfigError,
-    ConfigFileUnreadableError,
-    DeviceNamesNotUniqueWarning,
+from fritzexporter.config import (
+    ExporterException,
+    get_config,
 )
 from fritzexporter.fritzdevice import FritzCollector, FritzDevice
-
-from .config import check_config, get_config
 
 ch = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s %(levelname)8s %(name)s | %(message)s")
@@ -39,24 +36,18 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.log_level:
-        log_level = getattr(logging, args.log_level)
-
     try:
         config = get_config(args.config)
-        check_config(config)
-    except (ConfigError, ConfigFileUnreadableError) as e:
+    except ExporterException as e:
         logger.exception(e)
         sys.exit(1)
-    except DeviceNamesNotUniqueWarning:
-        pass
 
-    if "log_level" in config:
-        print("LOG LEVEL READ FROM CONFIG")
-        log_level = getattr(logging, config["log_level"])
-        loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-        for log in loggers:
-            log.setLevel(log_level)
+    log_level = (
+        getattr(logging, args.log_level) if args.log_level else getattr(logging, config.log_level)
+    )
+    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    for log in loggers:
+        log.setLevel(log_level)
 
     for dev in config["devices"]:
         logger.info(f'registering {dev["hostname"]} to collector')

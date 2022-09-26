@@ -1,11 +1,14 @@
 import pytest
 
-from fritzexporter.config import check_config, get_config
-from fritzexporter.exceptions import (
+from fritzexporter.config import get_config
+from fritzexporter.config import (
     ConfigError,
+    EmptyConfigError,
     ConfigFileUnreadableError,
-    DeviceNamesNotUniqueWarning,
+    NoDevicesFoundError,
 )
+
+from fritzexporter.config import DeviceConfig, ExporterConfig
 
 
 class TestReadConfig:
@@ -29,73 +32,54 @@ class TestReadConfig:
 class TestFileConfigs:
     def test_empty_file(self):
         testfile = "tests/conffiles/empty.yaml"
-        config = get_config(testfile)
 
-        with pytest.raises(ConfigError):
-            check_config(config)
+        with pytest.raises(EmptyConfigError):
+            _ = get_config(testfile)
 
     def test_empty_devices(self):
         testfile = "tests/conffiles/emptydevices.yaml"
-        config = get_config(testfile)
 
-        with pytest.raises(ConfigError):
-            check_config(config)
+        with pytest.raises(NoDevicesFoundError):
+            _ = get_config(testfile)
 
     def test_malformed_device(self):
         testfile = "tests/conffiles/malformeddevice.yaml"
-        config = get_config(testfile)
 
-        with pytest.raises(ConfigError):
-            check_config(config)
+        with pytest.raises(ValueError):
+            _ = get_config(testfile)
 
     def test_nodevices(self):
         testfile = "tests/conffiles/nodevices.yaml"
-        config = get_config(testfile)
 
-        with pytest.raises(ConfigError):
-            check_config(config)
+        with pytest.raises(NoDevicesFoundError):
+            _ = get_config(testfile)
 
     def test_invalidport(self):
         testfile = "tests/conffiles/invalidport.yaml"
-        config = get_config(testfile)
 
-        with pytest.raises(ConfigError):
-            check_config(config)
-
-    def test_namesnotunique(self):
-        testfile = "tests/conffiles/namesnotunique.yaml"
-        config = get_config(testfile)
-
-        with pytest.raises(DeviceNamesNotUniqueWarning):
-            check_config(config)
+        with pytest.raises(ValueError):
+            _ = get_config(testfile)
 
     def test_valid_file(self):
         testfile = "tests/conffiles/validconfig.yaml"
 
-        expected = {
-            "exporter_port": 9787,
-            "devices": [
-                {
-                    "name": "Fritz!Box 7590 Router",
-                    "host_info": False,
-                    "hostname": "fritz.box",
-                    "username": "prometheus1",
-                    "password": "prometheus2",
-                },
-                {
-                    "name": "Repeater Wohnzimmer",
-                    "host_info": False,
-                    "hostname": "repeater-Wohnzimmer",
-                    "username": "prometheus3",
-                    "password": "prometheus4",
-                },
-            ],
-        }
+        expected = ExporterConfig(
+            devices=[
+                DeviceConfig(
+                    "fritz.box", "prometheus1", "prometheus2", "Fritz!Box 7590 Router", False
+                ),
+                DeviceConfig(
+                    "repeater-Wohnzimmer",
+                    "prometheus3",
+                    "prometheus4",
+                    "Repeater Wohnzimmer",
+                    False,
+                ),
+            ]
+        )
 
         config = get_config(testfile)
         assert config == expected
-
-        check_config(config)
 
 
 class TestEnvConfig:
@@ -108,19 +92,12 @@ class TestEnvConfig:
         monkeypatch.setenv("FRITZ_LOG_LEVEL", "INFO")
 
         config = get_config(None)
-        expected = {
-            "exporter_port": 12345,
-            "log_level": "INFO",
-            "devices": [
-                {
-                    "host_info": False,
-                    "name": "My Fritz Device",
-                    "hostname": "hostname.local",
-                    "username": "SomeUserName",
-                    "password": "AnInterestingPassword",
-                },
-            ],
-        }
+        devices: list[DeviceConfig] = [
+            DeviceConfig(
+                "hostname.local", "SomeUserName", "AnInterestingPassword", "My Fritz Device"
+            )
+        ]
+        expected: ExporterConfig = ExporterConfig(12345, "INFO", devices)
 
         assert config == expected
 
@@ -129,18 +106,9 @@ class TestEnvConfig:
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
 
         config = get_config(None)
-        expected = {
-            "exporter_port": 9787,
-            "log_level": "INFO",
-            "devices": [
-                {
-                    "name": "Fritz!Box",
-                    "host_info": False,
-                    "hostname": "fritz.box",
-                    "username": "SomeUserName",
-                    "password": "AnInterestingPassword",
-                },
-            ],
-        }
+        devices: list[DeviceConfig] = [
+            DeviceConfig("fritz.box", "SomeUserName", "AnInterestingPassword", "Fritz!Box")
+        ]
+        expected: ExporterConfig = ExporterConfig(9787, "INFO", devices)
 
         assert config == expected
