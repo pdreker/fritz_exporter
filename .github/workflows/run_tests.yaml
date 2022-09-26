@@ -5,6 +5,9 @@ on:
     branches:
       - develop
       - master
+  push:
+    branches:
+      - develop
 
 jobs:
   run-checks:
@@ -12,6 +15,8 @@ jobs:
     name: Run Unit Tests
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -40,3 +45,8 @@ jobs:
           rescode=${PIPESTATUS[0]}
           echo "::set-output name=tests::$(cat test.log)"
           exit $rescode
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
