@@ -26,6 +26,7 @@ pytest-mock = "*"
 types-pyyaml = "*"
 types-requests = "*"
 flake8 = "^5.0.4"
+mypy = "^0.971"
 
 [build-system]
 requires = ["poetry-core"]
