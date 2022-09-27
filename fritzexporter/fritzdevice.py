@@ -2,9 +2,13 @@ import logging
 import sys
 
 from fritzconnection import FritzConnection
-from fritzconnection.core.exceptions import FritzActionError, FritzServiceError
-from requests.exceptions import ConnectionError
+from fritzconnection.core.exceptions import (
+    FritzActionError,
+    FritzConnectionException,
+    FritzServiceError,
+)
 
+from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzcapabilities import FritzCapabilities
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
@@ -29,9 +33,9 @@ class FritzDevice:
             self.fc: FritzConnection = FritzConnection(
                 address=host, user=user, password=password
             )
-        except ConnectionError as e:
+        except FritzConnectionException as e:
             logger.exception(f"unable to connect to {host}: {str(e)}", exc_info=True)
-            sys.exit(1)
+            raise e
 
         logger.info(f"Connection to {host} successful, reading capabilities")
         self.capabilities = FritzCapabilities(self, host_info)
@@ -47,7 +51,7 @@ class FritzDevice:
             )
         if self.capabilities.empty():
             logger.critical(f"Device {host} has no detected capabilities. Exiting.")
-            sys.exit(1)
+            raise FritzDeviceHasNoCapabilitiesError
 
     def get_device_info(self):
         try:
