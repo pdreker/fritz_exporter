@@ -116,7 +116,7 @@ class FritzCapabilities:
 class DeviceInfo(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("DeviceInfo1", "GetInfo"))
+        self.requirements.append(("DeviceInfo:1", "GetInfo"))
 
     def createMetrics(self):
         self.metrics["uptime"] = CounterMetricFamily(
@@ -143,7 +143,7 @@ class DeviceInfo(FritzCapability):
 class HostNumberOfEntries(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("Hosts1", "GetHostNumberOfEntries"))
+        self.requirements.append(("Hosts:1", "GetHostNumberOfEntries"))
 
     def createMetrics(self):
         self.metrics["numhosts"] = GaugeMetricFamily(
@@ -154,7 +154,7 @@ class HostNumberOfEntries(FritzCapability):
         )
 
     def _getMetricValues(self, device):
-        num_hosts_result = device.fc.call_action("Hosts1", "GetHostNumberOfEntries")
+        num_hosts_result = device.fc.call_action("Hosts:1", "GetHostNumberOfEntries")
         self.metrics["numhosts"].add_metric(
             [device.serial, device.friendly_name],
             num_hosts_result["NewHostNumberOfEntries"],
@@ -165,7 +165,7 @@ class HostNumberOfEntries(FritzCapability):
 class UserInterface(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("UserInterface1", "GetInfo"))
+        self.requirements.append(("UserInterface:1", "GetInfo"))
 
     def createMetrics(self):
         self.metrics["update"] = GaugeMetricFamily(
@@ -191,7 +191,7 @@ class UserInterface(FritzCapability):
 class LanInterfaceConfig(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("LANEthernetInterfaceConfig1", "GetInfo"))
+        self.requirements.append(("LANEthernetInterfaceConfig:1", "GetInfo"))
 
     def createMetrics(self):
         self.metrics["lanenable"] = GaugeMetricFamily(
@@ -224,7 +224,7 @@ class LanInterfaceConfig(FritzCapability):
 class LanInterfaceConfigStatistics(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("LANEthernetInterfaceConfig1", "GetStatistics"))
+        self.requirements.append(("LANEthernetInterfaceConfig:1", "GetStatistics"))
 
     def createMetrics(self):
         self.metrics["lanbytes"] = CounterMetricFamily(
@@ -266,7 +266,7 @@ class LanInterfaceConfigStatistics(FritzCapability):
 class WanDSLInterfaceConfig(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("WANDSLInterfaceConfig1", "GetInfo"))
+        self.requirements.append(("WANDSLInterfaceConfig:1", "GetInfo"))
 
     def createMetrics(self):
         self.metrics["enable"] = GaugeMetricFamily(
@@ -351,7 +351,7 @@ class WanDSLInterfaceConfig(FritzCapability):
 class WanDSLInterfaceConfigAVM(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("WANDSLInterfaceConfig1", "X_AVM-DE_GetDSLInfo"))
+        self.requirements.append(("WANDSLInterfaceConfig:1", "X_AVM-DE_GetDSLInfo"))
 
     def createMetrics(self):
         self.metrics["fec"] = CounterMetricFamily(
@@ -367,7 +367,7 @@ class WanDSLInterfaceConfigAVM(FritzCapability):
 
     def _getMetricValues(self, device):
         fritz_avm_dsl_result = device.fc.call_action(
-            "WANDSLInterfaceConfig1", "X_AVM-DE_GetDSLInfo"
+            "WANDSLInterfaceConfig:1", "X_AVM-DE_GetDSLInfo"
         )
         self.metrics["fec"].add_metric(
             [device.serial, device.friendly_name], fritz_avm_dsl_result["NewFECErrors"]
@@ -383,7 +383,7 @@ class WanDSLInterfaceConfigAVM(FritzCapability):
 class WanPPPConnectionStatus(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("WANPPPConnection1", "GetStatusInfo"))
+        self.requirements.append(("WANPPPConnection:1", "GetStatusInfo"))
 
     def createMetrics(self):
         self.metrics["uptime"] = CounterMetricFamily(
@@ -424,7 +424,7 @@ class WanCommonInterfaceConfig(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
         self.requirements.append(
-            ("WANCommonInterfaceConfig1", "GetCommonLinkProperties")
+            ("WANCommonInterfaceConfig:1", "GetCommonLinkProperties")
         )
 
     def createMetrics(self):
@@ -442,7 +442,7 @@ class WanCommonInterfaceConfig(FritzCapability):
 
     def _getMetricValues(self, device):
         wanstatus_result = device.fc.call_action(
-            "WANCommonInterfaceConfig1", "GetCommonLinkProperties"
+            "WANCommonInterfaceConfig:1", "GetCommonLinkProperties"
         )
         self.metrics["wanconfig"].add_metric(
             [
@@ -478,8 +478,10 @@ class WanCommonInterfaceDataBytes(FritzCapability):
 
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("WANCommonInterfaceConfig1", "GetTotalBytesReceived"))
-        self.requirements.append(("WANCommonInterfaceConfig1", "GetTotalBytesSent"))
+        self.requirements.append(
+            ("WANCommonInterfaceConfig:1", "GetTotalBytesReceived")
+        )
+        self.requirements.append(("WANCommonInterfaceConfig:1", "GetTotalBytesSent"))
 
     def createMetrics(self):
         self.metrics["wanbytes"] = CounterMetricFamily(
@@ -510,7 +512,7 @@ class WanCommonInterfaceDataBytes(FritzCapability):
 class WanCommonInterfaceByteRate(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("WANCommonIFC1", "GetAddonInfos"))
+        self.requirements.append(("WANCommonIFC:1", "GetAddonInfos"))
 
     def createMetrics(self):
         self.metrics["wanbyterate"] = GaugeMetricFamily(
@@ -521,7 +523,7 @@ class WanCommonInterfaceByteRate(FritzCapability):
         )
 
     def _getMetricValues(self, device):
-        fritz_wan_result = device.fc.call_action("WANCommonIFC1", "GetAddonInfos")
+        fritz_wan_result = device.fc.call_action("WANCommonIFC:1", "GetAddonInfos")
         wan_byterate_rx = fritz_wan_result["NewByteReceiveRate"]
         wan_byterate_tx = fritz_wan_result["NewByteSendRate"]
         self.metrics["wanbyterate"].add_metric(
@@ -539,7 +541,7 @@ class WanCommonInterfaceDataPackets(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
         self.requirements.append(
-            ("WANCommonInterfaceConfig1", "GetTotalPacketsReceived")
+            ("WANCommonInterfaceConfig:1", "GetTotalPacketsReceived")
         )
         self.requirements.append(("WANCommonInterfaceConfig1", "GetTotalPacketsSent"))
 
@@ -577,7 +579,7 @@ class WlanConfigurationInfo(FritzCapability):
 
     def checkCapability(self, device):
         for wlan in range(len(self.wifi_present)):
-            service = f"WLANConfiguration{wlan + 1}"
+            service = f"WLANConfiguration:{wlan + 1}"
             requirements = [
                 (service, "GetInfo"),
                 (service, "GetTotalAssociations"),
@@ -768,9 +770,9 @@ class WlanConfigurationInfo(FritzCapability):
 class HostInfo(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("Hosts1", "GetHostNumberOfEntries"))
-        self.requirements.append(("Hosts1", "GetGenericHostEntry"))
-        self.requirements.append(("Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP"))
+        self.requirements.append(("Hosts:1", "GetHostNumberOfEntries"))
+        self.requirements.append(("Hosts:1", "GetGenericHostEntry"))
+        self.requirements.append(("Hosts:1", "X_AVM-DE_GetSpecificHostEntryByIP"))
 
     def checkCapability(self, device):
         self.present = device.host_info and all(
@@ -830,7 +832,7 @@ class HostInfo(FritzCapability):
         )
 
     def _getMetricValues(self, device):
-        num_hosts_result = device.fc.call_action("Hosts1", "GetHostNumberOfEntries")
+        num_hosts_result = device.fc.call_action("Hosts:1", "GetHostNumberOfEntries")
         logger.debug(
             f"Fetching host information for device serial {device.serial} "
             f'(hosts found: {num_hosts_result["NewHostNumberOfEntries"]}'
@@ -840,7 +842,7 @@ class HostInfo(FritzCapability):
                 f"Fetching generic host information for host number {host_index}"
             )
             host_result = device.fc.call_action(
-                "Hosts1", "GetGenericHostEntry", NewIndex=host_index
+                "Hosts:1", "GetGenericHostEntry", NewIndex=host_index
             )
             host_ip = host_result["NewIPAddress"]
             host_mac = host_result["NewMACAddress"]
@@ -851,7 +853,7 @@ class HostInfo(FritzCapability):
                     f"host number {host_index} by IP {host_ip}"
                 )
                 avm_host_result = device.fc.call_action(
-                    "Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP", NewIPAddress=host_ip
+                    "Hosts:1", "X_AVM-DE_GetSpecificHostEntryByIP", NewIPAddress=host_ip
                 )
                 host_interface = avm_host_result["NewInterfaceType"]
                 host_port = str(avm_host_result["NewX_AVM-DE_Port"])
