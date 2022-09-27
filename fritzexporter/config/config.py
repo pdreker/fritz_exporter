@@ -5,7 +5,8 @@ import os
 from typing import Any, Optional
 
 import yaml
-from attrs import define, field, validators, converters
+from attrs import converters, define, field, validators
+
 from .exceptions import (
     ConfigError,
     ConfigFileUnreadableError,
@@ -30,9 +31,15 @@ def _read_config_file(config_file_path: str) -> dict:
 
 
 def _read_config_from_env() -> dict:
-    if not all(required in os.environ for required in ["FRITZ_USERNAME", "FRITZ_PASSWORD"]):
-        logger.critical("Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!")
-        raise ConfigError("Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!")
+    if not all(
+        required in os.environ for required in ["FRITZ_USERNAME", "FRITZ_PASSWORD"]
+    ):
+        logger.critical(
+            "Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!"
+        )
+        raise ConfigError(
+            "Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!"
+        )
 
     exporter_port = os.getenv("FRITZ_PORT")
     log_level = os.getenv("FRITZ_LOG_LEVEL")
@@ -50,7 +57,12 @@ def _read_config_from_env() -> dict:
         config["log_level"] = log_level
 
     config["devices"] = []
-    device = {"username": username, "password": password, "host_info": host_info, "name": name}
+    device = {
+        "username": username,
+        "password": password,
+        "host_info": host_info,
+        "name": name,
+    }
     if hostname:
         device["hostname"] = hostname
     config["devices"].append(device)
@@ -86,8 +98,12 @@ class ExporterConfig:
     @log_level.validator
     def check_log_level(self, attribute, value):
         if value not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-            logger.critical("log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL")
-            raise ConfigError("log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL")
+            logger.critical(
+                "log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL"
+            )
+            raise ConfigError(
+                "log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL"
+            )
 
     @devices.validator
     def check_devices(self, attribute, value):
@@ -102,7 +118,9 @@ class ExporterConfig:
     def from_config(cls, config) -> ExporterConfig:
         if config is None:
             logger.exception("No config found (check Env vars or config file).")
-            raise EmptyConfigError("Reading config file returned empty config. Check file content.")
+            raise EmptyConfigError(
+                "Reading config file returned empty config. Check file content."
+            )
 
         exporter_port = config.get("exporter_port", 9787)
         log_level = config.get("log_level", "INFO")
@@ -115,7 +133,9 @@ class ExporterConfig:
 
 @define
 class DeviceConfig:
-    hostname: str = field(validator=validators.min_len(1), converter=lambda x: str.lower(x))
+    hostname: str = field(
+        validator=validators.min_len(1), converter=lambda x: str.lower(x)
+    )
     username: str = field(validator=validators.min_len(1))
     password: str = field(validator=validators.min_len(1))
     name: str = ""
