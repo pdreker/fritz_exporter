@@ -15,5 +15,15 @@
     "sonarlint.connectedMode.project": {
         "connectionId": "SonarCloud Private",
         "projectKey": "pdreker_fritz_exporter"
-    }
+    },
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        ".",
+        "-p",
+        "*test*.py",
+        "--cov=.",
+        "--cov-report=xml",
+        "--cov-branch"
+    ]
 }
