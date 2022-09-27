@@ -46,7 +46,7 @@ class FritzDevice:
                 "This may consume a lot of resources and will cause very slow requests!"
             )
         if self.capabilities.empty():
-            logger.critical(f"Device {host} has no detected capabilities. Exiting. ")
+            logger.critical(f"Device {host} has no detected capabilities. Exiting.")
             sys.exit(1)
 
     def get_device_info(self):
