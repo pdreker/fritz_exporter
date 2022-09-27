@@ -6,10 +6,7 @@ import sys
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
-from fritzexporter.config import (
-    ExporterException,
-    get_config,
-)
+from fritzexporter.config import ExporterException, get_config
 from fritzexporter.fritzdevice import FritzCollector, FritzDevice
 
 ch = logging.StreamHandler()
@@ -43,7 +40,9 @@ def main():
         sys.exit(1)
 
     log_level = (
-        getattr(logging, args.log_level) if args.log_level else getattr(logging, config.log_level)
+        getattr(logging, args.log_level)
+        if args.log_level
+        else getattr(logging, config.log_level)
     )
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     for log in loggers:
