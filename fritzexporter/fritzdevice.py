@@ -30,9 +30,7 @@ class FritzDevice:
             )
 
         try:
-            self.fc: FritzConnection = FritzConnection(
-                address=host, user=user, password=password
-            )
+            self.fc: FritzConnection = FritzConnection(address=host, user=user, password=password)
         except FritzConnectionException as e:
             logger.exception(f"unable to connect to {host}: {str(e)}", exc_info=True)
             raise e
@@ -55,7 +53,7 @@ class FritzDevice:
 
     def get_device_info(self):
         try:
-            device_info: dict[str, str] = self.fc.call_action("DeviceInfo", "GetInfo")
+            device_info: dict[str, str] = self.fc.call_action("DeviceInfo1", "GetInfo")
             self.serial: str = device_info["NewSerialNumber"]
             self.model: str = device_info["NewModelName"]
 
@@ -75,9 +73,7 @@ class FritzCollector:
 
     def register(self, fritzdev):
         self.devices.append(fritzdev)
-        logger.debug(
-            f"registered device {fritzdev.host} ({fritzdev.model}) to collector"
-        )
+        logger.debug(f"registered device {fritzdev.host} ({fritzdev.model}) to collector")
         self.capabilities.merge(fritzdev.capabilities)
 
     def collect(self):
