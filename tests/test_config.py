@@ -1,14 +1,14 @@
 import pytest
 
-from fritzexporter.config import get_config
 from fritzexporter.config import (
     ConfigError,
-    EmptyConfigError,
     ConfigFileUnreadableError,
+    DeviceConfig,
+    EmptyConfigError,
+    ExporterConfig,
     NoDevicesFoundError,
+    get_config,
 )
-
-from fritzexporter.config import DeviceConfig, ExporterConfig
 
 
 class TestReadConfig:
@@ -66,7 +66,11 @@ class TestFileConfigs:
         expected = ExporterConfig(
             devices=[
                 DeviceConfig(
-                    "fritz.box", "prometheus1", "prometheus2", "Fritz!Box 7590 Router", False
+                    "fritz.box",
+                    "prometheus1",
+                    "prometheus2",
+                    "Fritz!Box 7590 Router",
+                    False,
                 ),
                 DeviceConfig(
                     "repeater-Wohnzimmer",
@@ -94,7 +98,10 @@ class TestEnvConfig:
         config = get_config(None)
         devices: list[DeviceConfig] = [
             DeviceConfig(
-                "hostname.local", "SomeUserName", "AnInterestingPassword", "My Fritz Device"
+                "hostname.local",
+                "SomeUserName",
+                "AnInterestingPassword",
+                "My Fritz Device",
             )
         ]
         expected: ExporterConfig = ExporterConfig(12345, "INFO", devices)
@@ -107,7 +114,9 @@ class TestEnvConfig:
 
         config = get_config(None)
         devices: list[DeviceConfig] = [
-            DeviceConfig("fritz.box", "SomeUserName", "AnInterestingPassword", "Fritz!Box")
+            DeviceConfig(
+                "fritz.box", "SomeUserName", "AnInterestingPassword", "Fritz!Box"
+            )
         ]
         expected: ExporterConfig = ExporterConfig(9787, "INFO", devices)
 
