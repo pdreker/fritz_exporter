@@ -1,8 +1,5 @@
 {
     "python.pythonPath": "/Users/pd/.local/share/virtualenvs/fritzbox_exporter-N1IOk1zl/bin/python",
-    "python.testing.pytestArgs": [
-        "tests"
-    ],
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
     "python.testing.pytestEnabled": true,
@@ -16,14 +13,13 @@
         "connectionId": "SonarCloud Private",
         "projectKey": "pdreker_fritz_exporter"
     },
-    "python.testing.unittestArgs": [
-        "-v",
-        "-s",
+    "python.testing.pytestArgs": [
+        "--cov",
         ".",
-        "-p",
-        "*test*.py",
-        "--cov=.",
-        "--cov-report=xml",
-        "--cov-branch"
+        "--cov-report",
+        "xml",
+        "--cov-branch",
+        "--cov-config",
+        ".coveragerc"
     ]
 }

@@ -3,6 +3,13 @@ name = "fritzexporter"
 authors = [{name = "pdreker", email = "patrick@dreker.de"}]
 dynamic = ["version", "description"]
 
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov-branch --cov . --cov-report xml --cov-config .coveragerc"
+testpaths = [
+    "tests",
+]
+
 [tool.poetry]
 name = "fritz-exporter"
 version = "2.1.6"
