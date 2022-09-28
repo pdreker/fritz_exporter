@@ -565,7 +565,7 @@ class WlanConfigurationInfo(FritzCapability):
                 (service, "GetPacketStatistics"),
             ]
             logger.debug(
-                f"WLANCapability {type(self).__name__} " f"checking {service} on {device.host}"
+                f"WLANCapability {type(self).__name__} checking {service} on {device.host}"
             )
             self.wifi_present[wlan] = all(
                 [
