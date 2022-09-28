@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from fritzconnection.core.exceptions import FritzServiceError
+
 
 @dataclass
 class FCService:
@@ -13,14 +15,16 @@ def create_fc_services(services_mock):
     return services
 
 
-def call_action_mock(service, action):
+def call_action_mock(service, action, **kwargs):
+
+    _ = kwargs
 
     call_action_responses = {
         ("DeviceInfo1", "GetInfo"): {
             "NewSerialNumber": "1234567890",
             "NewModelName": "Fritz!MockBox 9790",
             "NewSoftwareVersion": "1.2",
-            "NewUptime": 1234,
+            "NewUpTime": 1234,
         },
         ("Hosts1", "GetHostNumberOfEntries"): {"NewHostNumberOfEntries": 3},
         ("UserInterface1", "GetInfo"): {
@@ -64,12 +68,8 @@ def call_action_mock(service, action):
             "NewLayer1DownstreamMaxBitRate": 10001,
             "NewPhysicalLinkStatus": "Up",
         },
-        ("WANCommonInterfaceConfig1", "GetTotalBytesReceived"): {
-            "NewTotalBytesReceived": 1234567
-        },
-        ("WANCommonInterfaceConfig1", "GetTotalBytesSent"): {
-            "NewTotalBytesSent": 234567
-        },
+        ("WANCommonInterfaceConfig1", "GetTotalBytesReceived"): {"NewTotalBytesReceived": 1234567},
+        ("WANCommonInterfaceConfig1", "GetTotalBytesSent"): {"NewTotalBytesSent": 234567},
         ("WANCommonIFC1", "GetAddonInfos"): {
             "NewByteReceiveRate": 12345,
             "NewByteSendRate": 23456,
@@ -77,9 +77,7 @@ def call_action_mock(service, action):
         ("WANCommonInterfaceConfig1", "GetTotalPacketsReceived"): {
             "NewTotalPacketsReceived": 12345
         },
-        ("WANCommonInterfaceConfig1", "GetTotalPacketsSent"): {
-            "NewTotalPacketsSent": 2345
-        },
+        ("WANCommonInterfaceConfig1", "GetTotalPacketsSent"): {"NewTotalPacketsSent": 2345},
         ("WLANConfiguration1", "GetInfo"): {
             "NewStatus": "Up",
             "NewEnable": 1,
@@ -133,8 +131,322 @@ def call_action_mock(service, action):
     return call_action_responses[(service, action)]
 
 
-fc_services_devices = {}
+def call_action_no_basic_mock(service, action, **kwargs):
 
+    _ = kwargs
+
+    if service == "DeviceInfo1" and action == "GetInfo":
+        raise FritzServiceError
+
+    call_action_responses = {
+        ("Hosts1", "GetHostNumberOfEntries"): {"NewHostNumberOfEntries": 3},
+        ("UserInterface1", "GetInfo"): {
+            "NewUpgradeAvailable": 1,
+            "NewX_AVM-DE_Version": "1.3",
+        },
+        ("LANEthernetInterfaceConfig1", "GetInfo"): {
+            "NewEnable": 1,
+            "NewStatus": "Up",
+        },
+        ("LANEthernetInterfaceConfig1", "GetStatistics"): {
+            "NewBytesReceived": 1234,
+            "NewBytesSent": 9876,
+            "NewPacketsReceived": 123,
+            "NewPacketsSent": 987,
+        },
+        ("WANDSLInterfaceConfig1", "GetInfo"): {
+            "NewEnable": 1,
+            "NewStatus": "Up",
+            "NewUpstreamCurrRate": 500,
+            "NewDownstreamCurrRate": 100,
+            "NewUpstreamMaxRate": 567,
+            "NewDownstreamMaxRate": 123,
+            "NewUpstreamNoiseMargin": 56,
+            "NewDownstreamNoiseMargin": 67,
+            "NewUpstreamAttenuation": 12,
+            "NewDownstreamAttenuation": 23,
+        },
+        ("WANDSLInterfaceConfig1", "X_AVM-DE_GetDSLInfo"): {
+            "NewFECErrors": 12,
+            "NewCRCErrors": 23,
+        },
+        ("WANPPPConnection1", "GetStatusInfo"): {
+            "NewConnectionStatus": "Connected",
+            "NewUptime": 12345,
+            "NewLastConnectionError": "Timeout",
+        },
+        ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"): {
+            "NewWANAccessType": "PPPoE",
+            "NewLayer1UpstreamMaxBitRate": 10000,
+            "NewLayer1DownstreamMaxBitRate": 10001,
+            "NewPhysicalLinkStatus": "Up",
+        },
+        ("WANCommonInterfaceConfig1", "GetTotalBytesReceived"): {"NewTotalBytesReceived": 1234567},
+        ("WANCommonInterfaceConfig1", "GetTotalBytesSent"): {"NewTotalBytesSent": 234567},
+        ("WANCommonIFC1", "GetAddonInfos"): {
+            "NewByteReceiveRate": 12345,
+            "NewByteSendRate": 23456,
+        },
+        ("WANCommonInterfaceConfig1", "GetTotalPacketsReceived"): {
+            "NewTotalPacketsReceived": 12345
+        },
+        ("WANCommonInterfaceConfig1", "GetTotalPacketsSent"): {"NewTotalPacketsSent": 2345},
+        ("WLANConfiguration1", "GetInfo"): {
+            "NewStatus": "Up",
+            "NewEnable": 1,
+            "NewStandard": "802.11xe",
+            "NewSSID": "SomeSSID-1",
+            "NewChannel": "42",
+        },
+        ("WLANConfiguration1", "GetTotalAssociations"): {"NewTotalAssociations": 56},
+        ("WLANConfiguration1", "GetPacketStatistics"): {
+            "NewTotalPacketsReceived": 123456,
+            "NewTotalPacketsSent": 2345,
+        },
+        ("WLANConfiguration2", "GetInfo"): {
+            "NewStatus": "Up",
+            "NewEnable": 1,
+            "NewStandard": "802.11xe2",
+            "NewSSID": "SomeSSID-2",
+            "NewChannel": "23",
+        },
+        ("WLANConfiguration2", "GetTotalAssociations"): {"NewTotalAssociations": 43},
+        ("WLANConfiguration2", "GetPacketStatistics"): {
+            "NewTotalPacketsReceived": 1234560,
+            "NewTotalPacketsSent": 23450,
+        },
+        ("WLANConfiguration3", "GetInfo"): {
+            "NewStatus": "Up",
+            "NewEnable": 1,
+            "NewStandard": "802.11xe3",
+            "NewSSID": "SomeSSID-3",
+            "NewChannel": "69",
+        },
+        ("WLANConfiguration3", "GetTotalAssociations"): {"NewTotalAssociations": 82},
+        ("WLANConfiguration3", "GetPacketStatistics"): {
+            "NewTotalPacketsReceived": 1234561,
+            "NewTotalPacketsSent": 23451,
+        },
+        ("Hosts1", "GetGenericHostEntry"): {
+            "NewIPAddress": "192.168.178.42",
+            "NewMACAddress": "01:02:03:04:05:06",
+            "NewHostName": "generichost",
+            "NewActive": 1,
+        },
+        ("Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP"): {
+            "NewInterfaceType": "eth",
+            "NewX_AVM-DE_Port": "LAN1",
+            "NewX_AVM-DE_Model": "Mockgear",
+            "NewX_AVM-DE_Speed": 1000,
+        },
+    }
+
+    return call_action_responses[(service, action)]
+
+
+DEVICE_INFO1 = [
+    "GetInfo",
+    "SetProvisioningCode",
+    "GetDeviceLog",
+    "GetSecurityPort",
+]
+
+fc_services_no_basic_info = {
+    "UserInterface1": [
+        "GetInfo",
+        "X_AVM-DE_CheckUpdate",
+        "X_AVM-DE_DoUpdate",
+        "X_AVM-DE_DoPrepareCGI",
+        "X_AVM-DE_DoManualUpdate",
+        "X_AVM-DE_GetInternationalConfig",
+        "X_AVM-DE_SetInternationalConfig",
+        "X_AVM-DE_GetInfo",
+        "X_AVM-DE_SetConfig",
+    ]
+}
+
+fc_services_capabilities: dict[str, dict] = {}
+fc_services_capabilities["DeviceInfo"] = {
+    "DeviceInfo1": DEVICE_INFO1,
+}
+fc_services_capabilities["HostNumberOfEntries"] = {
+    "Hosts1": [
+        "GetHostNumberOfEntries",
+    ],
+}
+fc_services_capabilities["UserInterface"] = {
+    "UserInterface1": [
+        "GetInfo",
+        "X_AVM-DE_CheckUpdate",
+        "X_AVM-DE_DoUpdate",
+        "X_AVM-DE_DoPrepareCGI",
+        "X_AVM-DE_DoManualUpdate",
+        "X_AVM-DE_GetInternationalConfig",
+        "X_AVM-DE_SetInternationalConfig",
+        "X_AVM-DE_GetInfo",
+        "X_AVM-DE_SetConfig",
+    ],
+}
+fc_services_capabilities["LanInterfaceConfig"] = {
+    "LANEthernetInterfaceConfig1": ["GetInfo"],
+}
+fc_services_capabilities["LanInterfaceConfigStatistics"] = {
+    "LANEthernetInterfaceConfig1": ["GetStatistics"],
+}
+fc_services_capabilities["WanDSLInterfaceConfig"] = {
+    "WANDSLInterfaceConfig1": [
+        "GetInfo",
+    ],
+}
+fc_services_capabilities["WanDSLInterfaceConfigAVM"] = {
+    "WANDSLInterfaceConfig1": [
+        "X_AVM-DE_GetDSLInfo",
+    ],
+}
+fc_services_capabilities["WanPPPConnectionStatus"] = {
+    "WANPPPConnection1": [
+        "GetInfo",
+        "GetConnectionTypeInfo",
+        "SetConnectionType",
+        "GetStatusInfo",
+        "GetUserName",
+        "SetUserName",
+        "SetPassword",
+        "GetNATRSIPStatus",
+        "SetConnectionTrigger",
+        "ForceTermination",
+        "RequestConnection",
+        "GetGenericPortMappingEntry",
+        "GetSpecificPortMappingEntry",
+        "AddPortMapping",
+        "DeletePortMapping",
+        "GetExternalIPAddress",
+        "X_GetDNSServers",
+        "GetLinkLayerMaxBitRates",
+        "GetPortMappingNumberOfEntries",
+        "SetRouteProtocolRx",
+        "SetIdleDisconnectTime",
+        "X_AVM-DE_GetAutoDisconnectTimeSpan",
+        "X_AVM-DE_SetAutoDisconnectTimeSpan",
+    ],
+}
+fc_services_capabilities["WanCommonInterfaceConfig"] = {
+    "WANCommonInterfaceConfig1": [
+        "GetCommonLinkProperties",
+    ],
+}
+fc_services_capabilities["WanCommonInterfaceDataBytes"] = {
+    "WANCommonInterfaceConfig1": [
+        "GetTotalBytesSent",
+        "GetTotalBytesReceived",
+    ],
+}
+fc_services_capabilities["WanCommonInterfaceDataPackets"] = {
+    "WANCommonInterfaceConfig1": [
+        "GetTotalPacketsSent",
+        "GetTotalPacketsReceived",
+    ],
+}
+fc_services_capabilities["WanCommonInterfaceByteRate"] = {
+    "WANCommonIFC1": [
+        "GetCommonLinkProperties",
+        "GetTotalBytesSent",
+        "GetTotalBytesReceived",
+        "GetTotalPacketsSent",
+        "GetTotalPacketsReceived",
+        "GetAddonInfos",
+        "X_AVM_DE_GetDsliteStatus",
+        "X_AVM_DE_GetIPTVInfos",
+    ],
+}
+fc_services_capabilities["WlanConfigurationInfo"] = {
+    "WLANConfiguration1": [
+        "SetEnable",
+        "GetInfo",
+        "SetConfig",
+        "SetSecurityKeys",
+        "GetSecurityKeys",
+        "SetDefaultWEPKeyIndex",
+        "GetDefaultWEPKeyIndex",
+        "SetBasBeaconSecurityProperties",
+        "GetBasBeaconSecurityProperties",
+        "GetStatistics",
+        "GetPacketStatistics",
+        "GetBSSID",
+        "GetSSID",
+        "SetSSID",
+        "GetBeaconType",
+        "SetBeaconType",
+        "GetChannelInfo",
+        "SetChannel",
+        "GetBeaconAdvertisement",
+        "SetBeaconAdvertisement",
+        "GetTotalAssociations",
+        "GetGenericAssociatedDeviceInfo",
+        "GetSpecificAssociatedDeviceInfo",
+        "X_AVM-DE_GetSpecificAssociatedDeviceInfoByIp",
+        "X_AVM-DE_GetWLANDeviceListPath",
+        "X_AVM-DE_SetStickSurfEnable",
+        "X_AVM-DE_GetIPTVOptimized",
+        "X_AVM-DE_SetIPTVOptimized",
+        "X_AVM-DE_GetNightControl",
+        "X_AVM-DE_GetWLANHybridMode",
+        "X_AVM-DE_SetWLANHybridMode",
+        "X_AVM-DE_GetWLANExtInfo",
+        "X_AVM-DE_GetWPSInfo",
+        "X_AVM-DE_SetWPSConfig",
+        "X_AVM-DE_SetWPSEnable",
+        "X_AVM-DE_SetWLANGlobalEnable",
+        "X_AVM-DE_GetWLANConnectionInfo",
+    ],
+    "WLANConfiguration2": [
+        "SetEnable",
+        "GetInfo",
+        "SetConfig",
+        "SetSecurityKeys",
+        "GetSecurityKeys",
+        "SetDefaultWEPKeyIndex",
+        "GetDefaultWEPKeyIndex",
+        "SetBasBeaconSecurityProperties",
+        "GetBasBeaconSecurityProperties",
+        "GetStatistics",
+        "GetPacketStatistics",
+        "GetBSSID",
+        "GetSSID",
+        "SetSSID",
+        "GetBeaconType",
+        "SetBeaconType",
+        "GetChannelInfo",
+        "SetChannel",
+        "GetBeaconAdvertisement",
+        "SetBeaconAdvertisement",
+        "GetTotalAssociations",
+        "GetGenericAssociatedDeviceInfo",
+        "GetSpecificAssociatedDeviceInfo",
+        "X_AVM-DE_GetSpecificAssociatedDeviceInfoByIp",
+        "X_AVM-DE_GetWLANDeviceListPath",
+        "X_AVM-DE_SetStickSurfEnable",
+        "X_AVM-DE_GetIPTVOptimized",
+        "X_AVM-DE_SetIPTVOptimized",
+        "X_AVM-DE_GetNightControl",
+        "X_AVM-DE_GetWLANHybridMode",
+        "X_AVM-DE_SetWLANHybridMode",
+        "X_AVM-DE_GetWLANExtInfo",
+        "X_AVM-DE_GetWPSInfo",
+        "X_AVM-DE_SetWPSConfig",
+        "X_AVM-DE_SetWPSEnable",
+        "X_AVM-DE_SetWLANGlobalEnable",
+        "X_AVM-DE_GetWLANConnectionInfo",
+    ],
+}
+fc_services_capabilities["HostInfo"] = {
+    "Hosts1": [
+        "GetHostNumberOfEntries",
+        "GetGenericHostEntry",
+        "X_AVM-DE_GetSpecificHostEntryByIP",
+    ],
+}
+fc_services_devices = {}
 fc_services_devices["FritzBox 7590"] = {
     "DeviceConfig1": [
         "GetPersistentData",
