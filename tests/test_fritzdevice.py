@@ -117,7 +117,6 @@ def call_action_mock(service, action, **kwargs):
             "NewX_AVM-DE_Model": "Mockgear",
             "NewX_AVM-DE_Speed": 1000,
         },
-        ("WANCommonIFC1", "GetAddonInfos"): {},
     }
 
     return call_action_responses[(service, action)]
