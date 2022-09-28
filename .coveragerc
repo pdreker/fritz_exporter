@@ -1,3 +1,7 @@
 [run]
 branch = True
 relative_files = True
+omit = 'tests/*'
+
+[report]
+show_missing = true
