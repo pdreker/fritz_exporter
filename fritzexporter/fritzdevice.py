@@ -40,10 +40,11 @@ class FritzDevice:
 
         self.get_device_info()
         logger.info(
-            f"Read capabilities for {host}, got serial {self.serial}, model name {self.model}"
+            f"Reading capabilities for {host}, got serial {self.serial}, "
+            f"model name {self.model} completed"
         )
         if host_info:
-            logger.warn(
+            logger.warning(
                 f"HostInfo Capability enabled on device {host}. "
                 "This may consume a lot of resources and will cause very slow requests!"
             )
@@ -58,7 +59,7 @@ class FritzDevice:
             self.model: str = device_info["NewModelName"]
 
         except (FritzServiceError, FritzActionError):
-            logger.exception(
+            logger.error(
                 f"Fritz Device {self.host} does not provide basic device "
                 "info (Service: DeviceInfo1, Action: GetInfo)."
                 "Serial number and model name will be unavailable.",
