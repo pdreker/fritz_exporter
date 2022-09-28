@@ -5,9 +5,9 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional, Type, Union
 
 from fritzconnection.core.exceptions import (
-    ActionError,
+    FritzActionError,
     FritzInternalError,
-    ServiceError,
+    FritzServiceError,
 )
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
@@ -54,8 +54,8 @@ class FritzCapability(ABC):
             for (svc, action) in self.requirements:
                 try:
                     device.fc.call_action(svc, action)
-                except (ServiceError, ActionError, FritzInternalError) as e:
-                    logger.warn(
+                except (FritzServiceError, FritzActionError, FritzInternalError) as e:
+                    logger.warning(
                         f"disabling metrics at service {svc}, action {action} - "
                         f"fritzconnection.call_action returned {str(e)}"
                     )
@@ -564,9 +564,7 @@ class WlanConfigurationInfo(FritzCapability):
                 (service, "GetTotalAssociations"),
                 (service, "GetPacketStatistics"),
             ]
-            logger.debug(
-                f"WLANCapability {type(self).__name__} checking {service} on {device.host}"
-            )
+            logger.debug(f"Capability {type(self).__name__} checking {service} on {device.host}")
             self.wifi_present[wlan] = all(
                 [
                     (service in device.fc.services)
@@ -575,19 +573,19 @@ class WlanConfigurationInfo(FritzCapability):
                 ]
             )
             logger.debug(
-                f"WLANCapability {type(self).__name__} in WLAN {wlan} set "
+                f"Capability {type(self).__name__} in WLAN {wlan+1} set "
                 f"to {self.wifi_present[wlan]} on device {device.host}"
             )
             if self.wifi_present[wlan]:
                 for (svc, action) in requirements:
                     try:
                         device.fc.call_action(svc, action)
-                    except (ServiceError, ActionError, FritzInternalError) as e:
-                        logger.warn(
+                    except (FritzServiceError, FritzActionError, FritzInternalError) as e:
+                        logger.warning(
                             f"disabling metrics at service {svc}, action {action} - "
                             f"fritzconnection.call_action returned {e}"
                         )
-                        self.wifi_present[wlan - 1] = False
+                        self.wifi_present[wlan] = False
         self.present = any(self.wifi_present)
 
     def createMetrics(self):
@@ -769,8 +767,8 @@ class HostInfo(FritzCapability):
                         device.fc.call_action(svc, action)
                     elif action == "GetGenericHostEntry":
                         device.fc.call_action(svc, action, arguments={"NewIndex": 1})
-                except (ServiceError, ActionError, FritzInternalError) as e:
-                    logger.warn(
+                except (FritzServiceError, FritzActionError, FritzInternalError) as e:
+                    logger.warning(
                         f"disabling metrics at service {svc}, action {action} - "
                         f"fritzconnection.call_action returned {str(e)}"
                     )
