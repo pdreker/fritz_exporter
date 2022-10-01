@@ -37,12 +37,14 @@ jobs:
         uses: mikefarah/yq@v4.27.5
         with:
           cmd: yq '.appVersion = "${{ steps.update_semver.outputs.tag }}"' -i helm/fritz-exporter/Chart.yaml
+      - name: Update internal VERSION string
+        run: echo VERSION = "${{ steps.update_semver.outputs.tag }}" > fritzexporter/_version.py
       - name: Commit pyproject.toml and Chart.yaml back to repo
         run: |
           git config --local user.name github-actions
           git config --local user.email github-actions@github.com
-          git add pyproject.toml helm/fritz-exporter/Chart.yaml
-          git commit -m "Update pyproject.toml for version ${{ steps.update_semver.outputs.tag }}"
+          git add pyproject.toml fritzexporter/_version.py helm/fritz-exporter/Chart.yaml
+          git commit -m "Update version files to ${{ steps.update_semver.outputs.tag }}"
       - name: Push version updates back to master
         uses: ad-m/github-push-action@master
         with:
