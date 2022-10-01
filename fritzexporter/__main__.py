@@ -66,6 +66,7 @@ def main():
 
         if args.donate_data == "donate":
             donate_data(fritz_device)
+            sys.exit(0)
         else:
             logger.info(f"registering {dev.hostname} to collector")
             fritzcollector.register(fritz_device)
