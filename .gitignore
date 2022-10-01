@@ -152,3 +152,4 @@ cython_debug/
 # Local History for Visual Studio Code
 .history/
 helm/fritz-exporter/values-orbital.yaml
+donation.txt
