@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from fritzconnection.core.exceptions import FritzServiceError
+from fritzconnection.core.exceptions import FritzActionError, FritzServiceError
 
 
 @dataclass
@@ -26,6 +26,7 @@ def call_action_mock(service, action, **kwargs):
             "NewSoftwareVersion": "1.2",
             "NewUpTime": 1234,
         },
+        ("DeviceConfig1", "GetPersistentData"): {},
         ("Hosts1", "GetHostNumberOfEntries"): {"NewHostNumberOfEntries": 3},
         ("UserInterface1", "GetInfo"): {
             "NewUpgradeAvailable": 1,
@@ -132,11 +133,122 @@ def call_action_mock(service, action, **kwargs):
 
 
 def call_action_no_basic_mock(service, action, **kwargs):
-
     _ = kwargs
 
     if service == "DeviceInfo1" and action == "GetInfo":
         raise FritzServiceError
+
+    call_action_responses = {
+        ("Hosts1", "GetHostNumberOfEntries"): {"NewHostNumberOfEntries": 3},
+        ("UserInterface1", "GetInfo"): {
+            "NewUpgradeAvailable": 1,
+            "NewX_AVM-DE_Version": "1.3",
+        },
+        ("LANEthernetInterfaceConfig1", "GetInfo"): {
+            "NewEnable": 1,
+            "NewStatus": "Up",
+        },
+        ("LANEthernetInterfaceConfig1", "GetStatistics"): {
+            "NewBytesReceived": 1234,
+            "NewBytesSent": 9876,
+            "NewPacketsReceived": 123,
+            "NewPacketsSent": 987,
+        },
+        ("WANDSLInterfaceConfig1", "GetInfo"): {
+            "NewEnable": 1,
+            "NewStatus": "Up",
+            "NewUpstreamCurrRate": 500,
+            "NewDownstreamCurrRate": 100,
+            "NewUpstreamMaxRate": 567,
+            "NewDownstreamMaxRate": 123,
+            "NewUpstreamNoiseMargin": 56,
+            "NewDownstreamNoiseMargin": 67,
+            "NewUpstreamAttenuation": 12,
+            "NewDownstreamAttenuation": 23,
+        },
+        ("WANDSLInterfaceConfig1", "X_AVM-DE_GetDSLInfo"): {
+            "NewFECErrors": 12,
+            "NewCRCErrors": 23,
+        },
+        ("WANPPPConnection1", "GetStatusInfo"): {
+            "NewConnectionStatus": "Connected",
+            "NewUptime": 12345,
+            "NewLastConnectionError": "Timeout",
+        },
+        ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"): {
+            "NewWANAccessType": "PPPoE",
+            "NewLayer1UpstreamMaxBitRate": 10000,
+            "NewLayer1DownstreamMaxBitRate": 10001,
+            "NewPhysicalLinkStatus": "Up",
+        },
+        ("WANCommonInterfaceConfig1", "GetTotalBytesReceived"): {"NewTotalBytesReceived": 1234567},
+        ("WANCommonInterfaceConfig1", "GetTotalBytesSent"): {"NewTotalBytesSent": 234567},
+        ("WANCommonIFC1", "GetAddonInfos"): {
+            "NewByteReceiveRate": 12345,
+            "NewByteSendRate": 23456,
+        },
+        ("WANCommonInterfaceConfig1", "GetTotalPacketsReceived"): {
+            "NewTotalPacketsReceived": 12345
+        },
+        ("WANCommonInterfaceConfig1", "GetTotalPacketsSent"): {"NewTotalPacketsSent": 2345},
+        ("WLANConfiguration1", "GetInfo"): {
+            "NewStatus": "Up",
+            "NewEnable": 1,
+            "NewStandard": "802.11xe",
+            "NewSSID": "SomeSSID-1",
+            "NewChannel": "42",
+        },
+        ("WLANConfiguration1", "GetTotalAssociations"): {"NewTotalAssociations": 56},
+        ("WLANConfiguration1", "GetPacketStatistics"): {
+            "NewTotalPacketsReceived": 123456,
+            "NewTotalPacketsSent": 2345,
+        },
+        ("WLANConfiguration2", "GetInfo"): {
+            "NewStatus": "Up",
+            "NewEnable": 1,
+            "NewStandard": "802.11xe2",
+            "NewSSID": "SomeSSID-2",
+            "NewChannel": "23",
+        },
+        ("WLANConfiguration2", "GetTotalAssociations"): {"NewTotalAssociations": 43},
+        ("WLANConfiguration2", "GetPacketStatistics"): {
+            "NewTotalPacketsReceived": 1234560,
+            "NewTotalPacketsSent": 23450,
+        },
+        ("WLANConfiguration3", "GetInfo"): {
+            "NewStatus": "Up",
+            "NewEnable": 1,
+            "NewStandard": "802.11xe3",
+            "NewSSID": "SomeSSID-3",
+            "NewChannel": "69",
+        },
+        ("WLANConfiguration3", "GetTotalAssociations"): {"NewTotalAssociations": 82},
+        ("WLANConfiguration3", "GetPacketStatistics"): {
+            "NewTotalPacketsReceived": 1234561,
+            "NewTotalPacketsSent": 23451,
+        },
+        ("Hosts1", "GetGenericHostEntry"): {
+            "NewIPAddress": "192.168.178.42",
+            "NewMACAddress": "01:02:03:04:05:06",
+            "NewHostName": "generichost",
+            "NewActive": 1,
+        },
+        ("Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP"): {
+            "NewInterfaceType": "eth",
+            "NewX_AVM-DE_Port": "LAN1",
+            "NewX_AVM-DE_Model": "Mockgear",
+            "NewX_AVM-DE_Speed": 1000,
+        },
+    }
+
+    return call_action_responses[(service, action)]
+
+
+def call_action_no_basic_action_error_mock(service, action, **kwargs):
+    _ = kwargs
+
+    if service == "DeviceInfo1" and action == "GetInfo":
+        raise FritzActionError
 
     call_action_responses = {
         ("Hosts1", "GetHostNumberOfEntries"): {"NewHostNumberOfEntries": 3},
@@ -1108,7 +1220,7 @@ fc_services_devices["FritzRepeater 2400"] = {
     ],
 }
 
-fc_services_devices["FritzRepeater 1759E"] = {
+fc_services_devices["FritzRepeater 1750E"] = {
     "DeviceConfig1": [
         "GetPersistentData",
         "SetPersistentData",
