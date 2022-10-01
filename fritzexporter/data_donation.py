@@ -1,8 +1,7 @@
 import json
 import logging
-import sys
-from pprint import pprint
 
+import requests
 from fritzconnection.core.exceptions import (
     FritzActionError,
     FritzArgumentError,
@@ -209,24 +208,22 @@ def sanitize_results(res: dict[tuple[str, str], dict]):
     return res
 
 
+def jsonify_action_results(ar):
+    out: dict[str, dict] = {}
+    for (service, action) in ar:
+        if service not in out:
+            out[service] = {}
+        if action not in out[service]:
+            out[service][action] = {k: str(v) for k, v in ar[(service, action)].items()}
+    return out
+
+
 def donate_data(device: FritzDevice):
     services = {s: list(device.fc.services[s].actions) for s in device.fc.services}
     model = device.model
     sw_version = get_sw_version(device)
 
     detected_capabilities = list(device.capabilities.capabilities)
-
-    basedata = {
-        "exporter_version": VERSION,
-        "fritzdevice": {
-            "model": model,
-            "os_version": sw_version,
-            "services": services,
-            "detected_capabilities": detected_capabilities,
-        },
-    }
-
-    print(json.dumps(basedata, indent=2))
 
     action_results = {}
     for service, actions in services.items():
@@ -240,8 +237,18 @@ def donate_data(device: FritzDevice):
                 res = safe_call_action(device, service, action)
                 action_results[(service, action)] = res
 
-    action_results = sanitize_results(action_results)
+    action_results = jsonify_action_results(sanitize_results(action_results))
 
-    pprint(action_results)
+    basedata = {
+        "exporter_version": VERSION,
+        "fritzdevice": {
+            "model": model,
+            "os_version": sw_version,
+            "services": services,
+            "detected_capabilities": detected_capabilities,
+            "action_results": action_results,
+        },
+    }
 
-    sys.exit(0)
+    resp = requests.post("https://fritzexporter.dreker.de/data/donate", data=json.dumps(basedata))
+    resp.raise_for_status()
