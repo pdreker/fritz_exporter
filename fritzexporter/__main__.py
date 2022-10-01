@@ -7,6 +7,7 @@ from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
 from fritzexporter.config import ExporterException, get_config
+from fritzexporter.data_donation import donate_data
 from fritzexporter.fritzdevice import FritzCollector, FritzDevice
 
 ch = logging.StreamHandler()
@@ -31,6 +32,14 @@ def main():
         choices=levels,
         help="Set log-level (default: INFO)",
     )
+
+    parser.add_argument(
+        "--donate-data",
+        action="store_const",
+        const="donate",
+        help="Do not start exporter, collect and upload data to assist the project",
+    )
+
     args = parser.parse_args()
 
     try:
@@ -40,30 +49,31 @@ def main():
         sys.exit(1)
 
     log_level = (
-        getattr(logging, args.log_level)
-        if args.log_level
-        else getattr(logging, config.log_level)
+        getattr(logging, args.log_level) if args.log_level else getattr(logging, config.log_level)
     )
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     for log in loggers:
         log.setLevel(log_level)
 
-    for dev in config["devices"]:
-        logger.info(f'registering {dev["hostname"]} to collector')
-        fritzcollector.register(
-            FritzDevice(
-                dev["hostname"],
-                dev["username"],
-                dev["password"],
-                dev["name"],
-                dev["host_info"],
-            )
+    for dev in config.devices:
+        fritz_device = FritzDevice(
+            dev.hostname,
+            dev.username,
+            dev.password,
+            dev.name,
+            dev.host_info,
         )
+
+        if args.donate_data == "donate":
+            donate_data(fritz_device)
+        else:
+            logger.info(f"registering {dev.hostname} to collector")
+            fritzcollector.register(fritz_device)
 
     REGISTRY.register(fritzcollector)
 
-    logger.info(f'Starting listener at {config["exporter_port"]}')
-    start_http_server(int(config["exporter_port"]))
+    logger.info(f"Starting listener at {config.exporter_port}")
+    start_http_server(int(config.exporter_port))
 
     logger.info("Entering async main loop - exporter is ready")
     loop = asyncio.new_event_loop()
