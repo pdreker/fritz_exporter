@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 import requests
 from fritzconnection.core.exceptions import (
@@ -66,7 +67,7 @@ def safe_call_action(device: FritzDevice, service: str, action: str):
     return result
 
 
-def sanitize_results(res: dict[tuple[str, str], dict]):
+def sanitize_results(res: dict[tuple[str, str], dict], sanitation: list[list]):
     blacklist: dict[tuple[str, str], list[str]] = {
         # (service, action): return_value
         ("DeviceConfig1", "GetPersistentData"): ["NewPersistentData"],
@@ -205,6 +206,15 @@ def sanitize_results(res: dict[tuple[str, str], dict]):
                 if field in res[svc_action]:
                     res[svc_action][field] = "<SANITIZED>"
 
+    for entry in sanitation:
+        if (entry[0], entry[1]) in res:
+            if len(entry) == 2:
+                for field in res[(entry[0], entry[1])]:
+                    res[(entry[0], entry[1])][field] = "<SANITIZED>"
+            elif len(entry) == 3:
+                if entry[2] in res[(entry[0], entry[1])]:
+                    res[(entry[0], entry[1])][entry[2]] = "<SANITIZED>"
+
     return res
 
 
@@ -218,7 +228,28 @@ def jsonify_action_results(ar):
     return out
 
 
-def donate_data(device: FritzDevice):
+def upload_data(basedata):
+    donation_url = os.getenv("FRITZ_DONATION_URL", "https://fritz.dreker.de/data/donate")
+    headers = {"Content-Type": "application/json"}
+    resp = requests.post(donation_url, data=json.dumps(basedata), headers=headers)
+    resp.raise_for_status()
+    if resp.status_code == requests.codes.ok:
+        donation_id = resp.json().get("donation_id")
+        if donation_id:
+            logger.info(
+                f"Data donation for device {basedata['fritzdevice']['model']} "
+                f"registered under id {donation_id}"
+            )
+        else:
+            logger.warning(
+                f"Data donation for device {basedata['fritzdevice']['model']} "
+                "did not return a donation id."
+            )
+
+
+def donate_data(device: FritzDevice, upload: bool = False, sanitation: list[list] = None):
+    if not sanitation:
+        sanitation = []
     services = {s: list(device.fc.services[s].actions) for s in device.fc.services}
     model = device.model
     sw_version = get_sw_version(device)
@@ -237,7 +268,7 @@ def donate_data(device: FritzDevice):
                 res = safe_call_action(device, service, action)
                 action_results[(service, action)] = res
 
-    action_results = jsonify_action_results(sanitize_results(action_results))
+    action_results = jsonify_action_results(sanitize_results(action_results, sanitation))
 
     basedata = {
         "exporter_version": VERSION,
@@ -250,14 +281,10 @@ def donate_data(device: FritzDevice):
         },
     }
 
-    headers = {"Content-Type": "application/json"}
-    resp = requests.post(
-        "https://fritz.dreker.de/data/donate", data=json.dumps(basedata), headers=headers
-    )
-    resp.raise_for_status()
-    if resp.status_code == requests.codes.ok:
-        donation_id = resp.json().get("donation_id")
-        if donation_id:
-            logger.info(f"Data donation for device {model} registered under id {donation_id}")
-        else:
-            logger.warning(f"Data donation for device {model} did not return a donation id.")
+    if upload:
+        upload_data(basedata)
+    else:
+        print(f"---------------- Donation data for device {model} ---------------------")
+        print(json.dumps(basedata, indent=2))
+        print("----------------- END ------------------")
+        print()
