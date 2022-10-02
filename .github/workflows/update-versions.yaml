@@ -20,7 +20,7 @@ jobs:
       - id: pr_label_check
         uses: docker://agilepathway/pull-request-label-checker:latest
         with:
-          one_of: patch, minor, major
+          one_of: patch,minor,major
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           allow_failure: true
   update-versions:
