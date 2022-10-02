@@ -78,7 +78,7 @@ jobs:
           git config --local user.name github-actions
           git config --local user.email github-actions@github.com
           git add pyproject.toml fritzexporter/_version.py helm/fritz-exporter/Chart.yaml
-          git commit -m "Update version files to ${{ steps.bump-semver.outputs.new_version }}"
+          git commit -m "Update version files to ${{ steps.bump-semver.outputs.new_version }} [skip ci]"
       - name: Push version updates back to PR
         uses: ad-m/github-push-action@master
         with:
