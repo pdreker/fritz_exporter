@@ -1,0 +1,83 @@
+name: check PR labels
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: ["opened", "synchronize", "labeled", "unlabeled"]
+
+jobs:
+  check-label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: NathanielHill/check-pr-label-action@v4.0.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "patch, minor, major"
+      - id: pr_label_check
+        uses: docker://agilepathway/pull-request-label-checker:latest
+        with:
+          one_of: patch, minor, major
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          allow_failure: true
+  update-versions:
+    name: Update version files
+    needs: check-label
+    if: ${{ needs.check-label.outputs.pr_tags_present == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.MASTER_PUSH_TOKEN }}
+          persist-credentials: false
+      - uses: actions-ecosystem/action-release-label@v1
+        id: release-label
+        with:
+          label_prefix: ""
+      - name: Get latest Tag
+        uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get-latest-tag
+        with:
+          semver_only: true
+      - uses: actions-ecosystem/action-bump-semver@v1
+        id: bump-semver
+        if: ${{ steps.release-label.outputs.level != null }}
+        with:
+          current_version: ${{ steps.get-latest-tag.outputs.tag }}
+          level: ${{ steps.release-label.outputs.level }}
+      - uses: mdecoleman/pr-branch-name@1.2.0
+        id: pr_branch
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.pr_branch.outputs.branch }}
+      - name: Setup poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: 1.2.1
+
+      - name: Update version in pyproject.toml
+        run: |
+          V_VERSION=${{ steps.bump-semver.outputs.new_version }}
+          poetry version "${V_VERSION//v/}"
+      - name: Update internal VERSION string
+        run: echo VERSION = \"${{ steps.bump-semver.outputs.new_version }}\" > fritzexporter/_version.py
+      - name: Update Helm Chart.yaml
+        uses: mikefarah/yq@v4.27.5
+        with:
+          cmd: yq '.appVersion = "${{ steps.bump-semver.outputs.new_version }}"' -i helm/fritz-exporter/Chart.yaml
+
+      - name: Commit version files back to repo
+        continue-on-error: true
+        run: |
+          git config --local user.name github-actions
+          git config --local user.email github-actions@github.com
+          git add pyproject.toml fritzexporter/_version.py helm/fritz-exporter/Chart.yaml
+          git commit -m "Update version files to ${{ steps.bump-semver.outputs.new_version }}"
+      - name: Push version updates back to PR
+        uses: ad-m/github-push-action@master
+        with:
+          branch: ${{ steps.vars.outputs.branch }}
+          github_token: ${{ secrets.MASTER_PUSH_TOKEN }}
