@@ -250,5 +250,14 @@ def donate_data(device: FritzDevice):
         },
     }
 
-    resp = requests.post("https://fritzexporter.dreker.de/data/donate", data=json.dumps(basedata))
+    headers = {"Content-Type": "application/json"}
+    resp = requests.post(
+        "https://fritz.dreker.de/data/donate", data=json.dumps(basedata), headers=headers
+    )
     resp.raise_for_status()
+    if resp.status_code == requests.codes.ok:
+        donation_id = resp.json().get("donation_id")
+        if donation_id:
+            logger.info(f"Data donation for device {model} registered under id {donation_id}")
+        else:
+            logger.warning(f"Data donation for device {model} did not return a donation id.")
