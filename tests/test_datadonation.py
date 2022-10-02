@@ -122,7 +122,7 @@ class TestDataDonation:
         }
 
         # Act
-        output = sanitize_results(input_data)
+        output = sanitize_results(input_data, sanitation=[])
 
         # Check
         assert (
@@ -143,13 +143,92 @@ class TestDataDonation:
         }
 
         # Act
-        output = sanitize_results(input_data)
+        output = sanitize_results(input_data, sanitation=[])
 
         # Check
         assert output == input_data
 
+    def test_should_custom_sanitize_field(self, caplog):
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        input_data = {
+            ("foo", "bar"): {
+                "baz": "foobar",
+                "quux": "baz",
+            }
+        }
+
+        expected = {
+            ("foo", "bar"): {
+                "baz": "<SANITIZED>",
+                "quux": "baz",
+            }
+        }
+
+        # Act
+        output = sanitize_results(input_data, sanitation=[["foo", "bar", "baz"]])
+
+        # Check
+        assert output == expected
+
+    def test_should_custom_sanitize_action(self, caplog):
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        input_data = {
+            ("foo", "bar"): {
+                "baz": "foobar",
+                "quux": "baz",
+            }
+        }
+
+        expected = {
+            ("foo", "bar"): {
+                "baz": "<SANITIZED>",
+                "quux": "<SANITIZED>",
+            }
+        }
+
+        # Act
+        output = sanitize_results(input_data, sanitation=[["foo", "bar"]])
+
+        # Check
+        assert output == expected
+
     @patch("fritzexporter.data_donation.requests.post")
-    def test_should_produce_sensible_json_data(
+    def test_should_produce_sensible_json_data_and_upload(
+        self, mock_requests_post: MagicMock, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_capabilities["HostNumberOfEntries"])
+
+        # Act
+        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        donate_data(fd, upload=True)
+
+        # check
+        assert mock_requests_post.call_count == 1
+        assert mock_requests_post.call_args == call(
+            "https://fritz.dreker.de/data/donate",
+            data='{"exporter_version": "develop", "fritzdevice": {"model": "Fritz!MockBox 9790", '
+            '"os_version": "1.2", "services": {"Hosts1": ["GetHostNumberOfEntries"]}, '
+            '"detected_capabilities": ["DeviceInfo", "HostNumberOfEntries", "UserInterface", '
+            '"LanInterfaceConfig", "LanInterfaceConfigStatistics", "WanDSLInterfaceConfig", '
+            '"WanDSLInterfaceConfigAVM", "WanPPPConnectionStatus", "WanCommonInterfaceConfig", '
+            '"WanCommonInterfaceDataBytes", "WanCommonInterfaceByteRate", '
+            '"WanCommonInterfaceDataPackets", "WlanConfigurationInfo", "HostInfo"], '
+            '"action_results": {"Hosts1": {"GetHostNumberOfEntries": '
+            '{"NewHostNumberOfEntries": "3"}}}}}',
+            headers={"Content-Type": "application/json"},
+        )
+
+    @patch("fritzexporter.data_donation.requests.post")
+    def test_should_produce_sensible_json_data_and_not_upload(
         self, mock_requests_post: MagicMock, mock_fritzconnection: MagicMock, caplog
     ):
         # Prepare
@@ -164,16 +243,4 @@ class TestDataDonation:
         donate_data(fd)
 
         # check
-        assert mock_requests_post.call_count == 1
-        assert mock_requests_post.call_args == call(
-            "https://fritzexporter.dreker.de/data/donate",
-            data='{"exporter_version": "develop", "fritzdevice": {"model": "Fritz!MockBox 9790", '
-            '"os_version": "1.2", "services": {"Hosts1": ["GetHostNumberOfEntries"]}, '
-            '"detected_capabilities": ["DeviceInfo", "HostNumberOfEntries", "UserInterface", '
-            '"LanInterfaceConfig", "LanInterfaceConfigStatistics", "WanDSLInterfaceConfig", '
-            '"WanDSLInterfaceConfigAVM", "WanPPPConnectionStatus", "WanCommonInterfaceConfig", '
-            '"WanCommonInterfaceDataBytes", "WanCommonInterfaceByteRate", '
-            '"WanCommonInterfaceDataPackets", "WlanConfigurationInfo", "HostInfo"], '
-            '"action_results": {"Hosts1": {"GetHostNumberOfEntries": '
-            '{"NewHostNumberOfEntries": "3"}}}}}',
-        )
+        assert mock_requests_post.call_count == 0
