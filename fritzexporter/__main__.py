@@ -37,7 +37,23 @@ def main():
         "--donate-data",
         action="store_const",
         const="donate",
-        help="Do not start exporter, collect and upload data to assist the project",
+        help="Do not start exporter, collect and print data to assist the project",
+    )
+
+    parser.add_argument(
+        "--upload-data",
+        action="store_const",
+        const="upload",
+        help="Instead of displaying the collected data donation, upload it.",
+    )
+
+    parser.add_argument(
+        "-s",
+        "--sanitize",
+        action="append",
+        nargs="+",
+        metavar="FIELD_SPEC",
+        help="Sanitize 'service, action, field' from the data donation output",
     )
 
     args = parser.parse_args()
@@ -65,7 +81,11 @@ def main():
         )
 
         if args.donate_data == "donate":
-            donate_data(fritz_device)
+            donate_data(
+                fritz_device,
+                upload=True if args.upload_data == "upload" else False,
+                sanitation=args.sanitize,
+            )
             sys.exit(0)
         else:
             logger.info(f"registering {dev.hostname} to collector")
