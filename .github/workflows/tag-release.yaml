@@ -1,9 +1,9 @@
-name: Tag release
+name: Tag Release
 
 on:
   pull_request:
     branches:
-      - master
+      - main
     types:
       - closed
 
@@ -13,46 +13,26 @@ jobs:
     if: github.event.pull_request.merged
     name: Tag release
     steps:
-      - name: Compute next SemVer
-        id: update_semver
-        uses: K-Phoen/semver-release-action@master
-        with:
-          release_branch: master
-          release_strategy: none
-        env:
-          GITHUB_TOKEN: ${{ secrets.MASTER_PUSH_TOKEN }}
       - uses: actions/checkout@v3
         with:
-          persist-credentials: false
+          token: ${{ secrets.MASTER_PUSH_TOKEN }}
           fetch-depth: 0
-      - name: Setup poetry
-        uses: abatilo/actions-poetry@v2
+      - uses: actions-ecosystem/action-release-label@v1
+        id: release-label
         with:
-          poetry-version: 1.2.1
-      - name: Update version in pyproject.toml
-        run: |
-          V_VERSION=${{ steps.update_semver.outputs.tag }}
-          poetry version "${V_VERSION//v/}"
-      - name: Update Helm Chart.yaml
-        uses: mikefarah/yq@v4.27.5
+          label_prefix: ""
+      - name: Get latest Tag
+        uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get-latest-tag
         with:
-          cmd: yq '.appVersion = "${{ steps.update_semver.outputs.tag }}"' -i helm/fritz-exporter/Chart.yaml
-      - name: Update internal VERSION string
-        run: echo VERSION = "${{ steps.update_semver.outputs.tag }}" > fritzexporter/_version.py
-      - name: Commit pyproject.toml and Chart.yaml back to repo
-        run: |
-          git config --local user.name github-actions
-          git config --local user.email github-actions@github.com
-          git add pyproject.toml fritzexporter/_version.py helm/fritz-exporter/Chart.yaml
-          git commit -m "Update version files to ${{ steps.update_semver.outputs.tag }}"
-      - name: Push version updates back to master
-        uses: ad-m/github-push-action@master
+          semver_only: true
+      - uses: actions-ecosystem/action-bump-semver@v1
+        id: bump-semver
+        if: ${{ steps.release-label.outputs.level != null }}
         with:
-          github_token: ${{ secrets.MASTER_PUSH_TOKEN }}
-          branch: ${{ github.ref }}
-      - name: Push SemVer release tag
-        uses: K-Phoen/semver-release-action@master
+          current_version: ${{ steps.get-latest-tag.outputs.tag }}
+          level: ${{ steps.release-label.outputs.level }}
+      - uses: actions-ecosystem/action-push-tag@v1
         with:
-          release_branch: master
-        env:
-          GITHUB_TOKEN: ${{ secrets.MASTER_PUSH_TOKEN }}
+          tag: ${{ steps.bump-semver.outputs.new_version }}
+          message: "${{ steps.bump-semver.outputs.new_version }}: PR #${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}"
