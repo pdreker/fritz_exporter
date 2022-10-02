@@ -232,7 +232,7 @@ def upload_data(basedata):
     donation_url = os.getenv("FRITZ_DONATION_URL", "https://fritz.dreker.de/data/donate")
     headers = {"Content-Type": "application/json"}
     resp = requests.post(donation_url, data=json.dumps(basedata), headers=headers)
-    resp.raise_for_status()
+
     if resp.status_code == requests.codes.ok:
         donation_id = resp.json().get("donation_id")
         if donation_id:
@@ -245,6 +245,8 @@ def upload_data(basedata):
                 f"Data donation for device {basedata['fritzdevice']['model']} "
                 "did not return a donation id."
             )
+    else:
+        resp.raise_for_status()
 
 
 def donate_data(device: FritzDevice, upload: bool = False, sanitation: list[list] = None):
