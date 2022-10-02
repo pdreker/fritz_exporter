@@ -2,6 +2,7 @@ import logging
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+import requests
 from fritzconnection.core.exceptions import (
     FritzActionError,
     FritzArgumentError,
@@ -26,6 +27,18 @@ from .fc_services_mock import (
     fc_services_devices,
     fc_services_no_basic_info,
 )
+
+
+class MockResponse:
+    def __init__(self, json_data, status_code):
+        self.json_data = json_data
+        self.status_code = status_code
+
+    def json(self):
+        return self.json_data
+
+    def raise_for_status(self):
+        raise requests.exceptions.HTTPError
 
 
 @patch("fritzexporter.fritzdevice.FritzConnection")
@@ -244,3 +257,34 @@ class TestDataDonation:
 
         # check
         assert mock_requests_post.call_count == 0
+
+    @patch(
+        "fritzexporter.data_donation.requests.post",
+        side_effect=[
+            MockResponse({"donation_id": "1234-12345678-12345678-1234"}, 200),
+            MockResponse({"error": "Unprocessable Entity"}, 422),
+        ],
+    )
+    def test_should_log_success_with_id(
+        self, mock_requests_post: MagicMock, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_capabilities["HostNumberOfEntries"])
+
+        # Act 1
+        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        donate_data(fd, upload=True)
+
+        # Check 1
+        assert (
+            "Data donation for device Fritz!MockBox 9790 registered under id "
+            "1234-12345678-12345678-1234" in caplog.text
+        )
+
+        # Act 2
+        with pytest.raises(requests.exceptions.HTTPError):
+            donate_data(fd, upload=True)
