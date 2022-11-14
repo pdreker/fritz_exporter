@@ -47,7 +47,7 @@ jobs:
       - name: Update internal VERSION string
         run: echo VERSION = \"${{ steps.bump-semver.outputs.new_version }}\" > fritzexporter/_version.py
       - name: Update Helm Chart.yaml
-        uses: mikefarah/yq@v4.29.2
+        uses: mikefarah/yq@v4.30.2
         with:
           cmd: yq '.appVersion = "${${{ steps.bump-semver.outputs.new_version }}//v/}"' -i helm/fritz-exporter/Chart.yaml
       - name: Commit version files back to repo
