@@ -12,7 +12,7 @@ testpaths = [
 
 [tool.poetry]
 name = "fritz-exporter"
-version = "2.2.1-pre.0"
+version = "2.2.1-pre.1"
 description = "Prometheus exporter for AVM Fritz! Devices"
 authors = ["Patrick Dreker <patrick@dreker.de>"]
 license = "Apache 2.0"
