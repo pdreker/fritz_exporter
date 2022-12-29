@@ -1,0 +1,99 @@
+name: Build and Push Release
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - closed
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged
+    name: build release
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.MASTER_PUSH_TOKEN }}
+          fetch-depth: 0
+      - uses: actions-ecosystem/action-release-label@v1
+        id: release-label
+        with:
+          label_prefix: ""
+      - name: Get latest Tag
+        uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get-latest-tag
+        with:
+          semver_only: true
+      - uses: actions-ecosystem/action-bump-semver@v1
+        id: bump-semver
+        if: ${{ steps.release-label.outputs.level != null }}
+        with:
+          current_version: ${{ steps.get-latest-tag.outputs.tag }}
+          level: ${{ steps.release-label.outputs.level }}
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Setup poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: 1.2.1
+      - name: Update version in pyproject.toml
+        run: |
+          V_VERSION=${{ steps.bump-semver.outputs.new_version }}
+          poetry version "${V_VERSION//v/}"
+      - name: Update internal VERSION string
+        run: echo VERSION = \"${{ steps.bump-semver.outputs.new_version }}\" > fritzexporter/_version.py
+      - name: Update Helm Chart.yaml
+        uses: mikefarah/yq@v4.30.6
+        with:
+          cmd: yq '.appVersion = "${${{ steps.bump-semver.outputs.new_version }}//v/}"' -i helm/fritz-exporter/Chart.yaml
+      - name: Commit version files back to repo
+        continue-on-error: true
+        run: |
+          git config --local user.name github-actions
+          git config --local user.email github-actions@github.com
+          git add pyproject.toml fritzexporter/_version.py helm/fritz-exporter/Chart.yaml
+          git commit -m "Update version files to ${{ steps.bump-semver.outputs.new_version }} [skip ci]"
+      - name: Push version updates back to PR
+        uses: ad-m/github-push-action@master
+        with:
+          branch: master
+          github_token: ${{ secrets.MASTER_PUSH_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+      - name: generate docker tags
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.bump-semver.outputs.new_version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.bump-semver.outputs.new_version }}
+            type=semver,pattern={{major}},value=${{ steps.bump-semver.outputs.new_version }}
+      - name: generate requirements.txt
+        run: poetry export -f requirements.txt --output requirements.txt
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB }}
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          context: .
+          platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64/v8
+          tags: ${{ steps.meta.outputs.tags }}
+
+      - uses: actions-ecosystem/action-push-tag@v1
+        with:
+          tag: ${{ steps.bump-semver.outputs.new_version }}
+          message: "${{ steps.bump-semver.outputs.new_version }}: PR #${{ github.event.pull_request.number }} ${{ github.event.pull_request.title }}"

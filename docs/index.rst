@@ -76,7 +76,7 @@ Known Problems
 Grafana Dashboard
 -----------------
 
-There is a Grafana dashboard available at https://grafana.com/grafana/dashboards/13983.
+There is a Grafana dashboard available at https://grafana.com/grafana/dashboards/13983-fritz-exporter/.
 
 Helm Chart
 ----------
