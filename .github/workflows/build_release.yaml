@@ -28,7 +28,7 @@ jobs:
           poetry-version: ${{ env.POETRY_VERSION }}
       - name: generate requirements.txt
         run: poetry export -f requirements.txt --output requirements.txt
-      - name: Login to CoC-Registry
+      - name: Login to Registry
         uses: docker/login-action@v2
         with:
           registry: ${{ env.DOCKER_REGISTRY_HOST }}
@@ -41,9 +41,9 @@ jobs:
         uses: TriPSs/conventional-changelog-action@v3
         with:
           github-token: ${{ secrets.github_token }}
-          version-file: pyproject.toml
-          version-path: tool.poetry.version
-          pre-commit: update_app_version.js
+          version-file: pyproject.toml,helm/fritz-exporter/Chart.yaml
+          version-path: tool.poetry.version,appVersion
+          pre-commit: update-version-files.js
           skip-on-empty: false
 
       - name: generate docker tags
