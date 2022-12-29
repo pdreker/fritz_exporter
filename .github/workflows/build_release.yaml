@@ -48,6 +48,7 @@ jobs:
           version-file: pyproject.toml,helm/fritz-exporter/Chart.yaml
           version-path: tool.poetry.version,appVersion
           pre-commit: update-version-files.js
+          skip-git-pull: true
           skip-on-empty: false
 
       - name: generate docker tags
