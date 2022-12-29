@@ -1,8 +1,6 @@
 name: Build and Push Trunk
 
-on:
-  push:
-    branches: [main]
+on: workflow_dispatch
 
 env:
   DOCKER_REGISTRY_USERNAME: pdreker
