@@ -6,7 +6,7 @@ env:
   DOCKER_REGISTRY_USERNAME: pdreker
   DOCKER_REGISTRY_REPO: pdreker
   DOCKER_REGISTRY_IMAGE: fritz_exporter
-  DOCKER_REGISTRY_HOST: hub.docker.com
+  DOCKER_REGISTRY_HOST: docker.io
   POETRY_VERSION: 1.2.2
 
 jobs:
