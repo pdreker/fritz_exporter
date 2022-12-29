@@ -1,0 +1,34 @@
+---
+convention:
+  commitTypes:
+    - feat
+    - fix
+    - perf
+    - refactor
+    - style
+    - test
+    - build
+    - ops
+    - docs
+    - merge
+  commitScopes: []
+  releaseTagGlobPattern: v[0-9]*.[0-9]*.[0-9]*
+changelog:
+  commitTypes:
+    - feat
+    - fix
+    - perf
+    - merge
+  includeInvalidCommits: true
+  commitScopes: []
+  commitIgnoreRegexPattern: "^WIP "
+  headlines:
+    feat: Features
+    fix: Bug Fixes
+    perf: Performance Improvements
+    merge: Merges
+    breakingChange: BREAKING CHANGES
+  commitUrl: https://github.com/pdreker/fritz_exporter/commit/%commit%
+  commitRangeUrl: https://github.com/pdreker/fritz_exporter/compare/%from%...%to%?diff=split
+  issueRegexPattern: "#[0-9]+"
+  issueUrl: https://github.com/pdreker/fritz_exporter/issues/%issue%

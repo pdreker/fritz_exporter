@@ -1,0 +1,67 @@
+name: Release
+
+on: workflow_dispatch
+
+env:
+  DOCKER_REGISTRY_USERNAME: pdreker
+  DOCKER_REGISTRY_REPO: pdreker
+  DOCKER_REGISTRY_IMAGE: fritz_exporter
+  DOCKER_REGISTRY_HOST: hub.docker.com
+  POETRY_VERSION: 1.2.2
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    name: build release
+    steps:
+      # Prepare Environment
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.MASTER_PUSH_TOKEN }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Setup poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: ${{ env.POETRY_VERSION }}
+      - name: generate requirements.txt
+        run: poetry export -f requirements.txt --output requirements.txt
+      - name: Login to CoC-Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.DOCKER_REGISTRY_HOST }}
+          username: ${{ env.DOCKER_REGISTRY_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB }}
+
+      # Determine new version from conventional commits
+      - name: Conventional Changelog Action
+        id: conv_cl
+        uses: TriPSs/conventional-changelog-action@v3
+        with:
+          github-token: ${{ secrets.github_token }}
+          version-file: pyproject.toml
+          version-path: tool.poetry.version
+          pre-commit: update_app_version.js
+          skip-on-empty: false
+
+      - name: generate docker tags
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ env.DOCKER_REGISTRY_HOST }}/${{ env.DOCKER_REGISTRY_REPO }}/${{ env.DOCKER_REGISTRY_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.conv_cl.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.conv_cl.outputs.version }}
+            type=semver,pattern={{major}},value=${{ steps.conv_cl.outputs.version }}
+
+      # Build Docker-Image
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          push: true
+          context: .
+          platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64/v8
+          tags: ${{ steps.meta.outputs.tags }}
