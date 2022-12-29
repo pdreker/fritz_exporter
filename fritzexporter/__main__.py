@@ -28,7 +28,6 @@ def main():
     levels = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
     parser.add_argument(
         "--log-level",
-        default="INFO",
         choices=levels,
         help="Set log-level (default: INFO)",
     )
@@ -67,6 +66,9 @@ def main():
     log_level = (
         getattr(logging, args.log_level) if args.log_level else getattr(logging, config.log_level)
     )
+    if not log_level:
+        log_level = "INFO"
+
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
     for log in loggers:
         log.setLevel(log_level)
