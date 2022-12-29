@@ -62,8 +62,6 @@ jobs:
             ${{ env.DOCKER_REGISTRY_HOST }}/${{ env.DOCKER_REGISTRY_REPO }}/${{ env.DOCKER_REGISTRY_IMAGE }}
           tags: |
             type=semver,pattern={{version}},value=${{ steps.conv_cl.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.conv_cl.outputs.version }}
-            type=semver,pattern={{major}},value=${{ steps.conv_cl.outputs.version }}
 
       # Build Docker Image
       - name: Build and push
