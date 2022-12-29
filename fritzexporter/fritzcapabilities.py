@@ -862,8 +862,8 @@ class HostInfo(FritzCapability):
                 ],
                 host_speed,
             )
-            yield self.metrics["hostactive"]
-            yield self.metrics["hostspeed"]
+        yield self.metrics["hostactive"]
+        yield self.metrics["hostspeed"]
 
 
 # Copyright 2019-2022 Patrick Dreker <patrick@dreker.de>
