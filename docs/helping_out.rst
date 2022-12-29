@@ -50,7 +50,7 @@ After the data is uploaded successfully you will see a log message with an ID. I
 Help! There is actually private data in my output!
 --------------------------------------------------
 
-If there is any data you do not want to share in the output there is an option to sanitize the output further. By adding the ``-s SERVICE ACTION FIELD`` option you can tell the donation to sanitizte the corresponding field. If you omit the ``FIELD`` all fields for that action will be sanitized. Please use this sparingly, as the more data is present, the more useful the data is.
+If there is any data you do not want to share in the output there is an option to sanitize the output further. By adding the ``-s SERVICE ACTION FIELD`` option you can tell the donation to sanitize the corresponding field. If you omit the ``FIELD`` all fields for that action will be sanitized. Please use this sparingly, as the more data is present, the more useful the data is.
 
 For example you have the following output snippet
 
