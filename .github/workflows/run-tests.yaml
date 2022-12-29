@@ -3,11 +3,7 @@ name: Run Tests
 on:
   pull_request:
     branches:
-      - develop
-      - master
-  push:
-    branches:
-      - develop
+      - main
 
 jobs:
   run-checks:
