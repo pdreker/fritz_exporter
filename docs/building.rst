@@ -46,7 +46,7 @@ To verify correct operation just use curl against the running exporter. It shoul
 
 .. note::
 
-  If you have the ``host_info`` config enabled for one or more devices please be aware, that it may take a long time to receive the reply, as the metrics are read synchronuously when queried. Practical experience has shown that a device knowing around 70 WiFi devices may take 20-30s to reply to all metrics queries. So set appropriate timeouts.
+  If you have the ``host_info`` config enabled for one or more devices please be aware, that it may take a long time to receive the reply, as the metrics are read sequentially when queried. Practical experience has shown that a device knowing around 70 WiFi devices may take 20-30s to reply to all metrics queries. So set appropriate timeouts.
 
 Building and running locally (no containers)
 --------------------------------------------

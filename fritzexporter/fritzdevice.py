@@ -44,9 +44,10 @@ class FritzDevice:
             f"model name {self.model} completed"
         )
         if host_info:
-            logger.warning(
+            logger.info(
                 f"HostInfo Capability enabled on device {host}. "
-                "This may consume a lot of resources and will cause very slow requests!"
+                "This will cause slow responses from the exporter. "
+                "Ensure prometheus is configured appropriately."
             )
         if self.capabilities.empty():
             logger.critical(f"Device {host} has no detected capabilities. Exiting.")
