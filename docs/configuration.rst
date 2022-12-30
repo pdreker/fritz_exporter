@@ -33,9 +33,9 @@ If you only need a single device this is the easiest way to configure the export
 |                     | hosts. Only "true" or "1" will enable this feature |           |
 +---------------------+----------------------------------------------------+-----------+
 
-.. warning::
+.. note::
 
-  enabling ``FRITZ_HOST_INFO`` by setting it to ``true`` or ``1`` will collect extended information about every device known your fritz device, which can take a long time. If you really want or need the extended stats please make sure, that your scraping interval and timeouts are set accordingly.
+  enabling ``FRITZ_HOST_INFO`` by setting it to ``true`` or ``1`` will collect extended information about every device known your fritz device which can take a long time (20+ seconds). If you really want or need the extended stats please make sure that your Prometheus scraping interval and timeouts are set accordingly.
 
 When using the environment vars you can only specify a single device. If you need multiple devices please use the config file.
 
@@ -71,6 +71,6 @@ To use the config file you have to specify the the location of the config and mo
       username: prometheus
       password: prometheus
 
-.. warning::
+.. note::
 
-  enabling ``FRITZ_HOST_INFO`` by setting it to ``true`` or ``1`` will collect extended information about every device known your fritz device, which can take a long time. If you really want or need the extended stats pleade make sure, that your scraping interval and timeouts are set accordingly.
+  enabling ``FRITZ_HOST_INFO`` by setting it to ``true`` or ``1`` will collect extended information about every device known your fritz device which can take a long time (20+ seconds). If you really want or need the extended stats pleade make sure, that your Prometheus scraping interval and timeouts are set accordingly.
