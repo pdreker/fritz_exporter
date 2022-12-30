@@ -44,3 +44,7 @@ flake8-comprehensions = "^3.10.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.setuptools.dynamic]
+version = {file = "fritzexporter/_version.py"}
+description = {file = ["README.md"]}
