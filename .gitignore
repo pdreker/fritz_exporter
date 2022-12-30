@@ -142,6 +142,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+.idea/*
+
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
