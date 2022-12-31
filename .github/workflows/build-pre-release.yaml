@@ -1,8 +1,6 @@
 name: Build and Push Trunk
 
-on:
-  push:
-    branches: [main]
+on: workflow_dispatch
 
 env:
   DOCKER_REGISTRY_USERNAME: pdreker
@@ -41,6 +39,19 @@ jobs:
           username: ${{ env.DOCKER_REGISTRY_USERNAME }}
           password: ${{ secrets.DOCKER_HUB }}
 
+      # Determine new Version from conventional commits
+      - name: Conventional Changelog Action
+        id: conv_cl
+        uses: TriPSs/conventional-changelog-action@v3
+        with:
+          github-token: ${{ secrets.github_token }}
+          version-file: pyproject.toml
+          version-path: tool.poetry.version
+          pre-commit: update-version-files.js
+          pre-release: true
+          pre-release-identifier: pre
+          skip-git-pull: true
+          skip-on-empty: false
       - name: generate docker tags
         id: meta
         uses: docker/metadata-action@v4
@@ -48,7 +59,7 @@ jobs:
           images: |
             ${{ env.DOCKER_REGISTRY_HOST }}/${{ env.DOCKER_REGISTRY_REPO }}/${{ env.DOCKER_REGISTRY_IMAGE }}
           tags: |
-            type=raw,value=develop
+            type=semver,pattern={{version}},value=${{ steps.conv_cl.outputs.version }}
 
       # Build Docker Image
       - name: Build and push
@@ -56,5 +67,5 @@ jobs:
         with:
           push: true
           context: .
-          platforms: linux/amd64,linux/arm64/v8
+          platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64/v8
           tags: ${{ env.DOCKER_REGISTRY_HOST }}/${{ env.DOCKER_REGISTRY_REPO }}/${{ env.DOCKER_REGISTRY_IMAGE }}:${{ steps.conv_cl.outputs.tag }}
