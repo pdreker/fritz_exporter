@@ -73,10 +73,11 @@ Known Problems
 * Fritz!OS does not allow passwords longer than 32 characters (as of 07.25). If you try to use a longer password, the admin ui will simply discard all characters after the 32nd. The UI will also cut your inserted password down to 32 characters. So you will be able to login in the UI with the long password. The exporter however does not alter your password and requests will result in a ``401 Unauthorized`` error. So please be aware of this limit and choose a suitable password.
 * Collecting HostInfo (disabled by default) can be extremely slow and will cause some load on the device. It works, but it is slow as this feature needs two calls to the Fritz! device for every device it knows which will simply take some time. If you enable this, make sure your Prometheusm `scrape_timeouts` are set appropriately (30s should be OK for most setups, but you may need to go even higher).
 
-Grafana Dashboard
------------------
+Grafana Dashboards
+------------------
 
 There is a Grafana dashboard available at https://grafana.com/grafana/dashboards/13983-fritz-exporter/.
+If the host info metrics are enabled a dashboard also using those metrics is available at https://grafana.com/grafana/dashboards/17751-fritz-exporter-dash/.
 
 Helm Chart
 ----------
