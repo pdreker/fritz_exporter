@@ -10,6 +10,8 @@ from fritzexporter.config import ExporterException, get_config
 from fritzexporter.data_donation import donate_data
 from fritzexporter.fritzdevice import FritzCollector, FritzDevice
 
+from . import __version__
+
 ch = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s %(levelname)8s %(name)s | %(message)s")
 ch.setFormatter(formatter)
@@ -22,7 +24,7 @@ def main():
     fritzcollector = FritzCollector()
 
     parser = argparse.ArgumentParser(
-        description="Fritz Exporter for Prometheus using the TR-064 API"
+        description=f"Fritz Exporter for Prometheus using the TR-064 API (v{__version__})"
     )
     parser.add_argument("--config", type=str, help="Path to config file")
     levels = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
@@ -55,7 +57,15 @@ def main():
         help="Sanitize 'service, action, field' from the data donation output",
     )
 
+    parser.add_argument(
+        "--version", action="store_const", const="version", help="Print version number and exit."
+    )
+
     args = parser.parse_args()
+
+    if "version" in args:
+        print(__version__)
+        sys.exit(0)
 
     try:
         config = get_config(args.config)

@@ -1,3 +1,13 @@
+from importlib import metadata
+
+try:
+    __version__ = metadata.version(__package__)
+except metadata.PackageNotFoundError:
+    __version__ = "develop"
+finally:
+    del metadata
+
+
 # Copyright 2019-2022 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
