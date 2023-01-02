@@ -47,7 +47,6 @@ jobs:
           github-token: ${{ secrets.github_token }}
           version-file: pyproject.toml
           version-path: tool.poetry.version
-          pre-commit: update-version-files.js
           skip-git-pull: true
           skip-on-empty: false
 
@@ -61,6 +60,14 @@ jobs:
             type=semver,pattern={{version}},value=${{ steps.conv_cl.outputs.version }}
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.conv_cl.outputs.version }}
             type=semver,pattern={{major}},value=${{ steps.conv_cl.outputs.version }}
+
+      - name: build Python Wheels
+        run: poetry build
+
+      - name: Publish to PyPI
+        run: |
+          poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
+          poetry publish
 
       # Build Docker-Image
       - name: Build and push

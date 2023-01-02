@@ -28,8 +28,8 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: ${{ env.POETRY_VERSION }}
-      - name: generate requirements.txt
-        run: poetry export -f requirements.txt --output requirements.txt
+      - name: build Python Wheel
+        run: poetry build
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx

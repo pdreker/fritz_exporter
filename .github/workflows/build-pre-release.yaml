@@ -26,8 +26,6 @@ jobs:
         uses: abatilo/actions-poetry@v2
         with:
           poetry-version: ${{ env.POETRY_VERSION }}
-      - name: generate requirements.txt
-        run: poetry export -f requirements.txt --output requirements.txt
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
@@ -47,7 +45,6 @@ jobs:
           github-token: ${{ secrets.github_token }}
           version-file: pyproject.toml
           version-path: tool.poetry.version
-          pre-commit: update-version-files.js
           pre-release: true
           pre-release-identifier: pre
           skip-git-pull: true
@@ -60,6 +57,14 @@ jobs:
             ${{ env.DOCKER_REGISTRY_HOST }}/${{ env.DOCKER_REGISTRY_REPO }}/${{ env.DOCKER_REGISTRY_IMAGE }}
           tags: |
             type=semver,pattern={{version}},value=${{ steps.conv_cl.outputs.version }}
+
+      - name: build Python Wheels
+        run: poetry build
+
+      - name: Publish to PyPI
+        run: |
+          poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
+          poetry publish
 
       # Build Docker Image
       - name: Build and push
