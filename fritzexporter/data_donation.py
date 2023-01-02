@@ -10,7 +10,7 @@ from fritzconnection.core.exceptions import (
     FritzServiceError,
 )
 
-from ._version import VERSION
+from . import __version__
 from .fritzdevice import FritzDevice
 
 logger = logging.getLogger("fritzexporter.donate_data")
@@ -273,7 +273,7 @@ def donate_data(device: FritzDevice, upload: bool = False, sanitation: list[list
     action_results = jsonify_action_results(sanitize_results(action_results, sanitation))
 
     basedata = {
-        "exporter_version": VERSION,
+        "exporter_version": __version__,
         "fritzdevice": {
             "model": model,
             "os_version": sw_version,
