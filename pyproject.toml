@@ -17,7 +17,22 @@ description = "Prometheus exporter for AVM Fritz! Devices"
 authors = ["Patrick Dreker <patrick@dreker.de>"]
 license = "Apache 2.0"
 readme = "README.md"
+homepage = "https://github.com/pdreker/fritz_exporter"
+repository = "https://github.com/pdreker/fritz_exporter"
+documentation = "https://fritz-exporter.readthedocs.io"
+keywords = ["prometheus", "fritz", "router", "grafana"]
+classifiers = [
+    "Development Status :: 6 - Mature",
+    "Environment :: Console",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: System :: Monitoring"
+]
+include = [ "LICENSE.md" ]
 packages = [{include = "fritzexporter"}]
+
+[tool.poetry.scripts]
+fritzexporter = 'fritzexporter:__main__'
 
 [tool.poetry.dependencies]
 python = "^3.10"
