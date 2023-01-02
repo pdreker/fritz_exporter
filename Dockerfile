@@ -7,10 +7,8 @@ ENV PIP_NO_CACHE_DIR="true"
 
 WORKDIR /app
 
-COPY requirements.txt /app/
-RUN pip install -r requirements.txt && \
+COPY dist/*.whl /
+RUN pip install /fritz_exporter-*.whl && \
     mkdir /etc/fritz
-
-COPY fritzexporter/ /app/fritzexporter
 
 ENTRYPOINT ["python", "-m", "fritzexporter"]
