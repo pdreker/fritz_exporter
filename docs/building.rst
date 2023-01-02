@@ -10,7 +10,7 @@ To build clone the repository from `GitHub <https://github.com/pdreker/fritz_exp
 
 .. code-block:: bash
 
-  poetry export -f requirements.txt --output requirements.txt
+  poetry build
   docker build -t fritz_exporter:local .
 
 
@@ -50,6 +50,8 @@ To verify correct operation just use curl against the running exporter. It shoul
 
 Building and running locally (no containers)
 --------------------------------------------
+
+You can install the latest release from PyPI using ``pip install fritzexporter`` and the run it using ``python -m fritzexporter``. It is highly recommended to use a virtual environment to do so.
 
 For development and debugging it may be neccessary or simpler to run the exporter directly without docker. To do this simply install the dependencies into a virtual environment using ``poetry install``. You can then enter the venv using ``poetry shell``.
 
