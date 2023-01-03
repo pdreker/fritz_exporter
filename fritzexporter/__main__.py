@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+import os
 import sys
 
 from prometheus_client import start_http_server
@@ -20,9 +21,7 @@ logger = logging.getLogger("fritzexporter")
 logger.addHandler(ch)
 
 
-def main():
-    fritzcollector = FritzCollector()
-
+def parse_cmdline():
     parser = argparse.ArgumentParser(
         description=f"Fritz Exporter for Prometheus using the TR-064 API (v{__version__})"
     )
@@ -61,9 +60,16 @@ def main():
         "--version", action="store_const", const="version", help="Print version number and exit."
     )
 
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    if "version" in args:
+
+def main():
+    fritzcollector = FritzCollector()
+
+    args = parse_cmdline()
+
+    print(args.version)
+    if args.version:
         print(__version__)
         sys.exit(0)
 
@@ -110,10 +116,13 @@ def main():
 
     logger.info("Entering async main loop - exporter is ready")
     loop = asyncio.new_event_loop()
-    try:
-        loop.run_forever()
-    finally:
-        loop.close()
+
+    # Avoid infinite loop if running tests
+    if not os.getenv("FRITZ_EXPORTER_UNDER_TEST"):
+        try:
+            loop.run_forever()
+        finally:
+            loop.close()
 
 
 if __name__ == "__main__":
