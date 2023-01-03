@@ -1,8 +1,11 @@
+import logging
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 
 from fritzexporter.__main__ import main, parse_cmdline
+
+from .fc_services_mock import call_action_mock, create_fc_services, fc_services_devices
 
 
 class Test_Main:
@@ -75,3 +78,31 @@ class Test_Main:
         assert pytest_wrapped_exit.type == SystemExit
         assert pytest_wrapped_exit.value.code == 1
         assert "fritzexporter.config.exceptions.ConfigFileUnreadableError" in caplog.text
+
+    @patch("fritzexporter.fritzdevice.FritzConnection")
+    def test_valid_args_run_clean(self, mock_fc: MagicMock, monkeypatch, caplog):
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "fritzexporter",
+                "--config",
+                "tests/conffiles/validconfig.yaml",
+                "--log-level",
+                "DEBUG",
+            ],
+        )
+        monkeypatch.setenv("FRITZ_EXPORTER_UNDER_TEST", "true")  # do not enter infinite loop
+
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fc.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        main()
+
+        loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+        for log in loggers:
+            if log.name.startswith("fritzexporter"):
+                assert log.level == logging.DEBUG
