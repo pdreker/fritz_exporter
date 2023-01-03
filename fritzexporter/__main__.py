@@ -68,7 +68,6 @@ def main():
 
     args = parse_cmdline()
 
-    print(args.version)
     if args.version:
         print(__version__)
         sys.exit(0)
