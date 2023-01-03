@@ -10,7 +10,7 @@ from fritzconnection.core.exceptions import (
     FritzServiceError,
 )
 
-from fritzexporter._version import VERSION
+from fritzexporter import __version__
 from fritzexporter.data_donation import (
     donate_data,
     get_sw_version,
@@ -229,7 +229,7 @@ class TestDataDonation:
         assert mock_requests_post.call_count == 1
         assert mock_requests_post.call_args == call(
             "https://fritz.dreker.de/data/donate",
-            data=f'{{"exporter_version": "{VERSION}", "fritzdevice": {{"model": "Fritz!MockBox '
+            data=f'{{"exporter_version": "{__version__}", "fritzdevice": {{"model": "Fritz!MockBox '
             '9790", "os_version": "1.2", "services": {"Hosts1": ["GetHostNumberOfEntries"]}, '
             '"detected_capabilities": ["DeviceInfo", "HostNumberOfEntries", "UserInterface", '
             '"LanInterfaceConfig", "LanInterfaceConfigStatistics", "WanDSLInterfaceConfig", '
