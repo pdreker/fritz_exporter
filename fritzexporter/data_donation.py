@@ -107,7 +107,7 @@ def sanitize_results(res: dict[tuple[str, str], dict], sanitation: list[list]):
         ("WANIPConn1", "X_AVM_DE_GetIPv6DNSServer"): ["NewIPv6DNSServer1", "NewIPv6DNSServer2"],
         ("WANIPConn1", "X_AVM_DE_GetIPv6Prefix"): ["NewIPv6Prefix"],
         ("WANIPConnection1", "GetExternalIPAddress"): ["NewExternalIPAddress"],
-        ("WANIPConnection1", "GetInfo"): ["NewDNSServers", "NewMACAddress"],
+        ("WANIPConnection1", "GetInfo"): ["NewDNSServers", "NewMACAddress", "NewExternalIPAddress"],
         ("WANIPConnection1", "X_GetDNSServers"): ["NewDNSServers"],
         ("WANPPPConnection1", "GetExternalIPAddress"): ["NewExternalIPAddress"],
         ("WANPPPConnection1", "GetInfo"): [
