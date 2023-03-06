@@ -52,7 +52,7 @@ flake8 = "^5.0.4"
 mypy = "^0.971"
 coverage = "^6.4.4"
 pytest-cov = "^3.0.0"
-flake8-bugbear = "^22.9.23"
+flake8-bugbear = ">=22.9.23,<24.0.0"
 flake8-assertive = "^2.1.0"
 flake8-comprehensions = "^3.10.0"
 
