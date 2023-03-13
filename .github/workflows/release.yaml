@@ -1,24 +1,36 @@
-name: Build and Push Trunk
-
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
+name: release-please
 jobs:
-  build-trunk:
+  release:
     runs-on: ubuntu-latest
-    name: Build Trunk
+    outputs:
+      release_created: ${{ steps.release.outputs.releases_created }}
+      release_major: ${{ steps.release.outputs.major }}
+      release_minor: ${{ steps.release.outputs.minor }}
+      release_patch: ${{ steps.release.outputs.patch }}
     steps:
-      # Prepare Environment
-      - uses: actions/checkout@v3
+      - uses: google-github-actions/release-please-action@v3
+        id: release
         with:
           token: ${{ secrets.MASTER_PUSH_TOKEN }}
-          fetch-depth: 0
+          release-type: python
+          package-name: demo_app
+
+  build-release:
+    needs: release
+    if: needs.release.outputs.release_created
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
       - name: Set Environment Variables
         uses: ./.github/actions/setenv
       - uses: actions/setup-python@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: "${{ env.PYTHON_VERSION }}"
       - name: Setup poetry
         uses: abatilo/actions-poetry@v2
         with:
@@ -39,7 +51,9 @@ jobs:
           images: |
             ${{ env.DOCKER_REGISTRY_HOST }}/${{ env.DOCKER_REGISTRY_REPO }}/${{ env.DOCKER_REGISTRY_IMAGE }}
           tags: |
-            type=raw,value=develop
+            type=semver,pattern={{version}},value=${{ needs.release.outputs.major }}.${{ needs.release.outputs.minor }}.${{ needs.release.outputs.patch }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release.outputs.major }}.${{ needs.release.outputs.minor }}.${{ needs.release.outputs.patch }}
+            type=semver,pattern={{major}},value=${{ needs.release.outputs.major }}.${{ needs.release.outputs.minor }}.${{ needs.release.outputs.patch }}
       # Build Docker Images (amd64 and arm64)
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -50,5 +64,5 @@ jobs:
         with:
           push: true
           context: .
-          platforms: linux/amd64,linux/aarch64
+          platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/aarch64
           tags: ${{ steps.meta.outputs.tags }}
