@@ -30,7 +30,7 @@ jobs:
         with:
           registry: ${{ env.DOCKER_REGISTRY_HOST }}
           username: ${{ env.DOCKER_REGISTRY_USERNAME }}
-          password: ${{ secrets.COC_REGISTRY_TOKEN }}
+          password: ${{ secrets.DOCKER_HUB }}
 
       - name: generate docker tags
         id: meta
