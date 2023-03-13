@@ -18,7 +18,7 @@ jobs:
         with:
           token: ${{ secrets.MASTER_PUSH_TOKEN }}
           release-type: python
-          package-name: demo_app
+          package-name: fritzexporter
 
   build-release:
     needs: release
