@@ -32,7 +32,7 @@ fullnameOverride: ""
 serviceMonitor:
   enabled: true
   namespace: ""
-  interval: 60
+  interval: 60s
   scrapeTimeout: 30s
   relabelings: ""
   metricRelabelings: ""
