@@ -31,6 +31,5 @@ spec:
       - {{ .Release.Namespace }}
   selector:
     matchLabels:
-      app.kubernetes.io/name: fritz-exporter
-      app.kubernetes.io/instance: fritz
+      {{- include "fritz-exporter.selectorLabels" . | nindent 6 }}
 {{- end }}
