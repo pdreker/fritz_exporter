@@ -2,6 +2,13 @@
 
 
 
+## [2.2.3](https://github.com/pdreker/fritz_exporter/compare/v2.2.2...v2.2.3) (2023-04-01)
+
+
+### Bug Fixes
+
+* rmeove old actions and supersede release 2.2.2 ([1be640b](https://github.com/pdreker/fritz_exporter/commit/1be640b3a692a1402c1c4f85a3db6297b034fe01))
+
 ## [2.2.2](https://github.com/pdreker/fritz_exporter/compare/v2.2.1...v2.2.2) (2023-04-01)
 
 
