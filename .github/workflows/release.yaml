@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.releases_created }}
-      release_major: ${{ steps.release.outputs.major }}
-      release_minor: ${{ steps.release.outputs.minor }}
-      release_patch: ${{ steps.release.outputs.patch }}
+      major: ${{ steps.release.outputs.major }}
+      minor: ${{ steps.release.outputs.minor }}
+      patch: ${{ steps.release.outputs.patch }}
     steps:
       - uses: google-github-actions/release-please-action@v3
         id: release
