@@ -9,7 +9,8 @@ from prometheus_client.core import REGISTRY
 
 from fritzexporter.config import ExporterException, get_config
 from fritzexporter.data_donation import donate_data
-from fritzexporter.fritzdevice import FritzCollector, FritzDevice
+from fritzexporter.fritzcollector import FritzCollector
+from fritzexporter.fritzdevice import FritzDevice
 
 from . import __version__
 
@@ -69,7 +70,7 @@ def main():
     args = parse_cmdline()
 
     if args.version:
-        print(__version__)
+        print(__version__)  # noqa: T201
         sys.exit(0)
 
     try:

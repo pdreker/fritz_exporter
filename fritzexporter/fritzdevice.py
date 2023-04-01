@@ -10,6 +10,7 @@ from fritzconnection.core.exceptions import (
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzcapabilities import FritzCapabilities
 from fritzexporter.fritzmetric import FritzDeviceMetrics, FritzMetric
+from fritzexporter.http_connection import FritzHttpConnection, FritzHttpException
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
 
@@ -35,6 +36,12 @@ class FritzDevice:
             logger.exception(f"unable to connect to {host}: {str(e)}", exc_info=True)
             raise e
 
+        try:
+            self.http_connection = FritzHttpConnection(host, user, password)
+        except FritzHttpException as e:
+            logger.exception(f"unable to connect to {host}: {str(e)}", exc_info=True)
+            raise e
+
         logger.info(f"Connection to {host} successful, reading capabilities")
         self.capabilities = FritzCapabilities(self, host_info)
 
@@ -53,11 +60,11 @@ class FritzDevice:
             logger.critical(f"Device {host} has no detected capabilities. Exiting.")
             raise FritzDeviceHasNoCapabilitiesError
 
-    def get_device_info(self):
+    def get_device_info(self) -> None:
         try:
             device_info: dict[str, str] = self.fc.call_action("DeviceInfo1", "GetInfo")
-            self.serial: str = device_info["NewSerialNumber"]
-            self.model: str = device_info["NewModelName"]
+            self.serial = device_info["NewSerialNumber"]
+            self.model = device_info["NewModelName"]
 
         except (FritzServiceError, FritzActionError):
             logger.error(
