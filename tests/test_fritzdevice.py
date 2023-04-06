@@ -280,3 +280,30 @@ class TestFritzCollector:
         prom_metrics = [m.name for m in metrics]
         assert "fritz_host_speed" in prom_metrics
         assert "fritz_host_active" in prom_metrics
+
+    def test_should_only_expose_one_metric_for_multiple_devices(self, mock_fritzconnection: MagicMock, caplog):
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        # Act
+        collector = FritzCollector()
+        device1 = FritzDevice("somehost", "someuser", "password", "FritzMock1", True)
+        device2 = FritzDevice("somehost", "someuser", "password", "FritzMock2", True)
+        device3 = FritzDevice("somehost", "someuser", "password", "FritzMock3", True)
+        collector.register(device1)
+        collector.register(device2)
+        collector.register(device3)
+
+        # TODO: Might be worth to check this for every metric?
+        metrics: list[Metric] = []
+        for m in collector.collect():
+            if m.name == "fritz_uptime_seconds":
+                metrics.append(m)
+
+        # Check
+        assert len(metrics) == 1
+        assert len(metrics[0].samples) == 3
