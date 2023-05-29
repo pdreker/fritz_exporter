@@ -718,18 +718,18 @@ files = [
 
 [[package]]
 name = "types-requests"
-version = "2.28.11.17"
+version = "2.31.0.0"
 description = "Typing stubs for requests"
 category = "dev"
 optional = false
 python-versions = "*"
 files = [
-    {file = "types-requests-2.28.11.17.tar.gz", hash = "sha256:0d580652ce903f643f8c3b494dd01d29367ea57cea0c7ad7f65cf3169092edb0"},
-    {file = "types_requests-2.28.11.17-py3-none-any.whl", hash = "sha256:cc1aba862575019306b2ed134eb1ea994cab1c887a22e18d3383e6dd42e9789b"},
+    {file = "types-requests-2.31.0.0.tar.gz", hash = "sha256:c1c29d20ab8d84dff468d7febfe8e0cb0b4664543221b386605e14672b44ea25"},
+    {file = "types_requests-2.31.0.0-py3-none-any.whl", hash = "sha256:7c5cea7940f8e92ec560bbc468f65bf684aa3dcf0554a6f8c4710f5f708dc598"},
 ]
 
 [package.dependencies]
-types-urllib3 = "<1.27"
+types-urllib3 = "*"
 
 [[package]]
 name = "types-urllib3"
