@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional, Type, Union
 
 from fritzconnection.core.exceptions import (
     FritzActionError,
+    FritzArgumentError,
     FritzInternalError,
     FritzServiceError,
 )
@@ -51,10 +52,15 @@ class FritzCapability(ABC):
         # So try calling the requirements, and if it throws "InvalidService",
         # "InvalidAction" or "FritzInternalError" disable this again.
         if self.present:
-            for (svc, action) in self.requirements:
+            for svc, action in self.requirements:
                 try:
                     device.fc.call_action(svc, action)
-                except (FritzServiceError, FritzActionError, FritzInternalError) as e:
+                except (
+                    FritzServiceError,
+                    FritzActionError,
+                    FritzInternalError,
+                    FritzArgumentError,
+                ) as e:
                     logger.warning(
                         f"disabling metrics at service {svc}, action {action} - "
                         f"fritzconnection.call_action returned {str(e)}"
@@ -603,10 +609,14 @@ class WlanConfigurationInfo(FritzCapability):
                 f"to {self.wifi_present[wlan]} on device {device.host}"
             )
             if self.wifi_present[wlan]:
-                for (svc, action) in requirements:
+                for svc, action in requirements:
                     try:
                         device.fc.call_action(svc, action)
-                    except (FritzServiceError, FritzActionError, FritzInternalError) as e:
+                    except (
+                        FritzServiceError,
+                        FritzActionError,
+                        FritzInternalError,
+                    ) as e:
                         logger.warning(
                             f"disabling metrics at service {svc}, action {action} - "
                             f"fritzconnection.call_action returned {e}"
@@ -683,7 +693,8 @@ class WlanConfigurationInfo(FritzCapability):
             )
             if wlan:
                 logger.debug(
-                    f"WLANCapability._generateMetricValues fetching metrics for {device.host}: {index}"
+                    f"WLANCapability._generateMetricValues fetching metrics for {device.host}: "
+                    f"{index}"
                 )
                 wlan_result = device.fc.call_action(f"WLANConfiguration{index+1}", "GetInfo")
                 wlan_status = 1 if wlan_result["NewStatus"] == "Up" else 0
@@ -788,7 +799,7 @@ class HostInfo(FritzCapability):
         # So try calling the requirements, and if it throws "InvalidService",
         # "InvalidAction" or "FritzInternalError" disable this again.
         if self.present:
-            for (svc, action) in self.requirements:
+            for svc, action in self.requirements:
                 try:
                     if action == "GetHostNumberOfEntries":
                         device.fc.call_action(svc, action)
