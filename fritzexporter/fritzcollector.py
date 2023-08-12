@@ -1,29 +1,30 @@
 import logging
 import sys
 
-from fritzexporter.fritzcapabilities import FritzCapabilities
+# from fritzexporter.fritzcapabilities import FritzCapabilities
 from fritzexporter.fritzdevice import FritzDevice
+from fritzexporter.fritzmetric import FritzDeviceMetrics
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
 
 
 class FritzCollector:
-    def __init__(self):
+    def __init__(self) -> None:
         self.devices: list[FritzDevice] = []
-        self.capabilities: FritzCapabilities = FritzCapabilities(host_info=True)
+        # self.capabilities: FritzCapabilities = FritzCapabilities(host_info=True)
 
-    def register(self, fritzdev):
+    def register(self, fritzdev: FritzDevice):
         self.devices.append(fritzdev)
         logger.debug(f"registered device {fritzdev.host} ({fritzdev.model}) to collector")
-        self.capabilities.merge(fritzdev.capabilities)
+        # self.capabilities.merge(fritzdev.capabilities)
 
     def collect(self):
         if not self.devices:
             logger.critical("No devices registered in collector! Exiting.")
             sys.exit(1)
 
-        for name, capa in self.capabilities.items():
-            capa.createMetrics()
+        for device in self.devices:
+            device_metrics: FritzDeviceMetrics = device.collect_metrics()
             yield from capa.getMetrics(self.devices, name)
 
 

@@ -9,6 +9,12 @@ class FritzMetric:
     value: Optional[float] = None
     unit: Optional[str] = None
     attributes: dict[str, str] = {}
+    promtype: str = "gauge"
+
+    @promtype.validator
+    def _check_promtype(self, attribute, value):
+        if value not in ("gauge", "counter"):
+            raise ValueError(f"Invalid promtype: {value}")
 
 
 @define

@@ -121,6 +121,7 @@ class FritzDevice:
                 name="uptime",
                 value=float(response["NewUpTime"]),
                 unit="seconds",
+                promtype="counter",
             )
         )
         return metrics
@@ -210,34 +211,38 @@ class FritzDevice:
 
         metrics.append(
             FritzMetric(
-                name="lan_bytes_sent",
+                name="lan_data",
                 value=float(response["NewBytesSent"]),
                 unit="bytes",
                 attributes={"direction": "tx"},
+                promtype="counter",
             )
         )
         metrics.append(
             FritzMetric(
-                name="lan_bytes_received",
+                name="lan_data",
                 value=float(response["NewBytesReceived"]),
                 unit="bytes",
                 attributes={"direction": "rx"},
+                promtype="counter",
             )
         )
         metrics.append(
             FritzMetric(
-                name="lan_packets_sent",
+                name="lan_packets",
                 value=float(response["NewPacketsSent"]),
                 unit="total",
                 attributes={"direction": "tx"},
+                promtype="counter",
             )
         )
         metrics.append(
             FritzMetric(
-                name="lan_packets_received",
+                name="lan_packets",
                 value=float(response["NewPacketsReceived"]),
                 unit="total",
                 attributes={"direction": "rx"},
+                promtype="counter",
             )
         )
         return metrics
@@ -345,6 +350,7 @@ class FritzDevice:
                 name="dsl_fec_errors",
                 value=float(response["NewFECErrors"]),
                 unit="count",
+                promtype="counter",
             )
         )
         metrics.append(
@@ -352,6 +358,7 @@ class FritzDevice:
                 name="dsl_crc_errors",
                 value=float(response["NewCRCErrors"]),
                 unit="count",
+                promtype="counter",
             )
         )
 
@@ -373,6 +380,7 @@ class FritzDevice:
                 name="ppp_connection_uptime",
                 value=float(response["NewUptime"]),
                 unit="seconds",
+                promtype="counter",
             )
         )
         metrics.append(
@@ -408,7 +416,7 @@ class FritzDevice:
         )
         metrics.append(
             FritzMetric(
-                name="wan_datarate",
+                name="wan_max_bitrate",
                 value=float(response["NewLayer1UpstreamMaxBitRate"]),
                 unit="kbps",
                 attributes={"direction": "tx", "wantype": response["NewWANAccessType"]},
@@ -443,6 +451,7 @@ class FritzDevice:
                     value=float(response["NewTotalBytesSent"]),
                     unit="bytes",
                     attributes={"direction": "tx"},
+                    promtype="counter",
                 )
             )
 
@@ -456,6 +465,7 @@ class FritzDevice:
                 value=float(response["NewTotalBytesReceived"]),
                 unit="bytes",
                 attributes={"direction": "rx"},
+                promtype="counter",
             )
         )
 
@@ -508,6 +518,7 @@ class FritzDevice:
                     value=float(response["NewTotalPacketsSent"]),
                     unit="packets",
                     attributes={"direction": "tx"},
+                    promtype="counter",
                 )
             )
 
@@ -521,6 +532,7 @@ class FritzDevice:
                 value=float(response["NewTotalPacketsReceived"]),
                 unit="packets",
                 attributes={"direction": "rx"},
+                promtype="counter",
             )
         )
 
@@ -608,6 +620,7 @@ class FritzDevice:
                             "enabled": str(wlan_enabled),
                             "direction": "tx",
                         },
+                        promtype="counter",
                     )
                 )
                 metrics.append(
@@ -623,6 +636,7 @@ class FritzDevice:
                             "enabled": str(wlan_enabled),
                             "direction": "rx",
                         },
+                        promtype="counter",
                     )
                 )
 
