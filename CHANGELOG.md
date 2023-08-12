@@ -2,6 +2,14 @@
 
 
 
+## [2.2.4](https://github.com/pdreker/fritz_exporter/compare/v2.2.3...v2.2.4) (2023-08-12)
+
+
+### Bug Fixes
+
+* returning the same metric samples multiple times ([020a7b7](https://github.com/pdreker/fritz_exporter/commit/020a7b78e893bd03778f67e43e37b94cc02aad92))
+* When checking for capabilities fritzconnection may return FritzArgumentError which needs to be caught. ([87a47ee](https://github.com/pdreker/fritz_exporter/commit/87a47ee5fcf19e9cdb186f89c8230c443b07ccce))
+
 ## [2.2.3](https://github.com/pdreker/fritz_exporter/compare/v2.2.2...v2.2.3) (2023-04-01)
 
 
