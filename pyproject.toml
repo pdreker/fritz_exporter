@@ -35,7 +35,7 @@ prometheus-client = ">=0.6.0"
 fritzconnection = ">=1.0.0"
 pyyaml = "*"
 requests = "*"
-attrs = "^22.2.0"
+attrs = ">=22.2,<24.0"
 
 [tool.poetry.group.dev.dependencies]
 black = ">=22.8,<24.0"
