@@ -88,7 +88,7 @@ class FritzCollector:
             yield from capa.getMetrics(self.devices, name)
 
 
-# Copyright 2019-2022 Patrick Dreker <patrick@dreker.de>
+# Copyright 2019-2023 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
