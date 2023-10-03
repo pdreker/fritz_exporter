@@ -229,14 +229,14 @@ class TestDataDonation:
         assert mock_requests_post.call_count == 1
         assert mock_requests_post.call_args == call(
             "https://fritz.dreker.de/data/donate",
-            data=f'{{"exporter_version": "{__version__}", "fritzdevice": {{"model": "Fritz!MockBox '
-            '9790", "os_version": "1.2", "services": {"Hosts1": ["GetHostNumberOfEntries"]}, '
+            data='{"exporter_version": "develop", "fritzdevice": {"model": "Fritz!MockBox 9790", '
+            '"os_version": "1.2", "services": {"Hosts1": ["GetHostNumberOfEntries"]}, '
             '"detected_capabilities": ["DeviceInfo", "HostNumberOfEntries", "UserInterface", '
             '"LanInterfaceConfig", "LanInterfaceConfigStatistics", "WanDSLInterfaceConfig", '
             '"WanDSLInterfaceConfigAVM", "WanPPPConnectionStatus", "WanCommonInterfaceConfig", '
             '"WanCommonInterfaceDataBytes", "WanCommonInterfaceByteRate", '
-            '"WanCommonInterfaceDataPackets", "WlanConfigurationInfo", "HostInfo"], '
-            '"action_results": {"Hosts1": {"GetHostNumberOfEntries": '
+            '"WanCommonInterfaceDataPackets", "WlanConfigurationInfo", "HostInfo", '
+            '"HomeAutomation"], "action_results": {"Hosts1": {"GetHostNumberOfEntries": '
             '{"NewHostNumberOfEntries": "3"}}}}}',
             headers={"Content-Type": "application/json"},
         )

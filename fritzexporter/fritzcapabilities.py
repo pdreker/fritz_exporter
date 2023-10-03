@@ -40,10 +40,8 @@ class FritzCapability(ABC):
 
     def checkCapability(self, device: FritzDevice):
         self.present = all(
-            [
-                (service in device.fc.services) and (action in device.fc.services[service].actions)
-                for (service, action) in self.requirements
-            ]
+            (service in device.fc.services) and (action in device.fc.services[service].actions)
+            for (service, action) in self.requirements
         )
         logger.debug(
             f"Capability {type(self).__name__} set to {self.present} on device {device.host}"
@@ -117,7 +115,7 @@ class FritzCapabilities:
             )
 
     def empty(self):
-        return not any([cap.present for cap in list(self.capabilities.values())])
+        return not any(cap.present for cap in list(self.capabilities.values()))
 
     def check_present(self, device: FritzDevice):
         for c in self.capabilities:
@@ -599,11 +597,8 @@ class WlanConfigurationInfo(FritzCapability):
             ]
             logger.debug(f"Capability {type(self).__name__} checking {service} on {device.host}")
             self.wifi_present[wlan] = all(
-                [
-                    (service in device.fc.services)
-                    and (action in device.fc.services[service].actions)
-                    for (service, action) in requirements
-                ]
+                (service in device.fc.services) and (action in device.fc.services[service].actions)
+                for (service, action) in requirements
             )
             logger.debug(
                 f"Capability {type(self).__name__} in WLAN {wlan+1} set "
@@ -787,10 +782,8 @@ class HostInfo(FritzCapability):
 
     def checkCapability(self, device):
         self.present = device.host_info and all(
-            [
-                (service in device.fc.services) and (action in device.fc.services[service].actions)
-                for (service, action) in self.requirements
-            ]
+            (service in device.fc.services) and (action in device.fc.services[service].actions)
+            for (service, action) in self.requirements
         )
         logger.debug(
             f"Capability {type(self).__name__} set to {self.present} on device {device.host}"
@@ -819,6 +812,7 @@ class HostInfo(FritzCapability):
             "Indicates that the device is curently active",
             labels=[
                 "serial",
+                "friendly_name",
                 "ip_address",
                 "mac_address",
                 "hostname",
@@ -832,6 +826,7 @@ class HostInfo(FritzCapability):
             "Connection speed of the device",
             labels=[
                 "serial",
+                "friendly_name",
                 "ip_address",
                 "mac_address",
                 "hostname",
@@ -880,6 +875,7 @@ class HostInfo(FritzCapability):
             self.metrics["hostactive"].add_metric(
                 [
                     device.serial,
+                    device.friendly_name,
                     host_ip,
                     host_mac,
                     host_name,
@@ -892,6 +888,7 @@ class HostInfo(FritzCapability):
             self.metrics["hostspeed"].add_metric(
                 [
                     device.serial,
+                    device.friendly_name,
                     host_ip,
                     host_mac,
                     host_name,
@@ -910,92 +907,203 @@ class HostInfo(FritzCapability):
 class HomeAutomation(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("X_AVM-DE_Homeauto1", "GetGenericDeviceInfos"))
-
-    def checkCapability(self, device: FritzDevice):
-        self.present = (
-            "X_AVM-DE_Homeauto1" in device.fc.services
-            and "GetGenericDeviceInfos" in device.fc.services["X_AVM-DE_Homeauto1"].actions
-        )
-        logger.debug(
-            f"Capability {type(self).__name__} set to {self.present} on device {device.host}"
-        )
+        self.requirements.append(("X_AVM-DE_Homeauto1", "GetInfo"))
 
     def createMetrics(self):
         self.metrics["devicepresent"] = GaugeMetricFamily(
             "fritz_ha_device_present",
             "Indicates that the device is present",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["multimeter_power"] = GaugeMetricFamily(
             "fritz_ha_multimeter_power_W",
             "Power in W",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["multimeter_energy"] = GaugeMetricFamily(
             "fritz_ha_multimeter_energy_Wh",
             "Energy in Wh",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["temperature"] = GaugeMetricFamily(
             "fritz_ha_temperature_C",
             "Temperature in °C",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["temperature_offset"] = GaugeMetricFamily(
             "fritz_ha_temperature_offset_C",
             "Temperature offset in °C",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["switch_state"] = GaugeMetricFamily(
             "fritz_ha_switch_state",
             "Switch state",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["switch_mode"] = GaugeMetricFamily(
             "fritz_ha_switch_mode",
             "Switch mode",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["switch_lock"] = GaugeMetricFamily(
             "fritz_ha_switch_lock",
             "Switch lock",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["heater_temperature"] = GaugeMetricFamily(
             "fritz_ha_heater_temperature_C",
             "Heater temperature in °C",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["heater_set_temperature"] = GaugeMetricFamily(
             "fritz_ha_heater_set_temperature_C",
             "Heater set temperature in °C",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["heater_valve_set_state"] = GaugeMetricFamily(
             "fritz_ha_heater_valve_set_state",
             "Heater valve set state",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["heater_reduced_temperature"] = GaugeMetricFamily(
             "fritz_ha_heater_reduced_temperature_C",
             "Heater reduced temperature in °C",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["heater_comfort_temperature"] = GaugeMetricFamily(
             "fritz_ha_heater_comfort_temperature_C",
             "Heater comfort temperature in °C",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["heater_reduced_valve_state"] = GaugeMetricFamily(
             "fritz_ha_heater_reduced_valve_state",
             "Heater reduced valve state",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
         self.metrics["heater_comfort_valve_state"] = GaugeMetricFamily(
             "fritz_ha_heater_comfort_valve_state",
             "Heater comfort valve state",
-            labels=["ain", "device_name", "device_id", "manufacturer", "productname"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
         )
 
     def _generateMetricValues(self, device: FritzDevice):
@@ -1026,12 +1134,11 @@ class HomeAutomation(FritzCapability):
 
             ain = ha_result["NewAIN"]
             device_name = ha_result["NewDeviceName"]
-            device_id = ha_result["NewId"]
             manufacturer = ha_result["NewManufacturer"]
             productname = ha_result["NewProductName"]
 
             self.metrics["devicepresent"].add_metric(
-                [ain, device_name, device_id, manufacturer, productname],
+                [device.serial, device.friendly_name, ain, device_name, manufacturer, productname],
                 device_present_map[ha_result["NewPresent"]],
             )
 
@@ -1040,11 +1147,25 @@ class HomeAutomation(FritzCapability):
                 and ha_result["NewMultimeterIsValid"] == "VALID"
             ):
                 self.metrics["multimeter_power"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     ha_result["NewMultimeterPower"] / 100.0,
                 )
                 self.metrics["multimeter_energy"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     ha_result["NewMultimeterEnergy"],
                 )
 
@@ -1053,11 +1174,25 @@ class HomeAutomation(FritzCapability):
                 and ha_result["NewTemperatureIsValid"] == "VALID"
             ):
                 self.metrics["temperature"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     ha_result["NewTemperatureCelsius"] / 10.0,
                 )
                 self.metrics["temperature_offset"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     ha_result["NewTemperatureOffset"] / 10.0,
                 )
 
@@ -1066,45 +1201,115 @@ class HomeAutomation(FritzCapability):
                 and ha_result["NewSwitchIsValid"] == "VALID"
             ):
                 self.metrics["switch_state"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     switch_state_map[ha_result["NewSwitchState"]],
                 )
                 self.metrics["switch_mode"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     switch_mode_map[ha_result["NewSwitchMode"]],
                 )
                 self.metrics["switch_lock"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     1 if ha_result["NewSwitchLock"] else 0,
                 )
 
             if ha_result["NewHkrIsEnabled"] == "ENABLED" and ha_result["NewHkrIsValid"] == "VALID":
                 self.metrics["heater_temperature"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
-                    ha_result["NewHkrTemperature"] / 10.0,
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
+                    ha_result["NewHkrIsTemperature"] / 10.0,
                 )
                 self.metrics["heater_set_temperature"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     ha_result["NewHkrSetTemperature"] / 10.0,
                 )
                 self.metrics["heater_valve_set_state"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
-                    hkr_valve_map[ha_result["NewHkrVSetVentilStatus"]],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
+                    hkr_valve_map[ha_result["NewHkrSetVentilStatus"]],
                 )
                 self.metrics["heater_reduced_temperature"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     ha_result["NewHkrReduceTemperature"] / 10.0,
                 )
                 self.metrics["heater_comfort_temperature"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     ha_result["NewHkrComfortTemperature"] / 10.0,
                 )
                 self.metrics["heater_reduced_valve_state"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     hkr_valve_map[ha_result["NewHkrReduceVentilStatus"]],
                 )
                 self.metrics["heater_comfort_valve_state"].add_metric(
-                    [ain, device_name, device_id, manufacturer, productname],
+                    [
+                        device.serial,
+                        device.friendly_name,
+                        ain,
+                        device_name,
+                        manufacturer,
+                        productname,
+                    ],
                     hkr_valve_map[ha_result["NewHkrComfortVentilStatus"]],
                 )
 
