@@ -61,6 +61,7 @@ The following groups of metrics are currently available:
 * PPP statistics
 * WiFi statistics
 * WAN Layer1 (physical link) statistics
+* Home Automation Devices (The TR-064 API is currently limited to switches, heating valves, temperatures and power meters - maybe AVM updates this in the future)
 
 If there is any information missing or not displayed on your specific device, please open an issue on GitHub.
 
