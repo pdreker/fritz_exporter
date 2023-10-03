@@ -1020,8 +1020,8 @@ class HomeAutomation(FritzCapability):
                 ha_result = device.fc.call_action(
                     "X_AVM-DE_Homeauto1", "GetGenericDeviceInfos", NewIndex=index
                 )
-            except (FritzActionError, FritzArrayIndexError) as e:
-                logger.debug(f"Got error {e} for index {index}, stopping")
+            except FritzArrayIndexError:
+                logger.debug(f"Got IndexError for index {index}, stopping")
                 break
 
             ain = ha_result["NewAIN"]
