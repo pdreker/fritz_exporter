@@ -46,7 +46,7 @@ jobs:
 
       - name: generate docker tags
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             ${{ env.DOCKER_REGISTRY_HOST }}/${{ env.DOCKER_REGISTRY_REPO }}/${{ env.DOCKER_REGISTRY_IMAGE }}
