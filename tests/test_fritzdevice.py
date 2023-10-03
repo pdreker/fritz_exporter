@@ -105,7 +105,6 @@ class TestFritzDevice:
     def test_should_create_fritz_device_with_correct_capabilities(
         self, mock_fritzconnection: MagicMock, caplog
     ):
-
         # Prepare
         caplog.set_level(logging.DEBUG)
 
@@ -126,7 +125,6 @@ class TestFritzDevice:
         )
 
     def test_should_complain_about_password(self, mock_fritzconnection: MagicMock, caplog):
-
         # Prepare
         caplog.set_level(logging.DEBUG)
         password: str = "123456789012345678901234567890123"
@@ -213,6 +211,7 @@ class TestFritzCollector:
             "WanCommonInterfaceDataPackets",
             "WlanConfigurationInfo",
             "HostInfo",
+            "HomeAutomation",
         ]
 
         assert list(collector.capabilities.capabilities.keys()) == all_capas
@@ -281,7 +280,9 @@ class TestFritzCollector:
         assert "fritz_host_speed" in prom_metrics
         assert "fritz_host_active" in prom_metrics
 
-    def test_should_only_expose_one_metric_for_multiple_devices(self, mock_fritzconnection: MagicMock, caplog):
+    def test_should_only_expose_one_metric_for_multiple_devices(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
         # Prepare
         caplog.set_level(logging.DEBUG)
 
