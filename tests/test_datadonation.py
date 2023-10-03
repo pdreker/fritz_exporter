@@ -10,7 +10,6 @@ from fritzconnection.core.exceptions import (
     FritzServiceError,
 )
 
-from fritzexporter import __version__
 from fritzexporter.data_donation import (
     donate_data,
     get_sw_version,
