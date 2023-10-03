@@ -67,7 +67,7 @@ def safe_call_action(device: FritzDevice, service: str, action: str):
     return result
 
 
-def sanitize_results(res: dict[tuple[str, str], dict], sanitation: list[list]):
+def sanitize_results(res: dict[tuple[str, str], dict], sanitation: list[list]):  # noqa: C901
     blacklist: dict[tuple[str, str], list[str]] = {
         # (service, action): return_value
         ("DeviceConfig1", "GetPersistentData"): ["NewPersistentData"],
@@ -220,7 +220,7 @@ def sanitize_results(res: dict[tuple[str, str], dict], sanitation: list[list]):
 
 def jsonify_action_results(ar):
     out: dict[str, dict] = {}
-    for (service, action) in ar:
+    for service, action in ar:
         if service not in out:
             out[service] = {}
         if action not in out[service]:
