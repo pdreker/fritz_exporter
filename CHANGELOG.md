@@ -2,6 +2,24 @@
 
 
 
+## [2.3.0](https://github.com/pdreker/fritz_exporter/compare/v2.2.4...v2.3.0) (2023-10-03)
+
+
+### Features
+
+* add home automation metrics ([5f35afb](https://github.com/pdreker/fritz_exporter/commit/5f35afb335ccc84333bb9219185e7409e051f47a))
+
+
+### Bug Fixes
+
+* add .readthedocs.yaml config file ([df7b150](https://github.com/pdreker/fritz_exporter/commit/df7b150f00f0542559a745fc02c4b40b4557c34a))
+* make bail out message less verbose ([724fd01](https://github.com/pdreker/fritz_exporter/commit/724fd011a55485b7ddab3f69061fbdb2eb34326f))
+
+
+### Documentation
+
+* update copyright boilerplate ([baafe01](https://github.com/pdreker/fritz_exporter/commit/baafe01d6a8fffbe241db03b6fa813f4248ddb8d))
+
 ## [2.2.4](https://github.com/pdreker/fritz_exporter/compare/v2.2.3...v2.2.4) (2023-08-12)
 
 
