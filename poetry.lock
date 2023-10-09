@@ -342,12 +342,13 @@ flake8 = ">=3.0,<3.2.0 || >3.2.0"
 
 [[package]]
 name = "fritzconnection"
-version = "1.12.0"
+version = "1.13.2"
 description = "Communicate with the AVM FRITZ!Box"
 optional = false
-python-versions = ">= 3.6"
+python-versions = ">= 3.7"
 files = [
-    {file = "fritzconnection-1.12.0.tar.gz", hash = "sha256:1b91ed4e971b4683557fc420f2ab6bff16660fad2848e63f2742c253d28618f0"},
+    {file = "fritzconnection-1.13.2-py3-none-any.whl", hash = "sha256:74648f90411446c478370feb94e42ebe989a18cc6a1e61068756c4ff0253b572"},
+    {file = "fritzconnection-1.13.2.tar.gz", hash = "sha256:ccc7ff207bb599394dfc19da29c8c54679e318d2b9304f3263a52cb9f4ed33c2"},
 ]
 
 [package.dependencies]
