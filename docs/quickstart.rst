@@ -12,6 +12,8 @@ This Quickstart is intended for users, who have no current Prometheus or Grafana
 Preparations
 ------------
 
+Create a new user account for the exporter on the Fritzbox using the login credentials FRITZ_USERNAME: 'xxxxx' and FRITZ_PASSWORD: 'xxxx'. Grant the user access to the following features: FRITZ!Box settings, voice messages, fax messages, FRITZ!App Fon and call list, Smart Home, access to NAS content, and VPN.
+
 Create an empty directory ``fritz-exporter`` and place a file ``docker-compose.yml`` in that directory with the following content (Check that environment variables and paths match your setup):
 
 .. code-block:: yaml
