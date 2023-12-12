@@ -2,6 +2,13 @@
 
 
 
+## [2.3.1](https://github.com/pdreker/fritz_exporter/compare/v2.3.0...v2.3.1) (2023-12-12)
+
+
+### Documentation
+
+* **homeauto:** explicitly mention missing metrics ([d827b5d](https://github.com/pdreker/fritz_exporter/commit/d827b5daa4d8f61fcbcf99c9df08ba6005992e77))
+
 ## [2.3.0](https://github.com/pdreker/fritz_exporter/compare/v2.2.4...v2.3.0) (2023-10-03)
 
 
