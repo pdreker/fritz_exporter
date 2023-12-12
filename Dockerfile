@@ -1,5 +1,5 @@
 # Pull the generated requirements.txt and install into system using pip
-FROM python:3.12.0-alpine
+FROM python:3.12.1-alpine
 
 LABEL Name=fritzbox_exporter
 EXPOSE 9787
