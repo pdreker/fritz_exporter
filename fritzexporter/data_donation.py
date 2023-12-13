@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -27,7 +29,7 @@ def get_sw_version(device: FritzDevice) -> str:
     return info_result["NewSoftwareVersion"]
 
 
-def safe_call_action(device: FritzDevice, service: str, action: str):
+def safe_call_action(device: FritzDevice, service: str, action: str) -> dict[str, str]:
     blacklist: list[tuple[str, str]] = [
         ("DeviceConfig1", "GetPersistentData"),
         ("DeviceConfig1", "X_AVM-DE_GetConfigFile"),
