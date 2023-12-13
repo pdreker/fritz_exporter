@@ -1,4 +1,5 @@
 {
+    "bootstrap-sha": "afae38491d69d711a2379584ba282cfeef59e0b8",
     "packages": {
         ".": {
             "release-type": "python",
