@@ -8,7 +8,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release.outputs.releases_created }}
+      release_created: ${{ steps.release.outputs.release_created }}
       major: ${{ steps.release.outputs.major }}
       minor: ${{ steps.release.outputs.minor }}
       patch: ${{ steps.release.outputs.patch }}
