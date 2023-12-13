@@ -38,22 +38,77 @@ requests = "*"
 attrs = ">=22.2,<24.0"
 
 [tool.poetry.group.dev.dependencies]
-black = ">=22.8,<24.0"
 pytest = "*"
 pytest-mock = "*"
 types-pyyaml = "*"
 types-requests = "*"
-flake8 = ">=5.0.4,<7.0.0"
 mypy = ">=0.971,<1.8"
 coverage = ">=6.4.4,<8.0.0"
 pytest-cov = ">=3,<5"
-flake8-bugbear = ">=22.9.23,<24.0.0"
-flake8-assertive = "^2.1.0"
-flake8-comprehensions = "^3.10.0"
+ruff = "^0.1.7"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.black]
+[tool.ruff]
 line-length = 100
+# other rules:
+# * "DJ" for Django
+# * "PYI" for type stubs etc.
+# * "PD" for PandasVet
+# * "NPY" for NumPy
+
+select = [
+    "E", "W", # PyCodeStyle
+    "F", # PyFlakes
+    "C90", # McCabe (Function Complexity
+    "I", # ISort
+    "N", # PEP8 Naming Conventions
+    # "D", # PyDocStyle
+    "UP", # pyupgrade
+    "YTT", # flake8-2020 ('Yield from' etc.)
+    "ANN", # flake8-annotations (missing type annotations)
+    "ASYNC", # flake8-async (various async issues)
+    "S", # flake8-bandit (security issues)
+    "BLE", # blind exceptions
+    "FBT", # boolean traps (Anti-Pattern, Google it.)
+    "B", # bugbear (various anti-patterns)
+    "A", # flake8-builtins (shadowing builtins)
+    "COM", # flake8-commas (comma placement at line-end)
+    "C4", # flake8-comprehensions (comprehension issues like unnecessary list comprehensions etc.)
+    "DTZ", # avoid usage of naive datetime objects
+    "T10", # watch for Debugger imports
+    "EM", # ensure error messages are not formatted as f-strings and similar
+    "FA", # flake8-future-annotations (ensure type hint annotation use mnodern syntax)
+    "ISC", # implicit string concatenation
+    "G", # flake8-logging-format (ensure logging format strings are valid)
+    "INP", # do not use implicit namspace packages
+    "PIE", # various anti-patterns and misfeatures
+    "T20", # watch for print() calls
+    "PT", # pytest style issues
+    "Q", # quotes (ensure consistent usage of single/double quotes)
+    "RSE", # some "raise" syntax issues
+    "RET", # return values anti-patterns
+    "SLF", # flake8-self (do not access "_private" attributes from outside)
+    "SLOT", # flake8-slots (ensure usage of __slots__)
+    "SIM", # flake8-simplify (simplify various constructs)
+    "INT", # gettext issues (format strings etc.)
+    "ARG", # disallow unused arguments
+    "PTH", # use pathlib instead of os.path
+    "TD", # enforce some syntax on TODO comments
+    "FIX", # highlight TODO, FIXME, XXX etc.
+    "PGH", # pygrep-hooks (policing "noqa" and similar)
+    "PL", # PyLint (various issues)
+    "TRY", # try/except/else/finally anti-patterns (try.ceratops)
+    "FLY", # join vs. f-strings
+    "PERF", # various performance issues
+    "FURB", # modernize various constructs
+    "LOG", # logging issues
+    "RUF", # ruff (various issues)
+]
+
+ignore = ['E203']
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

@@ -1,16 +1,6 @@
 {
-    "python.pythonPath": "/Users/pd/.local/share/virtualenvs/fritzbox_exporter-N1IOk1zl/bin/python",
     "python.testing.unittestEnabled": false,
-    "python.testing.nosetestsEnabled": false,
     "python.testing.pytestEnabled": true,
-    "esbonio.sphinx.confDir": "",
-    "githubPullRequests.ignoredPullRequestBranches": [
-        "develop"
-    ],
-    "sonarlint.connectedMode.project": {
-        "connectionId": "SonarCloud Private",
-        "projectKey": "pdreker_fritz_exporter"
-    },
     "python.testing.pytestArgs": [
         "--cov",
         ".",
@@ -21,7 +11,6 @@
         ".coveragerc"
     ],
     "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter"
+        "editor.defaultFormatter": "charliermarsh.ruff"
     },
-    "python.formatting.provider": "none"
 }
