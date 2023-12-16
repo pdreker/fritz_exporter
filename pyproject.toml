@@ -26,9 +26,6 @@ classifiers = [
 include = [ "LICENSE.md" ]
 packages = [{include = "fritzexporter"}]
 
-[tool.poetry.scripts]
-fritzexporter = 'fritzexporter:__main__'
-
 [tool.poetry.dependencies]
 python = "^3.10"
 prometheus-client = ">=0.6.0"
@@ -53,6 +50,11 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 100
+extend-exclude = [
+    "tests",
+    "docs",
+]
+
 # other rules:
 # * "DJ" for Django
 # * "PYI" for type stubs etc.
@@ -108,7 +110,7 @@ select = [
     "RUF", # ruff (various issues)
 ]
 
-ignore = ['E203']
+ignore = ['E203', 'COM812', 'ISC001']
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
