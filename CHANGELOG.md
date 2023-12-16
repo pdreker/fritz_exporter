@@ -2,6 +2,18 @@
 
 
 
+## [2.3.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.3.0...fritzexporter-v2.3.1) (2023-12-16)
+
+
+### Bug Fixes
+
+* add type hints to data_donation.py ([369748a](https://github.com/pdreker/fritz_exporter/commit/369748a2fb1672b01bf1d9b44845b0368d989c28))
+
+
+### Documentation
+
+* **homeauto:** explicitly mention missing metrics ([d827b5d](https://github.com/pdreker/fritz_exporter/commit/d827b5daa4d8f61fcbcf99c9df08ba6005992e77))
+
 ## [2.3.0](https://github.com/pdreker/fritz_exporter/compare/v2.2.4...v2.3.0) (2023-10-03)
 
 
