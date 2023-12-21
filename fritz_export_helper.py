@@ -1,8 +1,9 @@
 import argparse
-from fritzconnection import FritzConnection
-from fritzconnection.core.exceptions import ActionError, ServiceError, FritzInternalError
-from pprint import pprint
 import json
+from pprint import pprint
+
+from fritzconnection import FritzConnection
+from fritzconnection.core.exceptions import ActionError, FritzInternalError, ServiceError
 
 parser = argparse.ArgumentParser(
     description="Check actions against Fritz TR-064 API and pretty print the results."

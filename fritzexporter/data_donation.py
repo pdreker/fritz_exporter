@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+from typing import Any
 
 import requests
 from fritzconnection.core.exceptions import (
@@ -13,6 +14,7 @@ from fritzconnection.core.exceptions import (
 )
 
 from . import __version__
+from .action_blacklists import call_blacklist
 from .fritzdevice import FritzDevice
 
 logger = logging.getLogger("fritzexporter.donate_data")
@@ -30,46 +32,19 @@ def get_sw_version(device: FritzDevice) -> str:
 
 
 def safe_call_action(device: FritzDevice, service: str, action: str) -> dict[str, str]:
-    blacklist: list[tuple[str, str]] = [
-        ("DeviceConfig1", "GetPersistentData"),
-        ("DeviceConfig1", "X_AVM-DE_GetConfigFile"),
-        ("Hosts1", "X_AVM-DE_GetAutoWakeOnLANByMACAddress"),
-        ("WANCommonInterfaceConfig1", "X_AVM-DE_GetOnlineMonitor"),
-        ("WLANConfiguration1", "GetDefaultWEPKeyIndex"),
-        ("WLANConfiguration2", "GetDefaultWEPKeyIndex"),
-        ("WLANConfiguration3", "GetDefaultWEPKeyIndex"),
-        ("WLANConfiguration4", "GetDefaultWEPKeyIndex"),
-        ("X_AVM-DE_AppSetup1", "GetAppMessageFilter"),
-        ("X_AVM-DE_Filelinks1", "GetNumberOfFilelinkEntries"),
-        ("X_AVM-DE_HostFilter1", "GetTicketIDStatus"),
-        ("X_AVM-DE_OnTel1", "GetCallBarringEntry"),
-        ("X_AVM-DE_OnTel1", "GetCallBarringEntryByNum"),
-        ("X_AVM-DE_OnTel1", "GetDeflection"),
-        ("X_AVM-DE_OnTel1", "GetPhonebook"),
-        ("X_AVM-DE_OnTel1", "GetPhonebookEntry"),
-        ("X_AVM-DE_OnTel1", "GetPhonebookEntryUID"),
-        ("X_AVM-DE_TAM1", "GetInfo"),
-        ("X_VoIP1", "GetVoIPEnableAreaCode"),
-        ("X_VoIP1", "GetVoIPEnableCountryCode"),
-        ("X_VoIP1", "X_AVM-DE_GetClient"),
-        ("X_VoIP1", "X_AVM-DE_GetClient2"),
-        ("X_VoIP1", "X_AVM-DE_GetClient3"),
-        ("X_VoIP1", "X_AVM-DE_GetClientByClientId"),
-        ("X_VoIP1", "X_AVM-DE_GetPhonePort"),
-        ("X_VoIP1", "X_AVM-DE_GetVoIPAccount"),
-    ]
+    if (service, action) in call_blacklist:
+        return {"error": "<BLACKLISTED>"}
+
     try:
         result = device.fc.call_action(service, action)
     except (FritzServiceError, FritzActionError, FritzArgumentError, FritzConnectionException) as e:
         result = {"error": f"{e}"}
-
-    if (service, action) in blacklist:
-        return {"error": "<BLACKLISTED>"}
-
     return result
 
 
-def sanitize_results(res: dict[tuple[str, str], dict], sanitation: list[list]):  # noqa: C901
+def sanitize_results(
+    res: dict[tuple[str, str], dict], sanitation: list[list]
+) -> dict[tuple[str, str], dict[str, Any]]:
     blacklist: dict[tuple[str, str], list[str]] = {
         # (service, action): return_value
         ("DeviceConfig1", "GetPersistentData"): ["NewPersistentData"],
@@ -210,17 +185,16 @@ def sanitize_results(res: dict[tuple[str, str], dict], sanitation: list[list]): 
 
     for entry in sanitation:
         if (entry[0], entry[1]) in res:
-            if len(entry) == 2:
+            if len(entry) == 2:  # noqa: PLR2004
                 for field in res[(entry[0], entry[1])]:
                     res[(entry[0], entry[1])][field] = "<SANITIZED>"
-            elif len(entry) == 3:
-                if entry[2] in res[(entry[0], entry[1])]:
-                    res[(entry[0], entry[1])][entry[2]] = "<SANITIZED>"
+            elif len(entry) == 3 and entry[2] in res[(entry[0], entry[1])]:  # noqa: PLR2004
+                res[(entry[0], entry[1])][entry[2]] = "<SANITIZED>"
 
     return res
 
 
-def jsonify_action_results(ar):
+def jsonify_action_results(ar: dict[tuple[str, str], dict]) -> dict[str, dict]:
     out: dict[str, dict] = {}
     for service, action in ar:
         if service not in out:
@@ -230,28 +204,31 @@ def jsonify_action_results(ar):
     return out
 
 
-def upload_data(basedata):
+def upload_data(basedata) -> None:  # noqa: ANN001
     donation_url = os.getenv("FRITZ_DONATION_URL", "https://fritz.dreker.de/data/donate")
     headers = {"Content-Type": "application/json"}
-    resp = requests.post(donation_url, data=json.dumps(basedata), headers=headers)
+    resp = requests.post(donation_url, data=json.dumps(basedata), headers=headers, timeout=10)
 
     if resp.status_code == requests.codes.ok:
         donation_id = resp.json().get("donation_id")
         if donation_id:
             logger.info(
-                f"Data donation for device {basedata['fritzdevice']['model']} "
-                f"registered under id {donation_id}"
+                "Data donation for device %s registered under id %s",
+                basedata["fritzdevice"]["model"],
+                donation_id,
             )
         else:
             logger.warning(
-                f"Data donation for device {basedata['fritzdevice']['model']} "
-                "did not return a donation id."
+                "Data donation for device  %s did not return a donation id.",
+                basedata["fritzdevice"]["model"],
             )
     else:
         resp.raise_for_status()
 
 
-def donate_data(device: FritzDevice, upload: bool = False, sanitation: list[list] = None):
+def donate_data(
+    device: FritzDevice, *, upload: bool = False, sanitation: list[list] | None = None
+) -> None:
     if not sanitation:
         sanitation = []
     services = {s: list(device.fc.services[s].actions) for s in device.fc.services}
@@ -288,7 +265,7 @@ def donate_data(device: FritzDevice, upload: bool = False, sanitation: list[list
     if upload:
         upload_data(basedata)
     else:
-        print(f"---------------- Donation data for device {model} ---------------------")
-        print(json.dumps(basedata, indent=2))
-        print("----------------- END ------------------")
-        print()
+        print(f"---------------- Donation data for device {model} ---------------------")  # noqa: T201
+        print(json.dumps(basedata, indent=2))  # noqa: T201
+        print("----------------- END ------------------")  # noqa: T201
+        print()  # noqa: T201
