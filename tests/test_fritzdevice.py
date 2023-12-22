@@ -8,10 +8,12 @@ from prometheus_client.core import Metric
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
+from fritzexporter.fritz_aha import parse_aha_device_xml
 
 from .fc_services_mock import (
     call_action_mock,
     call_action_no_basic_mock,
+    call_http_mock,
     create_fc_services,
     fc_services_capabilities,
     fc_services_devices,
@@ -183,6 +185,41 @@ class TestFritzDevice:
             "Serial number and model name will be unavailable.",
         ) in caplog.record_tuples
 
+    def test_should_correctly_parse_aha_xml(self, mock_fritzconnection: MagicMock, caplog):
+        # Prepare
+        deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
+        <device>
+            <present>1</present>
+            <name>Fritz!DECT 200
+            </name>
+            <manufacturer>AVM</manufacturer>
+            <manufacturerURL>http://www.avm.de</manufacturerURL>
+            <model>Fritz!DECT 200</model>
+            <battery>100</battery>
+            <batterylow>0</batterylow>
+        </device>
+        """
+        # Act
+        device_data = parse_aha_device_xml(deviceinfo)
+
+        # Check
+        assert device_data["battery_level"] == "100"
+        assert device_data["battery_low"] == "0"
+
+    def test_should_correctly_parse_aha_xml_when_empty(self, mock_fritzconnection: MagicMock, caplog):
+        # Prepare
+        deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
+        <device>
+        </device>
+        """
+        # Act
+        device_data = parse_aha_device_xml(deviceinfo)
+
+        # Check
+        assert "battery_level" not in device_data
+        assert "battery_low" not in device_data
+
+
 
 @patch("fritzexporter.fritzdevice.FritzConnection")
 class TestFritzCollector:
@@ -239,6 +276,7 @@ class TestFritzCollector:
 
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
+        fc.call_http.side_effect = call_http_mock
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         # Act

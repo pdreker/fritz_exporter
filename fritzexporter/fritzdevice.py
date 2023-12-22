@@ -10,6 +10,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzServiceError,
 )
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
+from prometheus_client.registry import Collector
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzcapabilities import FritzCapabilities
@@ -84,7 +85,7 @@ class FritzDevice:
             )
 
 
-class FritzCollector:
+class FritzCollector(Collector):
     def __init__(self):
         self.devices: list[FritzDevice] = []
         self.capabilities: FritzCapabilities = FritzCapabilities()  # host_info=True??? FIXME

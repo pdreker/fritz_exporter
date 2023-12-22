@@ -9,10 +9,13 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
     FritzArgumentError,
     FritzArrayIndexError,
+    FritzHttpInterfaceError,
     FritzInternalError,
     FritzServiceError,
 )
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
+
+from fritzexporter.fritz_aha import parse_aha_device_xml
 
 if TYPE_CHECKING:
     from fritzexporter.fritzdevice import FritzDevice
@@ -979,6 +982,35 @@ class HomeAutomation(FritzCapability):
                 "productname",
             ],
         )
+
+        self.metrics["battery_level"] = GaugeMetricFamily(
+            "fritz_ha_battery_level",
+            "Battery level in percent",
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
+        )
+
+        self.metrics["battery_low"] = GaugeMetricFamily(
+            "fritz_ha_battery_low",
+            "Indicates that the battery is low",
+            labels=[
+                "serial",
+                "friendly_name",
+                "ain",
+                "device_name",
+                "device_id",
+                "manufacturer",
+                "productname",
+            ],
+        )
+
         self.metrics["multimeter_power"] = GaugeMetricFamily(
             "fritz_ha_multimeter_power_W",
             "Power in W",
@@ -1370,6 +1402,40 @@ class HomeAutomation(FritzCapability):
                 )
 
             index += 1
+
+            try:
+                http_result = device.fc.call_http("getdeviceinfos", ain)
+            except FritzHttpInterfaceError:
+                logger.debug("Got FritzHttpInterfaceError for ain %s, skipping", ain)
+                continue
+
+            if "content" in http_result:
+                http_data = parse_aha_device_xml(http_result["content"])
+                if "battery" in http_data:
+                    self.metrics["battery_level"].add_metric(
+                        [
+                            device.serial,
+                            device.friendly_name,
+                            ain,
+                            device_name,
+                            manufacturer,
+                            productname,
+                        ],
+                        float(http_data["battery"]),
+                    )
+
+                if "battery_low" in http_data:
+                    self.metrics["battery_low"].add_metric(
+                        [
+                            device.serial,
+                            device.friendly_name,
+                            ain,
+                            device_name,
+                            manufacturer,
+                            productname,
+                        ],
+                        1 if http_data["battery_low"] == "1" else 0,
+                    )
 
     def _get_metric_values(
         self,

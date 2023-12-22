@@ -18,6 +18,21 @@ def create_fc_services(services_mock):
         services[svc] = FCService(actions)
     return services
 
+def call_http_mock(action, ain, **_):
+    return {
+        "content": """<?xml version="1.0" encoding="utf-8"?>
+        <device>
+            <present>1</present>
+            <name>Fritz!DECT 200</name>
+            <manufacturer>AVM</manufacturer>
+            <manufacturerURL>http://www.avm.de</manufacturerURL>
+            <model>Fritz!DECT 200</model>
+            <battery>100</battery>
+            <batterylow>0</batterylow>
+        </device>""",
+        "content-type": "text/xml",
+        "encoding": "utf-8"
+    }
 
 def call_action_mock(service, action, **kwargs):
     _ = kwargs
@@ -179,8 +194,7 @@ def call_action_mock(service, action, **kwargs):
     return call_action_responses[(service, action)]
 
 
-def call_action_no_basic_mock(service, action, **kwargs):
-    _ = kwargs
+def call_action_no_basic_mock(service, action, **_):
 
     if service == "DeviceInfo1" and action == "GetInfo":
         raise FritzServiceError
