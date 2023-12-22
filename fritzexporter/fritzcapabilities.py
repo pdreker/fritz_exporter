@@ -984,7 +984,7 @@ class HomeAutomation(FritzCapability):
         )
 
         self.metrics["battery_level"] = GaugeMetricFamily(
-            "fritz_ha_battery_level",
+            "fritz_ha_battery_level_percent",
             "Battery level in percent",
             labels=[
                 "serial",
@@ -1455,6 +1455,8 @@ class HomeAutomation(FritzCapability):
         yield self.metrics["heater_comfort_temperature"]
         yield self.metrics["heater_reduced_valve_state"]
         yield self.metrics["heater_comfort_valve_state"]
+        yield self.metrics["battery_level"]
+        yield self.metrics["battery_low"]
 
 
 # Copyright 2019-2023 Patrick Dreker <patrick@dreker.de>
