@@ -3,8 +3,8 @@ import logging
 import sys
 from typing import NamedTuple
 
-from fritzconnection import FritzConnection
-from fritzconnection.core.exceptions import (
+from fritzconnection import FritzConnection  # type: ignore[import]
+from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
     FritzConnectionException,
     FritzServiceError,
@@ -36,7 +36,8 @@ class FritzDevice:
 
         if len(creds.password) > FRITZ_MAX_PASSWORD_LENGTH:
             logger.warning(
-                "Password is longer than 32 characters! Login may not succeed, please see README!"
+                "Password is longer than %d characters! Login may not succeed, please see README!",
+                FRITZ_MAX_PASSWORD_LENGTH,
             )
 
         try:
@@ -48,7 +49,7 @@ class FritzDevice:
             raise
 
         logger.info("Connection to %s successful, reading capabilities", creds.host)
-        self.capabilities = FritzCapabilities(self, host_info)
+        self.capabilities = FritzCapabilities(self)
 
         self.get_device_info()
         logger.info(
@@ -86,7 +87,7 @@ class FritzDevice:
 class FritzCollector:
     def __init__(self):
         self.devices: list[FritzDevice] = []
-        self.capabilities: FritzCapabilities = FritzCapabilities(host_info=True)
+        self.capabilities: FritzCapabilities = FritzCapabilities()  # host_info=True??? FIXME
 
     def register(self, fritzdev: FritzDevice) -> None:
         self.devices.append(fritzdev)

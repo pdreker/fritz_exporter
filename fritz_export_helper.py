@@ -25,7 +25,7 @@ try:
         result = fc.call_action(args.service, args.action, arguments=arguments)
     else:
         result = fc.call_action(args.service, args.action)
-    print("--------------------------------\nRESULT:")
-    pprint(result)
+    print("--------------------------------\nRESULT:")  # noqa: T201
+    pprint(result)  # noqa: T203
 except (ServiceError, ActionError, FritzInternalError) as e:
-    print(f"Calling service {args.service} with action {args.action} returned an error: {e}")
+    print(f"Calling service {args.service} with action {args.action} returned an error: {e}")  # noqa: T201

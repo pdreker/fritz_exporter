@@ -6,7 +6,7 @@ import os
 from typing import Any
 
 import requests
-from fritzconnection.core.exceptions import (
+from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
     FritzArgumentError,
     FritzConnectionException,
@@ -14,7 +14,7 @@ from fritzconnection.core.exceptions import (
 )
 
 from . import __version__
-from .action_blacklists import call_blacklist
+from .action_blacklists import BlacklistItem, call_blacklist
 from .fritzdevice import FritzDevice
 
 logger = logging.getLogger("fritzexporter.donate_data")
@@ -32,7 +32,7 @@ def get_sw_version(device: FritzDevice) -> str:
 
 
 def safe_call_action(device: FritzDevice, service: str, action: str) -> dict[str, str]:
-    if (service, action) in call_blacklist:
+    if BlacklistItem(service, action) in call_blacklist:
         return {"error": "<BLACKLISTED>"}
 
     try:

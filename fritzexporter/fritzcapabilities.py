@@ -5,7 +5,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from fritzconnection.core.exceptions import (
+from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
     FritzArgumentError,
     FritzArrayIndexError,
