@@ -249,8 +249,6 @@ def donate_data(
                 res = safe_call_action(device, service, action)
                 action_results[(service, action)] = res
 
-    action_results = jsonify_action_results(sanitize_results(action_results, sanitation))
-
     basedata = {
         "exporter_version": __version__,
         "fritzdevice": {
@@ -258,7 +256,7 @@ def donate_data(
             "os_version": sw_version,
             "services": services,
             "detected_capabilities": detected_capabilities,
-            "action_results": action_results,
+            "action_results": jsonify_action_results(sanitize_results(action_results, sanitation)),
         },
     }
 
