@@ -38,10 +38,6 @@ coverage = ">=6.4.4,<8.0.0"
 pytest-cov = ">=3,<5"
 ruff = "^0.1.7"
 
-[project]
-name = "fritz-exporter"
-requires-python = ">=3.11,<4.0"
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--cov-branch --cov . --cov-report xml --cov-config .coveragerc"
