@@ -8,6 +8,7 @@ from prometheus_client.core import Metric
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
+from fritzexporter.fritz_aha import parse_aha_device_xml
 
 from .fc_services_mock import (
     call_action_mock,
@@ -182,6 +183,28 @@ class TestFritzDevice:
             "info (Service: DeviceInfo1, Action: GetInfo)."
             "Serial number and model name will be unavailable.",
         ) in caplog.record_tuples
+
+    def test_should_correctly_parse_aha_xml(self, mock_fritzconnection: MagicMock, caplog):
+        # Prepare
+        deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
+        <device>
+            <present>1</present>
+            <name>Fritz!DECT 200
+            </name>
+            <manufacturer>AVM</manufacturer>
+            <manufacturerURL>http://www.avm.de</manufacturerURL>
+            <model>Fritz!DECT 200</model>
+            <battery>100</battery>
+            <batterylow>0</batterylow>
+        </device>
+        """
+        # Act
+        device_data = parse_aha_device_xml(deviceinfo)
+
+        # Check
+        assert device_data["battery_level"] == "100"
+        assert device_data["battery_low"] == "0"
+
 
 
 @patch("fritzexporter.fritzdevice.FritzConnection")
