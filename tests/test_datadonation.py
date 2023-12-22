@@ -16,7 +16,7 @@ from fritzexporter.data_donation import (
     safe_call_action,
     sanitize_results,
 )
-from fritzexporter.fritzdevice import FritzDevice
+from fritzexporter.fritzdevice import FritzCredentials, FritzDevice
 
 from .fc_services_mock import (
     call_action_mock,
@@ -52,7 +52,7 @@ class TestDataDonation:
         fc.services = create_fc_services(fc_services_capabilities["DeviceInfo"])
 
         # Act
-        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         version = get_sw_version(fd)
 
         # Check
@@ -67,7 +67,7 @@ class TestDataDonation:
         fc.services = create_fc_services(fc_services_no_basic_info)
 
         # Act
-        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         version = get_sw_version(fd)
 
         # Check
@@ -82,7 +82,7 @@ class TestDataDonation:
         fc.services = create_fc_services(fc_services_no_basic_info)
 
         # Act
-        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         version = get_sw_version(fd)
 
         # Check
@@ -101,7 +101,7 @@ class TestDataDonation:
         fc.services = create_fc_services(fc_services_no_basic_info)
 
         # Act
-        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         fc.call_action.side_effect = exception
         res = safe_call_action(fd, "foo", "bar")
 
@@ -117,7 +117,7 @@ class TestDataDonation:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         # Act
-        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         res = safe_call_action(fd, "DeviceConfig1", "GetPersistentData")
 
         # Check
@@ -221,7 +221,7 @@ class TestDataDonation:
         fc.services = create_fc_services(fc_services_capabilities["HostNumberOfEntries"])
 
         # Act
-        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         donate_data(fd, upload=True)
 
         # check
@@ -237,7 +237,7 @@ class TestDataDonation:
             '"WanCommonInterfaceDataPackets", "WlanConfigurationInfo", "HostInfo", '
             '"HomeAutomation"], "action_results": {"Hosts1": {"GetHostNumberOfEntries": '
             '{"NewHostNumberOfEntries": "3"}}}}}',
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json"},timeout=10,
         )
 
     @patch("fritzexporter.data_donation.requests.post")
@@ -252,7 +252,7 @@ class TestDataDonation:
         fc.services = create_fc_services(fc_services_capabilities["HostNumberOfEntries"])
 
         # Act
-        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         donate_data(fd)
 
         # check
@@ -276,7 +276,7 @@ class TestDataDonation:
         fc.services = create_fc_services(fc_services_capabilities["HostNumberOfEntries"])
 
         # Act 1
-        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         donate_data(fd, upload=True)
 
         # Check 1

@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any
 
+import attrs
 import yaml
 from attrs import converters, define, field, validators
+
+from fritzexporter.fritzdevice import FRITZ_MAX_PASSWORD_LENGTH
 
 from .exceptions import (
     ConfigError,
@@ -20,26 +24,21 @@ logger = logging.getLogger("fritzexporter.config")
 
 def _read_config_file(config_file_path: str) -> dict:
     try:
-        with open(config_file_path, "r") as config_file:
+        with Path(config_file_path).open() as config_file:
             config = yaml.safe_load(config_file)
-    except IOError as e:
-        logger.exception("Config file specified but could not be read." + str(e))
-        raise ConfigFileUnreadableError(e)
-    logger.info(f"Read configuration from {config_file_path}")
+    except OSError as e:
+        logger.exception("Config file specified but could not be read.")
+        raise ConfigFileUnreadableError from e
+    logger.info("Read configuration from %s.", config_file_path)
 
     return config
 
 
 def _read_config_from_env() -> dict:
-    if not all(
-        required in os.environ for required in ["FRITZ_USERNAME", "FRITZ_PASSWORD"]
-    ):
-        logger.critical(
-            "Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!"
-        )
-        raise ConfigError(
-            "Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!"
-        )
+    if not all(required in os.environ for required in ["FRITZ_USERNAME", "FRITZ_PASSWORD"]):
+        logger.critical("Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!")
+        msg = "Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!"
+        raise ConfigError(msg)
 
     exporter_port = os.getenv("FRITZ_PORT")
     log_level = os.getenv("FRITZ_LOG_LEVEL")
@@ -72,12 +71,8 @@ def _read_config_from_env() -> dict:
     return config
 
 
-def get_config(config_file_path: Optional[str]) -> ExporterConfig:
-    config = {}
-    if config_file_path:
-        config = _read_config_file(config_file_path)
-    else:
-        config = _read_config_from_env()
+def get_config(config_file_path: str | None) -> ExporterConfig:
+    config = _read_config_file(config_file_path) if config_file_path else _read_config_from_env()
     return ExporterConfig.from_config(config)
 
 
@@ -92,35 +87,27 @@ class ExporterConfig:
         ],
         converter=int,
     )
-    log_level: str = field(default="INFO")
+    log_level: str = field(
+        default="INFO", validator=validators.in_(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    )
     devices: list[DeviceConfig] = field(factory=list)
 
-    @log_level.validator
-    def check_log_level(self, attribute, value):
-        if value not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-            logger.critical(
-                "log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL"
-            )
-            raise ConfigError(
-                "log_level must be one of DEBUG, INFO, WARNING, ERROR, CRITICAL"
-            )
-
     @devices.validator
-    def check_devices(self, attribute, value):
-        if value is None or (isinstance(value, list) and len(value) == 0):
+    def check_devices(self, _: attrs.Attribute, value: list[DeviceConfig]) -> None:
+        if value in [None, []]:
             logger.exception("No devices found in config.")
-            raise NoDevicesFoundError("No devices found in config.")
+            msg = "No devices found in config."
+            raise NoDevicesFoundError(msg)
         devicenames = [dev.name for dev in value]
         if len(devicenames) != len(set(devicenames)):
             logger.warning("Device names are not unique")
 
     @classmethod
-    def from_config(cls, config) -> ExporterConfig:
+    def from_config(cls, config: dict) -> ExporterConfig:
         if config is None:
             logger.exception("No config found (check Env vars or config file).")
-            raise EmptyConfigError(
-                "Reading config file returned empty config. Check file content."
-            )
+            msg = "No config found (check Env vars or config file)."
+            raise EmptyConfigError(msg)
 
         exporter_port = config.get("exporter_port", 9787)
         log_level = config.get("log_level", "INFO")
@@ -133,28 +120,23 @@ class ExporterConfig:
 
 @define
 class DeviceConfig:
-    hostname: str = field(
-        validator=validators.min_len(1), converter=lambda x: str.lower(x)
-    )
+    hostname: str = field(validator=validators.min_len(1), converter=lambda x: str.lower(x))
     username: str = field(validator=validators.min_len(1))
     password: str = field(validator=validators.min_len(1))
     name: str = ""
     host_info: bool = field(default=False, converter=converters.to_bool)
 
     @password.validator
-    def check_password(self, attr, val):
-        if len(val) > 32:
+    def check_password(self, _: attrs.Attribute, value: str) -> None:
+        if len(value) > FRITZ_MAX_PASSWORD_LENGTH:
             logger.exception(
                 "Password is longer than 32 characters! "
                 "Login may not succeed, please see documentation!"
             )
-            raise FritzPasswordTooLongError(
-                "Password is longer than 32 characters! "
-                "Login may not succeed, please see documentation!"
-            )
+            raise FritzPasswordTooLongError
 
     @classmethod
-    def from_config(cls, device) -> DeviceConfig:
+    def from_config(cls, device: dict) -> DeviceConfig:
         hostname = device.get("hostname", "fritz.box")
         username = device.get("username", "")
         password = device.get("password", "")

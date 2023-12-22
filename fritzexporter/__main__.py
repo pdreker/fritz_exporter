@@ -7,9 +7,9 @@ import sys
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
-from fritzexporter.config import ExporterException, get_config
+from fritzexporter.config import ExporterError, get_config
 from fritzexporter.data_donation import donate_data
-from fritzexporter.fritzdevice import FritzCollector, FritzDevice
+from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
 from . import __version__
 
@@ -21,7 +21,7 @@ logger = logging.getLogger("fritzexporter")
 logger.addHandler(ch)
 
 
-def parse_cmdline():
+def parse_cmdline() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=f"Fritz Exporter for Prometheus using the TR-064 API (v{__version__})"
     )
@@ -63,19 +63,19 @@ def parse_cmdline():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     fritzcollector = FritzCollector()
 
     args = parse_cmdline()
 
     if args.version:
-        print(__version__)
+        print(__version__)  # noqa: T201
         sys.exit(0)
 
     try:
         config = get_config(args.config)
-    except ExporterException as e:
-        logger.exception(e)
+    except ExporterError:
+        logger.exception("Error while reading config:")
         sys.exit(1)
 
     log_level = (
@@ -90,27 +90,25 @@ def main():
 
     for dev in config.devices:
         fritz_device = FritzDevice(
-            dev.hostname,
-            dev.username,
-            dev.password,
+            FritzCredentials(dev.hostname, dev.username, dev.password),
             dev.name,
-            dev.host_info,
+            host_info=dev.host_info,
         )
 
         if args.donate_data == "donate":
             donate_data(
                 fritz_device,
-                upload=True if args.upload_data == "upload" else False,
+                upload=args.upload_data == "upload",
                 sanitation=args.sanitize,
             )
             sys.exit(0)
         else:
-            logger.info(f"registering {dev.hostname} to collector")
+            logger.info("registering %s to collector", dev.hostname)
             fritzcollector.register(fritz_device)
 
     REGISTRY.register(fritzcollector)
 
-    logger.info(f"Starting listener at {config.exporter_port}")
+    logger.info("Starting listener at %d", config.exporter_port)
     start_http_server(int(config.exporter_port))
 
     logger.info("Entering async main loop - exporter is ready")

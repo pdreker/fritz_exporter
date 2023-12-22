@@ -1,12 +1,15 @@
+import collections
 import logging
 import sys
+from typing import NamedTuple
 
-from fritzconnection import FritzConnection
-from fritzconnection.core.exceptions import (
+from fritzconnection import FritzConnection  # type: ignore[import]
+from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
     FritzConnectionException,
     FritzServiceError,
 )
+from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzcapabilities import FritzCapabilities
@@ -14,78 +17,91 @@ from fritzexporter.fritzcapabilities import FritzCapabilities
 logger = logging.getLogger("fritzexporter.fritzdevice")
 
 
+FRITZ_MAX_PASSWORD_LENGTH = 32
+
+
+class FritzCredentials(NamedTuple):
+    host: str
+    user: str
+    password: str
+
+
 class FritzDevice:
-    def __init__(
-        self, host: str, user: str, password: str, name: str, host_info: bool = False
-    ) -> None:
-        self.host: str = host
+    def __init__(self, creds: FritzCredentials, name: str, *, host_info: bool = False) -> None:
+        self.host: str = creds.host
         self.serial: str = "n/a"
         self.model: str = "n/a"
         self.friendly_name: str = name
         self.host_info: bool = host_info
 
-        if len(password) > 32:
+        if len(creds.password) > FRITZ_MAX_PASSWORD_LENGTH:
             logger.warning(
-                "Password is longer than 32 characters! Login may not succeed, please see README!"
+                "Password is longer than %d characters! Login may not succeed, please see README!",
+                FRITZ_MAX_PASSWORD_LENGTH,
             )
 
         try:
-            self.fc: FritzConnection = FritzConnection(address=host, user=user, password=password)
-        except FritzConnectionException as e:
-            logger.exception(f"unable to connect to {host}: {str(e)}", exc_info=True)
-            raise e
+            self.fc: FritzConnection = FritzConnection(
+                address=creds.host, user=creds.user, password=creds.password
+            )
+        except FritzConnectionException:
+            logger.exception("unable to connect to %s.", creds.host)
+            raise
 
-        logger.info(f"Connection to {host} successful, reading capabilities")
-        self.capabilities = FritzCapabilities(self, host_info)
+        logger.info("Connection to %s successful, reading capabilities", creds.host)
+        self.capabilities = FritzCapabilities(self)
 
         self.get_device_info()
         logger.info(
-            f"Reading capabilities for {host}, got serial {self.serial}, "
-            f"model name {self.model} completed"
+            "Reading capabilities for %s, got serial %s, model name %s completed",
+            creds.host,
+            self.serial,
+            self.model,
         )
         if host_info:
             logger.info(
-                f"HostInfo Capability enabled on device {host}. "
+                "HostInfo Capability enabled on device %s. "
                 "This will cause slow responses from the exporter. "
-                "Ensure prometheus is configured appropriately."
+                "Ensure prometheus is configured appropriately.",
+                creds.host,
             )
         if self.capabilities.empty():
-            logger.critical(f"Device {host} has no detected capabilities. Exiting.")
+            logger.critical("Device %s has no detected capabilities. Exiting.", creds.host)
             raise FritzDeviceHasNoCapabilitiesError
 
-    def get_device_info(self):
+    def get_device_info(self) -> None:
         try:
             device_info: dict[str, str] = self.fc.call_action("DeviceInfo1", "GetInfo")
-            self.serial: str = device_info["NewSerialNumber"]
-            self.model: str = device_info["NewModelName"]
+            self.serial = device_info["NewSerialNumber"]
+            self.model = device_info["NewModelName"]
 
         except (FritzServiceError, FritzActionError):
-            logger.error(
-                f"Fritz Device {self.host} does not provide basic device "
+            logger.exception(
+                "Fritz Device %s does not provide basic device "
                 "info (Service: DeviceInfo1, Action: GetInfo)."
                 "Serial number and model name will be unavailable.",
-                exc_info=True,
+                self.host,
             )
 
 
 class FritzCollector:
     def __init__(self):
         self.devices: list[FritzDevice] = []
-        self.capabilities: FritzCapabilities = FritzCapabilities(host_info=True)
+        self.capabilities: FritzCapabilities = FritzCapabilities()  # host_info=True??? FIXME
 
-    def register(self, fritzdev):
+    def register(self, fritzdev: FritzDevice) -> None:
         self.devices.append(fritzdev)
-        logger.debug(f"registered device {fritzdev.host} ({fritzdev.model}) to collector")
+        logger.debug("registered device %s (%s) to collector", fritzdev.host, fritzdev.model)
         self.capabilities.merge(fritzdev.capabilities)
 
-    def collect(self):
+    def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
         if not self.devices:
             logger.critical("No devices registered in collector! Exiting.")
             sys.exit(1)
 
         for name, capa in self.capabilities.items():
-            capa.createMetrics()
-            yield from capa.getMetrics(self.devices, name)
+            capa.create_metrics()
+            yield from capa.get_metrics(self.devices, name)
 
 
 # Copyright 2019-2023 Patrick Dreker <patrick@dreker.de>

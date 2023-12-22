@@ -7,7 +7,7 @@ from fritzconnection.core.exceptions import FritzConnectionException, FritzServi
 from prometheus_client.core import Metric
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
-from fritzexporter.fritzdevice import FritzCollector, FritzDevice
+from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
 from .fc_services_mock import (
     call_action_mock,
@@ -36,9 +36,9 @@ class TestFritzDevice:
 
         # Act
         if capability == "HostInfo":
-            fd = FritzDevice("somehost", "someuser", "password", "FritzMock", True)
+            fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True)
         else:
-            fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+            fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
 
         # Check
         print(caplog.text)
@@ -81,13 +81,13 @@ class TestFritzDevice:
 
         # Act
         with pytest.raises(FritzConnectionException):
-            _ = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+            _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
 
         # Check
         assert (
             FRITZDEVICE_LOG_SOURCE,
             logging.ERROR,
-            "unable to connect to somehost: somehost: connection refused",
+            "unable to connect to somehost.",
         ) in caplog.record_tuples
 
     def test_should_invalidate_presented_service(self, mock_fritzconnection: MagicMock, caplog):
@@ -100,7 +100,7 @@ class TestFritzDevice:
 
         # Act
         with pytest.raises(FritzDeviceHasNoCapabilitiesError):
-            _ = FritzDevice("somehost", "someuser", "password", "FritzMock", True)
+            _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True)
 
     def test_should_create_fritz_device_with_correct_capabilities(
         self, mock_fritzconnection: MagicMock, caplog
@@ -113,7 +113,7 @@ class TestFritzDevice:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         # Act
-        fd = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
 
         # Check
         assert fd.model == "Fritz!MockBox 9790"
@@ -134,7 +134,7 @@ class TestFritzDevice:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         # Act
-        _ = FritzDevice("somehost", "someuser", password, "Fritz!Mock", False)
+        _ = FritzDevice(FritzCredentials("somehost", "someuser", password), "Fritz!Mock", host_info=False)
 
         # Check
         assert (
@@ -154,7 +154,7 @@ class TestFritzDevice:
 
         # Act
         with pytest.raises(FritzDeviceHasNoCapabilitiesError):
-            _ = FritzDevice("somehost", "someuser", password, "FritzMock", False)
+            _ = FritzDevice(FritzCredentials("somehost", "someuser", password), "FritzMock", host_info=False)
 
         # Check
         assert (
@@ -172,7 +172,7 @@ class TestFritzDevice:
         fc.services = create_fc_services(fc_services_no_basic_info)
 
         # Act
-        _ = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
 
         # Check
         assert (
@@ -226,7 +226,7 @@ class TestFritzCollector:
 
         # Act
         collector = FritzCollector()
-        device = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         collector.register(device)
 
         # Check
@@ -243,7 +243,7 @@ class TestFritzCollector:
 
         # Act
         collector = FritzCollector()
-        device = FritzDevice("somehost", "someuser", "password", "FritzMock", False)
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         collector.register(device)
         metrics: list[Metric] = list(collector.collect())
 
@@ -267,7 +267,7 @@ class TestFritzCollector:
 
         # Act
         collector = FritzCollector()
-        device = FritzDevice("somehost", "someuser", "password", "FritzMock", True)
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True)
         collector.register(device)
         metrics: list[Metric] = list(collector.collect())
 
@@ -292,9 +292,9 @@ class TestFritzCollector:
 
         # Act
         collector = FritzCollector()
-        device1 = FritzDevice("somehost", "someuser", "password", "FritzMock1", True)
-        device2 = FritzDevice("somehost", "someuser", "password", "FritzMock2", True)
-        device3 = FritzDevice("somehost", "someuser", "password", "FritzMock3", True)
+        device1 = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock1", host_info=True)
+        device2 = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock2", host_info=True)
+        device3 = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock3", host_info=True)
         collector.register(device1)
         collector.register(device2)
         collector.register(device3)
