@@ -13,6 +13,7 @@ from fritzexporter.fritz_aha import parse_aha_device_xml
 from .fc_services_mock import (
     call_action_mock,
     call_action_no_basic_mock,
+    call_http_mock,
     create_fc_services,
     fc_services_capabilities,
     fc_services_devices,
@@ -275,6 +276,7 @@ class TestFritzCollector:
 
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
+        fc.call_http.side_effect = call_http_mock
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         # Act

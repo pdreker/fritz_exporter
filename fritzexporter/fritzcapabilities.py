@@ -1421,7 +1421,7 @@ class HomeAutomation(FritzCapability):
                             manufacturer,
                             productname,
                         ],
-                        http_data["battery"],
+                        float(http_data["battery"]),
                     )
 
                 if "battery_low" in http_data:
@@ -1434,7 +1434,7 @@ class HomeAutomation(FritzCapability):
                             manufacturer,
                             productname,
                         ],
-                        1 if http_data["battery_low"] else 0,
+                        1 if http_data["battery_low"] == "1" else 0,
                     )
 
     def _get_metric_values(
