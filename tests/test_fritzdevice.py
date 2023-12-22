@@ -205,6 +205,19 @@ class TestFritzDevice:
         assert device_data["battery_level"] == "100"
         assert device_data["battery_low"] == "0"
 
+    def test_should_correctly_parse_aha_xml_when_empty(self, mock_fritzconnection: MagicMock, caplog):
+        # Prepare
+        deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
+        <device>
+        </device>
+        """
+        # Act
+        device_data = parse_aha_device_xml(deviceinfo)
+
+        # Check
+        assert "battery_level" not in device_data
+        assert "battery_low" not in device_data
+
 
 
 @patch("fritzexporter.fritzdevice.FritzConnection")
