@@ -1,29 +1,34 @@
-class ExporterException(Exception):
+class ExporterError(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+
+class ConfigError(ExporterError):
     pass
 
 
-class ConfigError(ExporterException):
+class EmptyConfigError(ExporterError):
     pass
 
 
-class EmptyConfigError(ExporterException):
+class ConfigFileUnreadableError(ExporterError):
     pass
 
 
-class ConfigFileUnreadableError(ExporterException):
+class DeviceNamesNotUniqueError(ExporterError):
     pass
 
 
-class DeviceNamesNotUniqueWarning(ExporterException):
+class NoDevicesFoundError(ExporterError):
     pass
 
 
-class NoDevicesFoundError(ExporterException):
-    pass
-
-
-class FritzPasswordTooLongError(ExporterException):
-    pass
+class FritzPasswordTooLongError(ExporterError):
+    def __init__(self) -> None:
+        super().__init__(
+            "Password is longer than 32 characters! "
+            "Login may not succeed, please see documentation!"
+        )
 
 
 # Copyright 2019-2023 Patrick Dreker <patrick@dreker.de>

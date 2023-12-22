@@ -2,19 +2,19 @@ from .config import DeviceConfig, ExporterConfig, get_config
 from .exceptions import (
     ConfigError,
     ConfigFileUnreadableError,
-    DeviceNamesNotUniqueWarning,
+    DeviceNamesNotUniqueError,
     EmptyConfigError,
-    ExporterException,
+    ExporterError,
     FritzPasswordTooLongError,
     NoDevicesFoundError,
 )
 
 __all__ = [
-    "ExporterException",
+    "ExporterError",
     "ConfigError",
     "EmptyConfigError",
     "ConfigFileUnreadableError",
-    "DeviceNamesNotUniqueWarning",
+    "DeviceNamesNotUniqueError",
     "NoDevicesFoundError",
     "FritzPasswordTooLongError",
     "ExporterConfig",

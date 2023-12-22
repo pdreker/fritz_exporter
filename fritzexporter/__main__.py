@@ -7,7 +7,7 @@ import sys
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
-from fritzexporter.config import ExporterException, get_config
+from fritzexporter.config import ExporterError, get_config
 from fritzexporter.data_donation import donate_data
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
@@ -74,7 +74,7 @@ def main() -> None:
 
     try:
         config = get_config(args.config)
-    except ExporterException:
+    except ExporterError:
         logger.exception("Error while reading config:")
         sys.exit(1)
 
