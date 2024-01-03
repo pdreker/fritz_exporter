@@ -96,7 +96,7 @@ Alternatively you can use the following commands and the little helper script in
 
   fritzconnection -i <FRITZ-IP> -s # Lists available services
   fritzconnection -i <FRITZ-IP> -S <ServiceName> # Lists available action for a service
-  python -m fritz_export_helper <FRITZ-IP> <USERNAME> <PASSWORD> <ServiceName> <ActionName> # Will output the data returned from the device in a readable format
+  python -m fritz_export_helper <FRITZ-IP> <USERNAME> <PASSWORD> -s <ServiceName> -a <ActionName> # Will output the data returned from the device in a readable format
 
 If you have found something you need/want, open an issue provide the following infos:
 

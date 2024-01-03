@@ -11,20 +11,32 @@ parser = argparse.ArgumentParser(
 parser.add_argument("fritz_ip", help="Fritz Device IP Address")
 parser.add_argument("username", help="Username of a user on the Fritz device.")
 parser.add_argument("password", help="Password of the user on the Fritz device.")
-parser.add_argument("service", help="Service to call.")
-parser.add_argument("action", help="Action to call.")
-parser.add_argument("action_args", nargs="?", help="Optional arguments to call (JSON dict string).")
+parser.add_argument("-s", "--service", help="Service to call (only for TR-064).")
+parser.add_argument("-a", "--action", help="Action to call.")
+parser.add_argument("-r", "--action_args", nargs="?", help="Optional arguments to call (JSON dict string).")
+parser.add_argument("-m", "--mode", choices=['tr064', 'http'], default='tr064', help="Tell the helper which API to use (default TR-064).")
+parser.add_argument("-i", "--ain", help="AIN of the device.")
 
 args = parser.parse_args()
 
 fc = FritzConnection(address=args.fritz_ip, user=args.username, password=args.password)
 
 try:
-    if args.action_args:
-        arguments = json.loads(args.action_args)
-        result = fc.call_action(args.service, args.action, arguments=arguments)
+    if args.mode == 'http':
+            if args.ain:
+                if args.action == None:
+                    result = fc.call_http('getdeviceinfos', args.ain)
+                else:
+                    result = fc.call_http(args.action, args.ain)
+            else:
+                args.action= 'getdevicelistinfos'
+                result = fc.call_http(args.action)
     else:
-        result = fc.call_action(args.service, args.action)
+        if args.action_args:
+            arguments = json.loads(args.action_args)
+            result = fc.call_action(args.service, args.action, arguments=arguments)
+        else:
+            result = fc.call_action(args.service, args.action)
     print("--------------------------------\nRESULT:")  # noqa: T201
     pprint(result)  # noqa: T203
 except (ServiceError, ActionError, FritzInternalError) as e:
