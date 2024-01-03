@@ -11,11 +11,11 @@ parser = argparse.ArgumentParser(
 parser.add_argument("fritz_ip", help="Fritz Device IP Address")
 parser.add_argument("username", help="Username of a user on the Fritz device.")
 parser.add_argument("password", help="Password of the user on the Fritz device.")
+parser.add_argument("-m", "--mode", choices=['tr064', 'http'], default='tr064', help="Tell the helper which API to use (default: TR-064).")
 parser.add_argument("-s", "--service", help="Service to call (only for TR-064).")
 parser.add_argument("-a", "--action", help="Action to call.")
-parser.add_argument("-r", "--action_args", nargs="?", help="Optional arguments to call (JSON dict string).")
-parser.add_argument("-m", "--mode", choices=['tr064', 'http'], default='tr064', help="Tell the helper which API to use (default TR-064).")
-parser.add_argument("-i", "--ain", help="AIN of the device.")
+parser.add_argument("-i", "--ain", help="AIN of the device (only for HTTP).")
+parser.add_argument("-j", "--action_args", nargs="?", help="Optional arguments (as JSON dict string) to call (only for TR-064).")
 
 args = parser.parse_args()
 
