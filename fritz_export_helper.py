@@ -6,7 +6,7 @@ from fritzconnection import FritzConnection
 from fritzconnection.core.exceptions import ActionError, FritzInternalError, ServiceError
 
 parser = argparse.ArgumentParser(
-    description="Check actions against Fritz TR-064 API and pretty print the results."
+    description="Check actions against Fritz TR-064 and AHA-HTTP API and pretty print the results."
 )
 parser.add_argument("fritz_ip", help="Fritz Device IP Address")
 parser.add_argument("username", help="Username of a user on the Fritz device.")
@@ -37,7 +37,7 @@ try:
             result = fc.call_action(args.service, args.action, arguments=arguments)
         else:
             result = fc.call_action(args.service, args.action)
-    print("--------------------------------\nRESULT:")  # noqa: T201
-    pprint(result)  # noqa: T203
+    print("--------------------------------\nRESULT:")
+    pprint(result)
 except (ServiceError, ActionError, FritzInternalError) as e:
-    print(f"Calling service {args.service} with action {args.action} returned an error: {e}")  # noqa: T201
+    print(f"Calling service {args.service} with action {args.action} returned an error: {e}")
