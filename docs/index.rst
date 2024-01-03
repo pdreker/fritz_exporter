@@ -90,7 +90,7 @@ Helping out
 
 If your device delivers some metrics which are not yet scraped by this exporter you can either create a Pull Request, which will be gladly accepted ;-)
 
-Alternatively you can use the following commands and the litlle helper script in the root of this repository to let me know of metrics:
+Alternatively you can use the following commands and the little helper script in the root of this repository to let me know of metrics:
 
 .. code-block:: bash
 
