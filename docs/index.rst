@@ -90,13 +90,13 @@ Helping out
 
 If your device delivers some metrics which are not yet scraped by this exporter you can either create a Pull Request, which will be gladly accepted ;-)
 
-Alternatively you can use the following commands and the litlle helper script in the root of this repository to let me know of metrics:
+Alternatively you can use the following commands and the little helper script in the root of this repository to let me know of metrics:
 
 .. code-block:: bash
 
   fritzconnection -i <FRITZ-IP> -s # Lists available services
   fritzconnection -i <FRITZ-IP> -S <ServiceName> # Lists available action for a service
-  python -m fritz_export_helper <FRITZ-IP> <USERNAME> <PASSWORD> <ServiceName> <ActionName> # Will output the data returned from the device in a readable format
+  python -m fritz_export_helper <FRITZ-IP> <USERNAME> <PASSWORD> -s <ServiceName> -a <ActionName> # Will output the data returned from the device in a readable format
 
 If you have found something you need/want, open an issue provide the following infos:
 

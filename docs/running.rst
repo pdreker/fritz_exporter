@@ -31,7 +31,7 @@ docker-compose
 Config via environment variables
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To run the exporter from docker-compose create an empty directory ``fritz-exporter``and put a file ``docker-compose.yml`` in the directory (replace the environment variables with appropriate values) with the following content:
+To run the exporter from docker-compose create an empty directory ``fritz-exporter`` and put a file ``docker-compose.yml`` in the directory (replace the environment variables with appropriate values) with the following content:
 
 .. code-block:: yaml
 
