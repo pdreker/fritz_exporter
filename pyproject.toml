@@ -38,6 +38,9 @@ coverage = ">=6.4.4,<8.0.0"
 pytest-cov = ">=3,<5"
 ruff = "^0.1.7"
 
+[tool.poetry.scripts]
+fritzexporter = "fritzexporter.__main__:main"
+
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--cov-branch --cov . --cov-report xml --cov-config .coveragerc"
