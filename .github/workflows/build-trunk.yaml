@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Setup poetry
-        uses: abatilo/actions-poetry@v2
+        uses: abatilo/actions-poetry@v3
         with:
           poetry-version: ${{ env.POETRY_VERSION }}
       - name: build Python wheels
