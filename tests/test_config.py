@@ -69,6 +69,7 @@ class TestFileConfigs:
                     "fritz.box",
                     "prometheus1",
                     "prometheus2",
+                    None,
                     "Fritz!Box 7590 Router",
                     False,
                 ),
@@ -76,6 +77,7 @@ class TestFileConfigs:
                     "repeater-Wohnzimmer",
                     "prometheus3",
                     "prometheus4",
+                    None,
                     "Repeater Wohnzimmer",
                     False,
                 ),
@@ -85,6 +87,23 @@ class TestFileConfigs:
         config = get_config(testfile)
         assert config == expected
 
+    def test_password_file(self):
+        testfile = "tests/conffiles/password_file.yaml"
+
+        expected = ExporterConfig(
+            devices=[
+                DeviceConfig(
+                    "fritz.box",
+                    "prometheus1",
+                    None,
+                    "tests/conffiles/password.txt",
+                    "Fritz!Box 7590 Router",
+                    False,
+                ),
+            ]
+        )
+        config = get_config(testfile)
+        assert config == expected
 
 class TestEnvConfig:
     def test_env_config(self, monkeypatch):
@@ -101,6 +120,7 @@ class TestEnvConfig:
                 "hostname.local",
                 "SomeUserName",
                 "AnInterestingPassword",
+                None,
                 "My Fritz Device",
             )
         ]
@@ -115,7 +135,21 @@ class TestEnvConfig:
         config = get_config(None)
         devices: list[DeviceConfig] = [
             DeviceConfig(
-                "fritz.box", "SomeUserName", "AnInterestingPassword", "Fritz!Box"
+                "fritz.box", "SomeUserName", "AnInterestingPassword", None, "Fritz!Box"
+            )
+        ]
+        expected: ExporterConfig = ExporterConfig(9787, "INFO", devices)
+
+        assert config == expected
+
+    def test_password_file_env_config(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
+        monkeypatch.setenv("FRITZ_PASSWORD_FILE", "tests/conffiles/password.txt")
+
+        config = get_config(None)
+        devices: list[DeviceConfig] = [
+            DeviceConfig(
+                "fritz.box", "SomeUserName", None, "tests/conffiles/password.txt", "Fritz!Box"
             )
         ]
         expected: ExporterConfig = ExporterConfig(9787, "INFO", devices)

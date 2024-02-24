@@ -17,6 +17,7 @@ from .exceptions import (
     EmptyConfigError,
     FritzPasswordTooLongError,
     NoDevicesFoundError,
+    FritzPasswordFileDoesNotExistError,
 )
 
 logger = logging.getLogger("fritzexporter.config")
@@ -26,6 +27,7 @@ def _read_config_file(config_file_path: str) -> dict:
     try:
         with Path(config_file_path).open() as config_file:
             config = yaml.safe_load(config_file)
+
     except OSError as e:
         logger.exception("Config file specified but could not be read.")
         raise ConfigFileUnreadableError from e
@@ -35,9 +37,9 @@ def _read_config_file(config_file_path: str) -> dict:
 
 
 def _read_config_from_env() -> dict:
-    if not all(required in os.environ for required in ["FRITZ_USERNAME", "FRITZ_PASSWORD"]):
-        logger.critical("Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!")
-        msg = "Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD)!"
+    if not "FRITZ_USERNAME" in os.environ or all(required not in os.environ for required in ["FRITZ_PASSWORD", "FRITZ_PASSWORD_FILE"]):
+        logger.critical("Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD or FRITZ_PASSWORD_FILE)!")
+        msg = "Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD or FRITZ_PASSWORD_FILE)!"
         raise ConfigError(msg)
 
     exporter_port = os.getenv("FRITZ_PORT")
@@ -47,6 +49,8 @@ def _read_config_from_env() -> dict:
     name: str = os.getenv("FRITZ_NAME", "Fritz!Box")
     username = os.getenv("FRITZ_USERNAME")
     password = os.getenv("FRITZ_PASSWORD")
+    password_file = os.getenv("FRITZ_PASSWORD_FILE")
+
     host_info: str = os.getenv("FRITZ_HOST_INFO", "False")
 
     config: dict[Any, Any] = {}
@@ -59,6 +63,7 @@ def _read_config_from_env() -> dict:
     device = {
         "username": username,
         "password": password,
+        "password_file": password_file,
         "host_info": host_info,
         "name": name,
     }
@@ -122,24 +127,34 @@ class ExporterConfig:
 class DeviceConfig:
     hostname: str = field(validator=validators.min_len(1), converter=lambda x: str.lower(x))
     username: str = field(validator=validators.min_len(1))
-    password: str = field(validator=validators.min_len(1))
+    password: str|None = field(default=None)
+    password_file: str|None = field(default=None)
     name: str = ""
     host_info: bool = field(default=False, converter=converters.to_bool)
 
     @password.validator
-    def check_password(self, _: attrs.Attribute, value: str) -> None:
-        if len(value) > FRITZ_MAX_PASSWORD_LENGTH:
+    def check_password(self, _: attrs.Attribute, value: str|None) -> None:
+        if value is not None and len(value) > FRITZ_MAX_PASSWORD_LENGTH:
             logger.exception(
                 "Password is longer than 32 characters! "
                 "Login may not succeed, please see documentation!"
             )
             raise FritzPasswordTooLongError
 
+    @password_file.validator
+    def check_password_file(self, _: atts.Attribute, value: str|None) -> None:
+        if value is not None and not Path(value).is_file():
+            logger.exception(
+                "Password file does not exist!"
+            )
+            raise FritzPasswordFileDoesNotExistError
+
     @classmethod
     def from_config(cls, device: dict) -> DeviceConfig:
         hostname = device.get("hostname", "fritz.box")
         username = device.get("username", "")
-        password = device.get("password", "")
+        password = device.get("password", None)
+        password_file = device.get("password_file", None)
         name = device.get("name", "")
         host_info = device.get("host_info", False)
 
@@ -147,6 +162,7 @@ class DeviceConfig:
             hostname=hostname,
             username=username,
             password=password,
+            password_file=password_file,
             name=name,
             host_info=host_info,
         )

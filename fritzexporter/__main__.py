@@ -3,6 +3,7 @@ import asyncio
 import logging
 import os
 import sys
+from pathlib import Path
 
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
@@ -89,8 +90,14 @@ def main() -> None:
         log.setLevel(log_level)
 
     for dev in config.devices:
+        if dev.password_file is not None:
+            # read password from password file, strip to get rid of newlines
+            password = Path(dev.password_file).read_text().strip()
+            logger.info("Using password from password file %s", dev.password_file)
+        else:
+            password = dev.password
         fritz_device = FritzDevice(
-            FritzCredentials(dev.hostname, dev.username, dev.password),
+            FritzCredentials(dev.hostname, dev.username, password),
             dev.name,
             host_info=dev.host_info,
         )
