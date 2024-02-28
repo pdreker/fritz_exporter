@@ -30,6 +30,9 @@ class FritzPasswordTooLongError(ExporterError):
             "Login may not succeed, please see documentation!"
         )
 
+class FritzPasswordFileDoesNotExistError(ExporterError):
+    def __init__(self) -> None:
+        super().__init__("Password file does not exist!")
 
 # Copyright 2019-2023 Patrick Dreker <patrick@dreker.de>
 #

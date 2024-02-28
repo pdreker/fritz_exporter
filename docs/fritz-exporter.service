@@ -1,0 +1,35 @@
+[Unit]
+After=network.target
+
+[Service]
+# These are security options which sandbox the service
+LockPersonality=true
+MemoryDenyWriteExecute=true
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RemoveIPC=true
+RestrictAddressFamilies=AF_INET
+RestrictAddressFamilies=AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+
+# This gets run when the service starts up
+ExecStart=/usr/bin/python3 -m fritzexporter --config /etc/fritz-exporter/config.yaml
+User=fritz-exporter
+Group=fritz-exporter
+WorkingDirectory=/tmp
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
