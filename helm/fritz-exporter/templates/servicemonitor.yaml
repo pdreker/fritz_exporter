@@ -12,7 +12,7 @@ spec:
   endpoints:
     - port: {{ .Values.service.portName }}
       {{- with .Values.serviceMonitor.interval }}
-      interval: {{ . }}
+      interval: {{ . | quote }}
       {{- end }}
       {{- with .Values.serviceMonitor.scrapeTimeout }}
       scrapeTimeout: {{ . }}
