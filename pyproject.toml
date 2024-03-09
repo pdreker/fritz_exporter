@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fritz-exporter"
-version = "2.3.1"
+version = "2.4.0"
 description = "Prometheus exporter for AVM Fritz! Devices"
 authors = ["Patrick Dreker <patrick@dreker.de>"]
 license = "Apache 2.0"

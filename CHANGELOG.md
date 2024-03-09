@@ -2,6 +2,21 @@
 
 
 
+## [2.4.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.3.1...fritzexporter-v2.4.0) (2024-03-09)
+
+
+### Features
+
+* add Homeautomation metrics via HTTP ([#273](https://github.com/pdreker/fritz_exporter/issues/273)) ([72f1361](https://github.com/pdreker/fritz_exporter/commit/72f136160943f4e9f3a9feec7c4d156af2b5e4cd))
+* allow reading password from a file ([#296](https://github.com/pdreker/fritz_exporter/issues/296)) ([369f007](https://github.com/pdreker/fritz_exporter/commit/369f007f0543dffb6170bd16557a06c554d824bd))
+
+
+### Bug Fixes
+
+* Add more flexibility to helper script. ([#280](https://github.com/pdreker/fritz_exporter/issues/280)) ([86697fa](https://github.com/pdreker/fritz_exporter/commit/86697fa075c980530c9c45c6822cab9d44579a2e))
+* **helm:** ServiceMonitor seems to like quotes now ([2e57ee9](https://github.com/pdreker/fritz_exporter/commit/2e57ee98d035cb27add47790852f29415d97b008))
+* small correction for AHA HTTP metrics ([6658b8a](https://github.com/pdreker/fritz_exporter/commit/6658b8ad55374e00741a6dbc15ae709d99d43c30))
+
 ## [2.3.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.3.0...fritzexporter-v2.3.1) (2023-12-16)
 
 
