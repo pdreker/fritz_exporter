@@ -3,7 +3,7 @@
 FROM python:3.12.2-alpine AS build
 WORKDIR /app
 
-RUN apk add build-base libffi-dev && \
+RUN apk add build-base libffi-dev openssl-dev rust cargo && \
     pip install --upgrade pip && \
     pip install poetry==1.8.2
 
