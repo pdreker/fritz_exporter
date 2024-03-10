@@ -24,13 +24,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set Environment Variables
-        uses: ./.github/actions/setenv
       - name: Login to Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.DOCKER_REGISTRY_HOST }}
-          username: ${{ env.DOCKER_REGISTRY_USERNAME }}
+          registry: ${{ vars.DOCKER_REGISTRY_HOST }}
+          username: ${{ vars.DOCKER_REGISTRY_USERNAME }}
           password: ${{ secrets.DOCKER_HUB }}
 
       - name: generate docker tags
@@ -38,7 +36,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.DOCKER_REGISTRY_HOST }}/${{ env.DOCKER_REGISTRY_REPO }}/${{ env.DOCKER_REGISTRY_IMAGE }}
+            ${{ vars.DOCKER_REGISTRY_HOST }}/${{ vars.DOCKER_REGISTRY_REPO }}/${{ vars.DOCKER_REGISTRY_IMAGE }}
           tags: |
             type=semver,pattern={{version}},value=${{ needs.release.outputs.major }}.${{ needs.release.outputs.minor }}.${{ needs.release.outputs.patch }}
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.release.outputs.major }}.${{ needs.release.outputs.minor }}.${{ needs.release.outputs.patch }}
@@ -62,15 +60,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set Environment Variables
-        uses: ./.github/actions/setenv
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
+          python-version: ${{ vars.PYTHON_VERSION }}
       - name: Setup poetry
         uses: abatilo/actions-poetry@v3
         with:
-          poetry-version: ${{ env.POETRY_VERSION }}
+          poetry-version: ${{ vars.POETRY_VERSION }}
       - name: setup poetry
         run: poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
       - name: build and publish to PyPI
