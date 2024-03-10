@@ -24,7 +24,7 @@ __all__ = [
     "get_config",
 ]
 
-# Copyright 2019-2023 Patrick Dreker <patrick@dreker.de>
+# Copyright 2019-2024 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
