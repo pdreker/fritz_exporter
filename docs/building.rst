@@ -10,7 +10,6 @@ To build clone the repository from `GitHub <https://github.com/pdreker/fritz_exp
 
 .. code-block:: bash
 
-  poetry build
   docker build -t fritz_exporter:local .
 
 
