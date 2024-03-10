@@ -2,6 +2,14 @@
 
 
 
+## [2.4.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.4.1...fritzexporter-v2.4.2) (2024-03-10)
+
+
+### Documentation
+
+* update copyright notice years ([0d19d27](https://github.com/pdreker/fritz_exporter/commit/0d19d27e4fc868d234c30c368f1aa8cb350866fd))
+* Update Docker build instruction. ([65064f4](https://github.com/pdreker/fritz_exporter/commit/65064f47c446a88a1470f082393452b982af4234))
+
 ## [2.4.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.4.0...fritzexporter-v2.4.1) (2024-03-10)
 
 
