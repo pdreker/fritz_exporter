@@ -18,7 +18,7 @@ jobs:
         with:
           token: ${{ secrets.MASTER_PUSH_TOKEN }}
 
-  build-release:
+  build-docker-release:
     needs: release
     if: needs.release.outputs.release_created
     runs-on: ubuntu-latest
@@ -55,3 +55,23 @@ jobs:
           context: .
           platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/aarch64
           tags: ${{ steps.meta.outputs.tags }}
+
+  build-pypi-release:
+    needs: release
+    if: needs.release.outputs.release_created
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set Environment Variables
+        uses: ./.github/actions/setenv
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Setup poetry
+        uses: abatilo/actions-poetry@v3
+        with:
+          poetry-version: ${{ env.POETRY_VERSION }}
+      - name: setup poetry
+        run: poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
+      - name: build and publish to PyPI
+        run: poetry --build --no-interaction publish
