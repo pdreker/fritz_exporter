@@ -2,6 +2,13 @@
 
 
 
+## [2.4.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.4.0...fritzexporter-v2.4.1) (2024-03-10)
+
+
+### Bug Fixes
+
+* ignore exceptions from parsing XML of AHA devices ([#303](https://github.com/pdreker/fritz_exporter/issues/303)) ([02197fa](https://github.com/pdreker/fritz_exporter/commit/02197fab4bb74eff8488ae03b84008535735c883))
+
 ## [2.4.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.3.1...fritzexporter-v2.4.0) (2024-03-09)
 
 
