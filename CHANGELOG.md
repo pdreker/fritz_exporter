@@ -2,6 +2,13 @@
 
 
 
+## [2.4.3](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.4.2...fritzexporter-v2.4.3) (2024-03-10)
+
+
+### Bug Fixes
+
+* minor linting, make ARM builds work again ([#308](https://github.com/pdreker/fritz_exporter/issues/308)) ([1632029](https://github.com/pdreker/fritz_exporter/commit/16320292dc1ea5c1fba1f5d6dc4a5bb05467f579))
+
 ## [2.4.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.4.1...fritzexporter-v2.4.2) (2024-03-10)
 
 
