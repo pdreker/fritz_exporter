@@ -125,3 +125,7 @@ exclude = [
     '^tests/',
     '^docs/',
 ]
+
+[[tool.mypy.overrides]]
+module = "fritzconnection.*"
+ignore_missing_imports = true
