@@ -16,7 +16,7 @@ def parse_aha_device_xml(deviceinfo: str) -> dict[str, str]:
         if battery_low is not None:
             result["battery_low"] = battery_low.text
 
-        return result
-
-    except ElementTree.ParseError as e:
+    except ElementTree.ParseError:
         return {}
+    else:
+        return result

@@ -86,7 +86,7 @@ class FritzDevice:
 
 
 class FritzCollector(Collector):
-    def __init__(self):
+    def __init__(self) -> None:
         self.devices: list[FritzDevice] = []
         self.capabilities: FritzCapabilities = FritzCapabilities()  # host_info=True??? FIXME
 

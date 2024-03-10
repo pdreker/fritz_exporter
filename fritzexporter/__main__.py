@@ -64,7 +64,7 @@ def parse_cmdline() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
+def main() -> None:  # noqa: PLR0912
     fritzcollector = FritzCollector()
 
     args = parse_cmdline()
@@ -95,7 +95,7 @@ def main() -> None:
             password = Path(dev.password_file).read_text().strip()
             logger.info("Using password from password file %s", dev.password_file)
         else:
-            password = dev.password
+            password = dev.password if dev.password is not None else ""
         fritz_device = FritzDevice(
             FritzCredentials(dev.hostname, dev.username, password),
             dev.name,

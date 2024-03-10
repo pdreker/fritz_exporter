@@ -3,6 +3,7 @@ from __future__ import annotations
 import collections
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Generator
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
@@ -24,7 +25,7 @@ logger = logging.getLogger("fritzexporter.fritzcapability")
 
 
 class FritzCapability(ABC):
-    capabilities: ClassVar[list[FritzCapability]] = []
+    capabilities: ClassVar[list[type[FritzCapability]]] = []
     subclasses: ClassVar[list[type[FritzCapability]]] = []
 
     def __init__(self) -> None:
@@ -149,19 +150,7 @@ class DeviceInfo(FritzCapability):
             unit="seconds",
         )
 
-    def _generate_metric_values(self, device: FritzDevice) -> None:
-        info_result = device.fc.call_action("DeviceInfo1", "GetInfo")
-        self.metrics["uptime"].add_metric(
-            [
-                info_result["NewModelName"],
-                info_result["NewSoftwareVersion"],
-                info_result["NewSerialNumber"],
-                device.friendly_name,
-            ],
-            info_result["NewUpTime"],
-        )
-
-    def _get_metric_values(self) -> CounterMetricFamily:
+    def _get_metric_values(self) -> Generator[CounterMetricFamily, None, None]:
         yield self.metrics["uptime"]
 
 
@@ -1194,8 +1183,8 @@ class HomeAutomation(FritzCapability):
             ],
         )
 
-    def _generate_metric_values(self, device: FritzDevice) -> None:
-        # There is no way to get a list or the number ofhome automation devices, so we just try
+    def _generate_metric_values(self, device: FritzDevice) -> None:  # noqa: C901
+        # There is no way to get a list or the number of home automation devices, so we just try
         # do a while loop until we get an error
         index = 0
 
