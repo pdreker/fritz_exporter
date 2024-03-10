@@ -25,7 +25,7 @@ logger = logging.getLogger("fritzexporter.fritzcapability")
 
 
 class FritzCapability(ABC):
-    capabilities: ClassVar[list[type[FritzCapability]]] = []
+    capabilities: ClassVar[list[FritzCapability]] = []
     subclasses: ClassVar[list[type[FritzCapability]]] = []
 
     def __init__(self) -> None:
@@ -148,6 +148,18 @@ class DeviceInfo(FritzCapability):
             "FritzBox uptime, system info in labels",
             labels=["modelname", "softwareversion", "serial", "friendly_name"],
             unit="seconds",
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        info_result = device.fc.call_action("DeviceInfo1", "GetInfo")
+        self.metrics["uptime"].add_metric(
+            [
+                info_result["NewModelName"],
+                info_result["NewSoftwareVersion"],
+                info_result["NewSerialNumber"],
+                device.friendly_name,
+            ],
+            info_result["NewUpTime"],
         )
 
     def _get_metric_values(self) -> Generator[CounterMetricFamily, None, None]:
