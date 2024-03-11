@@ -115,8 +115,8 @@ def main() -> None:  # noqa: PLR0912
 
     REGISTRY.register(fritzcollector)
 
-    logger.info("Starting listener at %d", config.exporter_port)
-    start_http_server(int(config.exporter_port))
+    logger.info("Starting listener at %s:%d", config.listen_address, config.exporter_port)
+    start_http_server(int(config.exporter_port), str(config.listen_address))
 
     logger.info("Entering async main loop - exporter is ready")
     loop = asyncio.new_event_loop()

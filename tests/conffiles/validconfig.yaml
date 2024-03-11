@@ -1,5 +1,6 @@
 # Example Config File for Fritz-Exporter
 exporter_port: 9787
+listen_address: 127.0.0.1
 devices:
   - name: Fritz!Box 7590 Router
     hostname: fritz.box

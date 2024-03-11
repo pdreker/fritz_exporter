@@ -64,6 +64,7 @@ class TestFileConfigs:
         testfile = "tests/conffiles/validconfig.yaml"
 
         expected = ExporterConfig(
+            listen_address="127.0.0.1",
             devices=[
                 DeviceConfig(
                     "fritz.box",
@@ -111,6 +112,7 @@ class TestEnvConfig:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
         monkeypatch.setenv("FRITZ_NAME", "My Fritz Device")
+        monkeypatch.setenv("FRITZ_LISTEN_ADDRESS", "127.0.0.2")
         monkeypatch.setenv("FRITZ_PORT", "12345")
         monkeypatch.setenv("FRITZ_LOG_LEVEL", "INFO")
 
@@ -124,7 +126,7 @@ class TestEnvConfig:
                 "My Fritz Device",
             )
         ]
-        expected: ExporterConfig = ExporterConfig(12345, "INFO", devices)
+        expected: ExporterConfig = ExporterConfig(12345, "INFO", devices, "127.0.0.2")
 
         assert config == expected
 
