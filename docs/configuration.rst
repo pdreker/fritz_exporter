@@ -13,27 +13,29 @@ Environment variable
 
 If you only need a single device this is the easiest way to configure the exporter.
 
-+-------------------------+----------------------------------------------------+-----------+
-| Env variable            | Description                                        | Default   |
-+=========================+====================================================+===========+
-| ``FRITZ_NAME``          | User-friendly name for the device                  | Fritz!Box |
-+-------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_HOSTNAME``      | Hostname of the device                             | fritz.box |
-+-------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_USERNAME``      | Username to authenticate on the device             | none      |
-+-------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_PASSWORD``      | Password to use for authentication                 | none      |
-+-------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_PASSWORD_FILE`` | File to read the password from                     |           |
-+-------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_PORT``          | Listening port for the exporter                    |      9787 |
-+-------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_LOG_LEVEL``     | Application log level: ``DEBUG``, ``INFO``,        | INFO      |
-|                         | ``WARNING``, ``ERROR``, ``CRITICAL``               |           |
-+-------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_HOST_INFO``     | Enable extended information about all WiFi         | False     |
-|                         | hosts. Only "true" or "1" will enable this feature |           |
-+-------------------------+----------------------------------------------------+-----------+
++--------------------------+----------------------------------------------------+-----------+
+| Env variable             | Description                                        | Default   |
++=========================-+====================================================+===========+
+| ``FRITZ_NAME``           | User-friendly name for the device                  | Fritz!Box |
++--------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_HOSTNAME``       | Hostname of the device                             | fritz.box |
++--------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_USERNAME``       | Username to authenticate on the device             | none      |
++--------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_PASSWORD``       | Password to use for authentication                 | none      |
++--------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_PASSWORD_FILE``  | File to read the password from                     |           |
++--------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_LISTEN_ADDRESS`` | Address to listen on                               | 0.0.0.0   |
++--------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_PORT``           | Listening port for the exporter                    |      9787 |
++--------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_LOG_LEVEL``      | Application log level: ``DEBUG``, ``INFO``,        | INFO      |
+|                          | ``WARNING``, ``ERROR``, ``CRITICAL``               |           |
++--------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_HOST_INFO``      | Enable extended information about all WiFi         | False     |
+|                          | hosts. Only "true" or "1" will enable this feature |           |
++--------------------------+----------------------------------------------------+-----------+
 
 .. note::
 

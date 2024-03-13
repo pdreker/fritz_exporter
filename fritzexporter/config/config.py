@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any
+import ipaddress
 
 import attrs
 import yaml
@@ -42,6 +43,7 @@ def _read_config_from_env() -> dict:
         msg = "Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD or FRITZ_PASSWORD_FILE)!"
         raise ConfigError(msg)
 
+    listen_address = os.getenv("FRITZ_LISTEN_ADDRESS")
     exporter_port = os.getenv("FRITZ_PORT")
     log_level = os.getenv("FRITZ_LOG_LEVEL")
 
@@ -58,6 +60,8 @@ def _read_config_from_env() -> dict:
         config["exporter_port"] = exporter_port
     if log_level:
         config["log_level"] = log_level
+    if listen_address:
+        config["listen_address"] = listen_address
 
     config["devices"] = []
     device = {
@@ -96,6 +100,7 @@ class ExporterConfig:
         default="INFO", validator=validators.in_(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     )
     devices: list[DeviceConfig] = field(factory=list)
+    listen_address: str = field(default="0.0.0.0")
 
     @devices.validator
     def check_devices(self, _: attrs.Attribute, value: list[DeviceConfig]) -> None:
@@ -106,6 +111,10 @@ class ExporterConfig:
         devicenames = [dev.name for dev in value]
         if len(devicenames) != len(set(devicenames)):
             logger.warning("Device names are not unique")
+
+    @listen_address.validator
+    def check_listen_address(self, _: attrs.Attribute, value: str) -> None:
+        address = ipaddress.ip_address(value)
 
     @classmethod
     def from_config(cls, config: dict) -> ExporterConfig:
@@ -119,8 +128,9 @@ class ExporterConfig:
         devices: list[DeviceConfig] = [
             DeviceConfig.from_config(dev) for dev in config.get("devices", [])
         ]
+        listen_address = config.get("listen_address", "0.0.0.0")
 
-        return cls(exporter_port=exporter_port, log_level=log_level, devices=devices)
+        return cls(exporter_port=exporter_port, log_level=log_level, devices=devices, listen_address=listen_address)
 
 
 @define
