@@ -2,6 +2,13 @@
 
 
 
+## [2.5.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.4.3...fritzexporter-v2.5.0) (2024-03-13)
+
+
+### Features
+
+* make listen address configurable (by @NyCodeGHG in [#315](https://github.com/pdreker/fritz_exporter/issues/315)) ([#316](https://github.com/pdreker/fritz_exporter/issues/316)) ([abc1671](https://github.com/pdreker/fritz_exporter/commit/abc1671dd74d6d4e480ec5747e12b08b1ffd0609))
+
 ## [2.4.3](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.4.2...fritzexporter-v2.4.3) (2024-03-10)
 
 
