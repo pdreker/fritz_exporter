@@ -11,7 +11,7 @@
             "module": "fritzexporter",
             "args": [
                 "--config",
-                "../fritz-exporter.yml"
+                "../fritz-exporter.yaml"
             ],
         }
     ]
