@@ -25,7 +25,7 @@ prometheus-client = ">=0.6.0"
 fritzconnection = ">=1.0.0"
 pyyaml = "*"
 requests = "*"
-attrs = ">=22.2,<24.0"
+attrs = ">=22.2,<25.0"
 defusedxml = "^0.7.1"
 
 [tool.poetry.group.dev.dependencies]
