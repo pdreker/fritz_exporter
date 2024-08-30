@@ -237,13 +237,13 @@ files = [
 
 [[package]]
 name = "fritzconnection"
-version = "1.13.2"
+version = "1.14.0"
 description = "Communicate with the AVM FRITZ!Box"
 optional = false
-python-versions = ">= 3.7"
+python-versions = ">=3.7"
 files = [
-    {file = "fritzconnection-1.13.2-py3-none-any.whl", hash = "sha256:74648f90411446c478370feb94e42ebe989a18cc6a1e61068756c4ff0253b572"},
-    {file = "fritzconnection-1.13.2.tar.gz", hash = "sha256:ccc7ff207bb599394dfc19da29c8c54679e318d2b9304f3263a52cb9f4ed33c2"},
+    {file = "fritzconnection-1.14.0-py3-none-any.whl", hash = "sha256:f0cbc1977f21a04630773244eb1ca985af15c345aef4bbd5757b8fb124e7de1d"},
+    {file = "fritzconnection-1.14.0.tar.gz", hash = "sha256:95dacaf9bed6b52d809169006c0994bc55cc893dbe0a014bcf9535ae9d00982f"},
 ]
 
 [package.dependencies]
