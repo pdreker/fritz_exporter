@@ -10,6 +10,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
     FritzArgumentError,
     FritzArrayIndexError,
+    FritzConnectionException,
     FritzHttpInterfaceError,
     FritzInternalError,
     FritzServiceError,
@@ -64,6 +65,7 @@ class FritzCapability(ABC):
                     FritzActionError,
                     FritzInternalError,
                     FritzArgumentError,
+                    FritzConnectionException,
                 ) as e:
                     logger.warning(
                         "disabling metrics at service %s, action %s - fritzconnection.call_action "
