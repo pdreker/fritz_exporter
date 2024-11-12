@@ -2,6 +2,13 @@
 
 
 
+## [2.5.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.5.0...fritzexporter-v2.5.1) (2024-11-11)
+
+
+### Bug Fixes
+
+* catch FritzConnectionException when checking capabilities ([191869d](https://github.com/pdreker/fritz_exporter/commit/191869d02080753206d29b57d5072caee2fcc2c4))
+
 ## [2.5.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.4.3...fritzexporter-v2.5.0) (2024-03-13)
 
 
