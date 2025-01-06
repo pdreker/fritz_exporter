@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: ${{ vars.PYTHON_VERSION }}
       - name: Setup poetry
-        uses: abatilo/actions-poetry@v3
+        uses: abatilo/actions-poetry@v4
         with:
           poetry-version: ${{ vars.POETRY_VERSION }}
       - name: Install dependencies
