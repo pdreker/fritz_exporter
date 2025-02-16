@@ -2,6 +2,13 @@
 
 
 
+## [2.5.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.5.1...fritzexporter-v2.5.2) (2025-02-16)
+
+
+### Bug Fixes
+
+* **docs:** minimize Fritz!Box user permissions ([#436](https://github.com/pdreker/fritz_exporter/issues/436)) ([b137062](https://github.com/pdreker/fritz_exporter/commit/b13706253e6ee08120988ef7201b1f1b08132ff4))
+
 ## [2.5.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.5.0...fritzexporter-v2.5.1) (2024-11-11)
 
 
