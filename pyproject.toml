@@ -36,7 +36,7 @@ types-requests = "*"
 mypy = ">=0.971,<1.16"
 coverage = ">=6.4.4,<8.0.0"
 pytest-cov = ">=3,<7"
-ruff = ">=0.1.7,<0.10.0"
+ruff = ">=0.1.7,<0.12.0"
 
 [tool.poetry.scripts]
 fritzexporter = "fritzexporter.__main__:main"
