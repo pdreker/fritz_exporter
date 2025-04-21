@@ -84,6 +84,35 @@ class FritzDevice:
                 self.host,
             )
 
+    def get_connection_mode(self) -> GaugeMetricFamily | None:
+        """
+        Returns a metric to detect whether device is in DSL, mobile fallback or offline mode.
+        """
+        try:
+            resp = self.fc.call_action("WANCommonInterfaceConfig", "GetCommonLinkProperties")
+            link_status = resp.get("NewPhysicalLinkStatus")
+            access_type = resp.get("NewWANAccessType")
+        except Exception:
+            logger.warning("Failed to retrieve connection mode info from %s", self.host)
+            return None
+
+        if link_status == "Up" and access_type == "DSL":
+            mode = 1  # DSL connection active
+        elif link_status == "Down" and access_type == "X_AVM-DE_Mobile":
+            mode = 2  # DSL disconnected -> Fallback mobile conenction active
+        elif link_status == "Up" and access_type == "X_AVM-DE_Mobile":
+            mode = 3  # DSL disabled, only mobile connection active
+        else:
+            mode = 0  # Disconnected or not available
+
+        m = GaugeMetricFamily(
+            "fritz_connection_mode",
+            "Connection mode: 1=DSL, 2=Mobile fallback, 3=Mobile-only, 0=offline/unknown",
+            labels=["access_type", "friendly_name"],
+        )
+        m.add_metric([access_type, self.friendly_name], mode)
+        return m
+
 
 class FritzCollector(Collector):
     def __init__(self) -> None:
@@ -99,6 +128,12 @@ class FritzCollector(Collector):
         if not self.devices:
             logger.critical("No devices registered in collector! Exiting.")
             sys.exit(1)
+
+        # Custom mode metric
+        for dev in self.devices:
+            mode_metric = dev.get_connection_mode()
+            if mode_metric:
+                yield mode_metric
 
         for name, capa in self.capabilities.items():
             capa.create_metrics()
