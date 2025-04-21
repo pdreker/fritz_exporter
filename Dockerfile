@@ -1,6 +1,6 @@
 # Build using "poetry" in a separate build container
 # The resulting .whl file is then installed in the actual runner container
-FROM python:3.13.2-alpine AS build
+FROM python:3.13.3-alpine AS build
 WORKDIR /app
 
 RUN apk add build-base libffi-dev openssl-dev rust cargo && \
@@ -15,7 +15,7 @@ COPY fritzexporter /app/fritzexporter
 RUN poetry build
 
 # Build the actual runner
-FROM python:3.13.2-alpine
+FROM python:3.13.3-alpine
 
 LABEL Name=fritzbox_exporter
 EXPOSE 9787
