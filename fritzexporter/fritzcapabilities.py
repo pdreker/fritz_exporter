@@ -3,7 +3,7 @@ from __future__ import annotations
 import collections
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import Generator, Iterator
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
@@ -78,7 +78,7 @@ class FritzCapability(ABC):
 
     def get_metrics(
         self, devices: list[FritzDevice], name: str
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         for device in devices:
             logger.debug(
                 "Fetching %s metrics for %s: %s",
@@ -101,7 +101,7 @@ class FritzCapability(ABC):
     @abstractmethod
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         pass
 
 
@@ -113,7 +113,7 @@ class FritzCapabilities:
         if device:
             self.check_present(device)
 
-    def __iter__(self) -> collections.abc.Iterator[str]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self.capabilities)
 
     def __len__(self) -> int:
@@ -190,7 +190,7 @@ class HostNumberOfEntries(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["numhosts"]
 
 
@@ -220,7 +220,7 @@ class UserInterface(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["update"]
 
 
@@ -252,7 +252,7 @@ class LanInterfaceConfig(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["lanenable"]
         yield self.metrics["lanstatus"]
 
@@ -296,7 +296,7 @@ class LanInterfaceConfigStatistics(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["lanbytes"]
         yield self.metrics["lanpackets"]
 
@@ -377,7 +377,7 @@ class WanDSLInterfaceConfig(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["enable"]
         yield self.metrics["status"]
         yield self.metrics["datarate"]
@@ -415,7 +415,7 @@ class WanDSLInterfaceConfigAVM(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["fec"]
         yield self.metrics["crc"]
 
@@ -455,7 +455,7 @@ class WanPPPConnectionStatus(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["uptime"]
         yield self.metrics["connected"]
 
@@ -509,7 +509,7 @@ class WanCommonInterfaceConfig(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["wanconfig"]
         yield self.metrics["wanlinkstatus"]
 
@@ -548,7 +548,7 @@ class WanCommonInterfaceDataBytes(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["wanbytes"]
 
 
@@ -578,7 +578,7 @@ class WanCommonInterfaceByteRate(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["wanbyterate"]
 
 
@@ -616,7 +616,7 @@ class WanCommonInterfaceDataPackets(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["wanpackets"]
 
 
@@ -820,7 +820,7 @@ class WlanConfigurationInfo(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["wlanstatus"]
         yield self.metrics["wlanchannel"]
         yield self.metrics["wlanassocs"]
@@ -961,7 +961,7 @@ class HostInfo(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["hostactive"]
         yield self.metrics["hostspeed"]
 
@@ -1442,7 +1442,7 @@ class HomeAutomation(FritzCapability):
 
     def _get_metric_values(
         self,
-    ) -> collections.abc.iterator[CounterMetricFamily | GaugeMetricFamily]:
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["devicepresent"]
         yield self.metrics["multimeter_power"]
         yield self.metrics["multimeter_energy"]
