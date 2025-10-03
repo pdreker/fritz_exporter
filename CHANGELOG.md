@@ -2,6 +2,13 @@
 
 
 
+## [2.6.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.5.2...fritzexporter-v2.6.0) (2025-10-03)
+
+
+### Features
+
+* add fritz_connection_mode metric(fixes [#458](https://github.com/pdreker/fritz_exporter/issues/458)) ([#459](https://github.com/pdreker/fritz_exporter/issues/459)) ([f0899ce](https://github.com/pdreker/fritz_exporter/commit/f0899ce0441c86b45c6e5a3344d51f3ac41de563))
+
 ## [2.5.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.5.1...fritzexporter-v2.5.2) (2025-02-16)
 
 
