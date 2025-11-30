@@ -142,6 +142,13 @@ class ExporterConfig:
         # https://github.com/pdreker/fritz_exporter/issues/402
         listen_address = config.get("listen_address", "0.0.0.0")  # noqa: S104
 
+        if listen_address in ["0.0.0.0", "::"]:  # noqa: S104
+            logger.warning("Binding to all interfaces with listen_address=%s", listen_address)
+            logger.warning("Future versions of FritzExporter will switch to a more secure default.")
+            logger.warning(
+                "Please consider setting FRITZ_LISTEN_ADDRESS or using listen_address in config"
+                "file to a specific address."
+            )
         return cls(
             exporter_port=exporter_port,
             log_level=log_level,
