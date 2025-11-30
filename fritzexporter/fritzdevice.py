@@ -7,6 +7,7 @@ from typing import NamedTuple
 from fritzconnection import FritzConnection  # type: ignore[import]
 from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
+    FritzAuthorizationError,
     FritzConnectionException,
     FritzServiceError,
 )
@@ -50,10 +51,11 @@ class FritzDevice:
             logger.exception("unable to connect to %s.", creds.host)
             raise
 
+        self.get_device_info()
+
         logger.info("Connection to %s successful, reading capabilities", creds.host)
         self.capabilities = FritzCapabilities(self)
 
-        self.get_device_info()
         logger.info(
             "Reading capabilities for %s, got serial %s, model name %s completed",
             creds.host,
@@ -84,6 +86,11 @@ class FritzDevice:
                 "Serial number and model name will be unavailable.",
                 self.host,
             )
+        except FritzAuthorizationError:
+            logger.exception(
+                "Not authorized to get device info from %s. Check username/password.", self.host
+            )
+            raise
 
     def get_connection_mode(self) -> GaugeMetricFamily | None:
         """
