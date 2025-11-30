@@ -64,7 +64,7 @@ def parse_cmdline() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:  # noqa: PLR0912
+def main() -> None:
     fritzcollector = FritzCollector()
 
     args = parse_cmdline()
@@ -132,7 +132,7 @@ def main() -> None:  # noqa: PLR0912
 if __name__ == "__main__":
     main()
 
-# Copyright 2019-2024 Patrick Dreker <patrick@dreker.de>
+# Copyright 2019-2025 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

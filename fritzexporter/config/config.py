@@ -124,7 +124,7 @@ class ExporterConfig:
 
     @listen_address.validator
     def check_listen_address(self, _: attrs.Attribute, value: str) -> None:
-        _ = ipaddress.ip_address(value)
+        _: ipaddress.IPv4Address | ipaddress.IPv6Address = ipaddress.ip_address(value)
 
     @classmethod
     def from_config(cls, config: dict) -> ExporterConfig:

@@ -100,7 +100,7 @@ class FritzDevice:
             resp = self.fc.call_action("WANCommonInterfaceConfig", "GetCommonLinkProperties")
             link_status = resp.get("NewPhysicalLinkStatus")
             access_type = resp.get("NewWANAccessType")
-        except Exception:
+        except FritzConnectionException:
             logger.warning("Failed to retrieve connection mode info from %s", self.host)
             return None
 
@@ -150,7 +150,7 @@ class FritzCollector(Collector):
                 yield from capa.get_metrics(self.devices, name)
 
 
-# Copyright 2019-2024 Patrick Dreker <patrick@dreker.de>
+# Copyright 2019-2025 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
