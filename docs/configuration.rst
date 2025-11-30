@@ -26,7 +26,7 @@ If you only need a single device this is the easiest way to configure the export
 +--------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_PASSWORD_FILE``  | File to read the password from                     |           |
 +--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_LISTEN_ADDRESS`` | Address to listen on                               | 0.0.0.0   |
+| ``FRITZ_LISTEN_ADDRESS`` | Address to listen on. Can be IPv4 or IPv6.         | 0.0.0.0   |
 +--------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_PORT``           | Listening port for the exporter                    |      9787 |
 +--------------------------+----------------------------------------------------+-----------+
