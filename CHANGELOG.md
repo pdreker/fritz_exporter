@@ -2,6 +2,15 @@
 
 
 
+## [2.6.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.6.0...fritzexporter-v2.6.1) (2025-11-30)
+
+
+### Bug Fixes
+
+* enhance security warning for listen_address configuration and add deprecation warning ([#532](https://github.com/pdreker/fritz_exporter/issues/532)) ([29bccbc](https://github.com/pdreker/fritz_exporter/commit/29bccbccca19b0fe8a2470d0df8508647684a7b2))
+* handle FritzAuthorizationError in FritzDevice connection ([#531](https://github.com/pdreker/fritz_exporter/issues/531)) ([8e16d1c](https://github.com/pdreker/fritz_exporter/commit/8e16d1c70e91017fda7ddd2f6391f53ed1a86cff))
+* make FritzCollector.collect() safe against multiple parallel runs ([#529](https://github.com/pdreker/fritz_exporter/issues/529)) ([9395df2](https://github.com/pdreker/fritz_exporter/commit/9395df2ad2f612238db6960f2a591b208b9e7e59))
+
 ## [2.6.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.5.2...fritzexporter-v2.6.0) (2025-10-03)
 
 
