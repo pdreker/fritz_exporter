@@ -1,6 +1,7 @@
 import collections
 import logging
 import sys
+import threading
 from typing import NamedTuple
 
 from fritzconnection import FritzConnection  # type: ignore[import]
@@ -118,6 +119,7 @@ class FritzCollector(Collector):
     def __init__(self) -> None:
         self.devices: list[FritzDevice] = []
         self.capabilities: FritzCapabilities = FritzCapabilities()  # host_info=True??? FIXME
+        self._collect_lock = threading.RLock()
 
     def register(self, fritzdev: FritzDevice) -> None:
         self.devices.append(fritzdev)
@@ -125,19 +127,20 @@ class FritzCollector(Collector):
         self.capabilities.merge(fritzdev.capabilities)
 
     def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
-        if not self.devices:
-            logger.critical("No devices registered in collector! Exiting.")
-            sys.exit(1)
+        with self._collect_lock:
+            if not self.devices:
+                logger.critical("No devices registered in collector! Exiting.")
+                sys.exit(1)
 
-        # Custom mode metric
-        for dev in self.devices:
-            mode_metric = dev.get_connection_mode()
-            if mode_metric:
-                yield mode_metric
+            # Custom mode metric
+            for dev in self.devices:
+                mode_metric = dev.get_connection_mode()
+                if mode_metric:
+                    yield mode_metric
 
-        for name, capa in self.capabilities.items():
-            capa.create_metrics()
-            yield from capa.get_metrics(self.devices, name)
+            for name, capa in self.capabilities.items():
+                capa.create_metrics()
+                yield from capa.get_metrics(self.devices, name)
 
 
 # Copyright 2019-2024 Patrick Dreker <patrick@dreker.de>
