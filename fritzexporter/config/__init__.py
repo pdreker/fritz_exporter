@@ -5,8 +5,8 @@ from .exceptions import (
     DeviceNamesNotUniqueError,
     EmptyConfigError,
     ExporterError,
-    FritzPasswordTooLongError,
     FritzPasswordFileDoesNotExistError,
+    FritzPasswordTooLongError,
     NoDevicesFoundError,
 )
 
