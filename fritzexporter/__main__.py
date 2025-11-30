@@ -64,7 +64,7 @@ def parse_cmdline() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:  # noqa: PLR0912
+def main() -> None:
     fritzcollector = FritzCollector()
 
     args = parse_cmdline()
