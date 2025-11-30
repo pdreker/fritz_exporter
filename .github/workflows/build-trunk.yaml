@@ -10,7 +10,7 @@ jobs:
     name: Build Trunk
     steps:
       # Prepare Environment
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.MASTER_PUSH_TOKEN }}
           fetch-depth: 0
