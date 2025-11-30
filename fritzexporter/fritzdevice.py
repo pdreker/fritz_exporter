@@ -100,7 +100,7 @@ class FritzDevice:
             resp = self.fc.call_action("WANCommonInterfaceConfig", "GetCommonLinkProperties")
             link_status = resp.get("NewPhysicalLinkStatus")
             access_type = resp.get("NewWANAccessType")
-        except Exception:
+        except FritzConnectionException:
             logger.warning("Failed to retrieve connection mode info from %s", self.host)
             return None
 
