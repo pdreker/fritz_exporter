@@ -2,8 +2,8 @@ apiVersion: v2
 name: fritz-exporter
 description: fritz-exporter Helm Chart
 type: application
-version: 0.2.0
-appVersion: "2.5.0"
+version: 0.3.0
+appVersion: "2.6.1"
 maintainers:
   - email: patrick@dreker.de
     name: Patrick Dreker
