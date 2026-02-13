@@ -17,6 +17,13 @@ config: {}
 #     username: prometheus
 #     password: prometheus
 
+# Set to false if you wish to bring your own secret.
+# Default: a secret with the contents of the above "config" will be created.
+createConfigSecret: true
+
+# The name of the secret supplied by you.
+configSecretName: ""
+
 replicaCount: 1
 
 image:

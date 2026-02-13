@@ -48,7 +48,11 @@ spec:
       volumes:
         - name: config
           secret:
+            {{- if .Values.createConfigSecret }}
             secretName: {{ include "fritz-exporter.fullname" . }}-config
+            {{- else }}
+            secretName: {{ .Values.configSecretName }}
+            {{- end }}
             items:
               - key: "config.yaml"
                 path: "config.yaml"
