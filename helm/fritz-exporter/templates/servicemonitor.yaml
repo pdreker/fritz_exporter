@@ -4,18 +4,18 @@ kind: ServiceMonitor
 metadata:
   name: {{ template "fritz-exporter.fullname" . }}
   {{- if .Values.serviceMonitor.namespace }}
-  namespace: {{ .Values.server.metrics.serviceMonitor.namespace }}
+  namespace: {{ .Values.server.metrics.serviceMonitor.namespace | quote }}
   {{- end }}
   labels:
     {{- include "fritz-exporter.labels" . | nindent 4 }}
 spec:
   endpoints:
-    - port: {{ .Values.service.portName }}
+    - port: {{ .Values.service.portName | quote }}
       {{- with .Values.serviceMonitor.interval }}
       interval: {{ . | quote }}
       {{- end }}
       {{- with .Values.serviceMonitor.scrapeTimeout }}
-      scrapeTimeout: {{ . }}
+      scrapeTimeout: {{ . | quote }}
       {{- end }}
       path: /metrics
       {{- with .Values.serviceMonitor.relabelings }}
@@ -28,7 +28,7 @@ spec:
       {{- end }}
   namespaceSelector:
     matchNames:
-      - {{ .Release.Namespace }}
+      - {{ .Release.Namespace  | quote }}
   selector:
     matchLabels:
       {{- include "fritz-exporter.selectorLabels" . | nindent 6 }}
