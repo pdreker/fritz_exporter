@@ -1414,7 +1414,7 @@ class HomeAutomation(FritzCapability):
 
             if "content" in http_result:
                 http_data = parse_aha_device_xml(http_result["content"])
-                if "battery" in http_data:
+                if "battery_level" in http_data:
                     self.metrics["battery_level"].add_metric(
                         [
                             device.serial,
@@ -1424,7 +1424,7 @@ class HomeAutomation(FritzCapability):
                             manufacturer,
                             productname,
                         ],
-                        float(http_data["battery"]),
+                        float(http_data["battery_level"]),
                     )
 
                 if "battery_low" in http_data:

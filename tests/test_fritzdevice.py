@@ -3,7 +3,11 @@ from pprint import pprint
 from unittest.mock import MagicMock, call, patch
 
 import pytest
-from fritzconnection.core.exceptions import FritzConnectionException, FritzServiceError
+from fritzconnection.core.exceptions import (
+    FritzAuthorizationError,
+    FritzConnectionException,
+    FritzServiceError,
+)
 from prometheus_client.core import Metric
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
@@ -346,3 +350,193 @@ class TestFritzCollector:
         # Check
         assert len(metrics) == 1
         assert len(metrics[0].samples) == 3
+
+    def test_should_exit_when_no_devices_registered(self, mock_fritzconnection: MagicMock, caplog):
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        # Act
+        collector = FritzCollector()
+
+        # Check
+        with pytest.raises(SystemExit) as exc_info:
+            list(collector.collect())
+
+        assert exc_info.value.code == 1
+
+    def test_should_not_yield_connection_mode_when_none(self, mock_fritzconnection: MagicMock, caplog):
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.call_http.side_effect = call_http_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        # Act
+        collector = FritzCollector()
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        collector.register(device)
+
+        # Make get_connection_mode raise FritzConnectionException so it returns None
+        original_side_effect = fc.call_action.side_effect
+
+        def connection_mode_error(service, action, **kwargs):
+            if service == "WANCommonInterfaceConfig" and action == "GetCommonLinkProperties":
+                raise FritzConnectionException("no connection mode")
+            return original_side_effect(service, action, **kwargs)
+
+        fc.call_action.side_effect = connection_mode_error
+
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check: no fritz_connection_mode metric should be in results
+        metric_names = [m.name for m in metrics]
+        assert "fritz_connection_mode" not in metric_names
+
+
+@patch("fritzexporter.fritzdevice.FritzConnection")
+class TestGetConnectionMode:
+    """Tests for FritzDevice.get_connection_mode()"""
+
+    def _create_device(self, mock_fc: MagicMock) -> tuple:
+        fc = mock_fc.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        return device, fc
+
+    def test_get_connection_mode_dsl(self, mock_fc: MagicMock):
+        # Prepare
+        device, fc = self._create_device(mock_fc)
+        fc.call_action.side_effect = lambda s, a, **kw: (
+            {"NewPhysicalLinkStatus": "Up", "NewWANAccessType": "DSL"}
+            if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties")
+            else call_action_mock(s, a, **kw)
+        )
+
+        # Act
+        metric = device.get_connection_mode()
+
+        # Check
+        assert metric is not None
+        assert metric.name == "fritz_connection_mode"
+        assert metric.samples[0].value == 1
+        assert metric.samples[0].labels["serial"] == "1234567890"
+        assert metric.samples[0].labels["friendly_name"] == "FritzMock"
+        assert metric.samples[0].labels["access_type"] == "DSL"
+
+    def test_get_connection_mode_mobile_fallback(self, mock_fc: MagicMock):
+        # Prepare
+        device, fc = self._create_device(mock_fc)
+        fc.call_action.side_effect = lambda s, a, **kw: (
+            {"NewPhysicalLinkStatus": "Down", "NewWANAccessType": "X_AVM-DE_Mobile"}
+            if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties")
+            else call_action_mock(s, a, **kw)
+        )
+
+        # Act
+        metric = device.get_connection_mode()
+
+        # Check
+        assert metric is not None
+        assert metric.samples[0].value == 2
+        assert metric.samples[0].labels["serial"] == "1234567890"
+        assert metric.samples[0].labels["access_type"] == "X_AVM-DE_Mobile"
+
+    def test_get_connection_mode_mobile_only(self, mock_fc: MagicMock):
+        # Prepare
+        device, fc = self._create_device(mock_fc)
+        fc.call_action.side_effect = lambda s, a, **kw: (
+            {"NewPhysicalLinkStatus": "Up", "NewWANAccessType": "X_AVM-DE_Mobile"}
+            if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties")
+            else call_action_mock(s, a, **kw)
+        )
+
+        # Act
+        metric = device.get_connection_mode()
+
+        # Check
+        assert metric is not None
+        assert metric.samples[0].value == 3
+
+    def test_get_connection_mode_offline(self, mock_fc: MagicMock):
+        # Prepare
+        device, fc = self._create_device(mock_fc)
+        fc.call_action.side_effect = lambda s, a, **kw: (
+            {"NewPhysicalLinkStatus": "Down", "NewWANAccessType": "DSL"}
+            if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties")
+            else call_action_mock(s, a, **kw)
+        )
+
+        # Act
+        metric = device.get_connection_mode()
+
+        # Check
+        assert metric is not None
+        assert metric.samples[0].value == 0
+
+    def test_get_connection_mode_returns_none_on_exception(self, mock_fc: MagicMock, caplog):
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+        device, fc = self._create_device(mock_fc)
+
+        def raise_connection_exception(s, a, **kw):
+            if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
+                raise FritzConnectionException("Connection failed")
+            return call_action_mock(s, a, **kw)
+
+        fc.call_action.side_effect = raise_connection_exception
+
+        # Act
+        metric = device.get_connection_mode()
+
+        # Check
+        assert metric is None
+        assert (
+            FRITZDEVICE_LOG_SOURCE,
+            logging.WARNING,
+            "Failed to retrieve connection mode info from somehost",
+        ) in caplog.record_tuples
+
+
+@patch("fritzexporter.fritzdevice.FritzConnection")
+class TestFritzDeviceAuthError:
+    def test_should_raise_authorization_error_on_get_device_info(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+
+        def auth_error_mock(service, action, **kwargs):
+            if service == "DeviceInfo1" and action == "GetInfo":
+                raise FritzAuthorizationError("Not authorized")
+            return {}
+
+        fc.call_action.side_effect = auth_error_mock
+        fc.services = create_fc_services({})
+
+        # Act
+        with pytest.raises(FritzAuthorizationError):
+            _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+
+        # Check
+        assert (
+            FRITZDEVICE_LOG_SOURCE,
+            logging.ERROR,
+            "Not authorized to get device info from somehost. Check username/password.",
+        ) in caplog.record_tuples
+
+
+class TestParseAhaDeviceXml:
+    def test_should_return_empty_dict_on_parse_error(self):
+        # Prepare
+        invalid_xml = "this is not valid xml <<<"
+
+        # Act
+        result = parse_aha_device_xml(invalid_xml)
+
+        # Check
+        assert result == {}
