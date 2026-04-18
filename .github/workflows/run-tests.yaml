@@ -32,7 +32,9 @@ jobs:
         run: |
           poetry run flake8 . | tee lint.log
           rescode=${PIPESTATUS[0]}
-          echo "::set-output name=lint::$(cat lint.log)"
+          echo "lint<<EOF" >> $GITHUB_OUTPUT
+          cat lint.log >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           exit $rescode
       - name: Run pytest
         id: pytest
@@ -40,7 +42,9 @@ jobs:
         run: |
           poetry run python -m pytest --cov=. --cov-report=xml --cov-config=.coveragerc . | tee test.log
           rescode=${PIPESTATUS[0]}
-          echo "::set-output name=tests::$(cat test.log)"
+          echo "tests<<EOF" >> $GITHUB_OUTPUT
+          cat test.log >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           exit $rescode
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@master
