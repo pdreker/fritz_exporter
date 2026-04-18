@@ -11,16 +11,16 @@ from .exceptions import (
 )
 
 __all__ = [
-    "ExporterError",
     "ConfigError",
-    "EmptyConfigError",
     "ConfigFileUnreadableError",
-    "DeviceNamesNotUniqueError",
-    "NoDevicesFoundError",
-    "FritzPasswordTooLongError",
-    "FritzPasswordFileDoesNotExistError",
-    "ExporterConfig",
     "DeviceConfig",
+    "DeviceNamesNotUniqueError",
+    "EmptyConfigError",
+    "ExporterConfig",
+    "ExporterError",
+    "FritzPasswordFileDoesNotExistError",
+    "FritzPasswordTooLongError",
+    "NoDevicesFoundError",
     "get_config",
 ]
 

@@ -732,8 +732,7 @@ class WlanConfigurationInfo(FritzCapability):
         )
         for index, wlan in enumerate(device.capabilities[self.__class__.__name__].wifi_present):
             logger.debug(
-                "WLANConfigurationInfo._generateMetricValues checking WLAN "
-                "%s (enabled: %s) on %s",
+                "WLANConfigurationInfo._generateMetricValues checking WLAN %s (enabled: %s) on %s",
                 index,
                 wlan,
                 device.host,
@@ -744,7 +743,7 @@ class WlanConfigurationInfo(FritzCapability):
                     device.host,
                     index,
                 )
-                wlan_result = device.fc.call_action(f"WLANConfiguration{index+1}", "GetInfo")
+                wlan_result = device.fc.call_action(f"WLANConfiguration{index + 1}", "GetInfo")
                 wlan_status = 1 if wlan_result["NewStatus"] == "Up" else 0
                 wlan_enabled = "1" if wlan_result["NewEnable"] else "0"
                 self.metrics["wlanstatus"].add_metric(
@@ -773,7 +772,7 @@ class WlanConfigurationInfo(FritzCapability):
                 )
 
                 assoc_results = device.fc.call_action(
-                    f"WLANConfiguration{index+1}", "GetTotalAssociations"
+                    f"WLANConfiguration{index + 1}", "GetTotalAssociations"
                 )
                 self.metrics["wlanassocs"].add_metric(
                     [
@@ -789,7 +788,7 @@ class WlanConfigurationInfo(FritzCapability):
                 )
 
                 packet_stats_result = device.fc.call_action(
-                    f"WLANConfiguration{index+1}", "GetPacketStatistics"
+                    f"WLANConfiguration{index + 1}", "GetPacketStatistics"
                 )
                 self.metrics["wlanpackets"].add_metric(
                     [
@@ -923,8 +922,7 @@ class HostInfo(FritzCapability):
                 host_speed = avm_host_result["NewX_AVM-DE_Speed"]
             else:
                 logger.debug(
-                    "Unable to fetch extended AVM host information for host "
-                    "number %s: no IP found",
+                    "Unable to fetch extended AVM host information for host number %s: no IP found",
                     host_index,
                 )
                 host_interface = "n/a"

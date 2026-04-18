@@ -177,11 +177,11 @@ def sanitize_results(
         ("X_VoIP1", "X_AVM-DE_GetNumbers"): ["NewNumberList"],
     }
 
-    for svc_action in res:
+    for svc_action, svc_data in res.items():
         if svc_action in blacklist:
             for field in blacklist[svc_action]:
-                if field in res[svc_action]:
-                    res[svc_action][field] = "<SANITIZED>"
+                if field in svc_data:
+                    svc_data[field] = "<SANITIZED>"
 
     for entry in sanitation:
         if (entry[0], entry[1]) in res:
@@ -196,11 +196,11 @@ def sanitize_results(
 
 def jsonify_action_results(ar: dict[tuple[str, str], dict]) -> dict[str, dict]:
     out: dict[str, dict] = {}
-    for service, action in ar:
+    for (service, action), action_data in ar.items():
         if service not in out:
             out[service] = {}
         if action not in out[service]:
-            out[service][action] = {k: str(v) for k, v in ar[(service, action)].items()}
+            out[service][action] = {k: str(v) for k, v in action_data.items()}
     return out
 
 

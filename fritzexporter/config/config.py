@@ -159,7 +159,7 @@ class ExporterConfig:
 
 @define
 class DeviceConfig:
-    hostname: str = field(validator=validators.min_len(1), converter=lambda x: str.lower(x))
+    hostname: str = field(validator=validators.min_len(1), converter=str.lower)
     username: str = field(validator=validators.min_len(1))
     password: str | None = field(default=None)
     password_file: str | None = field(default=None)
