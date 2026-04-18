@@ -293,9 +293,6 @@ class TestFritzCollector:
         assert len(collector.devices) == 1
         assert device is collector.devices[0]
         for m in metrics:
-            # fritz_connection_mode intentionally has no serial label
-            if m.name == "fritz_connection_mode":
-                continue
             for s in m.samples:
                 assert "serial" in s.labels
                 assert s.labels["serial"] == "1234567890"
@@ -425,6 +422,8 @@ class TestGetConnectionMode:
         assert metric is not None
         assert metric.name == "fritz_connection_mode"
         assert metric.samples[0].value == 1
+        assert metric.samples[0].labels["serial"] == "1234567890"
+        assert metric.samples[0].labels["friendly_name"] == "FritzMock"
         assert metric.samples[0].labels["access_type"] == "DSL"
 
     def test_get_connection_mode_mobile_fallback(self, mock_fc: MagicMock):
@@ -442,6 +441,7 @@ class TestGetConnectionMode:
         # Check
         assert metric is not None
         assert metric.samples[0].value == 2
+        assert metric.samples[0].labels["serial"] == "1234567890"
         assert metric.samples[0].labels["access_type"] == "X_AVM-DE_Mobile"
 
     def test_get_connection_mode_mobile_only(self, mock_fc: MagicMock):
