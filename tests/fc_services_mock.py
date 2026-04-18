@@ -81,6 +81,12 @@ def call_action_mock(service, action, **kwargs):
             "NewUptime": 12345,
             "NewLastConnectionError": "Timeout",
         },
+        ("WANCommonInterfaceConfig", "GetCommonLinkProperties"): {
+            "NewWANAccessType": "DSL",
+            "NewLayer1UpstreamMaxBitRate": 10000,
+            "NewLayer1DownstreamMaxBitRate": 10001,
+            "NewPhysicalLinkStatus": "Up",
+        },
         ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"): {
             "NewWANAccessType": "PPPoE",
             "NewLayer1UpstreamMaxBitRate": 10000,
@@ -191,6 +197,8 @@ def call_action_mock(service, action, **kwargs):
             return call_action_responses[(service, action)]
         else:
             raise FritzArrayIndexError
+    if (service, action) not in call_action_responses:
+        raise FritzServiceError(f"Unknown service/action: {service}/{action}")
     return call_action_responses[(service, action)]
 
 

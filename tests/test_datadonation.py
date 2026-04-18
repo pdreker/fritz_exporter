@@ -288,3 +288,26 @@ class TestDataDonation:
         # Act 2
         with pytest.raises(requests.exceptions.HTTPError):
             donate_data(fd, upload=True)
+
+    @patch(
+        "fritzexporter.data_donation.requests.post",
+        side_effect=[
+            MockResponse({}, 200),  # 200 OK but no donation_id in response
+        ],
+    )
+    def test_should_log_warning_when_no_donation_id(
+        self, mock_requests_post: MagicMock, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_capabilities["HostNumberOfEntries"])
+
+        # Act
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        donate_data(fd, upload=True)
+
+        # Check
+        assert "did not return a donation id" in caplog.text

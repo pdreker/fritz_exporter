@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 
 from fritzexporter.config import (
@@ -157,3 +159,59 @@ class TestEnvConfig:
         expected: ExporterConfig = ExporterConfig(9787, "INFO", devices)
 
         assert config == expected
+
+
+class TestConfigEdgeCases:
+    def test_duplicate_device_names_logs_warning(self, caplog):
+        testfile = "tests/conffiles/namesnotunique.yaml"
+        caplog.set_level(logging.WARNING)
+
+        # Should succeed but log a warning
+        config = get_config(testfile)
+
+        assert config is not None
+        assert "Device names are not unique" in caplog.text
+
+    def test_password_too_long_raises_error(self):
+        from fritzexporter.config.exceptions import FritzPasswordTooLongError
+
+        with pytest.raises(FritzPasswordTooLongError):
+            DeviceConfig(
+                hostname="fritz.box",
+                username="user",
+                password="a" * 33,  # 33 chars exceeds 32
+            )
+
+    def test_password_too_long_error_message(self):
+        from fritzexporter.config.exceptions import FritzPasswordTooLongError
+
+        try:
+            DeviceConfig(
+                hostname="fritz.box",
+                username="user",
+                password="a" * 33,
+            )
+        except FritzPasswordTooLongError as e:
+            assert "Password is longer than 32 characters" in str(e)
+
+    def test_password_file_not_found_raises_error(self):
+        from fritzexporter.config.exceptions import FritzPasswordFileDoesNotExistError
+
+        with pytest.raises(FritzPasswordFileDoesNotExistError):
+            DeviceConfig(
+                hostname="fritz.box",
+                username="user",
+                password_file="/this/does/not/exist/password.txt",
+            )
+
+    def test_password_file_not_found_error_message(self):
+        from fritzexporter.config.exceptions import FritzPasswordFileDoesNotExistError
+
+        try:
+            DeviceConfig(
+                hostname="fritz.box",
+                username="user",
+                password_file="/this/does/not/exist/password.txt",
+            )
+        except FritzPasswordFileDoesNotExistError as e:
+            assert "Password file does not exist" in str(e)
