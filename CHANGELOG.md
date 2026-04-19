@@ -1,7 +1,3 @@
-## [2.2.1](https://github.com/pdreker/fritz_exporter/compare/v2.2.1-pre.6...v2.2.1) (2022-12-29)
-
-
-
 ## [2.6.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.6.1...fritzexporter-v2.6.2) (2026-04-19)
 
 
