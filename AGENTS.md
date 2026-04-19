@@ -182,6 +182,30 @@ fritzexporter/
 
 ---
 
+## PR Review Checklist
+
+For every pull request, review the following areas in addition to the Python code and tests. Update them as needed to reflect the changes introduced by the PR:
+
+### Documentation (`docs/`)
+
+- Check whether any user-facing behaviour, configuration options, CLI flags, metrics, or upgrade steps have changed.
+- If so, update the relevant `.rst` files under `docs/` (e.g. `configuration.rst`, `running.rst`, `quickstart.rst`, `upgrading.rst`, `docker-images.rst`).
+- Commit documentation changes with the `docs` type: `docs: ...`.
+
+### Dockerfile
+
+- Check whether the base Python image version, build dependencies, or the install/entrypoint commands need updating to match changes in `pyproject.toml`, `poetry.lock`, or the package itself.
+- Verify that no unnecessary files are copied into the image and that the multi-stage build remains clean.
+- Commit Dockerfile changes with the `build` type: `build: ...`.
+
+### Helm chart (`helm/fritz-exporter/`)
+
+- Check whether `Chart.yaml` (app version, chart version), `values.yaml` (default image tag, new config keys), or the templates under `helm/fritz-exporter/templates/` need updating to reflect new configuration options, environment variables, ports, or other changes.
+- Follow semantic versioning for the chart version bump in `Chart.yaml`.
+- Commit Helm chart changes with the `build` type: `build(helm): ...`.
+
+---
+
 ## Style Notes
 
 - Use `logging` for all output — never `print()` (enforced by ruff `T20`).
