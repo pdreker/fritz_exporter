@@ -2,6 +2,23 @@
 
 
 
+## [2.6.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.6.1...fritzexporter-v2.6.2) (2026-04-19)
+
+
+### Bug Fixes
+
+* acknowledge CI and test improvements from [#573](https://github.com/pdreker/fritz_exporter/issues/573), [#574](https://github.com/pdreker/fritz_exporter/issues/574), [#575](https://github.com/pdreker/fritz_exporter/issues/575) ([ff6bdae](https://github.com/pdreker/fritz_exporter/commit/ff6bdae4fe3e3d07db8887c3c2794e1084f5ac07))
+* add changelog entries for bug fixes in [#573](https://github.com/pdreker/fritz_exporter/issues/573) ([04801a5](https://github.com/pdreker/fritz_exporter/commit/04801a55f6d914a314b62a9501c372434ea985c5))
+* fritz_connection_mode metric was missing the serial label ([#573](https://github.com/pdreker/fritz_exporter/issues/573)) ([3a7c5e5](https://github.com/pdreker/fritz_exporter/commit/3a7c5e5d2c7085f6b6f151e69d857e8e8170c3df))
+* fritz_connection_mode metric was missing the serial label and access_type could be None ([#573](https://github.com/pdreker/fritz_exporter/issues/573)) ([35c53a8](https://github.com/pdreker/fritz_exporter/commit/35c53a8e9ed3c970db2c5f9a68ef30e97864a85a))
+* HomeAutomation capability used incorrect 'battery' key instead of 'battery_level' ([#573](https://github.com/pdreker/fritz_exporter/issues/573)) ([423f7d1](https://github.com/pdreker/fritz_exporter/commit/423f7d170a1a67fd442dd743e3d6a7d5da378f33))
+* HomeAutomation capability was checking wrong key 'battery' instead of 'battery_level' ([#573](https://github.com/pdreker/fritz_exporter/issues/573)) ([504e687](https://github.com/pdreker/fritz_exporter/commit/504e6875b49d38001321a40300209ae0c5a21e77))
+
+
+### Documentation
+
+* add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
+
 ## [2.6.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.6.0...fritzexporter-v2.6.1) (2025-11-30)
 
 
