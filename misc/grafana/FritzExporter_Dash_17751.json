@@ -2477,7 +2477,7 @@
           "target": "alias(collectd.squirrel.fritzbox.bitrate-upstreammax,'upstream max')"
         }
       ],
-      "title": "Upload Bandwith",
+      "title": "Upload Bandwidth",
       "type": "timeseries"
     }
   ],
