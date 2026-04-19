@@ -15,6 +15,22 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [2.7.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.6.2...fritzexporter-v2.7.0) (2026-04-19)
+
+
+### Features
+
+* recover devices that were online at registration but went offline during collection ([#580](https://github.com/pdreker/fritz_exporter/issues/580)) ([9289ec6](https://github.com/pdreker/fritz_exporter/commit/9289ec66eccc215e4f91aef1051b048f25f5ee79))
+
+
+### Documentation
+
+* add Grafana dashboards JSON to source code ([#586](https://github.com/pdreker/fritz_exporter/issues/586)) ([0d318f7](https://github.com/pdreker/fritz_exporter/commit/0d318f768b23047a17d5677dc24e2a06cb801140))
+* add PR review checklist for docs, Dockerfile, and Helm chart to AGENTS.md ([#583](https://github.com/pdreker/fritz_exporter/issues/583)) ([13ea0c2](https://github.com/pdreker/fritz_exporter/commit/13ea0c284cbd3b8cd8c4d75116a225090e6e6b00))
+* expand coding.rst with comprehensive developer documentation ([#584](https://github.com/pdreker/fritz_exporter/issues/584)) ([bfa0626](https://github.com/pdreker/fritz_exporter/commit/bfa0626b49fdca03e8b6d7c3062fcd10625dca2e))
+* remove empty out-of-order 2.2.1 entry from CHANGELOG.md ([#581](https://github.com/pdreker/fritz_exporter/issues/581)) ([fb8706b](https://github.com/pdreker/fritz_exporter/commit/fb8706b25d7bd17e30e41c86baa1ded666c0bd5b))
+* update home automation metrics description in index.rst ([#585](https://github.com/pdreker/fritz_exporter/issues/585)) ([44993d2](https://github.com/pdreker/fritz_exporter/commit/44993d2dbfe9b32a384c94803b1f51014352299c))
+
 ## [2.6.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.6.0...fritzexporter-v2.6.1) (2025-11-30)
 
 
