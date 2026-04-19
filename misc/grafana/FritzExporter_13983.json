@@ -1263,7 +1263,7 @@
       "collapsed": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "_Nckqmrnk"
+        "uid": "$datasource"
       },
       "gridPos": {
         "h": 1,
