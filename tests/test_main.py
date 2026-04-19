@@ -142,9 +142,9 @@ class Test_Main:
 
     @patch("prometheus_client.core.REGISTRY.register")
     @patch("fritzexporter.__main__.start_http_server")
-    @patch("fritzexporter.fritzdevice.FritzConnection")
+    @patch("fritzexporter.__main__.FritzCollector")
     def test_startup_connection_failure_registers_device_as_offline(
-        self, mock_fc: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
+        self, mock_collector_cls: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
         monkeypatch, caplog
     ):
         monkeypatch.setattr(
@@ -159,10 +159,13 @@ class Test_Main:
 
         caplog.set_level(logging.DEBUG)
 
-        # Simulate device being unreachable at startup
-        mock_fc.side_effect = FritzConnectionException("connection refused")
+        mock_collector = MagicMock()
+        mock_collector_cls.return_value = mock_collector
 
-        main()
+        # Simulate device being unreachable at startup
+        with patch("fritzexporter.__main__.FritzDevice") as mock_device_cls:
+            mock_device_cls.side_effect = FritzConnectionException("connection refused")
+            main()
 
         # Check that the error was logged
         assert any(
@@ -170,6 +173,12 @@ class Test_Main:
             for record in caplog.records
             if record.levelno == logging.ERROR
         )
+
+        # Check that register_offline was called for both devices from validconfig.yaml
+        assert mock_collector.register_offline.call_count == 2
+        hostnames = [c.args[0] for c in mock_collector.register_offline.call_args_list]
+        assert "fritz.box" in hostnames
+        assert "repeater-wohnzimmer" in hostnames  # hostnames are lowercased by DeviceConfig
 
     @patch("prometheus_client.core.REGISTRY.register")
     @patch("fritzexporter.__main__.start_http_server")

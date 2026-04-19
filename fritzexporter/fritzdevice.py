@@ -19,8 +19,6 @@ from fritzexporter.fritzcapabilities import FritzCapabilities
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
 
-logger = logging.getLogger("fritzexporter.fritzdevice")
-
 
 FRITZ_MAX_PASSWORD_LENGTH = 32
 

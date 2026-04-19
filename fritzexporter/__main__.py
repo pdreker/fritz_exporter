@@ -115,8 +115,8 @@ def main() -> None:
         ):
             logger.exception(
                 "Failed to initialize device %s (%s), it will be reported as down",
-                dev.name,
                 dev.hostname,
+                dev.name,
             )
             fritzcollector.register_offline(dev.hostname, dev.name)
             continue
