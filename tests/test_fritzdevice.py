@@ -381,12 +381,12 @@ class TestFritzCollector:
         collector.register(device)
         metrics: list[Metric] = list(collector.collect())
 
-        # Check: fritz_device_up should be 1 for a reachable device
-        device_up_metrics = [m for m in metrics if m.name == "fritz_device_up"]
-        assert len(device_up_metrics) == 1
-        assert device_up_metrics[0].samples[0].value == 1.0
-        assert device_up_metrics[0].samples[0].labels["serial"] == "1234567890"
-        assert device_up_metrics[0].samples[0].labels["friendly_name"] == "FritzMock"
+        # Check: fritz_device_reachable should be 1 for a reachable device
+        device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
+        assert len(device_reachable_metrics) == 1
+        assert device_reachable_metrics[0].samples[0].value == 1.0
+        assert device_reachable_metrics[0].samples[0].labels["serial"] == "1234567890"
+        assert device_reachable_metrics[0].samples[0].labels["friendly_name"] == "FritzMock"
 
     def test_should_emit_device_up_0_when_device_unreachable_during_collection(
         self, mock_fritzconnection: MagicMock, caplog
@@ -408,11 +408,11 @@ class TestFritzCollector:
         # Act: collect() should not raise, but return status 0
         metrics: list[Metric] = list(collector.collect())
 
-        # Check: fritz_device_up should be 0
-        device_up_metrics = [m for m in metrics if m.name == "fritz_device_up"]
-        assert len(device_up_metrics) == 1
-        assert device_up_metrics[0].samples[0].value == 0.0
-        assert device_up_metrics[0].samples[0].labels["friendly_name"] == "FritzMock"
+        # Check: fritz_device_reachable should be 0
+        device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
+        assert len(device_reachable_metrics) == 1
+        assert device_reachable_metrics[0].samples[0].value == 0.0
+        assert device_reachable_metrics[0].samples[0].labels["friendly_name"] == "FritzMock"
 
     def test_should_skip_capability_metrics_when_device_goes_down_mid_collection(
         self, mock_fritzconnection: MagicMock, caplog
@@ -444,10 +444,10 @@ class TestFritzCollector:
         assert len(uptime_metrics) == 1
         assert len(uptime_metrics[0].samples) == 0
 
-        # fritz_device_up should be 0 (device marked unavailable after DeviceInfo failure)
-        device_up_metrics = [m for m in metrics if m.name == "fritz_device_up"]
-        assert len(device_up_metrics) == 1
-        assert device_up_metrics[0].samples[0].value == 0.0
+        # fritz_device_reachable should be 0 (device marked unavailable after DeviceInfo failure)
+        device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
+        assert len(device_reachable_metrics) == 1
+        assert device_reachable_metrics[0].samples[0].value == 0.0
 
     def test_should_report_offline_device_on_second_collection_cycle(
         self, mock_fritzconnection: MagicMock, caplog
@@ -466,21 +466,21 @@ class TestFritzCollector:
 
         # First collection: device is reachable
         metrics_round1: list[Metric] = list(collector.collect())
-        device_up_round1 = [m for m in metrics_round1 if m.name == "fritz_device_up"]
-        assert device_up_round1[0].samples[0].value == 1.0
+        device_reachable_round1 = [m for m in metrics_round1 if m.name == "fritz_device_reachable"]
+        assert device_reachable_round1[0].samples[0].value == 1.0
 
         # Second collection: device is unreachable
         fc.call_action.side_effect = FritzConnectionException("device unreachable")
         metrics_round2: list[Metric] = list(collector.collect())
-        device_up_round2 = [m for m in metrics_round2 if m.name == "fritz_device_up"]
-        assert device_up_round2[0].samples[0].value == 0.0
+        device_reachable_round2 = [m for m in metrics_round2 if m.name == "fritz_device_reachable"]
+        assert device_reachable_round2[0].samples[0].value == 0.0
 
         # Third collection: device comes back up
         fc.call_action.side_effect = call_action_mock
         fc.call_http.side_effect = call_http_mock
         metrics_round3: list[Metric] = list(collector.collect())
-        device_up_round3 = [m for m in metrics_round3 if m.name == "fritz_device_up"]
-        assert device_up_round3[0].samples[0].value == 1.0
+        device_reachable_round3 = [m for m in metrics_round3 if m.name == "fritz_device_reachable"]
+        assert device_reachable_round3[0].samples[0].value == 1.0
 
     def test_should_not_exit_when_only_offline_devices_registered(
         self, mock_fritzconnection: MagicMock, caplog
@@ -494,12 +494,12 @@ class TestFritzCollector:
         # Act: collect() should not sys.exit
         metrics: list[Metric] = list(collector.collect())
 
-        # Check: fritz_device_up = 0 for the offline device
-        device_up_metrics = [m for m in metrics if m.name == "fritz_device_up"]
-        assert len(device_up_metrics) == 1
-        assert device_up_metrics[0].samples[0].value == 0.0
-        assert device_up_metrics[0].samples[0].labels["serial"] == "n/a"
-        assert device_up_metrics[0].samples[0].labels["friendly_name"] == "OfflineDevice"
+        # Check: fritz_device_reachable = 0 for the offline device
+        device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
+        assert len(device_reachable_metrics) == 1
+        assert device_reachable_metrics[0].samples[0].value == 0.0
+        assert device_reachable_metrics[0].samples[0].labels["serial"] == "n/a"
+        assert device_reachable_metrics[0].samples[0].labels["friendly_name"] == "OfflineDevice"
 
     def test_should_not_yield_connection_mode_when_none(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare

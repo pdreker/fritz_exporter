@@ -164,8 +164,8 @@ class FritzCollector(Collector):
 
             # Yield device availability metric for all known devices
             device_up = GaugeMetricFamily(
-                "fritz_device_up",
-                "Fritz device reachability (1=up, 0=down)",
+                "fritz_device_reachable",
+                "Fritz device reachability (1=reachable, 0=unreachable)",
                 labels=["serial", "friendly_name"],
             )
             for dev in self.devices:
