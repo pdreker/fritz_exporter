@@ -2,6 +2,7 @@ import logging
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+from fritzconnection.core.exceptions import FritzConnectionException
 
 from fritzexporter.__main__ import main, parse_cmdline
 
@@ -138,6 +139,37 @@ class Test_Main:
         # Check that donation output was printed
         captured = capsys.readouterr()
         assert "Donation data for device" in captured.out
+
+    @patch("prometheus_client.core.REGISTRY.register")
+    @patch("fritzexporter.__main__.start_http_server")
+    @patch("fritzexporter.fritzdevice.FritzConnection")
+    def test_startup_connection_failure_registers_device_as_offline(
+        self, mock_fc: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
+        monkeypatch, caplog
+    ):
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "fritzexporter",
+                "--config",
+                "tests/conffiles/validconfig.yaml",
+            ],
+        )
+        monkeypatch.setenv("FRITZ_EXPORTER_UNDER_TEST", "true")
+
+        caplog.set_level(logging.DEBUG)
+
+        # Simulate device being unreachable at startup
+        mock_fc.side_effect = FritzConnectionException("connection refused")
+
+        main()
+
+        # Check that the error was logged
+        assert any(
+            "Failed to initialize device" in record.message
+            for record in caplog.records
+            if record.levelno == logging.ERROR
+        )
 
     @patch("prometheus_client.core.REGISTRY.register")
     @patch("fritzexporter.__main__.start_http_server")

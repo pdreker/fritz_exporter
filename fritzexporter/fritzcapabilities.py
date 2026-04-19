@@ -86,8 +86,16 @@ class FritzCapability(ABC):
                 device.host,
                 device.capabilities[name].present,
             )
-            if device.capabilities[name].present:
-                self._generate_metric_values(device)
+            if device.capabilities[name].present and device.available:
+                try:
+                    self._generate_metric_values(device)
+                except FritzConnectionException:
+                    logger.warning(
+                        "Device %s is unreachable, skipping %s metrics for this collection cycle",
+                        device.host,
+                        name,
+                    )
+                    device.available = False
         yield from self._get_metric_values()
 
     @abstractmethod

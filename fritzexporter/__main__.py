@@ -5,11 +5,16 @@ import os
 import sys
 from pathlib import Path
 
+from fritzconnection.core.exceptions import (  # type: ignore[import]
+    FritzAuthorizationError,
+    FritzConnectionException,
+)
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
 from fritzexporter.config import ExporterError, get_config
 from fritzexporter.data_donation import donate_data
+from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
 from . import __version__
@@ -96,11 +101,25 @@ def main() -> None:
             logger.info("Using password from password file %s", dev.password_file)
         else:
             password = dev.password if dev.password is not None else ""
-        fritz_device = FritzDevice(
-            FritzCredentials(dev.hostname, dev.username, password),
-            dev.name,
-            host_info=dev.host_info,
-        )
+
+        try:
+            fritz_device = FritzDevice(
+                FritzCredentials(dev.hostname, dev.username, password),
+                dev.name,
+                host_info=dev.host_info,
+            )
+        except (
+            FritzConnectionException,
+            FritzAuthorizationError,
+            FritzDeviceHasNoCapabilitiesError,
+        ):
+            logger.exception(
+                "Failed to initialize device %s (%s), it will be reported as down",
+                dev.name,
+                dev.hostname,
+            )
+            fritzcollector.register_offline(dev.hostname, dev.name)
+            continue
 
         if args.donate_data == "donate":
             donate_data(

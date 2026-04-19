@@ -19,6 +19,8 @@ from fritzexporter.fritzcapabilities import FritzCapabilities
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
 
+logger = logging.getLogger("fritzexporter.fritzdevice")
+
 
 FRITZ_MAX_PASSWORD_LENGTH = 32
 
@@ -36,6 +38,7 @@ class FritzDevice:
         self.model: str = "n/a"
         self.friendly_name: str = name
         self.host_info: bool = host_info
+        self.available: bool = True
 
         if len(creds.password) > FRITZ_MAX_PASSWORD_LENGTH:
             logger.warning(
@@ -102,6 +105,7 @@ class FritzDevice:
             access_type = resp.get("NewWANAccessType") or ""
         except FritzConnectionException:
             logger.warning("Failed to retrieve connection mode info from %s", self.host)
+            self.available = False
             return None
 
         if link_status == "Up" and access_type == "DSL":
@@ -125,6 +129,7 @@ class FritzDevice:
 class FritzCollector(Collector):
     def __init__(self) -> None:
         self.devices: list[FritzDevice] = []
+        self.offline_devices: list[tuple[str, str]] = []
         self.capabilities: FritzCapabilities = FritzCapabilities()  # host_info=True??? FIXME
         self._collect_lock = threading.RLock()
 
@@ -133,21 +138,47 @@ class FritzCollector(Collector):
         logger.debug("registered device %s (%s) to collector", fritzdev.host, fritzdev.model)
         self.capabilities.merge(fritzdev.capabilities)
 
+    def register_offline(self, host: str, friendly_name: str) -> None:
+        self.offline_devices.append((host, friendly_name))
+        logger.debug("registered offline device %s (%s) to collector", host, friendly_name)
+
     def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
         with self._collect_lock:
-            if not self.devices:
+            if not self.devices and not self.offline_devices:
                 logger.critical("No devices registered in collector! Exiting.")
                 sys.exit(1)
 
-            # Custom mode metric
+            # Reset availability for this collection cycle
+            for dev in self.devices:
+                dev.available = True
+
+            # Eagerly collect all metrics so we know device availability before yielding
+            collected: list[CounterMetricFamily | GaugeMetricFamily] = []
+
             for dev in self.devices:
                 mode_metric = dev.get_connection_mode()
                 if mode_metric:
-                    yield mode_metric
+                    collected.append(mode_metric)
 
             for name, capa in self.capabilities.items():
                 capa.create_metrics()
-                yield from capa.get_metrics(self.devices, name)
+                collected.extend(list(capa.get_metrics(self.devices, name)))
+
+            # Yield device availability metric for all known devices
+            device_up = GaugeMetricFamily(
+                "fritz_device_up",
+                "Fritz device reachability (1=up, 0=down)",
+                labels=["serial", "friendly_name"],
+            )
+            for dev in self.devices:
+                device_up.add_metric(
+                    [dev.serial, dev.friendly_name], 1.0 if dev.available else 0.0
+                )
+            for _host, friendly_name in self.offline_devices:
+                device_up.add_metric(["n/a", friendly_name], 0.0)
+            yield device_up
+
+            yield from collected
 
 
 # Copyright 2019-2025 Patrick Dreker <patrick@dreker.de>
