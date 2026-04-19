@@ -176,7 +176,7 @@ class Test_Main:
 
         # Check that register_offline was called for both devices from validconfig.yaml
         assert mock_collector.register_offline.call_count == 2
-        hostnames = [c.args[0] for c in mock_collector.register_offline.call_args_list]
+        hostnames = [c.args[0].host for c in mock_collector.register_offline.call_args_list]
         assert "fritz.box" in hostnames
         assert "repeater-wohnzimmer" in hostnames  # hostnames are lowercased by DeviceConfig
 

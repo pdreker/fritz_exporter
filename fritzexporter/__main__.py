@@ -102,9 +102,10 @@ def main() -> None:
         else:
             password = dev.password if dev.password is not None else ""
 
+        creds = FritzCredentials(dev.hostname, dev.username, password)
         try:
             fritz_device = FritzDevice(
-                FritzCredentials(dev.hostname, dev.username, password),
+                creds,
                 dev.name,
                 host_info=dev.host_info,
             )
@@ -118,7 +119,7 @@ def main() -> None:
                 dev.hostname,
                 dev.name,
             )
-            fritzcollector.register_offline(dev.hostname, dev.name)
+            fritzcollector.register_offline(creds, dev.name, host_info=dev.host_info)
             continue
 
         if args.donate_data == "donate":

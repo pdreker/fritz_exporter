@@ -90,7 +90,7 @@ class FritzCapability(ABC):
                 try:
                     self._generate_metric_values(device)
                 except FritzConnectionException:
-                    logger.warning(
+                    logger.exception(
                         "Device %s is unreachable, skipping %s metrics for this collection cycle",
                         device.host,
                         name,

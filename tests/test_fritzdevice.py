@@ -489,7 +489,9 @@ class TestFritzCollector:
         caplog.set_level(logging.DEBUG)
 
         collector = FritzCollector()
-        collector.register_offline("offlinehost", "OfflineDevice")
+        collector.register_offline(
+            FritzCredentials("offlinehost", "user", "pass"), "OfflineDevice"
+        )
 
         # Act: collect() should not sys.exit
         metrics: list[Metric] = list(collector.collect())
@@ -500,6 +502,38 @@ class TestFritzCollector:
         assert device_reachable_metrics[0].samples[0].value == 0.0
         assert device_reachable_metrics[0].samples[0].labels["serial"] == "n/a"
         assert device_reachable_metrics[0].samples[0].labels["friendly_name"] == "OfflineDevice"
+
+    def test_offline_device_promoted_when_it_comes_back_online(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare: device is offline at startup
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = FritzConnectionException("not reachable")
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        collector = FritzCollector()
+        creds = FritzCredentials("somehost", "someuser", "password")
+        collector.register_offline(creds, "FritzMock")
+
+        # First collect: device still offline → reachable=0, stays in offline_devices
+        metrics_round1: list[Metric] = list(collector.collect())
+        reachable_round1 = [m for m in metrics_round1 if m.name == "fritz_device_reachable"]
+        assert reachable_round1[0].samples[0].value == 0.0
+        assert len(collector.devices) == 0
+        assert len(collector.offline_devices) == 1
+
+        # Device comes back: second collect retries and promotes it
+        fc.call_action.side_effect = call_action_mock
+        fc.call_http.side_effect = call_http_mock
+        metrics_round2: list[Metric] = list(collector.collect())
+        reachable_round2 = [m for m in metrics_round2 if m.name == "fritz_device_reachable"]
+        assert reachable_round2[0].samples[0].value == 1.0
+        assert reachable_round2[0].samples[0].labels["serial"] == "1234567890"
+        assert reachable_round2[0].samples[0].labels["friendly_name"] == "FritzMock"
+        assert len(collector.devices) == 1
+        assert len(collector.offline_devices) == 0
 
     def test_should_not_yield_connection_mode_when_none(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
@@ -632,7 +666,7 @@ class TestGetConnectionMode:
         assert metric is None
         assert (
             FRITZDEVICE_LOG_SOURCE,
-            logging.WARNING,
+            logging.ERROR,
             "Failed to retrieve connection mode info from somehost",
         ) in caplog.record_tuples
 
