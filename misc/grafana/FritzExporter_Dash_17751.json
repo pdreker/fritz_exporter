@@ -2203,7 +2203,7 @@
           "target": "alias(collectd.squirrel.fritzbox.bitrate-sendrate,'upstream')"
         }
       ],
-      "title": "Download Bandwith",
+      "title": "Download Bandwidth",
       "type": "timeseries"
     },
     {
