@@ -76,9 +76,13 @@ Known Problems
 
 Grafana Dashboards
 ------------------
-
-There is a Grafana dashboard available at https://grafana.com/grafana/dashboards/13983-fritz-exporter/.
-If the host info metrics are enabled a dashboard also using those metrics is available at https://grafana.com/grafana/dashboards/17751-fritz-exporter-dash/.
+There are two Grafana dashboards available for this exporter. One (13983) is a more general one which shows the most important metrics and is available even if you do not enable the host info metrics. The other one (17751) is more detailed and requires the host info metrics to be enabled.
+Grafana dashboard ``13983`` is available at
+https://grafana.com/grafana/dashboards/13983-fritz-exporter/ and also in this repository at
+``misc/grafana/FritzExporter_13983.json``.
+If the host info metrics are enabled, dashboard ``17751`` is available at
+https://grafana.com/grafana/dashboards/17751-fritz-exporter-dash/ and also in this repository at
+``misc/grafana/FritzExporter_Dash_17751.json``.
 
 Helm Chart
 ----------
