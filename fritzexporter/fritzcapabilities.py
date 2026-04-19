@@ -1412,6 +1412,7 @@ class HomeAutomation(FritzCapability):
 
             if "content" in http_result:
                 http_data = parse_aha_device_xml(http_result["content"])
+                # AHA XML parses battery percentage under key "battery_level" (not "battery")
                 if "battery_level" in http_data:
                     self.metrics["battery_level"].add_metric(
                         [

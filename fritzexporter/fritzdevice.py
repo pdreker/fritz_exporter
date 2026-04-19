@@ -99,7 +99,7 @@ class FritzDevice:
         try:
             resp = self.fc.call_action("WANCommonInterfaceConfig", "GetCommonLinkProperties")
             link_status = resp.get("NewPhysicalLinkStatus")
-            access_type = resp.get("NewWANAccessType")
+            access_type = resp.get("NewWANAccessType") or ""
         except FritzConnectionException:
             logger.warning("Failed to retrieve connection mode info from %s", self.host)
             return None
@@ -107,7 +107,7 @@ class FritzDevice:
         if link_status == "Up" and access_type == "DSL":
             mode = 1  # DSL connection active
         elif link_status == "Down" and access_type == "X_AVM-DE_Mobile":
-            mode = 2  # DSL disconnected -> Fallback mobile conenction active
+            mode = 2  # DSL disconnected -> Fallback mobile connection active
         elif link_status == "Up" and access_type == "X_AVM-DE_Mobile":
             mode = 3  # DSL disabled, only mobile connection active
         else:
