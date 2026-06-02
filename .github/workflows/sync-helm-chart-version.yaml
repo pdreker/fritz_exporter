@@ -1,0 +1,111 @@
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+name: sync-helm-chart-version
+
+jobs:
+  sync-chart-version:
+    if: github.event.pull_request.user.login == 'release-please[bot]' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.MASTER_PUSH_TOKEN }}
+          fetch-depth: 0
+
+      - name: Sync Helm appVersion and chart version
+        id: sync
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          python3 <<'PY'
+          from __future__ import annotations
+
+          import os
+          import re
+          import subprocess
+          import tomllib
+          from pathlib import Path
+
+          chart_path = Path("helm/fritz-exporter/Chart.yaml")
+          pyproject_path = Path("pyproject.toml")
+
+          with pyproject_path.open("rb") as handle:
+            app_version = tomllib.load(handle)["tool"]["poetry"]["version"]
+
+          def parse_chart(content: str) -> tuple[int, str, int, str]:
+            version_index = -1
+            app_version_index = -1
+            version_value = ""
+            app_version_value = ""
+
+            for index, line in enumerate(content.splitlines(keepends=True)):
+              stripped = line.strip()
+              if version_index < 0 and stripped.startswith("version:"):
+                version_index = index
+                version_value = stripped.split(":", 1)[1].strip().strip("\"'")
+              if app_version_index < 0 and stripped.startswith("appVersion:"):
+                app_version_index = index
+                app_version_value = stripped.split(":", 1)[1].strip().strip("\"'")
+
+            if version_index < 0 or app_version_index < 0:
+              message = "Chart.yaml must contain both version and appVersion."
+              raise RuntimeError(message)
+
+            return version_index, version_value, app_version_index, app_version_value
+
+          def bump_patch(version: str) -> str:
+            match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+            if not match:
+              message = f"Unsupported Helm chart version format: {version}"
+              raise RuntimeError(message)
+            major, minor, patch = (int(part) for part in match.groups())
+            return f"{major}.{minor}.{patch + 1}"
+
+          head_content = chart_path.read_text(encoding="utf-8")
+          head_lines = head_content.splitlines(keepends=True)
+          version_index, head_version, app_version_index, head_app_version = parse_chart(head_content)
+
+          base_ref = os.environ["BASE_REF"]
+          base_content = subprocess.check_output(
+            ["git", "show", f"origin/{base_ref}:{chart_path.as_posix()}"],
+            text=True,
+          )
+          _, base_version, _, _ = parse_chart(base_content)
+
+          app_version_changed = False
+          if head_app_version != app_version:
+            head_lines[app_version_index] = f'appVersion: "{app_version}"\n'
+            app_version_changed = True
+
+          if app_version_changed and head_version == base_version:
+            head_lines[version_index] = f"version: {bump_patch(head_version)}\n"
+
+          chart_path.write_text("".join(head_lines), encoding="utf-8")
+          PY
+
+          if git diff --quiet -- helm/fritz-exporter/Chart.yaml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit synchronized chart changes
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add helm/fritz-exporter/Chart.yaml
+          git commit -m "build(helm): sync appVersion in release PR"
+          git push
