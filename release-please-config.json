@@ -3,7 +3,14 @@
     "packages": {
         ".": {
             "release-type": "python",
-            "package-name": "fritzexporter"
+            "package-name": "fritzexporter",
+            "extra-files": [
+                {
+                    "type": "yaml",
+                    "path": "helm/fritz-exporter/Chart.yaml",
+                    "jsonpath": "$.appVersion"
+                }
+            ]
         }
     }
 }
