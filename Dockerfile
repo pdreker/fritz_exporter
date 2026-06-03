@@ -1,18 +1,14 @@
-# Build using "poetry" in a separate build container
-# The resulting .whl file is then installed in the actual runner container
+# Build .whl in a separate build container
 FROM python:3.14.5-alpine AS build
 WORKDIR /app
 
 RUN apk add build-base libffi-dev openssl-dev rust cargo && \
-    pip install --upgrade pip && \
-    pip install poetry==1.8.2
+    pip install --upgrade pip build
 
-COPY README.md /app/
-COPY pyproject.toml /app
-COPY poetry.lock /app
+COPY README.md pyproject.toml /app/
 COPY fritzexporter /app/fritzexporter
 
-RUN poetry build
+RUN python -m build --wheel
 
 # Build the actual runner
 FROM python:3.14.5-alpine

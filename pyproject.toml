@@ -16,7 +16,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: System :: Monitoring",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     "prometheus-client>=0.6.0",
     "fritzconnection>=1.0.0",
@@ -68,7 +68,7 @@ show_missing = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py314"
 extend-exclude = [
     "tests",
     "docs",
@@ -129,7 +129,7 @@ ignore = ["E203", "COM812", "ISC001", "ANN204"]
 convention = "google"
 
 [tool.ty.environment]
-python-version = "3.11"
+python-version = "3.14"
 
 [tool.ty.rules]
 possibly-unresolved-reference = "error"
