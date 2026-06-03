@@ -183,7 +183,6 @@ class FritzCollector(Collector):
                     collected.append(mode_metric)
 
             for name, capa in self.capabilities.items():
-                capa.create_metrics()
                 collected.extend(list(capa.get_metrics(self.devices, name)))
 
             # Yield device availability metric for all known devices

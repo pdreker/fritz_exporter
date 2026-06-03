@@ -26,23 +26,17 @@ logger = logging.getLogger("fritzexporter.fritzcapability")
 
 
 class FritzCapability(ABC):
-    capabilities: ClassVar[list[type[FritzCapability]]] = []
     subclasses: ClassVar[list[type[FritzCapability]]] = []
 
     def __init__(self) -> None:
         self.present: bool = False
         self.requirements: list[tuple[str, str]] = []
         self.metrics: dict[str, CounterMetricFamily | GaugeMetricFamily] = {}
-        FritzCapability.register()
 
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
         logger.debug("Capability subclass %s registered", cls.__name__)
         FritzCapability.subclasses.append(cls)
-
-    @classmethod
-    def register(cls) -> None:
-        FritzCapability.capabilities.append(cls)
 
     def check_capability(self, device: FritzDevice) -> None:
         self.present = all(
@@ -79,6 +73,7 @@ class FritzCapability(ABC):
     def get_metrics(
         self, devices: list[FritzDevice], name: str
     ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        self.create_metrics()
         for device in devices:
             logger.debug(
                 "Fetching %s metrics for %s: %s",
