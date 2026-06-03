@@ -95,66 +95,18 @@ def sanitize_results(
         ],
         ("WANPPPConnection1", "GetUserName"): ["NewUserName"],
         ("WANPPPConnection1", "X_GetDNSServers"): ["NewDNSServers"],
-        ("WLANConfiguration1", "GetBSSID"): ["NewBSSID"],
-        ("WLANConfiguration1", "GetInfo"): ["NewBSSID", "NewSSID"],
-        ("WLANConfiguration1", "GetSSID"): ["NewSSID"],
-        ("WLANConfiguration1", "GetSecurityKeys"): [
-            "NewKeyPassphrase",
-            "NewPreSharedKey",
-            "NewWEPKey0",
-            "NewWEPKey1",
-            "NewWEPKey2",
-            "NewWEPKey3",
-        ],
-        ("WLANConfiguration1", "X_AVM-DE_GetWLANDeviceListPath"): [
-            "NewX_AVM-DE_WLANDeviceListPath"
-        ],
-        ("WLANConfiguration1", "X_AVM-DE_GetWLANHybridMode"): ["NewBSSID", "NewSSID"],
-        ("WLANConfiguration2", "GetBSSID"): ["NewBSSID"],
-        ("WLANConfiguration2", "GetInfo"): ["NewBSSID", "NewSSID"],
-        ("WLANConfiguration2", "GetSSID"): ["NewSSID"],
-        ("WLANConfiguration2", "GetSecurityKeys"): [
-            "NewKeyPassphrase",
-            "NewPreSharedKey",
-            "NewWEPKey0",
-            "NewWEPKey1",
-            "NewWEPKey2",
-            "NewWEPKey3",
-        ],
-        ("WLANConfiguration2", "X_AVM-DE_GetWLANDeviceListPath"): [
-            "NewX_AVM-DE_WLANDeviceListPath"
-        ],
-        ("WLANConfiguration2", "X_AVM-DE_GetWLANHybridMode"): ["NewBSSID", "NewSSID"],
-        ("WLANConfiguration3", "GetBSSID"): ["NewBSSID"],
-        ("WLANConfiguration3", "GetInfo"): ["NewBSSID", "NewSSID"],
-        ("WLANConfiguration3", "GetSSID"): ["NewSSID"],
-        ("WLANConfiguration3", "GetSecurityKeys"): [
-            "NewKeyPassphrase",
-            "NewPreSharedKey",
-            "NewWEPKey0",
-            "NewWEPKey1",
-            "NewWEPKey2",
-            "NewWEPKey3",
-        ],
-        ("WLANConfiguration3", "X_AVM-DE_GetWLANDeviceListPath"): [
-            "NewX_AVM-DE_WLANDeviceListPath"
-        ],
-        ("WLANConfiguration3", "X_AVM-DE_GetWLANHybridMode"): ["NewBSSID", "NewSSID"],
-        ("WLANConfiguration4", "GetBSSID"): ["NewBSSID"],
-        ("WLANConfiguration4", "GetInfo"): ["NewBSSID", "NewSSID"],
-        ("WLANConfiguration4", "GetSSID"): ["NewSSID"],
-        ("WLANConfiguration4", "GetSecurityKeys"): [
-            "NewKeyPassphrase",
-            "NewPreSharedKey",
-            "NewWEPKey0",
-            "NewWEPKey1",
-            "NewWEPKey2",
-            "NewWEPKey3",
-        ],
-        ("WLANConfiguration4", "X_AVM-DE_GetWLANDeviceListPath"): [
-            "NewX_AVM-DE_WLANDeviceListPath"
-        ],
-        ("WLANConfiguration4", "X_AVM-DE_GetWLANHybridMode"): ["NewBSSID", "NewSSID"],
+        **{
+            (f"WLANConfiguration{i}", action): fields
+            for i in range(1, 5)
+            for action, fields in [
+                ("GetBSSID", ["NewBSSID"]),
+                ("GetInfo", ["NewBSSID", "NewSSID"]),
+                ("GetSSID", ["NewSSID"]),
+                ("GetSecurityKeys", ["NewKeyPassphrase", "NewPreSharedKey", "NewWEPKey0", "NewWEPKey1", "NewWEPKey2", "NewWEPKey3"]),
+                ("X_AVM-DE_GetWLANDeviceListPath", ["NewX_AVM-DE_WLANDeviceListPath"]),
+                ("X_AVM-DE_GetWLANHybridMode", ["NewBSSID", "NewSSID"]),
+            ]
+        },
         ("X_AVM-DE_AppSetup1", "GetAppRemoteInfo"): [
             "NewExternalIPAddress",
             "NewExternalIPv6Address",
@@ -240,11 +192,11 @@ def donate_data(
     action_results = {}
     for service, actions in services.items():
         for action in actions:
-            if "Get" in action and not (
+            if action.startswith("Get") and not (
                 "ByIP" in action
                 or "ByIndex" in action
-                or "GetSpecific" in action
-                or "GetGeneric" in action
+                or action.startswith("GetSpecific")
+                or action.startswith("GetGeneric")
             ):
                 res = safe_call_action(device, service, action)
                 action_results[(service, action)] = res
