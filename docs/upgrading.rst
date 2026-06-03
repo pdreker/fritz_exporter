@@ -1,6 +1,46 @@
 Upgrade Notes (potentially breaking changes)
 ============================================
 
+v3.0.0
+------
+
+Default listen address changed
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The default value of ``listen_address`` (env: ``FRITZ_LISTEN_ADDRESS``) has
+changed from ``0.0.0.0`` to ``127.0.0.1``.
+
+**Who is affected:** deployments that rely on the old default to expose the
+exporter on all network interfaces — for example, a bare-metal install where
+Prometheus scrapes the exporter over the network without an explicit
+``listen_address`` setting.
+
+**Who is not affected:** Docker/Kubernetes deployments that publish the port
+at the container/pod level; any deployment that already sets
+``FRITZ_LISTEN_ADDRESS`` or ``listen_address`` explicitly in the config file.
+
+**What to do:** if you need the exporter to be reachable from another host,
+set ``listen_address: 0.0.0.0`` in your config file or
+``FRITZ_LISTEN_ADDRESS=0.0.0.0`` in your environment explicitly. Closes
+`#402 <https://github.com/pdreker/fritz_exporter/issues/402>`_.
+
+Home automation metric label change
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+All ``fritz_ha_*`` Prometheus metrics now include a populated ``device_id``
+label. Previously this label was always emitted as an empty string ``""`` due
+to a bug; it now carries the real ``NewDeviceId`` value from the Fritz!Box.
+
+**Impact:** Prometheus treats a changed label set as a new time series. On
+the first scrape after upgrading, all existing ``fritz_ha_*`` series will be
+replaced by new ones, causing **counter resets**. Any dashboards or alerts
+that filtered on ``{device_id=""}`` will stop matching.
+
+**What to do:** update dashboards and alert rules to either remove the
+``device_id`` filter or match the real device ID value. Counter-based panels
+may show a reset spike on the first scrape; this is expected and will
+stabilise on the next collection cycle.
+
 v2.0.0
 ------
 

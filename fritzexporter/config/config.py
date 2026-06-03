@@ -102,9 +102,7 @@ class ExporterConfig:
         default="INFO", validator=validators.in_(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
     )
     devices: list[DeviceConfig] = field(factory=list)
-    # TODO(pdreker): Don't bind to 0.0.0.0 by default
-    # https://github.com/pdreker/fritz_exporter/issues/402
-    listen_address: str = field(default="0.0.0.0")  # noqa: S104
+    listen_address: str = field(default="127.0.0.1")
 
     @devices.validator  # ty: ignore[unresolved-attribute]
     def check_devices(self, _: attrs.Attribute, value: list[DeviceConfig]) -> None:
@@ -132,16 +130,14 @@ class ExporterConfig:
         devices: list[DeviceConfig] = [
             DeviceConfig.from_config(dev) for dev in config.get("devices", [])
         ]
-        # TODO(pdreker): Don't bind to 0.0.0.0 by default
-        # https://github.com/pdreker/fritz_exporter/issues/402
-        listen_address = config.get("listen_address", "0.0.0.0")  # noqa: S104
+        listen_address = config.get("listen_address", "127.0.0.1")
 
         if listen_address in ["0.0.0.0", "::"]:  # noqa: S104
-            logger.warning("Binding to all interfaces with listen_address=%s", listen_address)
-            logger.warning("Future versions of FritzExporter will switch to a more secure default.")
             logger.warning(
-                "Please consider setting FRITZ_LISTEN_ADDRESS or using listen_address in config"
-                "file to a specific address."
+                "Binding to all interfaces (listen_address=%s). "
+                "Note: the default changed to 127.0.0.1 in v3.0.0 — "
+                "set listen_address explicitly if binding to all interfaces is intentional.",
+                listen_address,
             )
         return cls(
             exporter_port=exporter_port,
