@@ -1,8 +1,8 @@
 import argparse
-import asyncio
 import logging
 import os
 import sys
+import threading
 from pathlib import Path
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
@@ -138,15 +138,11 @@ def main() -> None:
     logger.info("Starting listener at %s:%d", config.listen_address, config.exporter_port)
     start_http_server(int(config.exporter_port), str(config.listen_address))
 
-    logger.info("Entering async main loop - exporter is ready")
-    loop = asyncio.new_event_loop()
+    logger.info("Exporter is ready")
 
-    # Avoid infinite loop if running tests
+    # Avoid blocking forever when running tests
     if not os.getenv("FRITZ_EXPORTER_UNDER_TEST"):
-        try:
-            loop.run_forever()
-        finally:
-            loop.close()
+        threading.Event().wait()
 
 
 if __name__ == "__main__":
