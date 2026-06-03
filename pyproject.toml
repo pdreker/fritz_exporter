@@ -1,9 +1,9 @@
-[tool.poetry]
+[project]
 name = "fritz-exporter"
 version = "2.6.2"
 description = "Prometheus exporter for AVM Fritz! Devices"
-authors = ["Patrick Dreker <patrick@dreker.de>"]
-license = "Apache 2.0"
+authors = [{name = "Patrick Dreker", email = "patrick@dreker.de"}]
+license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/pdreker/fritz_exporter"
 repository = "https://github.com/pdreker/fritz_exporter"
@@ -14,123 +14,123 @@ classifiers = [
     "Environment :: Console",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
-    "Topic :: System :: Monitoring"
+    "Topic :: System :: Monitoring",
 ]
-include = [ "LICENSE.md" ]
-packages = [{include = "fritzexporter"}]
+requires-python = ">=3.14"
+dependencies = [
+    "prometheus-client>=0.6.0",
+    "fritzconnection>=1.0.0",
+    "pyyaml",
+    "requests",
+    "attrs>=22.2,<27.0",
+    "defusedxml>=0.7.1,<0.8",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-prometheus-client = ">=0.6.0"
-fritzconnection = ">=1.0.0"
-pyyaml = "*"
-requests = "*"
-attrs = ">=22.2,<27.0"
-defusedxml = "^0.7.1"
+[project.urls]
+Homepage = "https://github.com/pdreker/fritz_exporter"
+Repository = "https://github.com/pdreker/fritz_exporter"
+Documentation = "https://fritz-exporter.readthedocs.io"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "*"
-pytest-mock = "*"
-types-pyyaml = "*"
-types-requests = "*"
-mypy = ">=0.971,<2.2"
-coverage = ">=6.4.4,<8.0.0"
-pytest-cov = ">=3,<8"
-ruff = ">=0.1.7,<0.16.0"
-
-[tool.poetry.scripts]
+[project.scripts]
 fritzexporter = "fritzexporter.__main__:main"
 
-[tool.pytest.ini_options]
-minversion = "6.0"
-addopts = "--cov-branch --cov . --cov-report xml --cov-config .coveragerc"
-testpaths = [
-    "tests",
+[dependency-groups]
+dev = [{include-group = "lint"}, {include-group = "test"}]
+lint = ["ruff>=0.1.7", "ty"]
+test = [
+    "pytest",
+    "pytest-mock",
+    "pytest-cov",
+    "coverage",
+    "types-pyyaml",
+    "types-requests",
 ]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fritzexporter"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov-branch --cov=fritzexporter --cov-report=xml"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py314"
 extend-exclude = [
     "tests",
     "docs",
 ]
 
 [tool.ruff.lint]
-# other rules:
-# * "DJ" for Django
-# * "PYI" for type stubs etc.
-# * "PD" for PandasVet
-# * "NPY" for NumPy
-
 select = [
     "E", "W", # PyCodeStyle
     "F", # PyFlakes
-    "C90", # McCabe (Function Complexity
+    "C90", # McCabe (Function Complexity)
     "I", # ISort
     "N", # PEP8 Naming Conventions
     # "D", # PyDocStyle
     "UP", # pyupgrade
-    "YTT", # flake8-2020 ('Yield from' etc.)
-    "ANN", # flake8-annotations (missing type annotations)
-    "ASYNC", # flake8-async (various async issues)
-    "S", # flake8-bandit (security issues)
+    "YTT", # flake8-2020
+    "ANN", # flake8-annotations
+    "ASYNC", # flake8-async
+    "S", # flake8-bandit
     "BLE", # blind exceptions
-    "FBT", # boolean traps (Anti-Pattern, Google it.)
-    "B", # bugbear (various anti-patterns)
-    "A", # flake8-builtins (shadowing builtins)
-    "COM", # flake8-commas (comma placement at line-end)
-    "C4", # flake8-comprehensions (comprehension issues like unnecessary list comprehensions etc.)
-    "DTZ", # avoid usage of naive datetime objects
-    "T10", # watch for Debugger imports
-    "EM", # ensure error messages are not formatted as f-strings and similar
-    "FA", # flake8-future-annotations (ensure type hint annotation use mnodern syntax)
+    "FBT", # boolean traps
+    "B", # bugbear
+    "A", # flake8-builtins
+    "COM", # flake8-commas
+    "C4", # flake8-comprehensions
+    "DTZ", # naive datetime objects
+    "T10", # debugger imports
+    "EM", # error message formatting
+    "FA", # future annotations
     "ISC", # implicit string concatenation
-    "G", # flake8-logging-format (ensure logging format strings are valid)
-    "INP", # do not use implicit namspace packages
-    "PIE", # various anti-patterns and misfeatures
-    "T20", # watch for print() calls
-    "PT", # pytest style issues
-    "Q", # quotes (ensure consistent usage of single/double quotes)
-    "RSE", # some "raise" syntax issues
-    "RET", # return values anti-patterns
-    "SLF", # flake8-self (do not access "_private" attributes from outside)
-    "SLOT", # flake8-slots (ensure usage of __slots__)
-    "SIM", # flake8-simplify (simplify various constructs)
-    "INT", # gettext issues (format strings etc.)
-    "ARG", # disallow unused arguments
-    "PTH", # use pathlib instead of os.path
-    "TD", # enforce some syntax on TODO comments
-    "FIX", # highlight TODO, FIXME, XXX etc.
-    "PGH", # pygrep-hooks (policing "noqa" and similar)
-    "PL", # PyLint (various issues)
-    "TRY", # try/except/else/finally anti-patterns (try.ceratops)
-    "FLY", # join vs. f-strings
-    "PERF", # various performance issues
-    "FURB", # modernize various constructs
-    "LOG", # logging issues
-    "RUF", # ruff (various issues)
+    "G", # logging format
+    "INP", # implicit namespace packages
+    "PIE", # various anti-patterns
+    "T20", # print() calls
+    "PT", # pytest style
+    "Q", # quotes
+    "RSE", # raise syntax
+    "RET", # return values
+    "SLF", # private attribute access
+    "SLOT", # __slots__
+    "SIM", # simplify
+    "INT", # gettext
+    "ARG", # unused arguments
+    "PTH", # pathlib
+    "TD", # TODO comments
+    "FIX", # FIXME/XXX
+    "PGH", # pygrep-hooks
+    "PL", # PyLint
+    "TRY", # try/except anti-patterns
+    "FLY", # join vs f-strings
+    "PERF", # performance
+    "FURB", # modernize
+    "LOG", # logging
+    "RUF", # ruff
 ]
-
-ignore = ['E203', 'COM812', 'ISC001', 'ANN101', 'ANN102', 'ANN204']
+ignore = ["E203", "COM812", "ISC001", "ANN204"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.mypy]
-exclude = [
-    '^tests/',
-    '^docs/',
-]
+[tool.ty.environment]
+python-version = "3.14"
 
-[[tool.mypy.overrides]]
-module = "fritzconnection.*"
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = "defusedxml.*"
-ignore_missing_imports = true
+[tool.ty.rules]
+possibly-unresolved-reference = "error"
+unused-ignore-comment = "warn"

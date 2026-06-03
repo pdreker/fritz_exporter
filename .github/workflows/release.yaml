@@ -60,14 +60,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
         with:
-          python-version: ${{ vars.PYTHON_VERSION }}
-      - name: Setup poetry
-        uses: abatilo/actions-poetry@v4
-        with:
-          poetry-version: ${{ vars.POETRY_VERSION }}
-      - name: setup poetry
-        run: poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
-      - name: build and publish to PyPI
-        run: poetry --build --no-interaction publish
+          python-version: "3.14"
+      - name: Build and publish to PyPI
+        run: uv build && uv publish --token ${{ secrets.PYPI_TOKEN }}
