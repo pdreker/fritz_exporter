@@ -624,14 +624,15 @@ class WanCommonInterfaceDataPackets(FritzCapability):
 
 
 class WlanConfigurationInfo(FritzCapability):
+    WIFI_NAMES: ClassVar[list[str]] = ["2.4GHz", "5GHz", "Guest", "WLAN4"]
+
     def __init__(self) -> None:
         super().__init__()
-        self.wifi_type = ["2.4GHz", "5GHz", "Guest", "WLAN4"]
-        self.wifi_present = [False, False, False, False]
+        self.wifi_present: list[bool] = [False] * len(self.WIFI_NAMES)
 
     def check_capability(self, device: FritzDevice) -> None:
-        for wlan in range(len(self.wifi_present)):
-            service = f"WLANConfiguration{wlan + 1}"
+        for index in range(len(self.WIFI_NAMES)):
+            service = f"WLANConfiguration{index + 1}"
             requirements = [
                 (service, "GetInfo"),
                 (service, "GetTotalAssociations"),
@@ -640,18 +641,18 @@ class WlanConfigurationInfo(FritzCapability):
             logger.debug(
                 "Capability %s checking %s on %s", type(self).__name__, service, device.host
             )
-            self.wifi_present[wlan] = all(
+            self.wifi_present[index] = all(
                 (service in device.fc.services) and (action in device.fc.services[service].actions)
                 for (service, action) in requirements
             )
             logger.debug(
                 "Capability %s in WLAN %d set to %s on device %s",
                 type(self).__name__,
-                wlan + 1,
-                self.wifi_present[wlan],
+                index + 1,
+                self.wifi_present[index],
                 device.host,
             )
-            if self.wifi_present[wlan]:
+            if self.wifi_present[index]:
                 for svc, action in requirements:
                     try:
                         device.fc.call_action(svc, action)
@@ -667,7 +668,7 @@ class WlanConfigurationInfo(FritzCapability):
                             action,
                             str(e),
                         )
-                        self.wifi_present[wlan] = False
+                        self.wifi_present[index] = False
         self.present = any(self.wifi_present)
 
     def create_metrics(self) -> None:
@@ -733,14 +734,15 @@ class WlanConfigurationInfo(FritzCapability):
             device.host,
             self.__class__.__name__,
         )
-        for index, wlan in enumerate(cast(WlanConfigurationInfo, device.capabilities[self.__class__.__name__]).wifi_present):
+        device_wlan_cap = cast(WlanConfigurationInfo, device.capabilities[self.__class__.__name__])
+        for index, wlan_present in enumerate(device_wlan_cap.wifi_present):
             logger.debug(
                 "WLANConfigurationInfo._generateMetricValues checking WLAN %s (enabled: %s) on %s",
                 index,
-                wlan,
+                wlan_present,
                 device.host,
             )
-            if wlan:
+            if wlan_present:
                 logger.debug(
                     "WLANCapability._generateMetricValues fetching metrics for %s: %s",
                     device.host,
@@ -757,7 +759,7 @@ class WlanConfigurationInfo(FritzCapability):
                         wlan_result["NewStandard"],
                         wlan_result["NewSSID"],
                         str(index + 1),
-                        self.wifi_type[index],
+                        self.WIFI_NAMES[index],
                     ],
                     wlan_status,
                 )
@@ -769,7 +771,7 @@ class WlanConfigurationInfo(FritzCapability):
                         wlan_result["NewStandard"],
                         wlan_result["NewSSID"],
                         str(index + 1),
-                        self.wifi_type[index],
+                        self.WIFI_NAMES[index],
                     ],
                     wlan_result["NewChannel"],
                 )
@@ -785,7 +787,7 @@ class WlanConfigurationInfo(FritzCapability):
                         wlan_result["NewStandard"],
                         wlan_result["NewSSID"],
                         str(index + 1),
-                        self.wifi_type[index],
+                        self.WIFI_NAMES[index],
                     ],
                     assoc_results["NewTotalAssociations"],
                 )
@@ -802,7 +804,7 @@ class WlanConfigurationInfo(FritzCapability):
                         wlan_result["NewSSID"],
                         "rx",
                         str(index + 1),
-                        self.wifi_type[index],
+                        self.WIFI_NAMES[index],
                     ],
                     packet_stats_result["NewTotalPacketsReceived"],
                 )
@@ -815,7 +817,7 @@ class WlanConfigurationInfo(FritzCapability):
                         wlan_result["NewSSID"],
                         "tx",
                         str(index + 1),
-                        self.wifi_type[index],
+                        self.WIFI_NAMES[index],
                     ],
                     packet_stats_result["NewTotalPacketsSent"],
                 )
