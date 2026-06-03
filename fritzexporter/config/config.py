@@ -112,7 +112,7 @@ class ExporterConfig:
     # https://github.com/pdreker/fritz_exporter/issues/402
     listen_address: str = field(default="0.0.0.0")  # noqa: S104
 
-    @devices.validator
+    @devices.validator  # ty: ignore[unresolved-attribute]
     def check_devices(self, _: attrs.Attribute, value: list[DeviceConfig]) -> None:
         if value in [None, []]:
             logger.exception("No devices found in config.")
@@ -122,7 +122,7 @@ class ExporterConfig:
         if len(devicenames) != len(set(devicenames)):
             logger.warning("Device names are not unique")
 
-    @listen_address.validator
+    @listen_address.validator  # ty: ignore[unresolved-attribute]
     def check_listen_address(self, _: attrs.Attribute, value: str) -> None:
         _: ipaddress.IPv4Address | ipaddress.IPv6Address = ipaddress.ip_address(value)
 
@@ -166,7 +166,7 @@ class DeviceConfig:
     name: str = ""
     host_info: bool = field(default=False, converter=converters.to_bool)
 
-    @password.validator
+    @password.validator  # ty: ignore[unresolved-attribute]
     def check_password(self, _: attrs.Attribute, value: str | None) -> None:
         if value is not None and len(value) > FRITZ_MAX_PASSWORD_LENGTH:
             logger.exception(
@@ -175,7 +175,7 @@ class DeviceConfig:
             )
             raise FritzPasswordTooLongError
 
-    @password_file.validator
+    @password_file.validator  # ty: ignore[unresolved-attribute]
     def check_password_file(self, _: attrs.Attribute, value: str | None) -> None:
         if value is not None and not Path(value).is_file():
             logger.exception("Password file does not exist!")

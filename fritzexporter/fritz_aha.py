@@ -1,9 +1,11 @@
+from xml.etree.ElementTree import Element
+
 from defusedxml import ElementTree
 
 
 def parse_aha_device_xml(deviceinfo: str) -> dict[str, str]:
     try:
-        device: ElementTree = ElementTree.fromstring(deviceinfo)
+        device: Element = ElementTree.fromstring(deviceinfo)
 
         battery_level = device.find("battery")
         battery_low = device.find("batterylow")
@@ -11,10 +13,10 @@ def parse_aha_device_xml(deviceinfo: str) -> dict[str, str]:
         result = {}
 
         if battery_level is not None:
-            result["battery_level"] = battery_level.text
+            result["battery_level"] = battery_level.text or ""
 
         if battery_low is not None:
-            result["battery_low"] = battery_low.text
+            result["battery_low"] = battery_low.text or ""
 
     except ElementTree.ParseError:
         return {}

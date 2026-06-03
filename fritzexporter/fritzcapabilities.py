@@ -4,7 +4,7 @@ import collections
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Iterator
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
@@ -738,7 +738,7 @@ class WlanConfigurationInfo(FritzCapability):
             device.host,
             self.__class__.__name__,
         )
-        for index, wlan in enumerate(device.capabilities[self.__class__.__name__].wifi_present):
+        for index, wlan in enumerate(cast(WlanConfigurationInfo, device.capabilities[self.__class__.__name__]).wifi_present):
             logger.debug(
                 "WLANConfigurationInfo._generateMetricValues checking WLAN %s (enabled: %s) on %s",
                 index,
