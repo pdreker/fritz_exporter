@@ -1,7 +1,7 @@
 from importlib import metadata
 
 try:
-    __version__ = metadata.version(__package__)
+    __version__ = metadata.version(__package__ or "")
 except metadata.PackageNotFoundError:
     __version__ = "develop"
 finally:
