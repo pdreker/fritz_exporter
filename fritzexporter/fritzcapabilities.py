@@ -1229,12 +1229,13 @@ class HomeAutomation(FritzCapability):
                 break
 
             ain = ha_result["NewAIN"]
+            device_id = str(ha_result["NewDeviceId"])
             device_name = ha_result["NewDeviceName"]
             manufacturer = ha_result["NewManufacturer"]
             productname = ha_result["NewProductName"]
 
             self.metrics["devicepresent"].add_metric(
-                [device.serial, device.friendly_name, ain, device_name, manufacturer, productname],
+                [device.serial, device.friendly_name, ain, device_name, device_id, manufacturer, productname],
                 device_present_map[ha_result["NewPresent"]],
             )
 
@@ -1248,6 +1249,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1259,6 +1261,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1275,6 +1278,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1286,6 +1290,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1302,6 +1307,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1313,6 +1319,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1324,6 +1331,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1337,6 +1345,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1348,6 +1357,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1359,6 +1369,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1370,6 +1381,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1381,6 +1393,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1392,6 +1405,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
@@ -1403,6 +1417,7 @@ class HomeAutomation(FritzCapability):
                         device.friendly_name,
                         ain,
                         device_name,
+                        device_id,
                         manufacturer,
                         productname,
                     ],
