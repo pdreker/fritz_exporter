@@ -52,7 +52,7 @@ class DeviceConfig:
 
 **ruff** is the linter. Run it with:
 ```bash
-poetry run ruff check fritzexporter/
+uv run ruff check fritzexporter/
 ```
 
 Key configuration (see `pyproject.toml` `[tool.ruff]`):
@@ -83,7 +83,7 @@ Key configuration (see `pyproject.toml` `[tool.ruff]`):
 
 Tests use **pytest**. Run with:
 ```bash
-poetry run pytest
+uv run pytest
 ```
 
 - Test files are in the `tests/` directory.
@@ -166,10 +166,21 @@ fritzexporter/
 
 ## Dependency Management
 
-- Dependencies are managed with **Poetry** (`pyproject.toml`, `poetry.lock`).
-- Install all dependencies: `poetry install`
-- Add a dependency: `poetry add <package>`
-- Do not update `poetry.lock` manually.
+- Dependencies are managed with **uv** (`pyproject.toml`, `uv.lock`).
+- Install all dependencies: `uv sync`
+- Add a dependency: `uv add <package>`
+- Remove a dependency: `uv remove <package>`
+- Do not update `uv.lock` manually.
+
+---
+
+## Branching and Pull Requests
+
+- **`main` is a protected branch. Never commit directly to `main`.**
+- All changes must go through a feature branch and a pull request, regardless of how small.
+- Branch naming convention: `<type>/<short-description>` (e.g. `fix/logging-cleanup`, `feat/new-capability`, `docs/update-readme`).
+- Use conventional commit messages (see below) on every commit.
+- Run `uv run pytest` and `uv run ruff check fritzexporter/` before pushing — CI will reject failures.
 
 ---
 
