@@ -41,14 +41,8 @@ def _read_config_from_env() -> dict:
     if "FRITZ_USERNAME" not in os.environ or all(
         required not in os.environ for required in ["FRITZ_PASSWORD", "FRITZ_PASSWORD_FILE"]
     ):
-        logger.critical(
-            "Required env variables missing "
-            "(FRITZ_USERNAME, FRITZ_PASSWORD or FRITZ_PASSWORD_FILE)!"
-        )
-        msg = (
-            "Required env variables missing "
-            "(FRITZ_USERNAME, FRITZ_PASSWORD or FRITZ_PASSWORD_FILE)!"
-        )
+        msg = "Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD or FRITZ_PASSWORD_FILE)!"
+        logger.critical(msg)
         raise ConfigError(msg)
 
     listen_address = os.getenv("FRITZ_LISTEN_ADDRESS")
@@ -115,8 +109,8 @@ class ExporterConfig:
     @devices.validator  # ty: ignore[unresolved-attribute]
     def check_devices(self, _: attrs.Attribute, value: list[DeviceConfig]) -> None:
         if value in [None, []]:
-            logger.exception("No devices found in config.")
             msg = "No devices found in config."
+            logger.error(msg)
             raise NoDevicesFoundError(msg)
         devicenames = [dev.name for dev in value]
         if len(devicenames) != len(set(devicenames)):
@@ -124,13 +118,13 @@ class ExporterConfig:
 
     @listen_address.validator  # ty: ignore[unresolved-attribute]
     def check_listen_address(self, _: attrs.Attribute, value: str) -> None:
-        _: ipaddress.IPv4Address | ipaddress.IPv6Address = ipaddress.ip_address(value)
+        ipaddress.ip_address(value)
 
     @classmethod
     def from_config(cls, config: dict) -> ExporterConfig:
         if config is None:
-            logger.exception("No config found (check Env vars or config file).")
             msg = "No config found (check Env vars or config file)."
+            logger.error(msg)
             raise EmptyConfigError(msg)
 
         exporter_port = config.get("exporter_port", 9787)
@@ -169,7 +163,7 @@ class DeviceConfig:
     @password.validator  # ty: ignore[unresolved-attribute]
     def check_password(self, _: attrs.Attribute, value: str | None) -> None:
         if value is not None and len(value) > FRITZ_MAX_PASSWORD_LENGTH:
-            logger.exception(
+            logger.error(
                 "Password is longer than 32 characters! "
                 "Login may not succeed, please see documentation!"
             )
@@ -178,7 +172,7 @@ class DeviceConfig:
     @password_file.validator  # ty: ignore[unresolved-attribute]
     def check_password_file(self, _: attrs.Attribute, value: str | None) -> None:
         if value is not None and not Path(value).is_file():
-            logger.exception("Password file does not exist!")
+            logger.error("Password file does not exist!")
             raise FritzPasswordFileDoesNotExistError
 
     @classmethod
