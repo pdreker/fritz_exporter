@@ -1,5 +1,11 @@
 # Fritz! exporter for prometheus
 
+> **⚠️ v3.0.0 breaking change — action may be required**
+> The default listen address has changed from `0.0.0.0` to `127.0.0.1`.
+> If Prometheus scrapes this exporter over the network and you have not set `listen_address` / `FRITZ_LISTEN_ADDRESS` explicitly, the exporter will no longer be reachable after upgrading.
+> Set `listen_address: 0.0.0.0` in your config or `FRITZ_LISTEN_ADDRESS=0.0.0.0` in your environment to restore the old behaviour.
+> See the [upgrade notes](https://fritz-exporter.readthedocs.io/en/latest/upgrading.html) for full details including the home automation metric label change.
+
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=coverage)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter)
 
 ![ReadTheDocs](https://readthedocs.org/projects/docs/badge/?version=latest) ![Dependabot](https://img.shields.io/badge/dependabot-025E8C?style=flat&logo=dependabot&logoColor=white) ![Tests](https://img.shields.io/github/actions/workflow/status/pdreker/fritz_exporter/run-tests.yaml?label=Tests) ![Build](https://img.shields.io/github/actions/workflow/status/pdreker/fritz_exporter/build-trunk.yaml?branch=main)
