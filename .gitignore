@@ -3,6 +3,9 @@ fritz-mixin/vendor/**
 requirements.txt
 .DS_Store
 
+# Claude Code local settings (personal allowlists etc.)
+.claude/settings.local.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

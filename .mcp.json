@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "sonar",
+      "args": [
+        "run",
+        "mcp",
+        "--project",
+        "pdreker_fritz_exporter"
+      ]
+    }
+  }
+}
