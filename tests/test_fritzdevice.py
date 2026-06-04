@@ -255,7 +255,7 @@ class TestFritzCollector:
             "HomeAutomation",
         ]
 
-        assert list(collector.capabilities.capabilities.keys()) == all_capas
+        assert list(collector._capability_instances.capabilities.keys()) == all_capas
 
     def test_should_register_device_to_collector(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare

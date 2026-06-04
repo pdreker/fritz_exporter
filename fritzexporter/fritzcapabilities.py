@@ -129,12 +129,6 @@ class FritzCapabilities:
     def items(self) -> collections.abc.ItemsView[str, FritzCapability]:
         return self.capabilities.items()
 
-    def merge(self, other_caps: FritzCapabilities) -> None:
-        for cap in self.capabilities:
-            self.capabilities[cap].present = (
-                self.capabilities[cap].present or other_caps.capabilities[cap].present
-            )
-
     def empty(self) -> bool:
         return not any(cap.present for cap in self.capabilities.values())
 

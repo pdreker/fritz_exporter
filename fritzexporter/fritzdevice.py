@@ -128,13 +128,15 @@ class FritzCollector(Collector):
     def __init__(self) -> None:
         self.devices: list[FritzDevice] = []
         self.offline_devices: list[tuple[FritzCredentials, str, bool]] = []
-        self.capabilities: FritzCapabilities = FritzCapabilities()  # host_info=True??? FIXME
+        # One shared instance per capability class, used to drive the scrape loop and
+        # accumulate metrics across all devices. Distinct from per-device capabilities,
+        # which are the authority on what each device actually supports.
+        self._capability_instances: FritzCapabilities = FritzCapabilities()
         self._collect_lock = threading.RLock()
 
     def register(self, fritzdev: FritzDevice) -> None:
         self.devices.append(fritzdev)
         logger.debug("registered device %s (%s) to collector", fritzdev.host, fritzdev.model)
-        self.capabilities.merge(fritzdev.capabilities)
 
     def register_offline(
         self, creds: FritzCredentials, friendly_name: str, *, host_info: bool = False
@@ -182,7 +184,7 @@ class FritzCollector(Collector):
                 if mode_metric:
                     collected.append(mode_metric)
 
-            for name, capa in self.capabilities.items():
+            for name, capa in self._capability_instances.items():
                 collected.extend(list(capa.get_metrics(self.devices, name)))
 
             # Yield device availability metric for all known devices
