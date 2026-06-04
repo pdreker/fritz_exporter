@@ -12,7 +12,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
-from fritzexporter.config import ExporterError, get_config
+from fritzexporter.config import DeviceConfig, ExporterError, get_config
 from fritzexporter.data_donation import donate_data
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
@@ -69,6 +69,39 @@ def parse_cmdline() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _resolve_password(dev: DeviceConfig) -> str:
+    if dev.password_file is not None:
+        password = Path(dev.password_file).read_text().strip()
+        logger.info("Using password from password file %s", dev.password_file)
+    else:
+        password = dev.password if dev.password is not None else ""
+    return password
+
+
+def _register_device(
+    dev: DeviceConfig, args: argparse.Namespace, fritzcollector: FritzCollector
+) -> None:
+    password = _resolve_password(dev)
+    creds = FritzCredentials(dev.hostname, dev.username, password)
+    try:
+        fritz_device = FritzDevice(creds, dev.name, host_info=dev.host_info)
+    except (FritzConnectionException, FritzAuthorizationError, FritzDeviceHasNoCapabilitiesError):
+        logger.exception(
+            "Failed to initialize device %s (%s), it will be reported as down",
+            dev.hostname,
+            dev.name,
+        )
+        fritzcollector.register_offline(creds, dev.name, host_info=dev.host_info)
+        return
+
+    if args.donate_data == "donate":
+        donate_data(fritz_device, upload=args.upload_data == "upload", sanitation=args.sanitize)
+        sys.exit(0)
+    else:
+        logger.info("registering %s to collector", dev.hostname)
+        fritzcollector.register(fritz_device)
+
+
 def main() -> None:
     fritzcollector = FritzCollector()
 
@@ -95,43 +128,7 @@ def main() -> None:
         log.setLevel(log_level)
 
     for dev in config.devices:
-        if dev.password_file is not None:
-            # read password from password file, strip to get rid of newlines
-            password = Path(dev.password_file).read_text().strip()
-            logger.info("Using password from password file %s", dev.password_file)
-        else:
-            password = dev.password if dev.password is not None else ""
-
-        creds = FritzCredentials(dev.hostname, dev.username, password)
-        try:
-            fritz_device = FritzDevice(
-                creds,
-                dev.name,
-                host_info=dev.host_info,
-            )
-        except (
-            FritzConnectionException,
-            FritzAuthorizationError,
-            FritzDeviceHasNoCapabilitiesError,
-        ):
-            logger.exception(
-                "Failed to initialize device %s (%s), it will be reported as down",
-                dev.hostname,
-                dev.name,
-            )
-            fritzcollector.register_offline(creds, dev.name, host_info=dev.host_info)
-            continue
-
-        if args.donate_data == "donate":
-            donate_data(
-                fritz_device,
-                upload=args.upload_data == "upload",
-                sanitation=args.sanitize,
-            )
-            sys.exit(0)
-        else:
-            logger.info("registering %s to collector", dev.hostname)
-            fritzcollector.register(fritz_device)
+        _register_device(dev, args, fritzcollector)
 
     REGISTRY.register(fritzcollector)
 

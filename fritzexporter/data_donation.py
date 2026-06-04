@@ -19,6 +19,91 @@ from .fritzdevice import FritzDevice
 
 logger = logging.getLogger("fritzexporter.donate_data")
 
+_SANITIZED = "<SANITIZED>"
+
+_SANITIZATION_BLACKLIST: dict[tuple[str, str], list[str]] = {
+    ("DeviceConfig1", "GetPersistentData"): ["NewPersistentData"],
+    ("DeviceConfig1", "X_AVM-DE_GetConfigFile"): ["NewConfigFile"],
+    ("DeviceInfo1", "GetDeviceLog"): ["NewDeviceLog"],
+    ("DeviceConfig1", "X_AVM-DE_GetSupportDataInfo"): ["NewX_AVM-DE_SupportDataID"],
+    ("DeviceInfo1", "GetInfo"): ["NewDeviceLog", "NewProvisioningCode", "NewSerialNumber"],
+    ("DeviceInfo1", "GetSecurityPort"): ["NewSecurityPort"],
+    ("Hosts1", "X_AVM-DE_GetHostListPath"): ["NewX_AVM-DE_HostListPath"],
+    ("Hosts1", "X_AVM-DE_GetMeshListPath"): ["NewX_AVM-DE_MeshListPath"],
+    ("LANConfigSecurity1", "X_AVM-DE_GetCurrentUser"): [
+        "NewX_AVM-DE_CurrentUserRights",
+        "NewX_AVM-DE_CurrentUsername",
+    ],
+    ("LANConfigSecurity1", "X_AVM-DE_GetUserList"): ["NewX_AVM-DE_UserList"],
+    ("LANEthernetInterfaceConfig1", "GetInfo"): ["NewMACAddress"],
+    ("LANHostConfigManagement1", "GetAddressRange"): ["NewMaxAddress", "NewMinAddress"],
+    ("LANHostConfigManagement1", "GetDNSServers"): ["NewDNSServers"],
+    ("LANHostConfigManagement1", "GetIPRoutersList"): ["NewIPRouters"],
+    ("LANHostConfigManagement1", "GetInfo"): [
+        "NewDNSServers",
+        "NewIPRouters",
+        "NewMaxAddress",
+        "NewMinAddress",
+    ],
+    ("ManagementServer1", "GetInfo"): ["NewUsername", "NewConnectionRequestURL"],
+    ("Time1", "GetInfo"): ["NewNTPServer1", "NewNTPServer2"],
+    ("WANCommonIFC1", "GetAddonInfos"): [
+        "NewDNSServer1",
+        "NewDNSServer2",
+        "NewVoipDNSServer1",
+        "NewVoipDNSServer2",
+    ],
+    ("WANIPConn1", "GetExternalIPAddress"): ["NewExternalIPAddress"],
+    ("WANIPConn1", "X_AVM_DE_GetDNSServer"): ["NewIPv4DNSServer1", "NewIPv4DNSServer2"],
+    ("WANIPConn1", "X_AVM_DE_GetExternalIPv6Address"): ["NewExternalIPv6Address"],
+    ("WANIPConn1", "X_AVM_DE_GetIPv6DNSServer"): ["NewIPv6DNSServer1", "NewIPv6DNSServer2"],
+    ("WANIPConn1", "X_AVM_DE_GetIPv6Prefix"): ["NewIPv6Prefix"],
+    ("WANIPConnection1", "GetExternalIPAddress"): ["NewExternalIPAddress"],
+    ("WANIPConnection1", "GetInfo"): ["NewDNSServers", "NewMACAddress", "NewExternalIPAddress"],
+    ("WANIPConnection1", "X_GetDNSServers"): ["NewDNSServers"],
+    ("WANPPPConnection1", "GetExternalIPAddress"): ["NewExternalIPAddress"],
+    ("WANPPPConnection1", "GetInfo"): [
+        "NewDNSServers",
+        "NewExternalIPAddress",
+        "NewMACAddress",
+        "NewUserName",
+    ],
+    ("WANPPPConnection1", "GetUserName"): ["NewUserName"],
+    ("WANPPPConnection1", "X_GetDNSServers"): ["NewDNSServers"],
+    **{
+        (f"WLANConfiguration{i}", action): fields
+        for i in range(1, 5)
+        for action, fields in [
+            ("GetBSSID", ["NewBSSID"]),
+            ("GetInfo", ["NewBSSID", "NewSSID"]),
+            ("GetSSID", ["NewSSID"]),
+            ("GetSecurityKeys", ["NewKeyPassphrase", "NewPreSharedKey", "NewWEPKey0", "NewWEPKey1", "NewWEPKey2", "NewWEPKey3"]),
+            ("X_AVM-DE_GetWLANDeviceListPath", ["NewX_AVM-DE_WLANDeviceListPath"]),
+            ("X_AVM-DE_GetWLANHybridMode", ["NewBSSID", "NewSSID"]),
+        ]
+    },
+    ("X_AVM-DE_AppSetup1", "GetAppRemoteInfo"): [
+        "NewExternalIPAddress",
+        "NewExternalIPv6Address",
+        "NewIPAddress",
+        "NewMyFritzDynDNSName",
+        "NewRemoteAccessDDNSDomain",
+    ],
+    ("X_AVM-DE_Dect1", "GetDectListPath"): ["NewDectListPath"],
+    ("X_AVM-DE_Filelinks1", "GetFilelinkListPath"): ["NewFilelinkListPath"],
+    ("X_AVM-DE_MyFritz1", "GetInfo"): ["NewDynDNSName", "NewPort"],
+    ("X_AVM-DE_OnTel1", "GetCallBarringList"): ["NewPhonebookURL"],
+    ("X_AVM-DE_OnTel1", "GetCallList"): ["NewCallListURL"],
+    ("X_AVM-DE_OnTel1", "GetDECTHandsetList"): ["NewDectIDList"],
+    ("X_AVM-DE_OnTel1", "GetDeflections"): ["NewDeflectionList"],
+    ("X_AVM-DE_RemoteAccess1", "GetDDNSInfo"): ["NewDomain", "NewUpdateURL", "NewUsername"],
+    ("X_AVM-DE_RemoteAccess1", "GetInfo"): ["NewPort", "NewUsername"],
+    ("X_AVM-DE_Storage1", "GetUserInfo"): ["NewUsername"],
+    ("X_AVM-DE_TAM1", "GetList"): ["NewTAMList"],
+    ("X_VoIP1", "X_AVM-DE_GetClients"): ["NewX_AVM-DE_ClientList"],
+    ("X_VoIP1", "X_AVM-DE_GetNumbers"): ["NewNumberList"],
+}
+
 
 def get_sw_version(device: FritzDevice) -> str:
     try:
@@ -42,107 +127,31 @@ def safe_call_action(device: FritzDevice, service: str, action: str) -> dict[str
     return result
 
 
+def _apply_builtin_sanitization(res: dict[tuple[str, str], dict]) -> None:
+    for svc_action, svc_data in res.items():
+        if svc_action in _SANITIZATION_BLACKLIST:
+            for field in _SANITIZATION_BLACKLIST[svc_action]:
+                if field in svc_data:
+                    svc_data[field] = _SANITIZED
+
+
+def _apply_custom_sanitization(res: dict[tuple[str, str], dict], sanitation: list[list]) -> None:
+    for entry in sanitation:
+        svc_action = (entry[0], entry[1])
+        if svc_action not in res:
+            continue
+        if len(entry) == 2:  # noqa: PLR2004
+            for field in res[svc_action]:
+                res[svc_action][field] = _SANITIZED
+        elif len(entry) == 3 and entry[2] in res[svc_action]:  # noqa: PLR2004
+            res[svc_action][entry[2]] = _SANITIZED
+
+
 def sanitize_results(
     res: dict[tuple[str, str], dict], sanitation: list[list]
 ) -> dict[tuple[str, str], dict[str, Any]]:
-    blacklist: dict[tuple[str, str], list[str]] = {
-        # (service, action): return_value
-        ("DeviceConfig1", "GetPersistentData"): ["NewPersistentData"],
-        ("DeviceConfig1", "X_AVM-DE_GetConfigFile"): ["NewConfigFile"],
-        ("DeviceInfo1", "GetDeviceLog"): ["NewDeviceLog"],
-        ("DeviceConfig1", "X_AVM-DE_GetSupportDataInfo"): ["NewX_AVM-DE_SupportDataID"],
-        ("DeviceInfo1", "GetInfo"): ["NewDeviceLog", "NewProvisioningCode", "NewSerialNumber"],
-        ("DeviceInfo1", "GetSecurityPort"): ["NewSecurityPort"],
-        ("Hosts1", "X_AVM-DE_GetHostListPath"): ["NewX_AVM-DE_HostListPath"],
-        ("Hosts1", "X_AVM-DE_GetMeshListPath"): ["NewX_AVM-DE_MeshListPath"],
-        ("LANConfigSecurity1", "X_AVM-DE_GetCurrentUser"): [
-            "NewX_AVM-DE_CurrentUserRights",
-            "NewX_AVM-DE_CurrentUsername",
-        ],
-        ("LANConfigSecurity1", "X_AVM-DE_GetUserList"): ["NewX_AVM-DE_UserList"],
-        ("LANEthernetInterfaceConfig1", "GetInfo"): ["NewMACAddress"],
-        ("LANHostConfigManagement1", "GetAddressRange"): ["NewMaxAddress", "NewMinAddress"],
-        ("LANHostConfigManagement1", "GetDNSServers"): ["NewDNSServers"],
-        ("LANHostConfigManagement1", "GetIPRoutersList"): ["NewIPRouters"],
-        ("LANHostConfigManagement1", "GetInfo"): [
-            "NewDNSServers",
-            "NewIPRouters",
-            "NewMaxAddress",
-            "NewMinAddress",
-        ],
-        ("ManagementServer1", "GetInfo"): ["NewUsername", "NewConnectionRequestURL"],
-        ("Time1", "GetInfo"): ["NewNTPServer1", "NewNTPServer2"],
-        ("WANCommonIFC1", "GetAddonInfos"): [
-            "NewDNSServer1",
-            "NewDNSServer2",
-            "NewVoipDNSServer1",
-            "NewVoipDNSServer2",
-        ],
-        ("WANIPConn1", "GetExternalIPAddress"): ["NewExternalIPAddress"],
-        ("WANIPConn1", "X_AVM_DE_GetDNSServer"): ["NewIPv4DNSServer1", "NewIPv4DNSServer2"],
-        ("WANIPConn1", "X_AVM_DE_GetExternalIPv6Address"): ["NewExternalIPv6Address"],
-        ("WANIPConn1", "X_AVM_DE_GetIPv6DNSServer"): ["NewIPv6DNSServer1", "NewIPv6DNSServer2"],
-        ("WANIPConn1", "X_AVM_DE_GetIPv6Prefix"): ["NewIPv6Prefix"],
-        ("WANIPConnection1", "GetExternalIPAddress"): ["NewExternalIPAddress"],
-        ("WANIPConnection1", "GetInfo"): ["NewDNSServers", "NewMACAddress", "NewExternalIPAddress"],
-        ("WANIPConnection1", "X_GetDNSServers"): ["NewDNSServers"],
-        ("WANPPPConnection1", "GetExternalIPAddress"): ["NewExternalIPAddress"],
-        ("WANPPPConnection1", "GetInfo"): [
-            "NewDNSServers",
-            "NewExternalIPAddress",
-            "NewMACAddress",
-            "NewUserName",
-        ],
-        ("WANPPPConnection1", "GetUserName"): ["NewUserName"],
-        ("WANPPPConnection1", "X_GetDNSServers"): ["NewDNSServers"],
-        **{
-            (f"WLANConfiguration{i}", action): fields
-            for i in range(1, 5)
-            for action, fields in [
-                ("GetBSSID", ["NewBSSID"]),
-                ("GetInfo", ["NewBSSID", "NewSSID"]),
-                ("GetSSID", ["NewSSID"]),
-                ("GetSecurityKeys", ["NewKeyPassphrase", "NewPreSharedKey", "NewWEPKey0", "NewWEPKey1", "NewWEPKey2", "NewWEPKey3"]),
-                ("X_AVM-DE_GetWLANDeviceListPath", ["NewX_AVM-DE_WLANDeviceListPath"]),
-                ("X_AVM-DE_GetWLANHybridMode", ["NewBSSID", "NewSSID"]),
-            ]
-        },
-        ("X_AVM-DE_AppSetup1", "GetAppRemoteInfo"): [
-            "NewExternalIPAddress",
-            "NewExternalIPv6Address",
-            "NewIPAddress",
-            "NewMyFritzDynDNSName",
-            "NewRemoteAccessDDNSDomain",
-        ],
-        ("X_AVM-DE_Dect1", "GetDectListPath"): ["NewDectListPath"],
-        ("X_AVM-DE_Filelinks1", "GetFilelinkListPath"): ["NewFilelinkListPath"],
-        ("X_AVM-DE_MyFritz1", "GetInfo"): ["NewDynDNSName", "NewPort"],
-        ("X_AVM-DE_OnTel1", "GetCallBarringList"): ["NewPhonebookURL"],
-        ("X_AVM-DE_OnTel1", "GetCallList"): ["NewCallListURL"],
-        ("X_AVM-DE_OnTel1", "GetDECTHandsetList"): ["NewDectIDList"],
-        ("X_AVM-DE_OnTel1", "GetDeflections"): ["NewDeflectionList"],
-        ("X_AVM-DE_RemoteAccess1", "GetDDNSInfo"): ["NewDomain", "NewUpdateURL", "NewUsername"],
-        ("X_AVM-DE_RemoteAccess1", "GetInfo"): ["NewPort", "NewUsername"],
-        ("X_AVM-DE_Storage1", "GetUserInfo"): ["NewUsername"],
-        ("X_AVM-DE_TAM1", "GetList"): ["NewTAMList"],
-        ("X_VoIP1", "X_AVM-DE_GetClients"): ["NewX_AVM-DE_ClientList"],
-        ("X_VoIP1", "X_AVM-DE_GetNumbers"): ["NewNumberList"],
-    }
-
-    for svc_action, svc_data in res.items():
-        if svc_action in blacklist:
-            for field in blacklist[svc_action]:
-                if field in svc_data:
-                    svc_data[field] = "<SANITIZED>"
-
-    for entry in sanitation:
-        if (entry[0], entry[1]) in res:
-            if len(entry) == 2:  # noqa: PLR2004
-                for field in res[(entry[0], entry[1])]:
-                    res[(entry[0], entry[1])][field] = "<SANITIZED>"
-            elif len(entry) == 3 and entry[2] in res[(entry[0], entry[1])]:  # noqa: PLR2004
-                res[(entry[0], entry[1])][entry[2]] = "<SANITIZED>"
-
+    _apply_builtin_sanitization(res)
+    _apply_custom_sanitization(res, sanitation)
     return res
 
 
