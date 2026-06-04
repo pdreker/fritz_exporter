@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'fritz-exporter'
-copyright = '2022, Patrick Dreker'
+copyright = '2019-2026, Patrick Dreker'
 author = 'Patrick Dreker'
 
 # -- General configuration ---------------------------------------------------
