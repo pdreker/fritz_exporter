@@ -13,6 +13,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzConnectionException,
     FritzHttpInterfaceError,
     FritzInternalError,
+    FritzLookUpError,
     FritzServiceError,
 )
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
@@ -838,6 +839,31 @@ class HostInfo(FritzCapability):
         self.requirements.append(("Hosts1", "GetGenericHostEntry"))
         self.requirements.append(("Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP"))
 
+    def _probe_specific_host_entry(self, device: FritzDevice, svc: str, action: str) -> None:
+        try:
+            device.fc.call_action(svc, action, arguments={"NewIPAddress": "0.0.0.0"})
+        except FritzLookUpError:
+            pass  # 714 NoSuchEntryInArray — action works, 0.0.0.0 not in host table
+
+    def _probe_action(self, device: FritzDevice, svc: str, action: str) -> bool:
+        try:
+            if action == "GetHostNumberOfEntries":
+                device.fc.call_action(svc, action)
+            elif action == "GetGenericHostEntry":
+                device.fc.call_action(svc, action, arguments={"NewIndex": 1})
+            elif action == "X_AVM-DE_GetSpecificHostEntryByIP":
+                self._probe_specific_host_entry(device, svc, action)
+        except (FritzServiceError, FritzActionError, FritzInternalError) as e:
+            logger.warning(
+                "disabling metrics at service %s, action %s - "
+                "fritzconnection.call_action returned %s",
+                svc,
+                action,
+                str(e),
+            )
+            return False
+        return True
+
     def check_capability(self, device: FritzDevice) -> None:
         self.present = device.host_info and all(
             (service in device.fc.services) and (action in device.fc.services[service].actions)
@@ -846,27 +872,9 @@ class HostInfo(FritzCapability):
         logger.debug(
             "Capability %s set to %s on device %s", type(self).__name__, self.present, device.host
         )
-
-        # It seems some boxes report service/actions they don't actually support.
-        # So try calling the requirements, and if it throws "InvalidService",
-        # "InvalidAction" or "FritzInternalError" disable this again.
         if self.present:
             for svc, action in self.requirements:
-                try:
-                    if action == "GetHostNumberOfEntries":
-                        device.fc.call_action(svc, action)
-                    elif action == "GetGenericHostEntry":
-                        device.fc.call_action(svc, action, arguments={"NewIndex": 1})
-                    elif action == "X_AVM-DE_GetSpecificHostEntryByIP":
-                        device.fc.call_action(svc, action, arguments={"NewIPAddress": "0.0.0.0"})
-                except (FritzServiceError, FritzActionError, FritzInternalError) as e:
-                    logger.warning(
-                        "disabling metrics at service %s, action %s - "
-                        "fritzconnection.call_action returned %s",
-                        svc,
-                        action,
-                        str(e),
-                    )
+                if not self._probe_action(device, svc, action):
                     self.present = False
 
     def create_metrics(self) -> None:
