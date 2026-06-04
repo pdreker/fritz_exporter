@@ -136,7 +136,7 @@ class FritzCapabilities:
             )
 
     def empty(self) -> bool:
-        return not any(cap.present for cap in list(self.capabilities.values()))
+        return not any(cap.present for cap in self.capabilities.values())
 
     def check_present(self, device: FritzDevice) -> None:
         for c in self.capabilities:
@@ -1014,7 +1014,7 @@ class HomeAutomation(FritzCapability):
         self.metrics["heater_reduced_valve_state"] = GaugeMetricFamily("fritz_ha_heater_reduced_valve_state", "Heater reduced valve state", labels=labels)
         self.metrics["heater_comfort_valve_state"] = GaugeMetricFamily("fritz_ha_heater_comfort_valve_state", "Heater comfort valve state", labels=labels)
 
-    def _ha_labels(
+    def _build_ha_labels(
         self,
         device: FritzDevice,
         ain: str,
@@ -1083,7 +1083,7 @@ class HomeAutomation(FritzCapability):
             device_name = ha_result["NewDeviceName"]
             manufacturer = ha_result["NewManufacturer"]
             productname = ha_result["NewProductName"]
-            labels = self._ha_labels(device, ain, device_id, device_name, manufacturer, productname)
+            labels = self._build_ha_labels(device, ain, device_id, device_name, manufacturer, productname)
 
             self.metrics["devicepresent"].add_metric(labels, self._DEVICE_PRESENT_MAP[ha_result["NewPresent"]])
             self._collect_multimeter(ha_result, labels)
