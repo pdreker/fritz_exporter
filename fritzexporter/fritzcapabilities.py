@@ -13,6 +13,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzConnectionException,
     FritzHttpInterfaceError,
     FritzInternalError,
+    FritzLookUpError,
     FritzServiceError,
 )
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
@@ -858,7 +859,10 @@ class HostInfo(FritzCapability):
                     elif action == "GetGenericHostEntry":
                         device.fc.call_action(svc, action, arguments={"NewIndex": 1})
                     elif action == "X_AVM-DE_GetSpecificHostEntryByIP":
-                        device.fc.call_action(svc, action, arguments={"NewIPAddress": "0.0.0.0"})
+                        try:
+                            device.fc.call_action(svc, action, arguments={"NewIPAddress": "0.0.0.0"})
+                        except FritzLookUpError:
+                            pass  # 714 NoSuchEntryInArray — action works, 0.0.0.0 not in host table
                 except (FritzServiceError, FritzActionError, FritzInternalError) as e:
                     logger.warning(
                         "disabling metrics at service %s, action %s - "
