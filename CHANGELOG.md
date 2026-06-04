@@ -15,6 +15,43 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.0.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.6.2...fritzexporter-v3.0.0) (2026-06-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* default listen_address is now 127.0.0.1 instead of 0.0.0.0. Deployments that rely on the old default to expose the exporter on all interfaces will need to set listen_address or FRITZ_LISTEN_ADDRESS explicitly. See docs/upgrading.rst for details.
+* fritz_ha_* Prometheus metrics now include a populated device_id label. The label was previously always emitted as an empty string due to the bug; it now carries the real device ID value. Prometheus treats changed label sets as new time series, so existing HA metric series will be replaced by new ones on the first scrape after upgrading, causing counter resets. Any dashboards or alerts filtering on device_id="" will stop matching. See docs/upgrading.rst for migration notes.
+
+### Features
+
+* change default listen_address from 0.0.0.0 to 127.0.0.1 ([#610](https://github.com/pdreker/fritz_exporter/issues/610)) ([61a5193](https://github.com/pdreker/fritz_exporter/commit/61a5193fa7d0b03942f866270f664028b4fbffba))
+* recover devices that were online at registration but went offline during collection ([#580](https://github.com/pdreker/fritz_exporter/issues/580)) ([9289ec6](https://github.com/pdreker/fritz_exporter/commit/9289ec66eccc215e4f91aef1051b048f25f5ee79))
+
+
+### Bug Fixes
+
+* code review phase 1 — logging, data_donation, HostInfo, asyncio ([#608](https://github.com/pdreker/fritz_exporter/issues/608)) ([e0ac742](https://github.com/pdreker/fritz_exporter/commit/e0ac742cb2cb3778b39d4219a8404ff247ac857b))
+* handle FritzLookUpError in HostInfo capability probe ([#612](https://github.com/pdreker/fritz_exporter/issues/612)) ([33d9387](https://github.com/pdreker/fritz_exporter/commit/33d93872b54ca96861ba0ccc825e0989373abb75))
+* resolve SonarCloud issues — naming clash, complexity, literal duplication ([#613](https://github.com/pdreker/fritz_exporter/issues/613)) ([c812aa7](https://github.com/pdreker/fritz_exporter/commit/c812aa7b44d5b847e53750dcd61c533379f37db1))
+* resolve type errors surfaced by ty migration ([#606](https://github.com/pdreker/fritz_exporter/issues/606)) ([0a0a834](https://github.com/pdreker/fritz_exporter/commit/0a0a834d6acd420da8ed74f554a0d71342087350))
+
+
+### Documentation
+
+* add CLAUDE.md and update AGENTS.md with branching rules and uv migration ([#607](https://github.com/pdreker/fritz_exporter/issues/607)) ([ea75cb2](https://github.com/pdreker/fritz_exporter/commit/ea75cb2a8fc128715ad8fe520270284785cc7f3c))
+* add Grafana dashboards JSON to source code ([#586](https://github.com/pdreker/fritz_exporter/issues/586)) ([0d318f7](https://github.com/pdreker/fritz_exporter/commit/0d318f768b23047a17d5677dc24e2a06cb801140))
+* add PR review checklist for docs, Dockerfile, and Helm chart to AGENTS.md ([#583](https://github.com/pdreker/fritz_exporter/issues/583)) ([13ea0c2](https://github.com/pdreker/fritz_exporter/commit/13ea0c284cbd3b8cd8c4d75116a225090e6e6b00))
+* expand coding.rst with comprehensive developer documentation ([#584](https://github.com/pdreker/fritz_exporter/issues/584)) ([bfa0626](https://github.com/pdreker/fritz_exporter/commit/bfa0626b49fdca03e8b6d7c3062fcd10625dca2e))
+* fix stale references, typos and update defaults ([#615](https://github.com/pdreker/fritz_exporter/issues/615)) ([512e912](https://github.com/pdreker/fritz_exporter/commit/512e912d53b9b994348365ef3e161dd6d13a6e6e))
+* remove empty out-of-order 2.2.1 entry from CHANGELOG.md ([#581](https://github.com/pdreker/fritz_exporter/issues/581)) ([fb8706b](https://github.com/pdreker/fritz_exporter/commit/fb8706b25d7bd17e30e41c86baa1ded666c0bd5b))
+* update home automation metrics description in index.rst ([#585](https://github.com/pdreker/fritz_exporter/issues/585)) ([44993d2](https://github.com/pdreker/fritz_exporter/commit/44993d2dbfe9b32a384c94803b1f51014352299c))
+
+
+### Code Refactoring
+
+* code review phase 2 — capability lifecycle, WlanConfigurationInfo, HomeAutomation ([#609](https://github.com/pdreker/fritz_exporter/issues/609)) ([b220fe7](https://github.com/pdreker/fritz_exporter/commit/b220fe75088b34c14bda8fc65068056822bddebc))
+
 ## [2.6.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.6.0...fritzexporter-v2.6.1) (2025-11-30)
 
 
