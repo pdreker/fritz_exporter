@@ -8,13 +8,13 @@ This document describes project conventions, architecture, and tooling for contr
 
 - **Entrypoint**: `fritzexporter/__main__.py` → `main()`
 - **Documentation**: [fritz-exporter.readthedocs.io](https://fritz-exporter.readthedocs.io)
-- **Python version**: 3.11+
+- **Python version**: 3.14+
 
 ---
 
 ## Language and Typing
 
-- The project is written in **Python 3.11+**.
+- The project is written in **Python 3.14+**.
 - **Type annotations are required throughout** all production code. Every function, method, and class attribute must be annotated.
 - Use `from __future__ import annotations` at the top of files to enable postponed evaluation of annotations (this is already the pattern in the codebase).
 - Use `TYPE_CHECKING` guards for imports that are only needed for type hints to avoid circular imports:
@@ -24,7 +24,7 @@ This document describes project conventions, architecture, and tooling for contr
       from fritzexporter.fritzdevice import FritzDevice
   ```
 - Avoid `Any` except where unavoidable (e.g., interfacing with untyped third-party libraries).
-- **mypy** is used for static type checking. Configuration is in `pyproject.toml` under `[tool.mypy]`.
+- **ty** is used for static type checking. Configuration is in `pyproject.toml` under `[tool.ty]`.
 
 ---
 
@@ -57,7 +57,7 @@ uv run ruff check fritzexporter/
 
 Key configuration (see `pyproject.toml` `[tool.ruff]`):
 - **Line length**: 100 characters
-- **Target**: Python 3.11
+- **Target**: Python 3.14
 - **Tests and docs are excluded** from linting (`extend-exclude = ["tests", "docs"]`)
 - A large set of rule groups is enabled (see `pyproject.toml` for the full list), including:
   - `E`, `W` — pycodestyle
@@ -73,7 +73,7 @@ Key configuration (see `pyproject.toml` `[tool.ruff]`):
   - `PL` — pylint checks
   - `TRY` — try/except anti-patterns
   - `RUF` — ruff-specific rules
-- **Ignored rules**: `E203`, `COM812`, `ISC001`, `ANN101`, `ANN102`, `ANN204`
+- **Ignored rules**: `E203`, `COM812`, `ISC001`, `ANN204`
 - Docstring style convention: **Google** (`[tool.ruff.lint.pydocstyle] convention = "google"`)
 - Use `# noqa: <CODE>` to suppress a specific rule where absolutely necessary; avoid blanket `# noqa`.
 
@@ -87,7 +87,7 @@ uv run pytest
 ```
 
 - Test files are in the `tests/` directory.
-- Coverage is measured automatically (branch coverage, XML report). Config in `.coveragerc`.
+- Coverage is measured automatically (branch coverage, XML report). Config in `pyproject.toml` under `[tool.coverage]`.
 - Mocking uses `unittest.mock` (`MagicMock`, `patch`).
 - A shared `fc_services_mock.py` provides mock Fritz device service/action data for tests.
 - Tests are excluded from ruff linting but should still be readable and well-structured.
@@ -186,7 +186,7 @@ fritzexporter/
 
 ## CI / GitHub Actions
 
-- **`run-tests.yaml`**: runs on PRs and pushes to `main`; executes linting (flake8, legacy) and pytest, uploads to SonarCloud.
+- **`run-tests.yaml`**: runs on PRs and pushes to `main`; executes linting (ruff check + ruff format) and pytest, uploads to SonarCloud.
 - **`build-trunk.yaml`**: builds and publishes Docker images on pushes to `main`.
 - **`release.yaml`**: triggered by `release-please`; handles versioning and releases.
 - **`release-please`**: automatically opens release PRs based on conventional commit history. Do not manually bump version numbers.
@@ -205,7 +205,7 @@ For every pull request, review the following areas in addition to the Python cod
 
 ### Dockerfile
 
-- Check whether the base Python image version, build dependencies, or the install/entrypoint commands need updating to match changes in `pyproject.toml`, `poetry.lock`, or the package itself.
+- Check whether the base Python image version, build dependencies, or the install/entrypoint commands need updating to match changes in `pyproject.toml`, `uv.lock`, or the package itself.
 - Verify that no unnecessary files are copied into the image and that the multi-stage build remains clean.
 - Commit Dockerfile changes with the `build` type: `build: ...`.
 
