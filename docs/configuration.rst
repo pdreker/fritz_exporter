@@ -26,7 +26,7 @@ If you only need a single device this is the easiest way to configure the export
 +--------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_PASSWORD_FILE``  | File to read the password from                     |           |
 +--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_LISTEN_ADDRESS`` | Address to listen on. Can be IPv4 or IPv6.         | 0.0.0.0   |
+| ``FRITZ_LISTEN_ADDRESS`` | Address to listen on. Can be IPv4 or IPv6.         | 127.0.0.1 |
 +--------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_PORT``           | Listening port for the exporter                    |      9787 |
 +--------------------------+----------------------------------------------------+-----------+
@@ -77,4 +77,4 @@ To use the config file you have to specify the the location of the config and mo
 
 .. note::
 
-  enabling ``FRITZ_HOST_INFO`` by setting it to ``true`` or ``1`` will collect extended information about every device known your fritz device which can take a long time (20+ seconds). If you really want or need the extended stats pleade make sure, that your Prometheus scraping interval and timeouts are set accordingly.
+  Enabling ``FRITZ_HOST_INFO`` by setting it to ``true`` or ``1`` will collect extended information about every device known to your Fritz device, which can take a long time (20+ seconds). If you really want or need the extended stats, please make sure that your Prometheus scraping interval and timeouts are set accordingly.

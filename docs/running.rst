@@ -35,7 +35,7 @@ To run the exporter from docker-compose create an empty directory ``fritz-export
 
 .. code-block:: yaml
 
-  # Example file for running tzhe exporter from the published image at hub.docker.com
+  # Example file for running the exporter from the published image at hub.docker.com
   version: "3.8"
   services:
     fritz-exporter:
@@ -63,7 +63,6 @@ Create an empty directory ``fritz-exporter`` and put a file ``docker-compose.yml
     fritz-exporter:
       image: pdreker/fritz_exporter:2
       command: --config /fritz-exporter.yml
-      build: ../
       container_name: fritz-exporter
       restart: always
       ports:
@@ -78,18 +77,18 @@ Bare Metal (no container)
 
 Running directly from sources is not recommended and should only be used for development. Please run this from docker/containers for real use.
 
-This exporter requires Python >=3.10.
+This exporter requires Python >=3.11.
 
-This project uses poetry (as of v2.1.2) to manage dependecies. As such you can simply recreate the neccessary virtual environment for this exporter by running ``poetry install`` from the checked out repository.
+This project uses `uv <https://docs.astral.sh/uv/>`_ to manage dependencies. Install it, then recreate the virtual environment by running ``uv sync`` from the checked out repository.
 
-The exporter can directly be run from a shell. Set the environment vars or config file as described in the configuration section of this README and run ``python3 -m fritzbox_exporter [--config /path/to/config/file.yaml]`` from the code directory.
+The exporter can directly be run from a shell. Set the environment vars or config file as described in the configuration section of this README and run ``uv run python -m fritzexporter [--config /path/to/config/file.yaml]`` from the code directory.
 
 Systemd
 -------
 
 It's also possible to run the exporter using a `systemd <https://systemd.io/>`_ service.
 
-Make sure you have python >=3.10 and pip installed on your system.
+Make sure you have python >=3.11 and pip installed on your system.
 Usually these packages are called ``python3`` and ``python3-pip``. Please consult your distro documentation.
 
 Create a new user for the exporter.

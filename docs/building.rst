@@ -1,7 +1,7 @@
 Building
 ========
 
-The recommended way to run this exporter is from a docker container. The included Dockerfile will build the exporter using an python:alpine container using python3. The Dockerfile relies on a locally generated ``requirements.txt`` file and the builds a clean python:3-alpine image with the exporter.
+The recommended way to run this exporter is from a Docker container. The included Dockerfile builds the exporter using a Python:alpine base image and produces a clean, minimal runtime image.
 
 Building and running from a local image
 ---------------------------------------
@@ -52,6 +52,6 @@ Building and running locally (no containers)
 
 You can install the latest release from PyPI using ``pip install fritzexporter`` and the run it using ``python -m fritzexporter``. It is highly recommended to use a virtual environment to do so.
 
-For development and debugging it may be neccessary or simpler to run the exporter directly without docker. To do this simply install the dependencies into a virtual environment using ``poetry install``. You can then enter the venv using ``poetry shell``.
+For development and debugging it may be necessary or simpler to run the exporter directly without Docker. To do this install `uv <https://docs.astral.sh/uv/>`_, then run ``uv sync`` from the repository root to create the virtual environment and install all dependencies.
 
 To run the exporter just use ``python -m fritzexporter --config /path/to/config.yaml`` or set environment variables as described in :ref:`environment-config`.
