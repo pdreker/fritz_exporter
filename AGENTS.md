@@ -152,7 +152,7 @@ fritzexporter/
 
 - **`FritzCollector`** (Prometheus `Collector`): holds multiple `FritzDevice` instances and implements `collect()` to yield all metrics.
 
-- **Configuration** is loaded either from a YAML file or from environment variables. Config objects are `attrs` `@define` classes with validators.
+- **Configuration** is loaded either from a YAML file or from environment variables. Config objects are `attrs` `@define` classes with validators. See the **Dual Configuration** section below for the complete mapping and the rule that both paths must stay in sync.
 
 ### Adding a new metric/capability
 
@@ -164,7 +164,47 @@ fritzexporter/
 
 ---
 
-## Dependency Management
+## Dual Configuration: File vs. Environment Variables
+
+The exporter supports two **mutually exclusive** configuration methods, both implemented in `fritzexporter/config/config.py`. Exactly one is active at runtime — there is no merging or layering:
+
+- **Config file** (`--config` flag): YAML, supports multiple devices. Used when a config file path is provided.
+- **Environment variables**: single-device only. Used when **no** config file is passed.
+
+If a config file path is given, environment variables are ignored entirely, and vice versa.
+
+Both paths produce the same `ExporterConfig` / `DeviceConfig` attrs objects and go through the same validators. The env path (`_read_config_from_env`) assembles a plain `dict` in the same shape as a parsed YAML file, then hands it to the same `from_config` class methods.
+
+### Mapping: YAML key → environment variable
+
+| Scope | YAML key | Environment variable | Default |
+|---|---|---|---|
+| Exporter | `exporter_port` | `FRITZ_PORT` | `9787` |
+| Exporter | `log_level` | `FRITZ_LOG_LEVEL` | `INFO` |
+| Exporter | `listen_address` | `FRITZ_LISTEN_ADDRESS` | `127.0.0.1` |
+| Device | `hostname` | `FRITZ_HOSTNAME` | `fritz.box` |
+| Device | `name` | `FRITZ_NAME` | `Fritz!Box` |
+| Device | `username` | `FRITZ_USERNAME` | *(required)* |
+| Device | `password` | `FRITZ_PASSWORD` | *(required unless password_file set)* |
+| Device | `password_file` | `FRITZ_PASSWORD_FILE` | *(required unless password set)* |
+| Device | `host_info` | `FRITZ_HOST_INFO` | `False` |
+| Device | `connection_timeout` | `FRITZ_CONNECTION_TIMEOUT` | *(none — no timeout)* |
+
+### Rule: keep both paths in sync
+
+**Whenever you add or change a device or exporter config option, you must update both paths:**
+
+1. Add the field to `DeviceConfig` or `ExporterConfig` (with converter + validator as appropriate).
+2. Add the YAML key read in `DeviceConfig.from_config()` / `ExporterConfig.from_config()`.
+3. Add the corresponding `os.getenv(...)` read in `_read_config_from_env()` and include it in the device/config dict.
+4. Add tests for both paths in `tests/test_config.py` (see `TestFileConfigs` and `TestEnvConfig`).
+5. Update `docs/configuration.rst`: the env var table and the YAML example block.
+
+Failure to keep the two paths in sync silently degrades the env-based deployment path, which is the primary path for Docker/container users.
+
+---
+
+
 
 - Dependencies are managed with **uv** (`pyproject.toml`, `uv.lock`).
 - Install all dependencies: `uv sync`
