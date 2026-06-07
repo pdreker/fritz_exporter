@@ -120,7 +120,7 @@ wheels = [
 
 [[package]]
 name = "fritz-exporter"
-version = "2.6.2"
+version = "3.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "attrs" },
