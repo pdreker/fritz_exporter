@@ -1,6 +1,6 @@
 [project]
 name = "fritz-exporter"
-version = "3.0.0"
+version = "3.1.0"
 description = "Prometheus exporter for AVM Fritz! Devices"
 authors = [{name = "Patrick Dreker", email = "patrick@dreker.de"}]
 license = "Apache-2.0"
