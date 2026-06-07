@@ -15,6 +15,19 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.1.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.0.0...fritzexporter-v3.1.0) (2026-06-07)
+
+
+### Features
+
+* add per-device connection_timeout option ([#619](https://github.com/pdreker/fritz_exporter/issues/619)) ([332ab5a](https://github.com/pdreker/fritz_exporter/commit/332ab5a131c94ec32e69ca9b31fc34726fa0f431))
+
+
+### Documentation
+
+* document dual config paths and attrs validation patterns in AGENTS.md ([#620](https://github.com/pdreker/fritz_exporter/issues/620)) ([8feb9c7](https://github.com/pdreker/fritz_exporter/commit/8feb9c73ff98a94090d20e5e2df1b0ea12ce28b8))
+* update AGENTS.md to reflect current tooling and Python version ([#616](https://github.com/pdreker/fritz_exporter/issues/616)) ([f5b7d77](https://github.com/pdreker/fritz_exporter/commit/f5b7d772d8ce185b3b3f71d4b8e9c1ccda16a5bc))
+
 ## [3.0.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v2.6.2...fritzexporter-v3.0.0) (2026-06-04)
 
 
