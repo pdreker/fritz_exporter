@@ -84,14 +84,18 @@ def _register_device(
     password = _resolve_password(dev)
     creds = FritzCredentials(dev.hostname, dev.username, password)
     try:
-        fritz_device = FritzDevice(creds, dev.name, host_info=dev.host_info)
+        fritz_device = FritzDevice(
+            creds, dev.name, host_info=dev.host_info, connection_timeout=dev.connection_timeout
+        )
     except (FritzConnectionException, FritzAuthorizationError, FritzDeviceHasNoCapabilitiesError):
         logger.exception(
             "Failed to initialize device %s (%s), it will be reported as down",
             dev.hostname,
             dev.name,
         )
-        fritzcollector.register_offline(creds, dev.name, host_info=dev.host_info)
+        fritzcollector.register_offline(
+            creds, dev.name, host_info=dev.host_info, connection_timeout=dev.connection_timeout
+        )
         return
 
     if args.donate_data == "donate":

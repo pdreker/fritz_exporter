@@ -155,6 +155,7 @@ class DeviceConfig:
     password_file: str | None = field(default=None)
     name: str = ""
     host_info: bool = field(default=False, converter=converters.to_bool)
+    connection_timeout: int | None = field(default=None)
 
     @password.validator  # ty: ignore[unresolved-attribute]
     def check_password(self, _: attrs.Attribute, value: str | None) -> None:
@@ -179,6 +180,7 @@ class DeviceConfig:
         password_file = device.get("password_file")
         name = device.get("name", "")
         host_info = device.get("host_info", False)
+        connection_timeout = device.get("connection_timeout")
 
         return cls(
             hostname=hostname,
@@ -187,4 +189,5 @@ class DeviceConfig:
             password_file=password_file,
             name=name,
             host_info=host_info,
+            connection_timeout=connection_timeout,
         )
