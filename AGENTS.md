@@ -38,13 +38,55 @@ This project uses the **`attrs`** library instead of Python's built-in `dataclas
 - Use `attrs.converters` (e.g., `converters.to_bool`) for field conversion.
 - Validator methods on instances are defined as regular methods decorated with `@<field_name>.validator`.
 
-Example from the codebase:
+### Using attrs for input validation
+
+attrs validators and converters are the **primary defence against bad config input**. Both the YAML file path and the env var path ultimately construct the same `DeviceConfig` / `ExporterConfig` objects, so validation placed on the attrs field fires for both paths automatically — no need to validate in two places.
+
+**The pattern:**
+1. **Convert first, then validate.** Converters run before validators. Use a converter to coerce raw input (e.g. env var strings) to the right type, then use a validator to check the value is in range.
+2. **Use built-in validators where possible** — they compose cleanly and produce clear error messages:
+   - `validators.instance_of(T)` — type check
+   - `validators.min_len(n)` / `validators.max_len(n)` — length bounds
+   - `validators.ge(n)` / `validators.le(n)` — numeric bounds
+   - `validators.in_(collection)` — allowlist
+   - `validators.optional(v)` — applies `v` only when the value is not `None`
+   - `validators.and_(v1, v2, ...)` — combine multiple validators
+3. **Write a custom `@<field>.validator` method** only when the logic cannot be expressed with built-ins (e.g. cross-field checks, file existence).
+
+**Converter pattern for optional typed fields** (e.g. `connection_timeout`):
+```python
+def _convert_optional_int(value: int | str | None) -> int | None:
+    if value is None:
+        return None
+    timeout = int(value)       # coerce str from env vars
+    if timeout == 0:
+        return None            # treat 0 as "no value" when appropriate
+    return timeout
+
+@define
+class DeviceConfig:
+    connection_timeout: int | None = field(
+        default=None,
+        converter=_convert_optional_int,
+        validator=validators.optional(validators.ge(1)),
+    )
+```
+
+This handles all of: `None` (absent in YAML), `0` (explicit "no timeout"), `"15"` (string from env var), and rejects negatives — all in one place.
+
+**Custom validator method pattern** (for logic that can't use built-ins):
 ```python
 @define
 class DeviceConfig:
-    hostname: str = field(validator=validators.min_len(1), converter=lambda x: str.lower(x))
-    host_info: bool = field(default=False, converter=converters.to_bool)
+    password: str | None = field(default=None)
+
+    @password.validator
+    def check_password(self, _: attrs.Attribute, value: str | None) -> None:
+        if value is not None and len(value) > FRITZ_MAX_PASSWORD_LENGTH:
+            raise FritzPasswordTooLongError
 ```
+
+**Key rule:** if you add a new config field, always add a converter and/or validator on the attrs field itself. Do not validate the raw dict in `from_config()` or in `_read_config_from_env()` — that duplicates logic and is easy to miss in one of the two config paths.
 
 ---
 
