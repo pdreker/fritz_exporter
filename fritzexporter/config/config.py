@@ -24,6 +24,15 @@ from .exceptions import (
 logger = logging.getLogger("fritzexporter.config")
 
 
+def _convert_optional_int(value: int | str | None) -> int | None:
+    if value is None:
+        return None
+    timeout = int(value)
+    if timeout == 0:
+        return None
+    return timeout
+
+
 def _read_config_file(config_file_path: str) -> dict:
     try:
         with Path(config_file_path).open() as config_file:
@@ -41,7 +50,10 @@ def _read_config_from_env() -> dict:
     if "FRITZ_USERNAME" not in os.environ or all(
         required not in os.environ for required in ["FRITZ_PASSWORD", "FRITZ_PASSWORD_FILE"]
     ):
-        msg = "Required env variables missing (FRITZ_USERNAME, FRITZ_PASSWORD or FRITZ_PASSWORD_FILE)!"
+        msg = (
+            "Required env variables missing "
+            "(FRITZ_USERNAME, FRITZ_PASSWORD or FRITZ_PASSWORD_FILE)!"
+        )
         logger.critical(msg)
         raise ConfigError(msg)
 
@@ -56,6 +68,7 @@ def _read_config_from_env() -> dict:
     password_file = os.getenv("FRITZ_PASSWORD_FILE")
 
     host_info: str = os.getenv("FRITZ_HOST_INFO", "False")
+    connection_timeout = os.getenv("FRITZ_CONNECTION_TIMEOUT")
 
     config: dict[Any, Any] = {}
     if exporter_port:
@@ -72,6 +85,7 @@ def _read_config_from_env() -> dict:
         "password_file": password_file,
         "host_info": host_info,
         "name": name,
+        "connection_timeout": connection_timeout,
     }
     if hostname:
         device["hostname"] = hostname
@@ -155,7 +169,11 @@ class DeviceConfig:
     password_file: str | None = field(default=None)
     name: str = ""
     host_info: bool = field(default=False, converter=converters.to_bool)
-    connection_timeout: int | None = field(default=None)
+    connection_timeout: int | None = field(
+        default=None,
+        converter=_convert_optional_int,
+        validator=validators.optional(validators.ge(1)),
+    )
 
     @password.validator  # ty: ignore[unresolved-attribute]
     def check_password(self, _: attrs.Attribute, value: str | None) -> None:
