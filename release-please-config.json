@@ -9,6 +9,16 @@
                     "type": "yaml",
                     "path": "helm/fritz-exporter/Chart.yaml",
                     "jsonpath": "$.appVersion"
+                },
+                {
+                    "type": "yaml",
+                    "path": "helm/fritz-exporter/Chart.yaml",
+                    "jsonpath": "$.version"
+                },
+                {
+                    "type": "toml",
+                    "path": "uv.lock",
+                    "jsonpath": "$.package[?(@.name==\"fritz-exporter\")].version"
                 }
             ]
         }
