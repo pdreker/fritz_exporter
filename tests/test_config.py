@@ -160,6 +160,24 @@ class TestEnvConfig:
 
         assert config == expected
 
+    def test_connection_timeout_env_config(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
+        monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
+        monkeypatch.setenv("FRITZ_CONNECTION_TIMEOUT", "15")
+
+        config = get_config(None)
+
+        assert config.devices[0].connection_timeout == 15
+
+    def test_connection_timeout_env_zero_disables_timeout(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
+        monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
+        monkeypatch.setenv("FRITZ_CONNECTION_TIMEOUT", "0")
+
+        config = get_config(None)
+
+        assert config.devices[0].connection_timeout is None
+
 
 class TestConfigEdgeCases:
     def test_duplicate_device_names_logs_warning(self, caplog):
@@ -215,3 +233,46 @@ class TestConfigEdgeCases:
             )
         except FritzPasswordFileDoesNotExistError as e:
             assert "Password file does not exist" in str(e)
+
+    def test_connection_timeout_parsed_from_config(self):
+        testfile = "tests/conffiles/config_with_timeout.yaml"
+
+        config = get_config(testfile)
+
+        assert config.devices[0].connection_timeout == 10
+        assert config.devices[1].connection_timeout is None
+
+    def test_connection_timeout_defaults_to_none(self):
+        testfile = "tests/conffiles/validconfig.yaml"
+
+        config = get_config(testfile)
+
+        for dev in config.devices:
+            assert dev.connection_timeout is None
+
+    def test_connection_timeout_zero_disables_timeout(self):
+        config = DeviceConfig(
+            hostname="fritz.box",
+            username="user",
+            password="password",
+            connection_timeout=0,
+        )
+        assert config.connection_timeout is None
+
+    def test_connection_timeout_must_not_be_negative(self):
+        with pytest.raises(ValueError):
+            DeviceConfig(
+                hostname="fritz.box",
+                username="user",
+                password="password",
+                connection_timeout=-1,
+            )
+
+    def test_connection_timeout_must_be_numeric(self):
+        with pytest.raises(ValueError):
+            DeviceConfig(
+                hostname="fritz.box",
+                username="user",
+                password="password",
+                connection_timeout="invalid",
+            )

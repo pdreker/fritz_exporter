@@ -36,6 +36,9 @@ If you only need a single device this is the easiest way to configure the export
 | ``FRITZ_HOST_INFO``      | Enable extended information about all WiFi         | False     |
 |                          | hosts. Only "true" or "1" will enable this feature |           |
 +--------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_CONNECTION_TIMEOUT`` | Optional per-device TR-064 connect timeout in |           |
+|                          | seconds. ``0`` or empty means no timeout.          |           |
++--------------------------+----------------------------------------------------+-----------+
 
 .. note::
 
@@ -70,6 +73,7 @@ To use the config file you have to specify the the location of the config and mo
       username: prometheus
       password: prometheus
       host_info: True
+      connection_timeout: 10 # optional, seconds; 0 disables timeout
     - name: Repeater Wohnzimmer # optional
       hostname: repeater-Wohnzimmer
       username: prometheus

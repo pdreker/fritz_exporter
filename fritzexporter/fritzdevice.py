@@ -30,7 +30,9 @@ class FritzCredentials(NamedTuple):
 
 
 class FritzDevice:
-    def __init__(self, creds: FritzCredentials, name: str, *, host_info: bool = False) -> None:
+    def __init__(
+        self, creds: FritzCredentials, name: str, *, host_info: bool = False, connection_timeout: int | None = None
+    ) -> None:
         self.host: str = creds.host
         self.serial: str = "n/a"
         self.model: str = "n/a"
@@ -46,7 +48,7 @@ class FritzDevice:
 
         try:
             self.fc: FritzConnection = FritzConnection(
-                address=creds.host, user=creds.user, password=creds.password
+                address=creds.host, user=creds.user, password=creds.password, timeout=connection_timeout
             )
         except FritzConnectionException:
             logger.exception("unable to connect to %s.", creds.host)
@@ -127,7 +129,7 @@ class FritzDevice:
 class FritzCollector(Collector):
     def __init__(self) -> None:
         self.devices: list[FritzDevice] = []
-        self.offline_devices: list[tuple[FritzCredentials, str, bool]] = []
+        self.offline_devices: list[tuple[FritzCredentials, str, bool, int | None]] = []
         # One shared instance per capability class, used to drive the scrape loop and
         # accumulate metrics across all devices. Distinct from per-device capabilities,
         # which are the authority on what each device actually supports.
@@ -139,16 +141,18 @@ class FritzCollector(Collector):
         logger.debug("registered device %s (%s) to collector", fritzdev.host, fritzdev.model)
 
     def register_offline(
-        self, creds: FritzCredentials, friendly_name: str, *, host_info: bool = False
+        self, creds: FritzCredentials, friendly_name: str, *, host_info: bool = False, connection_timeout: int | None = None
     ) -> None:
-        self.offline_devices.append((creds, friendly_name, host_info))
+        self.offline_devices.append((creds, friendly_name, host_info, connection_timeout))
         logger.debug("registered offline device %s (%s) to collector", creds.host, friendly_name)
 
     def _retry_offline_devices(self) -> None:
-        still_offline: list[tuple[FritzCredentials, str, bool]] = []
-        for creds, friendly_name, host_info in self.offline_devices:
+        still_offline: list[tuple[FritzCredentials, str, bool, int | None]] = []
+        for creds, friendly_name, host_info, connection_timeout in self.offline_devices:
             try:
-                fritz_device = FritzDevice(creds, friendly_name, host_info=host_info)
+                fritz_device = FritzDevice(
+                    creds, friendly_name, host_info=host_info, connection_timeout=connection_timeout
+                )
                 logger.info(
                     "Device %s (%s) is back online, registering to collector.",
                     creds.host,
@@ -160,7 +164,7 @@ class FritzCollector(Collector):
                 FritzAuthorizationError,
                 FritzDeviceHasNoCapabilitiesError,
             ):
-                still_offline.append((creds, friendly_name, host_info))
+                still_offline.append((creds, friendly_name, host_info, connection_timeout))
         self.offline_devices = still_offline
 
     def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
@@ -197,7 +201,7 @@ class FritzCollector(Collector):
                 device_up.add_metric(
                     [dev.serial, dev.friendly_name], 1.0 if dev.available else 0.0
                 )
-            for _creds, friendly_name, _host_info in self.offline_devices:
+            for _creds, friendly_name, _host_info, _timeout in self.offline_devices:
                 device_up.add_metric(["n/a", friendly_name], 0.0)
             yield device_up
 
