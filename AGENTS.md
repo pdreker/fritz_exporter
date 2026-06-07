@@ -38,13 +38,55 @@ This project uses the **`attrs`** library instead of Python's built-in `dataclas
 - Use `attrs.converters` (e.g., `converters.to_bool`) for field conversion.
 - Validator methods on instances are defined as regular methods decorated with `@<field_name>.validator`.
 
-Example from the codebase:
+### Using attrs for input validation
+
+attrs validators and converters are the **primary defence against bad config input**. Both the YAML file path and the env var path ultimately construct the same `DeviceConfig` / `ExporterConfig` objects, so validation placed on the attrs field fires for both paths automatically — no need to validate in two places.
+
+**The pattern:**
+1. **Convert first, then validate.** Converters run before validators. Use a converter to coerce raw input (e.g. env var strings) to the right type, then use a validator to check the value is in range.
+2. **Use built-in validators where possible** — they compose cleanly and produce clear error messages:
+   - `validators.instance_of(T)` — type check
+   - `validators.min_len(n)` / `validators.max_len(n)` — length bounds
+   - `validators.ge(n)` / `validators.le(n)` — numeric bounds
+   - `validators.in_(collection)` — allowlist
+   - `validators.optional(v)` — applies `v` only when the value is not `None`
+   - `validators.and_(v1, v2, ...)` — combine multiple validators
+3. **Write a custom `@<field>.validator` method** only when the logic cannot be expressed with built-ins (e.g. cross-field checks, file existence).
+
+**Converter pattern for optional typed fields** (e.g. `connection_timeout`):
+```python
+def _convert_optional_int(value: int | str | None) -> int | None:
+    if value is None:
+        return None
+    timeout = int(value)       # coerce str from env vars
+    if timeout == 0:
+        return None            # treat 0 as "no value" when appropriate
+    return timeout
+
+@define
+class DeviceConfig:
+    connection_timeout: int | None = field(
+        default=None,
+        converter=_convert_optional_int,
+        validator=validators.optional(validators.ge(1)),
+    )
+```
+
+This handles all of: `None` (absent in YAML), `0` (explicit "no timeout"), `"15"` (string from env var), and rejects negatives — all in one place.
+
+**Custom validator method pattern** (for logic that can't use built-ins):
 ```python
 @define
 class DeviceConfig:
-    hostname: str = field(validator=validators.min_len(1), converter=lambda x: str.lower(x))
-    host_info: bool = field(default=False, converter=converters.to_bool)
+    password: str | None = field(default=None)
+
+    @password.validator
+    def check_password(self, _: attrs.Attribute, value: str | None) -> None:
+        if value is not None and len(value) > FRITZ_MAX_PASSWORD_LENGTH:
+            raise FritzPasswordTooLongError
 ```
+
+**Key rule:** if you add a new config field, always add a converter and/or validator on the attrs field itself. Do not validate the raw dict in `from_config()` or in `_read_config_from_env()` — that duplicates logic and is easy to miss in one of the two config paths.
 
 ---
 
@@ -152,7 +194,7 @@ fritzexporter/
 
 - **`FritzCollector`** (Prometheus `Collector`): holds multiple `FritzDevice` instances and implements `collect()` to yield all metrics.
 
-- **Configuration** is loaded either from a YAML file or from environment variables. Config objects are `attrs` `@define` classes with validators.
+- **Configuration** is loaded either from a YAML file or from environment variables. Config objects are `attrs` `@define` classes with validators. See the **Dual Configuration** section below for the complete mapping and the rule that both paths must stay in sync.
 
 ### Adding a new metric/capability
 
@@ -164,7 +206,47 @@ fritzexporter/
 
 ---
 
-## Dependency Management
+## Dual Configuration: File vs. Environment Variables
+
+The exporter supports two **mutually exclusive** configuration methods, both implemented in `fritzexporter/config/config.py`. Exactly one is active at runtime — there is no merging or layering:
+
+- **Config file** (`--config` flag): YAML, supports multiple devices. Used when a config file path is provided.
+- **Environment variables**: single-device only. Used when **no** config file is passed.
+
+If a config file path is given, environment variables are ignored entirely, and vice versa.
+
+Both paths produce the same `ExporterConfig` / `DeviceConfig` attrs objects and go through the same validators. The env path (`_read_config_from_env`) assembles a plain `dict` in the same shape as a parsed YAML file, then hands it to the same `from_config` class methods.
+
+### Mapping: YAML key → environment variable
+
+| Scope | YAML key | Environment variable | Default |
+|---|---|---|---|
+| Exporter | `exporter_port` | `FRITZ_PORT` | `9787` |
+| Exporter | `log_level` | `FRITZ_LOG_LEVEL` | `INFO` |
+| Exporter | `listen_address` | `FRITZ_LISTEN_ADDRESS` | `127.0.0.1` |
+| Device | `hostname` | `FRITZ_HOSTNAME` | `fritz.box` |
+| Device | `name` | `FRITZ_NAME` | `Fritz!Box` |
+| Device | `username` | `FRITZ_USERNAME` | *(required)* |
+| Device | `password` | `FRITZ_PASSWORD` | *(required unless password_file set)* |
+| Device | `password_file` | `FRITZ_PASSWORD_FILE` | *(required unless password set)* |
+| Device | `host_info` | `FRITZ_HOST_INFO` | `False` |
+| Device | `connection_timeout` | `FRITZ_CONNECTION_TIMEOUT` | *(none — no timeout)* |
+
+### Rule: keep both paths in sync
+
+**Whenever you add or change a device or exporter config option, you must update both paths:**
+
+1. Add the field to `DeviceConfig` or `ExporterConfig` (with converter + validator as appropriate).
+2. Add the YAML key read in `DeviceConfig.from_config()` / `ExporterConfig.from_config()`.
+3. Add the corresponding `os.getenv(...)` read in `_read_config_from_env()` and include it in the device/config dict.
+4. Add tests for both paths in `tests/test_config.py` (see `TestFileConfigs` and `TestEnvConfig`).
+5. Update `docs/configuration.rst`: the env var table and the YAML example block.
+
+Failure to keep the two paths in sync silently degrades the env-based deployment path, which is the primary path for Docker/container users.
+
+---
+
+
 
 - Dependencies are managed with **uv** (`pyproject.toml`, `uv.lock`).
 - Install all dependencies: `uv sync`
