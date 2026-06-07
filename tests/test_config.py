@@ -215,3 +215,19 @@ class TestConfigEdgeCases:
             )
         except FritzPasswordFileDoesNotExistError as e:
             assert "Password file does not exist" in str(e)
+
+    def test_connection_timeout_parsed_from_config(self):
+        testfile = "tests/conffiles/config_with_timeout.yaml"
+
+        config = get_config(testfile)
+
+        assert config.devices[0].connection_timeout == 10
+        assert config.devices[1].connection_timeout is None
+
+    def test_connection_timeout_defaults_to_none(self):
+        testfile = "tests/conffiles/validconfig.yaml"
+
+        config = get_config(testfile)
+
+        for dev in config.devices:
+            assert dev.connection_timeout is None

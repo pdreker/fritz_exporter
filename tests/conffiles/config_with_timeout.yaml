@@ -1,0 +1,13 @@
+# Config with connection_timeout set on one device, absent on the other
+exporter_port: 9787
+listen_address: 127.0.0.1
+devices:
+  - name: Fritz!Box 7590 Router
+    hostname: fritz.box
+    username: prometheus1
+    password: prometheus2
+    connection_timeout: 10
+  - name: Repeater Wohnzimmer
+    hostname: repeater-Wohnzimmer
+    username: prometheus3
+    password: prometheus4

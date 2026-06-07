@@ -127,7 +127,7 @@ class TestFritzDevice:
 
         assert mock_fritzconnection.call_count == 1
         assert mock_fritzconnection.call_args == call(
-            address="somehost", user="someuser", password="password"
+            address="somehost", user="someuser", password="password", timeout=None
         )
 
     def test_should_complain_about_password(self, mock_fritzconnection: MagicMock, caplog):
@@ -223,6 +223,37 @@ class TestFritzDevice:
         assert "battery_level" not in device_data
         assert "battery_low" not in device_data
 
+    def test_connection_timeout_passed_to_fritzconnection(self, mock_fritzconnection: MagicMock, caplog):
+        # Prepare
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        # Act
+        _ = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            connection_timeout=10,
+        )
+
+        # Check: timeout must be forwarded to FritzConnection
+        assert mock_fritzconnection.call_args == call(
+            address="somehost", user="someuser", password="password", timeout=10
+        )
+
+    def test_connection_timeout_none_by_default(self, mock_fritzconnection: MagicMock, caplog):
+        # Prepare
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        # Act
+        _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+
+        # Check: no explicit timeout → None is passed (fritzconnection's own default)
+        assert mock_fritzconnection.call_args == call(
+            address="somehost", user="someuser", password="password", timeout=None
+        )
 
 
 @patch("fritzexporter.fritzdevice.FritzConnection")
@@ -532,6 +563,43 @@ class TestFritzCollector:
         assert reachable_round2[0].samples[0].value == 1.0
         assert reachable_round2[0].samples[0].labels["serial"] == "1234567890"
         assert reachable_round2[0].samples[0].labels["friendly_name"] == "FritzMock"
+        assert len(collector.devices) == 1
+        assert len(collector.offline_devices) == 0
+
+    def test_register_offline_preserves_connection_timeout(self, mock_fritzconnection: MagicMock):
+        # Prepare
+        collector = FritzCollector()
+        creds = FritzCredentials("offlinehost", "user", "pass")
+
+        # Act
+        collector.register_offline(creds, "OfflineDevice", connection_timeout=15)
+
+        # Check: timeout stored so that retry uses the same bound
+        assert len(collector.offline_devices) == 1
+        stored_timeout = collector.offline_devices[0][3]
+        assert stored_timeout == 15
+
+    def test_retry_offline_devices_uses_connection_timeout(self, mock_fritzconnection: MagicMock, caplog):
+        # Prepare: register device offline with a specific timeout
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = FritzConnectionException("not reachable")
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        collector = FritzCollector()
+        creds = FritzCredentials("somehost", "someuser", "password")
+        collector.register_offline(creds, "FritzMock", connection_timeout=7)
+
+        # Device comes back during retry
+        fc.call_action.side_effect = call_action_mock
+
+        list(collector.collect())
+
+        # Check: FritzConnection was called with the stored timeout during the retry
+        assert mock_fritzconnection.call_args == call(
+            address="somehost", user="someuser", password="password", timeout=7
+        )
         assert len(collector.devices) == 1
         assert len(collector.offline_devices) == 0
 
