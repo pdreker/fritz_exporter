@@ -77,7 +77,17 @@ _SANITIZATION_BLACKLIST: dict[tuple[str, str], list[str]] = {
             ("GetBSSID", ["NewBSSID"]),
             ("GetInfo", ["NewBSSID", "NewSSID"]),
             ("GetSSID", ["NewSSID"]),
-            ("GetSecurityKeys", ["NewKeyPassphrase", "NewPreSharedKey", "NewWEPKey0", "NewWEPKey1", "NewWEPKey2", "NewWEPKey3"]),
+            (
+                "GetSecurityKeys",
+                [
+                    "NewKeyPassphrase",
+                    "NewPreSharedKey",
+                    "NewWEPKey0",
+                    "NewWEPKey1",
+                    "NewWEPKey2",
+                    "NewWEPKey3",
+                ],
+            ),
             ("X_AVM-DE_GetWLANDeviceListPath", ["NewX_AVM-DE_WLANDeviceListPath"]),
             ("X_AVM-DE_GetWLANHybridMode", ["NewBSSID", "NewSSID"]),
         ]
@@ -224,7 +234,10 @@ def donate_data(
     if upload:
         upload_data(basedata)
     else:
-        print(f"---------------- Donation data for device {model} ---------------------")  # noqa: T201
+        print(
+            f"---------------- Donation data for device {model} "
+            "---------------------"
+        )  # noqa: T201
         print(json.dumps(basedata, indent=2))  # noqa: T201
         print("----------------- END ------------------")  # noqa: T201
         print()  # noqa: T201
