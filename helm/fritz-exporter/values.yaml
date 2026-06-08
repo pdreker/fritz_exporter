@@ -43,6 +43,7 @@ serviceMonitor:
   scrapeTimeout: "30s"
   relabelings: ""
   metricRelabelings: ""
+  additionalLabels: {}
 
 serviceAccount:
   # Specifies whether a service account should be created
