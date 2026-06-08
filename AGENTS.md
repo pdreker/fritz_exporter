@@ -118,6 +118,9 @@ Key configuration (see `pyproject.toml` `[tool.ruff]`):
 - **Ignored rules**: `E203`, `COM812`, `ISC001`, `ANN204`
 - Docstring style convention: **Google** (`[tool.ruff.lint.pydocstyle] convention = "google"`)
 - Use `# noqa: <CODE>` to suppress a specific rule where absolutely necessary; avoid blanket `# noqa`.
+- **Follow the boy scout rule.** Do not fix lint in unrelated code. If you are already touching a line or block, clean up lint issues there so you leave it cleaner than you found it.
+- **Adhere to the ruff rules in production code.** Treat `pyproject.toml` as the source of truth for exact lint boundaries, and keep `fritzexporter/` free of new `E501` violations.
+- **Tests and docs stay more flexible.** They are excluded from ruff, but should still remain reasonably readable.
 
 ---
 
