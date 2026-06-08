@@ -31,7 +31,12 @@ class FritzCredentials(NamedTuple):
 
 class FritzDevice:
     def __init__(
-        self, creds: FritzCredentials, name: str, *, host_info: bool = False, connection_timeout: int | None = None
+        self,
+        creds: FritzCredentials,
+        name: str,
+        *,
+        host_info: bool = False,
+        connection_timeout: int | None = None,
     ) -> None:
         self.host: str = creds.host
         self.serial: str = "n/a"
@@ -48,7 +53,10 @@ class FritzDevice:
 
         try:
             self.fc: FritzConnection = FritzConnection(
-                address=creds.host, user=creds.user, password=creds.password, timeout=connection_timeout
+                address=creds.host,
+                user=creds.user,
+                password=creds.password,
+                timeout=connection_timeout,
             )
         except FritzConnectionException:
             logger.exception("unable to connect to %s.", creds.host)
@@ -141,7 +149,12 @@ class FritzCollector(Collector):
         logger.debug("registered device %s (%s) to collector", fritzdev.host, fritzdev.model)
 
     def register_offline(
-        self, creds: FritzCredentials, friendly_name: str, *, host_info: bool = False, connection_timeout: int | None = None
+        self,
+        creds: FritzCredentials,
+        friendly_name: str,
+        *,
+        host_info: bool = False,
+        connection_timeout: int | None = None,
     ) -> None:
         self.offline_devices.append((creds, friendly_name, host_info, connection_timeout))
         logger.debug("registered offline device %s (%s) to collector", creds.host, friendly_name)

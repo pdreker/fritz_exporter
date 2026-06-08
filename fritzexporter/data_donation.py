@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 from typing import Any
 
 import requests
@@ -77,7 +78,17 @@ _SANITIZATION_BLACKLIST: dict[tuple[str, str], list[str]] = {
             ("GetBSSID", ["NewBSSID"]),
             ("GetInfo", ["NewBSSID", "NewSSID"]),
             ("GetSSID", ["NewSSID"]),
-            ("GetSecurityKeys", ["NewKeyPassphrase", "NewPreSharedKey", "NewWEPKey0", "NewWEPKey1", "NewWEPKey2", "NewWEPKey3"]),
+            (
+                "GetSecurityKeys",
+                [
+                    "NewKeyPassphrase",
+                    "NewPreSharedKey",
+                    "NewWEPKey0",
+                    "NewWEPKey1",
+                    "NewWEPKey2",
+                    "NewWEPKey3",
+                ],
+            ),
             ("X_AVM-DE_GetWLANDeviceListPath", ["NewX_AVM-DE_WLANDeviceListPath"]),
             ("X_AVM-DE_GetWLANHybridMode", ["NewBSSID", "NewSSID"]),
         ]
@@ -204,8 +215,7 @@ def donate_data(
             if action.startswith("Get") and not (
                 "ByIP" in action
                 or "ByIndex" in action
-                or action.startswith("GetSpecific")
-                or action.startswith("GetGeneric")
+                or action.startswith(("GetSpecific", "GetGeneric"))
             ):
                 res = safe_call_action(device, service, action)
                 action_results[(service, action)] = res
@@ -224,10 +234,12 @@ def donate_data(
     if upload:
         upload_data(basedata)
     else:
-        print(f"---------------- Donation data for device {model} ---------------------")  # noqa: T201
-        print(json.dumps(basedata, indent=2))  # noqa: T201
-        print("----------------- END ------------------")  # noqa: T201
-        print()  # noqa: T201
+        sys.stdout.write(
+            f"---------------- Donation data for device {model} "
+            "---------------------\n"
+        )
+        sys.stdout.write(f"{json.dumps(basedata, indent=2)}\n")
+        sys.stdout.write("----------------- END ------------------\n\n")
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
 #
