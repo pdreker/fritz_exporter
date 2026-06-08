@@ -15,6 +15,13 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.1.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.1.1...fritzexporter-v3.1.2) (2026-06-08)
+
+
+### Bug Fixes
+
+* **release:** correct uv.lock jsonpath for release-please ([#624](https://github.com/pdreker/fritz_exporter/issues/624)) ([fb92e67](https://github.com/pdreker/fritz_exporter/commit/fb92e67521e2943b5366c8b99737555230613ed4))
+
 ## [3.1.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.1.0...fritzexporter-v3.1.1) (2026-06-08)
 
 
