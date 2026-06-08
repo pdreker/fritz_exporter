@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import collections
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Generator, Iterator
+from collections.abc import Generator, Iterator, ItemsView
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
@@ -127,7 +126,7 @@ class FritzCapabilities:
     def __getitem__(self, index: str) -> FritzCapability:
         return self.capabilities[index]
 
-    def items(self) -> collections.abc.ItemsView[str, FritzCapability]:
+    def items(self) -> ItemsView[str, FritzCapability]:
         return self.capabilities.items()
 
     def empty(self) -> bool:
