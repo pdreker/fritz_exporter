@@ -5,7 +5,6 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Iterator
 from contextlib import suppress
-from ipaddress import IPv4Address
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
@@ -837,10 +836,12 @@ class HostInfo(FritzCapability):
 
     def _probe_specific_host_entry(self, device: FritzDevice, svc: str, action: str) -> None:
         with suppress(FritzLookUpError):
+            # Probe the action with a deliberately bogus IP address; we only care
+            # whether the call is accepted and returns the expected lookup error.
             device.fc.call_action(
                 svc,
                 action,
-                arguments={"NewIPAddress": str(IPv4Address(0))},
+                arguments={"NewIPAddress": "0.0.0.0"},  # noqa: S104
             )
 
     def _probe_action(self, device: FritzDevice, svc: str, action: str) -> bool:
