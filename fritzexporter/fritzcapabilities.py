@@ -4,6 +4,8 @@ import collections
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Iterator
+from contextlib import suppress
+from ipaddress import IPv4Address
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
@@ -162,7 +164,7 @@ class DeviceInfo(FritzCapability):
             info_result["NewUpTime"],
         )
 
-    def _get_metric_values(self) -> Generator[CounterMetricFamily | GaugeMetricFamily, None, None]:
+    def _get_metric_values(self) -> Generator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["uptime"]
 
 
@@ -834,10 +836,12 @@ class HostInfo(FritzCapability):
         self.requirements.append(("Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP"))
 
     def _probe_specific_host_entry(self, device: FritzDevice, svc: str, action: str) -> None:
-        try:
-            device.fc.call_action(svc, action, arguments={"NewIPAddress": "0.0.0.0"})
-        except FritzLookUpError:
-            pass  # 714 NoSuchEntryInArray — action works, 0.0.0.0 not in host table
+        with suppress(FritzLookUpError):
+            device.fc.call_action(
+                svc,
+                action,
+                arguments={"NewIPAddress": str(IPv4Address(0))},
+            )
 
     def _probe_action(self, device: FritzDevice, svc: str, action: str) -> bool:
         try:
@@ -1044,23 +1048,15 @@ class HomeAutomation(FritzCapability):
         for key, metric_name, help_text in metric_definitions:
             self.metrics[key] = GaugeMetricFamily(metric_name, help_text, labels=labels)
 
-    def _build_ha_labels(
-        self,
-        device: FritzDevice,
-        ain: str,
-        device_id: str,
-        device_name: str,
-        manufacturer: str,
-        productname: str,
-    ) -> list[str]:
+    def _build_ha_labels(self, device: FritzDevice, ha_result: dict[str, Any]) -> list[str]:
         return [
             device.serial,
             device.friendly_name,
-            ain,
-            device_name,
-            device_id,
-            manufacturer,
-            productname,
+            ha_result["NewAIN"],
+            ha_result["NewDeviceName"],
+            str(ha_result["NewDeviceId"]),
+            ha_result["NewManufacturer"],
+            ha_result["NewProductName"],
         ]
 
     def _collect_multimeter(self, ha_result: dict[str, Any], labels: list[str]) -> None:
@@ -1169,18 +1165,7 @@ class HomeAutomation(FritzCapability):
                 break
 
             ain = ha_result["NewAIN"]
-            device_id = str(ha_result["NewDeviceId"])
-            device_name = ha_result["NewDeviceName"]
-            manufacturer = ha_result["NewManufacturer"]
-            productname = ha_result["NewProductName"]
-            labels = self._build_ha_labels(
-                device,
-                ain,
-                device_id,
-                device_name,
-                manufacturer,
-                productname,
-            )
+            labels = self._build_ha_labels(device, ha_result)
 
             self.metrics["devicepresent"].add_metric(
                 labels,
