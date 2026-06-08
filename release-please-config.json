@@ -18,7 +18,7 @@
                 {
                     "type": "toml",
                     "path": "uv.lock",
-                    "jsonpath": "$.package[?(@.name==\"fritz-exporter\")].version"
+                    "jsonpath": "$.package[?(@.name.value==\"fritz-exporter\")].version"
                 }
             ]
         }
