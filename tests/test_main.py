@@ -193,6 +193,8 @@ class Test_Main:
                 "fritzexporter",
                 "--config",
                 "tests/conffiles/password_file.yaml",
+                "--log-level",
+                "DEBUG",
             ],
         )
         monkeypatch.setenv("FRITZ_EXPORTER_UNDER_TEST", "true")
@@ -205,4 +207,8 @@ class Test_Main:
 
         main()
 
-        assert "Using password from password file" in caplog.text
+        assert any(
+            "Using password from password file" in record.message
+            and record.levelno == logging.DEBUG
+            for record in caplog.records
+        )

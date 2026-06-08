@@ -180,6 +180,24 @@ class TestEnvConfig:
 
 
 class TestConfigEdgeCases:
+    def test_bind_all_interfaces_logs_warning_for_ipv6(self, caplog):
+        caplog.set_level(logging.WARNING)
+
+        ExporterConfig.from_config(
+            {
+                "listen_address": "::",
+                "devices": [
+                    {
+                        "hostname": "fritz.box",
+                        "username": "user",
+                        "password": "password",
+                    }
+                ],
+            }
+        )
+
+        assert "Binding to all interfaces" in caplog.text
+
     def test_duplicate_device_names_logs_warning(self, caplog):
         testfile = "tests/conffiles/namesnotunique.yaml"
         caplog.set_level(logging.WARNING)

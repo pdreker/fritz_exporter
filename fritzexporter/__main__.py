@@ -72,7 +72,7 @@ def parse_cmdline() -> argparse.Namespace:
 def _resolve_password(dev: DeviceConfig) -> str:
     if dev.password_file is not None:
         password = Path(dev.password_file).read_text().strip()
-        logger.info("Using password from password file %s", dev.password_file)
+        logger.debug("Using password from password file %s", dev.password_file)
     else:
         password = dev.password if dev.password is not None else ""
     return password
