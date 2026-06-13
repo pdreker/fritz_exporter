@@ -1,10 +1,11 @@
 {{- if .Values.serviceMonitor.enabled }}
+{{- $releaseNamespace := .Release.Namespace }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ template "fritz-exporter.fullname" . }}
-  {{- if .Values.serviceMonitor.namespace }}
-  namespace: {{ .Values.server.metrics.serviceMonitor.namespace | quote }}
+  {{- with .Values.serviceMonitor.namespace }}
+  namespace: {{ . | default $releaseNamespace | quote }}
   {{- end }}
   labels:
     {{- include "fritz-exporter.labels" . | nindent 4 }}
