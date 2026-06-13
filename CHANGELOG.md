@@ -15,6 +15,13 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.1.3](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.1.2...fritzexporter-v3.1.3) (2026-06-13)
+
+
+### Bug Fixes
+
+* **helm:** fix namespace in ServiceMonitor ([#628](https://github.com/pdreker/fritz_exporter/issues/628)) ([6f6accb](https://github.com/pdreker/fritz_exporter/commit/6f6accb047e97cdaf36ffa76ce753c96d87ff92d))
+
 ## [3.1.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.1.1...fritzexporter-v3.1.2) (2026-06-08)
 
 
