@@ -284,6 +284,7 @@ class TestFritzCollector:
             "WanCommonInterfaceDataPackets",
             "WlanConfigurationInfo",
             "WlanAssociatedDevices",
+            "MeshTopology",
             "HostInfo",
             "HomeAutomation",
         ]
@@ -739,6 +740,91 @@ class TestFritzCollector:
         signal = [m for m in metrics if m.name == "fritz_wifi_client_signal_strength"]
         assert len(signal) == 1
         assert len(signal[0].samples) == 0
+
+    @patch("fritzexporter.fritzcapabilities.FritzHosts")
+    def test_should_collect_mesh_backhaul_links(
+        self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, caplog
+    ):
+        # The mesh master exports one series per backhaul link between mesh nodes;
+        # client links (to non-meshed devices) are excluded.
+        caplog.set_level(logging.DEBUG)
+
+        def call_with_mesh(service, action, **kwargs):
+            if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
+                return {"NewX_AVM-DE_MeshListPath": "/meshlist.lua"}
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_with_mesh
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        mock_fritzhosts.return_value.get_mesh_topology.return_value = {
+            "nodes": [
+                {
+                    "uid": "n1",
+                    "device_name": "fritzbox",
+                    "is_meshed": True,
+                    "node_interfaces": [
+                        {
+                            "type": "WLAN",
+                            "node_links": [
+                                {
+                                    "uid": "l1", "node_1_uid": "n1", "node_2_uid": "n2",
+                                    "state": "CONNECTED",
+                                    "cur_data_rate_rx": 71800, "cur_data_rate_tx": 72200,
+                                    "max_data_rate_rx": 144400, "max_data_rate_tx": 144400,
+                                },
+                                {
+                                    "uid": "l2", "node_1_uid": "n1", "node_2_uid": "c1",
+                                    "state": "CONNECTED",
+                                    "cur_data_rate_rx": 100, "cur_data_rate_tx": 100,
+                                    "max_data_rate_rx": 200, "max_data_rate_tx": 200,
+                                },
+                            ],
+                        }
+                    ],
+                },
+                {
+                    "uid": "n2",
+                    "device_name": "repeater",
+                    "is_meshed": True,
+                    "node_interfaces": [
+                        {
+                            "type": "WLAN",
+                            "node_links": [
+                                {
+                                    "uid": "l1", "node_1_uid": "n2", "node_2_uid": "n1",
+                                    "state": "CONNECTED",
+                                    "cur_data_rate_rx": 72200, "cur_data_rate_tx": 71800,
+                                    "max_data_rate_rx": 144400, "max_data_rate_tx": 144400,
+                                }
+                            ],
+                        }
+                    ],
+                },
+                {"uid": "c1", "device_name": "phone", "is_meshed": False, "node_interfaces": []},
+            ]
+        }
+
+        collector = FritzCollector()
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+        collector.register(device)
+
+        # Act
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check: exactly one backhaul link (l1, deduped), client link l2 excluded
+        available = [m for m in metrics if m.name == "fritz_mesh_link_available"]
+        assert len(available) == 1
+        assert len(available[0].samples) == 1
+        sample = available[0].samples[0]
+        assert sample.value == 1.0
+        assert {sample.labels["node"], sample.labels["peer"]} == {"fritzbox", "repeater"}
+        assert all(s.labels["peer"] != "phone" for s in available[0].samples)
+
+        # rx + tx series for the single backhaul link
+        datarate = [m for m in metrics if m.name == "fritz_mesh_link_current_data_rate_kbps"]
+        assert len(datarate[0].samples) == 2
 
 
 @patch("fritzexporter.fritzdevice.FritzConnection")
