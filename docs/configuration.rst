@@ -13,32 +13,35 @@ Environment variable
 
 If you only need a single device this is the easiest way to configure the exporter.
 
-+--------------------------+----------------------------------------------------+-----------+
-| Env variable             | Description                                        | Default   |
-+=========================-+====================================================+===========+
-| ``FRITZ_NAME``           | User-friendly name for the device                  | Fritz!Box |
-+--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_HOSTNAME``       | Hostname of the device                             | fritz.box |
-+--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_USERNAME``       | Username to authenticate on the device             | none      |
-+--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_PASSWORD``       | Password to use for authentication                 | none      |
-+--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_PASSWORD_FILE``  | File to read the password from                     |           |
-+--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_LISTEN_ADDRESS`` | Address to listen on. Can be IPv4 or IPv6.         | 127.0.0.1 |
-+--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_PORT``           | Listening port for the exporter                    |      9787 |
-+--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_LOG_LEVEL``      | Application log level: ``DEBUG``, ``INFO``,        | INFO      |
-|                          | ``WARNING``, ``ERROR``, ``CRITICAL``               |           |
-+--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_HOST_INFO``      | Enable extended information about all WiFi         | False     |
-|                          | hosts. Only "true" or "1" will enable this feature |           |
-+--------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_CONNECTION_TIMEOUT`` | Optional per-device TR-064 connect timeout in |           |
-|                          | seconds. ``0`` or empty means no timeout.          |           |
-+--------------------------+----------------------------------------------------+-----------+
++------------------------------+----------------------------------------------------+-----------+
+| Env variable                 | Description                                        | Default   |
++==============================+====================================================+===========+
+| ``FRITZ_NAME``               | User-friendly name for the device                  | Fritz!Box |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_HOSTNAME``           | Hostname of the device                             | fritz.box |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_USERNAME``           | Username to authenticate on the device             | none      |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_PASSWORD``           | Password to use for authentication                 | none      |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_PASSWORD_FILE``      | File to read the password from                     |           |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_LISTEN_ADDRESS``     | Address to listen on. Can be IPv4 or IPv6.         | 127.0.0.1 |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_PORT``               | Listening port for the exporter                    | 9787      |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_LOG_LEVEL``          | Application log level: ``DEBUG``, ``INFO``,        | INFO      |
+|                              | ``WARNING``, ``ERROR``, ``CRITICAL``               |           |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_HOST_INFO``          | Enable extended information about all WiFi         | False     |
+|                              | hosts. Only "true" or "1" will enable this feature |           |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_WIFI_CLIENT_INFO``   | Enable per-client WiFi metrics (signal/speed).     | False     |
+|                              | Only "true" or "1" will enable this feature.       |           |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_CONNECTION_TIMEOUT`` | Optional per-device TR-064 connect timeout in      |           |
+|                              | seconds. ``0`` or empty means no timeout.          |           |
++------------------------------+----------------------------------------------------+-----------+
 
 .. note::
 
@@ -73,6 +76,7 @@ To use the config file you have to specify the the location of the config and mo
       username: prometheus
       password: prometheus
       host_info: True
+      wifi_client_info: True # optional, per-client WiFi signal/speed (higher cardinality)
       connection_timeout: 10 # optional, seconds; 0 disables timeout
     - name: Repeater Wohnzimmer # optional
       hostname: repeater-Wohnzimmer
@@ -82,3 +86,7 @@ To use the config file you have to specify the the location of the config and mo
 .. note::
 
   Enabling ``FRITZ_HOST_INFO`` by setting it to ``true`` or ``1`` will collect extended information about every device known to your Fritz device, which can take a long time (20+ seconds). If you really want or need the extended stats, please make sure that your Prometheus scraping interval and timeouts are set accordingly.
+
+.. note::
+
+  Enabling ``FRITZ_WIFI_CLIENT_INFO`` (``true`` or ``1``) exposes per-station WiFi metrics (signal strength and negotiated speed) for every associated client, on the box and on mesh repeaters alike. This adds one time series per connected client, so it is disabled by default — enable it only if you want per-client visibility and are aware of the extra cardinality.

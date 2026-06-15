@@ -282,6 +282,7 @@ class TestFritzCollector:
             "WanCommonInterfaceByteRate",
             "WanCommonInterfaceDataPackets",
             "WlanConfigurationInfo",
+            "WlanAssociatedDevices",
             "HostInfo",
             "HomeAutomation",
         ]
@@ -632,6 +633,71 @@ class TestFritzCollector:
         # Check: no fritz_connection_mode metric should be in results
         metric_names = [m.name for m in metrics]
         assert "fritz_connection_mode" not in metric_names
+
+    def test_should_collect_wifi_client_info_when_enabled(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Opt-in per-station metrics: with wifi_client_info=True the exporter emits
+        # one signal/speed sample per associated client per detected radio.
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_capabilities["WlanConfigurationInfo"])
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", wifi_client_info=True
+        )
+        collector.register(device)
+
+        # Two associated clients per radio, with per-index info.
+        def assoc_mock(service, action, **kwargs):
+            if action == "GetTotalAssociations":
+                return {"NewTotalAssociations": 2}
+            if action == "GetGenericAssociatedDeviceInfo":
+                i = kwargs["NewAssociatedDeviceIndex"]
+                return {
+                    "NewAssociatedDeviceMACAddress": f"AA:BB:CC:00:00:0{i}",
+                    "NewAssociatedDeviceIPAddress": f"192.168.178.{i}",
+                    "NewX_AVM-DE_SignalStrength": 80 - i,
+                    "NewX_AVM-DE_Speed": 100 + i,
+                }
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = assoc_mock
+
+        # Act
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check: signal metric present, 2 clients on each of the 2 detected radios
+        signal = [m for m in metrics if m.name == "fritz_wifi_client_signal_strength"]
+        assert len(signal) == 1
+        assert len(signal[0].samples) == 4
+        assert any(s.labels["client_mac"] == "AA:BB:CC:00:00:00" for s in signal[0].samples)
+        assert any(s.labels["wifi_name"] == "2.4GHz" for s in signal[0].samples)
+
+    def test_should_not_collect_wifi_client_info_by_default(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Without the opt-in flag the capability stays disabled (no per-client samples).
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_capabilities["WlanConfigurationInfo"])
+
+        collector = FritzCollector()
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+        collector.register(device)
+
+        # Act
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check: metric family is exposed but empty (capability not enabled)
+        signal = [m for m in metrics if m.name == "fritz_wifi_client_signal_strength"]
+        assert len(signal) == 1
+        assert len(signal[0].samples) == 0
 
 
 @patch("fritzexporter.fritzdevice.FritzConnection")

@@ -294,3 +294,32 @@ class TestConfigEdgeCases:
                 password="password",
                 connection_timeout="invalid",
             )
+
+
+class TestWifiClientInfoConfig:
+    def test_wifi_client_info_from_config_dict(self):
+        # File path: parsed YAML dict -> DeviceConfig
+        dev = DeviceConfig.from_config(
+            {
+                "hostname": "fritz.box",
+                "username": "user",
+                "password": "password",
+                "wifi_client_info": True,
+            }
+        )
+        assert dev.wifi_client_info is True
+
+    def test_wifi_client_info_defaults_false(self):
+        dev = DeviceConfig.from_config(
+            {"hostname": "fritz.box", "username": "user", "password": "password"}
+        )
+        assert dev.wifi_client_info is False
+
+    def test_wifi_client_info_from_env(self, monkeypatch):
+        # Env path: FRITZ_WIFI_CLIENT_INFO -> DeviceConfig
+        monkeypatch.setenv("FRITZ_USERNAME", "user")
+        monkeypatch.setenv("FRITZ_PASSWORD", "password")
+        monkeypatch.setenv("FRITZ_WIFI_CLIENT_INFO", "True")
+
+        config = get_config(None)
+        assert config.devices[0].wifi_client_info is True
