@@ -971,10 +971,17 @@ class MeshTopology(FritzCapability):
     def _generate_metric_values(self, device: FritzDevice) -> None:
         try:
             topology = FritzHosts(fc=device.fc).get_mesh_topology()
+        except FritzActionError:
+            # Only the mesh master can serve the topology; every other node answers
+            # "Device has no access to topology information" (404). That is the normal
+            # case for mesh slaves/repeaters, so log it quietly and skip mesh metrics
+            # for this device — do NOT mark it unavailable.
+            logger.debug("No mesh topology available from %s (not the mesh master)", device.host)
+            return
         except FritzConnectionException:
             # The mesh list is fetched over HTTP; a transient failure should not
             # mark the whole device unavailable — just skip mesh metrics this cycle.
-            logger.exception("Failed to retrieve mesh topology from %s", device.host)
+            logger.warning("Failed to retrieve mesh topology from %s", device.host)
             return
 
         nodes = topology.get("nodes", [])
