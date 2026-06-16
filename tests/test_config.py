@@ -319,7 +319,6 @@ class TestWifiClientInfoConfig:
         # Env path: FRITZ_WIFI_CLIENT_INFO -> DeviceConfig
         monkeypatch.setenv("FRITZ_USERNAME", "user")
         monkeypatch.setenv("FRITZ_PASSWORD", "password")
-        monkeypatch.setenv("FRITZ_WIFI_CLIENT_INFO", "True")
-
+        monkeypatch.setenv("FRITZ_WIFI_CLIENT_INFO", "true")
         config = get_config(None)
         assert config.devices[0].wifi_client_info is True
