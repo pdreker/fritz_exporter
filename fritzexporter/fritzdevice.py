@@ -111,6 +111,15 @@ class FritzDevice:
             resp = self.fc.call_action("WANCommonInterfaceConfig", "GetCommonLinkProperties")
             link_status = resp.get("NewPhysicalLinkStatus")
             access_type = resp.get("NewWANAccessType") or ""
+        except (FritzServiceError, FritzActionError):
+            # Device simply has no WAN interface (e.g. a mesh repeater). That does
+            # NOT make it unavailable — skip the connection-mode metric but keep
+            # the device available so its other capabilities (uptime, WLAN, hosts)
+            # are still collected.
+            logger.debug(
+                "No WAN connection-mode info on %s (no WAN service); skipping metric.", self.host
+            )
+            return None
         except FritzConnectionException:
             logger.exception("Failed to retrieve connection mode info from %s", self.host)
             self.available = False

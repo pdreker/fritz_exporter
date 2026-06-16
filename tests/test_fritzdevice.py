@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 from fritzconnection.core.exceptions import (
+    FritzActionError,
     FritzAuthorizationError,
     FritzConnectionException,
     FritzServiceError,
@@ -633,6 +634,46 @@ class TestFritzCollector:
         metric_names = [m.name for m in metrics]
         assert "fritz_connection_mode" not in metric_names
 
+    def test_should_collect_capabilities_from_wanless_repeater(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Regression: a WAN-less mesh repeater must still export its capabilities
+        # (uptime, WLAN, ...) and report reachable=1. The WAN-based connection-mode
+        # probe failing with a missing-service error must not mark it unavailable.
+        # Prepare
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.call_http.side_effect = call_http_mock
+        fc.services = create_fc_services(fc_services_devices["FritzRepeater 2400"])
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("repeater", "someuser", "password"), "RepeaterMock", host_info=False
+        )
+        collector.register(device)
+
+        # A repeater exposes no WAN service: the connection-mode probe raises a
+        # missing-service error (as fritzconnection does for an absent service).
+        def no_wan_service(service, action, **kwargs):
+            if service == "WANCommonInterfaceConfig" and action == "GetCommonLinkProperties":
+                raise FritzServiceError("no such service")
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = no_wan_service
+
+        # Act
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check: device stays reachable ...
+        reachable = next((m for m in metrics if m.name == "fritz_device_reachable"), None)
+        assert reachable is not None
+        assert reachable.samples and reachable.samples[0].value == 1.0
+        # ... and its capability metrics are still collected (empty before the fix)
+        uptime = next((m for m in metrics if m.name == "fritz_uptime_seconds"), None)
+        assert uptime is not None and len(uptime.samples) == 1
+
 
 @patch("fritzexporter.fritzdevice.FritzConnection")
 class TestGetConnectionMode:
@@ -714,6 +755,28 @@ class TestGetConnectionMode:
         # Check
         assert metric is not None
         assert metric.samples[0].value == 0
+
+    @pytest.mark.parametrize("exc", [FritzServiceError, FritzActionError])
+    def test_get_connection_mode_keeps_device_available_on_missing_wan(self, mock_fc: MagicMock, exc):
+        # A device without a WAN interface (e.g. a mesh repeater) reports no
+        # connection mode, but must NOT be marked unavailable — otherwise the
+        # collect loop would skip all its other capabilities every scrape.
+        # Prepare
+        device, fc = self._create_device(mock_fc)
+
+        def raise_missing_service(s, a, **kw):
+            if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
+                raise exc("no WAN service on this device")
+            return call_action_mock(s, a, **kw)
+
+        fc.call_action.side_effect = raise_missing_service
+
+        # Act
+        metric = device.get_connection_mode()
+
+        # Check: no metric, but the device stays available
+        assert metric is None
+        assert device.available is True
 
     def test_get_connection_mode_returns_none_on_exception(self, mock_fc: MagicMock, caplog):
         # Prepare
