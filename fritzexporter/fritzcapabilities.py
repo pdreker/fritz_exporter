@@ -16,6 +16,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzLookUpError,
     FritzServiceError,
 )
+from fritzconnection.lib.fritzhosts import FritzHosts  # type: ignore[import]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 from fritzexporter.fritz_aha import parse_aha_device_xml
@@ -933,6 +934,105 @@ class WlanAssociatedDevices(FritzCapability):
     ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["signal"]
         yield self.metrics["speed"]
+
+
+class MeshTopology(FritzCapability):
+    """Mesh backhaul link quality, read from the mesh master.
+
+    Exposes the current/peak data rate and the state of each backhaul link between
+    mesh nodes (e.g. FRITZ!Box <-> repeater), parsed from the mesh topology
+    (``Hosts1`` ``X_AVM-DE_GetMeshListPath``). Only the mesh master exposes the full
+    topology, so the capability is present only there. Client links are intentionally
+    excluded to keep cardinality bounded (one series per backhaul link, not per client).
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(("Hosts1", "X_AVM-DE_GetMeshListPath"))
+
+    def create_metrics(self) -> None:
+        link_labels = ["serial", "friendly_name", "node", "peer", "type", "direction"]
+        self.metrics["datarate"] = GaugeMetricFamily(
+            "fritz_mesh_link_current_data_rate_kbps",
+            "Current data rate of a mesh backhaul link in kbit/s",
+            labels=link_labels,
+        )
+        self.metrics["maxdatarate"] = GaugeMetricFamily(
+            "fritz_mesh_link_max_data_rate_kbps",
+            "Maximum data rate of a mesh backhaul link in kbit/s",
+            labels=link_labels,
+        )
+        self.metrics["available"] = GaugeMetricFamily(
+            "fritz_mesh_link_available",
+            "Mesh backhaul link state (1=connected, 0=otherwise)",
+            labels=["serial", "friendly_name", "node", "peer", "type"],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        try:
+            # get_mesh_topology is annotated dict | str (str only when raw=True);
+            # with the default raw=False it always returns the parsed dict.
+            topology = cast("dict[str, Any]", FritzHosts(fc=device.fc).get_mesh_topology())
+        except FritzActionError:
+            # Only the mesh master can serve the topology; every other node answers
+            # "Device has no access to topology information" (404). That is the normal
+            # case for mesh slaves/repeaters, so log it quietly and skip mesh metrics
+            # for this device — do NOT mark it unavailable.
+            logger.debug("No mesh topology available from %s (not the mesh master)", device.host)
+            return
+        except FritzConnectionException:
+            # The mesh list is fetched over HTTP; a transient failure should not
+            # mark the whole device unavailable — just skip mesh metrics this cycle.
+            logger.warning("Failed to retrieve mesh topology from %s", device.host)
+            return
+
+        nodes = topology.get("nodes", [])
+        uid_name = {n["uid"]: (n.get("device_name") or "n/a") for n in nodes if "uid" in n}
+        meshed = {n["uid"] for n in nodes if n.get("uid") and n.get("is_meshed")}
+        seen: set[str] = set()
+        for node in nodes:
+            if not node.get("is_meshed"):
+                continue
+            for interface in node.get("node_interfaces", []):
+                link_type = interface.get("type", "")
+                for link in interface.get("node_links", []):
+                    link_uid = link.get("uid")
+                    n1 = link.get("node_1_uid")
+                    n2 = link.get("node_2_uid")
+                    # Only backhaul (mesh-node <-> mesh-node); dedup the link, which is
+                    # listed once under each endpoint.
+                    if link_uid in seen or n1 not in meshed or n2 not in meshed:
+                        continue
+                    seen.add(link_uid)
+                    base = [
+                        device.serial,
+                        device.friendly_name,
+                        uid_name[n1],
+                        uid_name[n2],
+                        link_type,
+                    ]
+                    self.metrics["available"].add_metric(
+                        base, 1.0 if link.get("state") == "CONNECTED" else 0.0
+                    )
+                    self.metrics["datarate"].add_metric(
+                        [*base, "rx"], link.get("cur_data_rate_rx", 0)
+                    )
+                    self.metrics["datarate"].add_metric(
+                        [*base, "tx"], link.get("cur_data_rate_tx", 0)
+                    )
+                    self.metrics["maxdatarate"].add_metric(
+                        [*base, "rx"], link.get("max_data_rate_rx", 0)
+                    )
+                    self.metrics["maxdatarate"].add_metric(
+                        [*base, "tx"], link.get("max_data_rate_tx", 0)
+                    )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["datarate"]
+        yield self.metrics["maxdatarate"]
+        yield self.metrics["available"]
 
 
 class HostInfo(FritzCapability):
