@@ -1,0 +1,26 @@
+name: Check for new stable Python release
+
+# Dependabot ignores minor/major bumps of the python base image (its prerelease
+# detection fails on "-alpine" variant tags and would propose betas). This job
+# restores the heads-up for new *stable* minor/major releases by opening a
+# tracking issue. Patch updates still come through Dependabot.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC (matches dependabot cadence)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    name: Check Python release
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check for newer stable Python
+        run: python3 .github/scripts/check_python_release.py
+        env:
+          GH_TOKEN: ${{ github.token }}

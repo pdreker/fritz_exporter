@@ -12,3 +12,14 @@ updates:
     directory: /
     schedule:
       interval: "weekly"
+    ignore:
+      # Never auto-bump the Python base image across minor/major versions.
+      # Python's pre-releases (e.g. 3.15.0b2-alpine) appear as minor bumps,
+      # and Dependabot's prerelease detection fails on the "-alpine" variant
+      # tag, so it would otherwise propose betas/RCs. Patch updates (security
+      # fixes like 3.14.5 -> 3.14.6) still flow automatically; minor/major
+      # interpreter bumps are handled manually.
+      - dependency-name: "python"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
