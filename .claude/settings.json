@@ -3,7 +3,8 @@
     "allow": [
       "mcp__sonarqube__search_my_sonarqube_projects",
       "mcp__sonarqube__get_project_quality_gate_status",
-      "mcp__sonarqube__search_sonar_issues_in_projects"
+      "mcp__sonarqube__search_sonar_issues_in_projects",
+      "Bash(gh pr *)"
     ]
   }
 }
