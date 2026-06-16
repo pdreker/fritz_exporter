@@ -15,6 +15,25 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.2.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.1.2...fritzexporter-v3.2.0) (2026-06-16)
+
+
+### Features
+
+* **capabilities:** add mesh backhaul link metrics (MeshTopology) ([#634](https://github.com/pdreker/fritz_exporter/issues/634)) ([68bec7e](https://github.com/pdreker/fritz_exporter/commit/68bec7e9eb14a0b74001757e58dc7cdff458bdf6))
+* **capabilities:** add opt-in per-client WiFi metrics (signal + speed) ([#633](https://github.com/pdreker/fritz_exporter/issues/633)) ([b0ea678](https://github.com/pdreker/fritz_exporter/commit/b0ea6786973cf664d91e886d5b62d1780c7c6865))
+
+
+### Bug Fixes
+
+* **collector:** keep WAN-less devices available so mesh repeaters export metrics ([#632](https://github.com/pdreker/fritz_exporter/issues/632)) ([ebca860](https://github.com/pdreker/fritz_exporter/commit/ebca860cd2864eeff7fd5a26174d6f3c90b13050))
+* **helm:** fix namespace in ServiceMonitor ([#628](https://github.com/pdreker/fritz_exporter/issues/628)) ([6f6accb](https://github.com/pdreker/fritz_exporter/commit/6f6accb047e97cdaf36ffa76ce753c96d87ff92d))
+
+
+### Documentation
+
+* sync AGENTS.md with wifi_client_info config and data_donation module ([#637](https://github.com/pdreker/fritz_exporter/issues/637)) ([314973e](https://github.com/pdreker/fritz_exporter/commit/314973edbd17b1a6a593c39a9b57938666964679))
+
 ## [3.1.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.1.1...fritzexporter-v3.1.2) (2026-06-08)
 
 
