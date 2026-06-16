@@ -667,11 +667,12 @@ class TestFritzCollector:
         metrics: list[Metric] = list(collector.collect())
 
         # Check: device stays reachable ...
-        reachable = [m for m in metrics if m.name == "fritz_device_reachable"]
-        assert reachable[0].samples[0].value == 1.0
+        reachable = next((m for m in metrics if m.name == "fritz_device_reachable"), None)
+        assert reachable is not None
+        assert reachable.samples and reachable.samples[0].value == 1.0
         # ... and its capability metrics are still collected (empty before the fix)
-        uptime = [m for m in metrics if m.name == "fritz_uptime_seconds"]
-        assert len(uptime[0].samples) == 1
+        uptime = next((m for m in metrics if m.name == "fritz_uptime_seconds"), None)
+        assert uptime is not None and len(uptime.samples) == 1
 
 
 @patch("fritzexporter.fritzdevice.FritzConnection")
