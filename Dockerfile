@@ -1,5 +1,5 @@
 # Build .whl in a separate build container
-FROM python:3.14.5-alpine AS build
+FROM python:3.14.6-alpine AS build
 WORKDIR /app
 
 RUN apk add build-base libffi-dev openssl-dev rust cargo && \
@@ -11,7 +11,7 @@ COPY fritzexporter /app/fritzexporter
 RUN python -m build --wheel
 
 # Build the actual runner
-FROM python:3.14.5-alpine
+FROM python:3.14.6-alpine
 
 LABEL Name=fritzbox_exporter
 EXPOSE 9787
