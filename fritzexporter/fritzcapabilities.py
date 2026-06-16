@@ -826,6 +826,115 @@ class WlanConfigurationInfo(FritzCapability):
         yield self.metrics["wlanpackets"]
 
 
+class WlanAssociatedDevices(FritzCapability):
+    """Per-station WiFi client metrics (signal strength + negotiated speed).
+
+    Opt-in via the device ``wifi_client_info`` flag: it emits one time series per
+    associated client (per-client cardinality), so it is disabled by default just
+    like ``host_info``. Works on any device with radios — the box and (with the
+    repeater availability fix) mesh repeaters alike.
+    """
+
+    WIFI_NAMES: ClassVar[list[str]] = ["2.4GHz", "5GHz", "Guest", "WLAN4"]
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.wifi_present: list[bool] = [False] * len(self.WIFI_NAMES)
+
+    def check_capability(self, device: FritzDevice) -> None:
+        if not device.wifi_client_info:
+            self.present = False
+            return
+        for index in range(len(self.WIFI_NAMES)):
+            service = f"WLANConfiguration{index + 1}"
+            required = ("GetTotalAssociations", "GetGenericAssociatedDeviceInfo")
+            present = service in device.fc.services and all(
+                action in device.fc.services[service].actions for action in required
+            )
+            # Only GetTotalAssociations is safe to probe live; GetGenericAssociatedDeviceInfo
+            # needs an index and raises on a radio with no clients.
+            if present:
+                try:
+                    device.fc.call_action(service, "GetTotalAssociations")
+                except (FritzServiceError, FritzActionError, FritzInternalError) as e:
+                    logger.warning(
+                        "disabling metrics at service %s, action GetTotalAssociations - "
+                        "fritzconnection.call_action returned %s",
+                        service,
+                        str(e),
+                    )
+                    present = False
+            self.wifi_present[index] = present
+        self.present = any(self.wifi_present)
+
+    def create_metrics(self) -> None:
+        labels = ["serial", "friendly_name", "wifi_name", "client_mac", "client_ip"]
+        self.metrics["signal"] = GaugeMetricFamily(
+            "fritz_wifi_client_signal_strength",
+            "Signal strength of an associated WiFi client in percent",
+            labels=labels,
+        )
+        self.metrics["speed"] = GaugeMetricFamily(
+            "fritz_wifi_client_speed",
+            "Negotiated speed of an associated WiFi client in Mbit/s",
+            labels=labels,
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        device_cap = cast(WlanAssociatedDevices, device.capabilities[self.__class__.__name__])
+        for index, present in enumerate(device_cap.wifi_present):
+            if not present:
+                continue
+            service = f"WLANConfiguration{index + 1}"
+            try:
+                assoc = device.fc.call_action(service, "GetTotalAssociations")
+                total = int(assoc.get("NewTotalAssociations", 0))
+            except (FritzServiceError, FritzActionError, FritzInternalError) as e:
+                logger.warning(
+                    "failed to read WiFi associations from %s on %s: %s",
+                    service,
+                    device.host,
+                    str(e),
+                )
+                continue
+            for client_index in range(total):
+                try:
+                    info = device.fc.call_action(
+                        service,
+                        "GetGenericAssociatedDeviceInfo",
+                        NewAssociatedDeviceIndex=client_index,
+                    )
+                except (
+                    FritzArrayIndexError,
+                    FritzServiceError,
+                    FritzActionError,
+                    FritzInternalError,
+                ) as e:
+                    logger.debug(
+                        "failed to read associated device info for %s index %d on %s: %s",
+                        service,
+                        client_index,
+                        device.host,
+                        str(e),
+                    )
+                    break
+                labels = [
+                    device.serial,
+                    device.friendly_name,
+                    self.WIFI_NAMES[index],
+                    info["NewAssociatedDeviceMACAddress"],
+                    info["NewAssociatedDeviceIPAddress"],
+                ]
+                self.metrics["signal"].add_metric(labels, info["NewX_AVM-DE_SignalStrength"])
+                self.metrics["speed"].add_metric(labels, info["NewX_AVM-DE_Speed"])
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["signal"]
+        yield self.metrics["speed"]
+
+
 class HostInfo(FritzCapability):
     def __init__(self) -> None:
         super().__init__()

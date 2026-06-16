@@ -85,7 +85,11 @@ def _register_device(
     creds = FritzCredentials(dev.hostname, dev.username, password)
     try:
         fritz_device = FritzDevice(
-            creds, dev.name, host_info=dev.host_info, connection_timeout=dev.connection_timeout
+            creds,
+            dev.name,
+            host_info=dev.host_info,
+            wifi_client_info=dev.wifi_client_info,
+            connection_timeout=dev.connection_timeout,
         )
     except (FritzConnectionException, FritzAuthorizationError, FritzDeviceHasNoCapabilitiesError):
         logger.exception(
@@ -94,7 +98,11 @@ def _register_device(
             dev.name,
         )
         fritzcollector.register_offline(
-            creds, dev.name, host_info=dev.host_info, connection_timeout=dev.connection_timeout
+            creds,
+            dev.name,
+            host_info=dev.host_info,
+            wifi_client_info=dev.wifi_client_info,
+            connection_timeout=dev.connection_timeout,
         )
         return
 

@@ -68,6 +68,7 @@ def _read_config_from_env() -> dict:
     password_file = os.getenv("FRITZ_PASSWORD_FILE")
 
     host_info: str = os.getenv("FRITZ_HOST_INFO", "False")
+    wifi_client_info: str = os.getenv("FRITZ_WIFI_CLIENT_INFO", "False")
     connection_timeout = os.getenv("FRITZ_CONNECTION_TIMEOUT")
 
     config: dict[Any, Any] = {}
@@ -84,6 +85,7 @@ def _read_config_from_env() -> dict:
         "password": password,
         "password_file": password_file,
         "host_info": host_info,
+        "wifi_client_info": wifi_client_info,
         "name": name,
         "connection_timeout": connection_timeout,
     }
@@ -169,6 +171,7 @@ class DeviceConfig:
     password_file: str | None = field(default=None)
     name: str = ""
     host_info: bool = field(default=False, converter=converters.to_bool)
+    wifi_client_info: bool = field(default=False, converter=converters.to_bool)
     connection_timeout: int | None = field(
         default=None,
         converter=_convert_optional_int,
@@ -198,6 +201,7 @@ class DeviceConfig:
         password_file = device.get("password_file")
         name = device.get("name", "")
         host_info = device.get("host_info", False)
+        wifi_client_info = device.get("wifi_client_info", False)
         connection_timeout = device.get("connection_timeout")
 
         return cls(
@@ -207,5 +211,6 @@ class DeviceConfig:
             password_file=password_file,
             name=name,
             host_info=host_info,
+            wifi_client_info=wifi_client_info,
             connection_timeout=connection_timeout,
         )

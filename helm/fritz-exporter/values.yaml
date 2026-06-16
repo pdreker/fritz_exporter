@@ -12,6 +12,7 @@ config: {}
 #     username: prometheus
 #     password: prometheus
 #     host_info: True
+#     wifi_client_info: True # optional, per-client WiFi signal/speed (higher cardinality)
 #   - name: Repeater Wohnzimmer # optional
 #     hostname: repeater-Wohnzimmer
 #     username: prometheus
