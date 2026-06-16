@@ -176,6 +176,7 @@ fritzexporter/
   fritzcapabilities.py  # FritzCapability (ABC) + all concrete capability classes
   fritz_aha.py          # AHA (smart home) XML parsing
   action_blacklists.py  # TR-064 actions that must never be called
+  data_donation.py      # --donate / --sanitize: collect + upload anonymized device data
   exceptions.py         # Project-level exceptions
   config/
     __init__.py
@@ -233,6 +234,7 @@ Both paths produce the same `ExporterConfig` / `DeviceConfig` attrs objects and 
 | Device | `password` | `FRITZ_PASSWORD` | *(required unless password_file set)* |
 | Device | `password_file` | `FRITZ_PASSWORD_FILE` | *(required unless password set)* |
 | Device | `host_info` | `FRITZ_HOST_INFO` | `False` |
+| Device | `wifi_client_info` | `FRITZ_WIFI_CLIENT_INFO` | `False` |
 | Device | `connection_timeout` | `FRITZ_CONNECTION_TIMEOUT` | *(none — no timeout)* |
 
 ### Rule: keep both paths in sync
