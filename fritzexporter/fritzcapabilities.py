@@ -970,7 +970,9 @@ class MeshTopology(FritzCapability):
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         try:
-            topology = FritzHosts(fc=device.fc).get_mesh_topology()
+            # get_mesh_topology is annotated dict | str (str only when raw=True);
+            # with the default raw=False it always returns the parsed dict.
+            topology = cast("dict[str, Any]", FritzHosts(fc=device.fc).get_mesh_topology())
         except FritzActionError:
             # Only the mesh master can serve the topology; every other node answers
             # "Device has no access to topology information" (404). That is the normal
