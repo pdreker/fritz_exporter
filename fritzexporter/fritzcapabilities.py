@@ -886,13 +886,38 @@ class WlanAssociatedDevices(FritzCapability):
             if not present:
                 continue
             service = f"WLANConfiguration{index + 1}"
-            assoc = device.fc.call_action(service, "GetTotalAssociations")
-            for client_index in range(assoc["NewTotalAssociations"]):
-                info = device.fc.call_action(
+            try:
+                assoc = device.fc.call_action(service, "GetTotalAssociations")
+                total = int(assoc.get("NewTotalAssociations", 0))
+            except (FritzServiceError, FritzActionError, FritzInternalError) as e:
+                logger.warning(
+                    "failed to read WiFi associations from %s on %s: %s",
                     service,
-                    "GetGenericAssociatedDeviceInfo",
-                    NewAssociatedDeviceIndex=client_index,
+                    device.host,
+                    str(e),
                 )
+                continue
+            for client_index in range(total):
+                try:
+                    info = device.fc.call_action(
+                        service,
+                        "GetGenericAssociatedDeviceInfo",
+                        NewAssociatedDeviceIndex=client_index,
+                    )
+                except (
+                    FritzArrayIndexError,
+                    FritzServiceError,
+                    FritzActionError,
+                    FritzInternalError,
+                ) as e:
+                    logger.debug(
+                        "failed to read associated device info for %s index %d on %s: %s",
+                        service,
+                        client_index,
+                        device.host,
+                        str(e),
+                    )
+                    break
                 labels = [
                     device.serial,
                     device.friendly_name,
