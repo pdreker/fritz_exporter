@@ -44,6 +44,9 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
           exit $rescode
       - name: SonarCloud Scan
+        # Secrets (SONAR_TOKEN) are not available to PRs from forks, so the
+        # scan would fail. Skip it for external PRs; lint and tests still run.
+        if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
         uses: SonarSource/sonarqube-scan-action@v8.2.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
