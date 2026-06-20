@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Check Python release
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Check for newer stable Python
         run: python3 .github/scripts/check_python_release.py
         env:
