@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Generator, Iterator, ItemsView
+from collections.abc import Generator, ItemsView, Iterator
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
