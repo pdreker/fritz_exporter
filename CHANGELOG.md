@@ -15,6 +15,13 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.2.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.2.0...fritzexporter-v3.2.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* **capabilities:** keep device reachable when host table shrinks mid-scan ([#641](https://github.com/pdreker/fritz_exporter/issues/641)) ([2b68e2e](https://github.com/pdreker/fritz_exporter/commit/2b68e2e4e50f555d829df62b97058f1d8bf0c8a2))
+
 ## [3.2.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.1.2...fritzexporter-v3.2.0) (2026-06-16)
 
 
