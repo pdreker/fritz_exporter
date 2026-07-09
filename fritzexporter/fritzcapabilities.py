@@ -1123,9 +1123,24 @@ class HostInfo(FritzCapability):
         )
         for host_index in range(num_hosts_result["NewHostNumberOfEntries"]):
             logger.debug("Fetching generic host information for host number %s", host_index)
-            host_result = device.fc.call_action(
-                "Hosts1", "GetGenericHostEntry", NewIndex=host_index
-            )
+            try:
+                host_result = device.fc.call_action(
+                    "Hosts1", "GetGenericHostEntry", NewIndex=host_index
+                )
+            except FritzArrayIndexError:
+                # The host table shrank between GetHostNumberOfEntries and this read
+                # (a client left mid-scan), so this index is now out of range
+                # (UPnP errorCode 713, SpecifiedArrayIndexInvalid). This is a benign
+                # race on the DHCP server's host table, not a device outage: stop
+                # enumerating and keep the hosts collected so far. Letting it bubble
+                # up would flip the whole device to unreachable for this cycle.
+                logger.debug(
+                    "Host table shrank during scan of device serial %s at index %s; "
+                    "stopping host enumeration for this cycle",
+                    device.serial,
+                    host_index,
+                )
+                break
             host_ip = host_result["NewIPAddress"]
             host_mac = host_result["NewMACAddress"]
             host_name = host_result["NewHostName"]
