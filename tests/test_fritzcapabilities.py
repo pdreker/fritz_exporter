@@ -225,6 +225,18 @@ class TestHostInfoCapability:
         assert len(host_active_metrics) == 1
         assert len(host_active_metrics[0].samples) == 2
 
+        # Check - benign shrink path is logged and no unreachable error is emitted
+        assert any(
+            "Host table shrank during scan of device serial" in record.message
+            for record in caplog.records
+            if record.levelno == logging.DEBUG
+        )
+        assert not any(
+            "is unreachable, skipping HostInfo metrics for this collection cycle"
+            in record.message
+            for record in caplog.records
+        )
+
 
 @patch("fritzexporter.fritzdevice.FritzConnection")
 class TestHomeAutomationCapability:
