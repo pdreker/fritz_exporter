@@ -746,7 +746,12 @@ class TestFritzCollector:
         self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, caplog
     ):
         # The mesh master exports one series per backhaul link between mesh nodes;
-        # client links (to non-meshed devices) are excluded.
+        # client links (to non-meshed devices) are excluded. A node pair can have
+        # more than one concurrent link of the same type (e.g. simultaneous 2.4GHz
+        # + 5GHz WLAN backhaul, as seen on real hardware) - each physical link is
+        # listed once under each endpoint's own node record (same uid, same data
+        # both times - deduped), but distinct links (different uid) between the
+        # same pair must stay separate, disambiguated by the `interface` label.
         caplog.set_level(logging.DEBUG)
 
         def call_with_mesh(service, action, **kwargs):
@@ -767,6 +772,7 @@ class TestFritzCollector:
                     "node_interfaces": [
                         {
                             "type": "WLAN",
+                            "name": "AP:2G:0",
                             "node_links": [
                                 {
                                     "uid": "l1", "node_1_uid": "n1", "node_2_uid": "n2",
@@ -781,7 +787,23 @@ class TestFritzCollector:
                                     "max_data_rate_rx": 200, "max_data_rate_tx": 200,
                                 },
                             ],
-                        }
+                        },
+                        {
+                            "type": "WLAN",
+                            "name": "AP:5G:0",
+                            "node_links": [
+                                {
+                                    # Concurrent 5GHz backhaul to the same peer as l1.
+                                    # AVM reports node_1_uid/node_2_uid reversed here
+                                    # relative to l1, matching what was observed on
+                                    # real hardware.
+                                    "uid": "l3", "node_1_uid": "n2", "node_2_uid": "n1",
+                                    "state": "CONNECTED",
+                                    "cur_data_rate_rx": 288200, "cur_data_rate_tx": 864000,
+                                    "max_data_rate_rx": 2401000, "max_data_rate_tx": 2401000,
+                                },
+                            ],
+                        },
                     ],
                 },
                 {
@@ -791,15 +813,28 @@ class TestFritzCollector:
                     "node_interfaces": [
                         {
                             "type": "WLAN",
+                            "name": "UPLINK:2G:0",
                             "node_links": [
                                 {
-                                    "uid": "l1", "node_1_uid": "n2", "node_2_uid": "n1",
+                                    "uid": "l1", "node_1_uid": "n1", "node_2_uid": "n2",
                                     "state": "CONNECTED",
-                                    "cur_data_rate_rx": 72200, "cur_data_rate_tx": 71800,
+                                    "cur_data_rate_rx": 71800, "cur_data_rate_tx": 72200,
                                     "max_data_rate_rx": 144400, "max_data_rate_tx": 144400,
                                 }
                             ],
-                        }
+                        },
+                        {
+                            "type": "WLAN",
+                            "name": "UPLINK:5G:0",
+                            "node_links": [
+                                {
+                                    "uid": "l3", "node_1_uid": "n2", "node_2_uid": "n1",
+                                    "state": "CONNECTED",
+                                    "cur_data_rate_rx": 288200, "cur_data_rate_tx": 864000,
+                                    "max_data_rate_rx": 2401000, "max_data_rate_tx": 2401000,
+                                },
+                            ],
+                        },
                     ],
                 },
                 {"uid": "c1", "device_name": "phone", "is_meshed": False, "node_interfaces": []},
@@ -813,18 +848,23 @@ class TestFritzCollector:
         # Act
         metrics: list[Metric] = list(collector.collect())
 
-        # Check: exactly one backhaul link (l1, deduped), client link l2 excluded
+        # Check: two distinct backhaul links (l1 2.4GHz + l3 5GHz, each deduped
+        # across both endpoints' reports), client link l2 excluded
         available = [m for m in metrics if m.name == "fritz_mesh_link_available"]
         assert len(available) == 1
-        assert len(available[0].samples) == 1
-        sample = available[0].samples[0]
-        assert sample.value == 1.0
-        assert {sample.labels["node"], sample.labels["peer"]} == {"fritzbox", "repeater"}
+        assert len(available[0].samples) == 2
+        for sample in available[0].samples:
+            assert sample.value == 1.0
+            assert {sample.labels["node"], sample.labels["peer"]} == {"fritzbox", "repeater"}
         assert all(s.labels["peer"] != "phone" for s in available[0].samples)
 
-        # rx + tx series for the single backhaul link
+        # The two links must be disambiguated by `interface`, not collapsed
+        interfaces = {s.labels["interface"] for s in available[0].samples}
+        assert interfaces == {"AP:2G:0", "AP:5G:0"}
+
+        # rx + tx series for each of the two backhaul links
         datarate = [m for m in metrics if m.name == "fritz_mesh_link_current_data_rate_kbps"]
-        assert len(datarate[0].samples) == 2
+        assert len(datarate[0].samples) == 4
 
 
 @patch("fritzexporter.fritzdevice.FritzConnection")
