@@ -15,6 +15,13 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.2.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.2.1...fritzexporter-v3.2.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* **capabilities:** disambiguate concurrent same-type mesh backhaul links ([#646](https://github.com/pdreker/fritz_exporter/issues/646)) ([2422d9b](https://github.com/pdreker/fritz_exporter/commit/2422d9bb043c78777c7cae9f9a05abb4c2c2eddd))
+
 ## [3.2.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.2.0...fritzexporter-v3.2.1) (2026-07-09)
 
 
