@@ -944,6 +944,13 @@ class MeshTopology(FritzCapability):
     (``Hosts1`` ``X_AVM-DE_GetMeshListPath``). Only the mesh master exposes the full
     topology, so the capability is present only there. Client links are intentionally
     excluded to keep cardinality bounded (one series per backhaul link, not per client).
+
+    A node pair can have more than one concurrent backhaul link of the same
+    ``type`` (e.g. simultaneous 2.4GHz + 5GHz WLAN backhaul) - the ``interface``
+    label (the reporting side's own ``node_interfaces`` name, e.g. ``AP:5G:0``)
+    distinguishes those. AVM also reports each physical link twice - once under
+    each endpoint's own node record, with identical uid and data both times -
+    which is deduped below; that's a genuine duplicate, not a second link.
     """
 
     def __init__(self) -> None:
@@ -951,7 +958,15 @@ class MeshTopology(FritzCapability):
         self.requirements.append(("Hosts1", "X_AVM-DE_GetMeshListPath"))
 
     def create_metrics(self) -> None:
-        link_labels = ["serial", "friendly_name", "node", "peer", "type", "direction"]
+        link_labels = [
+            "serial",
+            "friendly_name",
+            "node",
+            "peer",
+            "type",
+            "interface",
+            "direction",
+        ]
         self.metrics["datarate"] = GaugeMetricFamily(
             "fritz_mesh_link_current_data_rate_kbps",
             "Current data rate of a mesh backhaul link in kbit/s",
@@ -965,7 +980,7 @@ class MeshTopology(FritzCapability):
         self.metrics["available"] = GaugeMetricFamily(
             "fritz_mesh_link_available",
             "Mesh backhaul link state (1=connected, 0=otherwise)",
-            labels=["serial", "friendly_name", "node", "peer", "type"],
+            labels=["serial", "friendly_name", "node", "peer", "type", "interface"],
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
@@ -995,12 +1010,17 @@ class MeshTopology(FritzCapability):
                 continue
             for interface in node.get("node_interfaces", []):
                 link_type = interface.get("type", "")
+                interface_name = interface.get("name", "")
                 for link in interface.get("node_links", []):
                     link_uid = link.get("uid")
                     n1 = link.get("node_1_uid")
                     n2 = link.get("node_2_uid")
-                    # Only backhaul (mesh-node <-> mesh-node); dedup the link, which is
-                    # listed once under each endpoint.
+                    # Only backhaul (mesh-node <-> mesh-node). Each physical link is
+                    # listed once under each endpoint's own node record with identical
+                    # uid and data both times, so dedup by uid to avoid double-counting
+                    # that one fact - a node pair can still have multiple concurrent
+                    # links of the same type (e.g. 2.4GHz + 5GHz backhaul), which are
+                    # distinct uids and stay separate, disambiguated by `interface`.
                     if link_uid in seen or n1 not in meshed or n2 not in meshed:
                         continue
                     seen.add(link_uid)
@@ -1010,6 +1030,7 @@ class MeshTopology(FritzCapability):
                         uid_name[n1],
                         uid_name[n2],
                         link_type,
+                        interface_name,
                     ]
                     self.metrics["available"].add_metric(
                         base, 1.0 if link.get("state") == "CONNECTED" else 0.0
