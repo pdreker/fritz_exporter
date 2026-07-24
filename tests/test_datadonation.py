@@ -41,7 +41,7 @@ class MockResponse:
         raise requests.exceptions.HTTPError
 
 
-@patch("fritzexporter.fritzdevice.FritzConnection")
+@patch("fritzexporter.tr064_remote.FritzConnection")
 class TestDataDonation:
     def test_should_return_sw_version(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare

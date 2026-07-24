@@ -18,6 +18,7 @@ from .exceptions import (
     EmptyConfigError,
     FritzPasswordFileDoesNotExistError,
     FritzPasswordTooLongError,
+    FritzRemoteAccessRequiresTlsError,
     NoDevicesFoundError,
 )
 
@@ -31,6 +32,15 @@ def _convert_optional_int(value: int | str | None) -> int | None:
     if timeout == 0:
         return None
     return timeout
+
+
+def _convert_optional_port(value: int | str | None) -> int | None:
+    if value is None:
+        return None
+    port = int(value)
+    if port == 0:
+        return None
+    return port
 
 
 def _read_config_file(config_file_path: str) -> dict:
@@ -70,6 +80,9 @@ def _read_config_from_env() -> dict:
     host_info: str = os.getenv("FRITZ_HOST_INFO", "False")
     wifi_client_info: str = os.getenv("FRITZ_WIFI_CLIENT_INFO", "False")
     connection_timeout = os.getenv("FRITZ_CONNECTION_TIMEOUT")
+    use_tls = os.getenv("FRITZ_USE_TLS", "False")
+    device_port = os.getenv("FRITZ_DEVICE_PORT")
+    remote_access = os.getenv("FRITZ_REMOTE_ACCESS", "False")
 
     config: dict[Any, Any] = {}
     if exporter_port:
@@ -88,6 +101,9 @@ def _read_config_from_env() -> dict:
         "wifi_client_info": wifi_client_info,
         "name": name,
         "connection_timeout": connection_timeout,
+        "use_tls": use_tls,
+        "port": device_port,
+        "remote_access": remote_access,
     }
     if hostname:
         device["hostname"] = hostname
@@ -177,6 +193,15 @@ class DeviceConfig:
         converter=_convert_optional_int,
         validator=validators.optional(validators.ge(1)),
     )
+    use_tls: bool = field(default=False, converter=converters.to_bool)
+    port: int | None = field(
+        default=None,
+        converter=_convert_optional_port,
+        validator=validators.optional(
+            validators.and_(validators.ge(1), validators.le(65535)),
+        ),
+    )
+    remote_access: bool = field(default=False, converter=converters.to_bool)
 
     @password.validator  # ty: ignore[unresolved-attribute]
     def check_password(self, _: attrs.Attribute, value: str | None) -> None:
@@ -193,6 +218,12 @@ class DeviceConfig:
             logger.error("Password file does not exist!")
             raise FritzPasswordFileDoesNotExistError
 
+    @remote_access.validator  # ty: ignore[unresolved-attribute]
+    def check_remote_access(self, _: attrs.Attribute, value: bool) -> None:  # noqa: FBT001
+        if value and not self.use_tls:
+            logger.error("remote_access=true requires use_tls=true")
+            raise FritzRemoteAccessRequiresTlsError
+
     @classmethod
     def from_config(cls, device: dict) -> DeviceConfig:
         hostname = device.get("hostname", "fritz.box")
@@ -203,6 +234,9 @@ class DeviceConfig:
         host_info = device.get("host_info", False)
         wifi_client_info = device.get("wifi_client_info", False)
         connection_timeout = device.get("connection_timeout")
+        use_tls = device.get("use_tls", False)
+        port = device.get("port")
+        remote_access = device.get("remote_access", False)
 
         return cls(
             hostname=hostname,
@@ -213,4 +247,7 @@ class DeviceConfig:
             host_info=host_info,
             wifi_client_info=wifi_client_info,
             connection_timeout=connection_timeout,
+            use_tls=use_tls,
+            port=port,
+            remote_access=remote_access,
         )
