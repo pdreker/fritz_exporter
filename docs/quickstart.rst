@@ -18,10 +18,9 @@ Create an empty directory ``fritz-exporter`` and place a file ``docker-compose.y
 
 .. code-block:: yaml
 
-  version: "3.8"
   services:
     fritz-exporter:
-      image: pdreker/fritz_exporter:2
+      image: pdreker/fritz_exporter:3
       container_name: fritz-exporter
       restart: unless-stopped
       environment:
@@ -33,7 +32,7 @@ Create an empty directory ``fritz-exporter`` and place a file ``docker-compose.y
 
     prometheus:
       container_name: prometheus
-      image: prom/prometheus:v2.38.0
+      image: prom/prometheus:v3
       restart: unless-stopped
       volumes:
         - ./prometheus/:/etc/prometheus/
@@ -42,7 +41,7 @@ Create an empty directory ``fritz-exporter`` and place a file ``docker-compose.y
 
     grafana:
       container_name: grafana
-      image: grafana/grafana:9.1.6
+      image: grafana/grafana:13.1
       ports:
         - 3000:3000
 
@@ -66,14 +65,14 @@ Next run ``docker compose up -d`` which should start the 3 services. Use ``docke
 
   ❯ docker ps -a
   CONTAINER ID   IMAGE                           COMMAND                  CREATED         STATUS         PORTS                    NAMES
-  2bb64e672ddf   prom/prometheus:v2.38.0         "/bin/prometheus --c…"   3 seconds ago   Up 2 seconds   0.0.0.0:9090->9090/tcp   prometheus
+  2bb64e672ddf   prom/prometheus:v3              "/bin/prometheus --c…"   3 seconds ago   Up 2 seconds   0.0.0.0:9090->9090/tcp   prometheus
   3b4a78035327   pdreker/fritz_exporter:v2.1.1   "python -m fritzexpo…"   3 seconds ago   Up 2 seconds   0.0.0.0:9787->9787/tcp   fritz-exporter
-  9c7473367721   grafana/grafana:9.1.6           "/run.sh"                3 seconds ago   Up 2 seconds   0.0.0.0:3000->3000/tcp   grafana
+  9c7473367721   grafana/grafana:13.1            "/run.sh"                3 seconds ago   Up 2 seconds   0.0.0.0:3000->3000/tcp   grafana
 
 Checking Prometheus
 -------------------
 
-Point your browser to http://localhost:9090/ to access the prometheus UI and navigate to Status -> Targets. You should see the fritz-exporter Target (the exporter) being **Up**. If the ``Last Scrape`` Column says "never", wait for a minute and reload.
+Point your browser to http://localhost:9090/targets to access the prometheus UI and navigate to Status -> Targets. You should see the fritz-exporter Target (the exporter) being **Up**. If the ``Last Scrape`` Column says "never", wait for a minute and reload.
 
 .. image:: _static/prometheus_target.png
 
