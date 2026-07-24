@@ -22,7 +22,7 @@ from .fc_services_mock import (
 )
 
 
-@patch("fritzexporter.fritzdevice.FritzConnection")
+@patch("fritzexporter.tr064_remote.FritzConnection")
 class TestFritzCapabilitiesMethods:
     """Tests for FritzCapabilities container methods."""
 
@@ -97,7 +97,7 @@ class TestFritzCapabilitiesMethods:
         )
 
 
-@patch("fritzexporter.fritzdevice.FritzConnection")
+@patch("fritzexporter.tr064_remote.FritzConnection")
 class TestUserInterfaceCapability:
     """Tests for UserInterface capability edge cases."""
 
@@ -130,7 +130,7 @@ class TestUserInterfaceCapability:
         assert update_metrics[0].samples[0].labels["newsoftwareversion"] == "n/a"
 
 
-@patch("fritzexporter.fritzdevice.FritzConnection")
+@patch("fritzexporter.tr064_remote.FritzConnection")
 class TestHostInfoCapability:
     """Tests for HostInfo capability edge cases."""
 
@@ -238,7 +238,7 @@ class TestHostInfoCapability:
         )
 
 
-@patch("fritzexporter.fritzdevice.FritzConnection")
+@patch("fritzexporter.tr064_remote.FritzConnection")
 class TestHomeAutomationCapability:
     """Tests for HomeAutomation capability edge cases."""
 

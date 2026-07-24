@@ -13,6 +13,9 @@ config: {}
 #     password: prometheus
 #     host_info: True
 #     wifi_client_info: True # optional, per-client WiFi signal/speed (higher cardinality)
+#     use_tls: true # optional; HTTPS TR-064
+#     port: 11243 # optional TR-064 port
+#     remote_access: true # optional; WAN /tr064 prefix (requires use_tls)
 #   - name: Repeater Wohnzimmer # optional
 #     hostname: repeater-Wohnzimmer
 #     username: prometheus

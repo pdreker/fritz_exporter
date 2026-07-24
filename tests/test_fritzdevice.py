@@ -28,7 +28,7 @@ from .fc_services_mock import (
 FRITZDEVICE_LOG_SOURCE = "fritzexporter.fritzdevice"
 
 
-@patch("fritzexporter.fritzdevice.FritzConnection")
+@patch("fritzexporter.tr064_remote.FritzConnection")
 class TestFritzDevice:
     @pytest.mark.parametrize("capability", fc_services_capabilities.keys())
     def test_should_create_a_device_with_presented_capability(
@@ -293,7 +293,7 @@ class TestFritzDevice:
         )
 
 
-@patch("fritzexporter.fritzdevice.FritzConnection")
+@patch("fritzexporter.tr064_remote.FritzConnection")
 class TestFritzCollector:
     def test_should_instantiate_empty_collector(self, caplog):
         # Prepare
@@ -653,12 +653,15 @@ class TestFritzCollector:
         collector = FritzCollector()
         creds = FritzCredentials("offlinehost", "user", "pass")
 
-        collector.register_offline(creds, "OfflineDevice", use_tls=True, port=49443)
+        collector.register_offline(
+            creds, "OfflineDevice", use_tls=True, port=49443, remote_access=True
+        )
 
         assert len(collector.offline_devices) == 1
         offline = collector.offline_devices[0]
         assert offline.use_tls is True
         assert offline.port == 49443
+        assert offline.remote_access is True
 
     def test_retry_offline_devices_uses_tls_and_port(self, mock_fritzconnection: MagicMock):
         fc = mock_fritzconnection.return_value
@@ -667,7 +670,9 @@ class TestFritzCollector:
 
         collector = FritzCollector()
         creds = FritzCredentials("somehost", "someuser", "password")
-        collector.register_offline(creds, "FritzMock", use_tls=True, port=49443)
+        collector.register_offline(
+            creds, "FritzMock", use_tls=True, port=49443, remote_access=True
+        )
 
         fc.call_action.side_effect = call_action_mock
         list(collector.collect())
@@ -944,7 +949,7 @@ class TestFritzCollector:
         assert len(datarate[0].samples) == 4
 
 
-@patch("fritzexporter.fritzdevice.FritzConnection")
+@patch("fritzexporter.tr064_remote.FritzConnection")
 class TestGetConnectionMode:
     """Tests for FritzDevice.get_connection_mode()"""
 
@@ -1088,7 +1093,7 @@ class TestGetConnectionMode:
         ) in caplog.record_tuples
 
 
-@patch("fritzexporter.fritzdevice.FritzConnection")
+@patch("fritzexporter.tr064_remote.FritzConnection")
 class TestFritzDeviceAuthError:
     def test_should_raise_authorization_error_on_get_device_info(
         self, mock_fritzconnection: MagicMock, caplog

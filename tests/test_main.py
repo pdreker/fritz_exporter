@@ -80,7 +80,7 @@ class Test_Main:
         assert pytest_wrapped_exit.value.code == 1
         assert "fritzexporter.config.exceptions.ConfigFileUnreadableError" in caplog.text
 
-    @patch("fritzexporter.fritzdevice.FritzConnection")
+    @patch("fritzexporter.tr064_remote.FritzConnection")
     def test_valid_args_run_clean(self, mock_fc: MagicMock, monkeypatch, caplog):
         monkeypatch.setattr(
             "sys.argv",
@@ -109,7 +109,7 @@ class Test_Main:
                 assert log.level == logging.DEBUG
 
     @patch("prometheus_client.core.REGISTRY.register")
-    @patch("fritzexporter.fritzdevice.FritzConnection")
+    @patch("fritzexporter.tr064_remote.FritzConnection")
     def test_donate_data_path(
         self, mock_fc: MagicMock, mock_registry: MagicMock, monkeypatch, capsys, caplog
     ):
@@ -182,7 +182,7 @@ class Test_Main:
 
     @patch("prometheus_client.core.REGISTRY.register")
     @patch("fritzexporter.__main__.start_http_server")
-    @patch("fritzexporter.fritzdevice.FritzConnection")
+    @patch("fritzexporter.tr064_remote.FritzConnection")
     def test_password_file_reading(
         self, mock_fc: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
         monkeypatch, caplog

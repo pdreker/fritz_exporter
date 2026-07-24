@@ -18,6 +18,7 @@ from .exceptions import (
     EmptyConfigError,
     FritzPasswordFileDoesNotExistError,
     FritzPasswordTooLongError,
+    FritzRemoteAccessRequiresTlsError,
     NoDevicesFoundError,
 )
 
@@ -81,6 +82,7 @@ def _read_config_from_env() -> dict:
     connection_timeout = os.getenv("FRITZ_CONNECTION_TIMEOUT")
     use_tls = os.getenv("FRITZ_USE_TLS", "False")
     device_port = os.getenv("FRITZ_DEVICE_PORT")
+    remote_access = os.getenv("FRITZ_REMOTE_ACCESS", "False")
 
     config: dict[Any, Any] = {}
     if exporter_port:
@@ -101,6 +103,7 @@ def _read_config_from_env() -> dict:
         "connection_timeout": connection_timeout,
         "use_tls": use_tls,
         "port": device_port,
+        "remote_access": remote_access,
     }
     if hostname:
         device["hostname"] = hostname
@@ -198,6 +201,7 @@ class DeviceConfig:
             validators.and_(validators.ge(1), validators.le(65535)),
         ),
     )
+    remote_access: bool = field(default=False, converter=converters.to_bool)
 
     @password.validator  # ty: ignore[unresolved-attribute]
     def check_password(self, _: attrs.Attribute, value: str | None) -> None:
@@ -214,6 +218,12 @@ class DeviceConfig:
             logger.error("Password file does not exist!")
             raise FritzPasswordFileDoesNotExistError
 
+    @remote_access.validator  # ty: ignore[unresolved-attribute]
+    def check_remote_access(self, _: attrs.Attribute, value: bool) -> None:  # noqa: FBT001
+        if value and not self.use_tls:
+            logger.error("remote_access=true requires use_tls=true")
+            raise FritzRemoteAccessRequiresTlsError
+
     @classmethod
     def from_config(cls, device: dict) -> DeviceConfig:
         hostname = device.get("hostname", "fritz.box")
@@ -226,6 +236,7 @@ class DeviceConfig:
         connection_timeout = device.get("connection_timeout")
         use_tls = device.get("use_tls", False)
         port = device.get("port")
+        remote_access = device.get("remote_access", False)
 
         return cls(
             hostname=hostname,
@@ -238,4 +249,5 @@ class DeviceConfig:
             connection_timeout=connection_timeout,
             use_tls=use_tls,
             port=port,
+            remote_access=remote_access,
         )

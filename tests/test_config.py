@@ -8,6 +8,7 @@ from fritzexporter.config import (
     DeviceConfig,
     EmptyConfigError,
     ExporterConfig,
+    FritzRemoteAccessRequiresTlsError,
     NoDevicesFoundError,
     get_config,
 )
@@ -197,6 +198,28 @@ class TestEnvConfig:
 
         assert config.devices[0].use_tls is False
         assert config.devices[0].port is None
+        assert config.devices[0].remote_access is False
+
+    def test_remote_access_env_config(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
+        monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
+        monkeypatch.setenv("FRITZ_USE_TLS", "true")
+        monkeypatch.setenv("FRITZ_REMOTE_ACCESS", "true")
+        monkeypatch.setenv("FRITZ_DEVICE_PORT", "11243")
+
+        config = get_config(None)
+
+        assert config.devices[0].remote_access is True
+        assert config.devices[0].use_tls is True
+        assert config.devices[0].port == 11243
+
+    def test_remote_access_env_without_tls_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
+        monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
+        monkeypatch.setenv("FRITZ_REMOTE_ACCESS", "true")
+
+        with pytest.raises(FritzRemoteAccessRequiresTlsError):
+            get_config(None)
 
 
 class TestConfigEdgeCases:
@@ -355,6 +378,30 @@ class TestConfigEdgeCases:
                 username="user",
                 password="password",
                 port=-1,
+            )
+
+    def test_remote_access_parsed_from_config(self):
+        config = get_config("tests/conffiles/config_with_remote_access.yaml")
+
+        assert config.devices[0].remote_access is True
+        assert config.devices[0].use_tls is True
+        assert config.devices[0].port == 11243
+        assert config.devices[1].remote_access is False
+
+    def test_remote_access_defaults_to_false(self):
+        config = get_config("tests/conffiles/validconfig.yaml")
+
+        for dev in config.devices:
+            assert dev.remote_access is False
+
+    def test_remote_access_requires_tls(self):
+        with pytest.raises(FritzRemoteAccessRequiresTlsError):
+            DeviceConfig(
+                hostname="box.example",
+                username="user",
+                password="password",
+                remote_access=True,
+                use_tls=False,
             )
 
 

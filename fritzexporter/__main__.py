@@ -92,8 +92,9 @@ def _register_device(
             connection_timeout=dev.connection_timeout,
             use_tls=dev.use_tls,
             port=dev.port,
+            remote_access=dev.remote_access,
         )
-    except (FritzConnectionException, FritzAuthorizationError, FritzDeviceHasNoCapabilitiesError):
+    except FritzConnectionException, FritzAuthorizationError, FritzDeviceHasNoCapabilitiesError:
         logger.exception(
             "Failed to initialize device %s (%s), it will be reported as down",
             dev.hostname,
@@ -107,6 +108,7 @@ def _register_device(
             connection_timeout=dev.connection_timeout,
             use_tls=dev.use_tls,
             port=dev.port,
+            remote_access=dev.remote_access,
         )
         return
 

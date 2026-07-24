@@ -16,6 +16,7 @@ from prometheus_client.registry import Collector
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzcapabilities import FritzCapabilities
+from fritzexporter.tr064_remote import create_fritz_connection
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
 
@@ -37,6 +38,7 @@ class OfflineDevice(NamedTuple):
     wifi_client_info: bool
     use_tls: bool = False
     port: int | None = None
+    remote_access: bool = False
 
 
 class FritzDevice:
@@ -50,6 +52,7 @@ class FritzDevice:
         connection_timeout: int | None = None,
         use_tls: bool = False,
         port: int | None = None,
+        remote_access: bool = False,
     ) -> None:
         self.host: str = creds.host
         self.serial: str = "n/a"
@@ -66,13 +69,14 @@ class FritzDevice:
             )
 
         try:
-            self.fc: FritzConnection = FritzConnection(
+            self.fc: FritzConnection = create_fritz_connection(
                 address=creds.host,
                 user=creds.user,
                 password=creds.password,
                 timeout=connection_timeout,
                 use_tls=use_tls,
                 port=port,
+                remote_access=remote_access,
             )
         except FritzConnectionException:
             logger.exception("unable to connect to %s.", creds.host)
@@ -106,7 +110,7 @@ class FritzDevice:
             self.serial = device_info["NewSerialNumber"]
             self.model = device_info["NewModelName"]
 
-        except (FritzServiceError, FritzActionError):
+        except FritzServiceError, FritzActionError:
             logger.exception(
                 "Fritz Device %s does not provide basic device "
                 "info (Service: DeviceInfo1, Action: GetInfo)."
@@ -127,7 +131,7 @@ class FritzDevice:
             resp = self.fc.call_action("WANCommonInterfaceConfig", "GetCommonLinkProperties")
             link_status = resp.get("NewPhysicalLinkStatus")
             access_type = resp.get("NewWANAccessType") or ""
-        except (FritzServiceError, FritzActionError):
+        except FritzServiceError, FritzActionError:
             # Device simply has no WAN interface (e.g. a mesh repeater). That does
             # NOT make it unavailable — skip the connection-mode metric but keep
             # the device available so its other capabilities (uptime, WLAN, hosts)
@@ -186,10 +190,18 @@ class FritzCollector(Collector):
         connection_timeout: int | None = None,
         use_tls: bool = False,
         port: int | None = None,
+        remote_access: bool = False,
     ) -> None:
         self.offline_devices.append(
             OfflineDevice(
-                creds, friendly_name, host_info, connection_timeout, wifi_client_info, use_tls, port
+                creds,
+                friendly_name,
+                host_info,
+                connection_timeout,
+                wifi_client_info,
+                use_tls,
+                port,
+                remote_access,
             )
         )
         logger.debug("registered offline device %s (%s) to collector", creds.host, friendly_name)
@@ -206,6 +218,7 @@ class FritzCollector(Collector):
                     connection_timeout=offline.connection_timeout,
                     use_tls=offline.use_tls,
                     port=offline.port,
+                    remote_access=offline.remote_access,
                 )
                 logger.info(
                     "Device %s (%s) is back online, registering to collector.",
@@ -252,9 +265,7 @@ class FritzCollector(Collector):
                 labels=["serial", "friendly_name"],
             )
             for dev in self.devices:
-                device_up.add_metric(
-                    [dev.serial, dev.friendly_name], 1.0 if dev.available else 0.0
-                )
+                device_up.add_metric([dev.serial, dev.friendly_name], 1.0 if dev.available else 0.0)
             for offline in self.offline_devices:
                 device_up.add_metric(["n/a", offline.friendly_name], 0.0)
             yield device_up

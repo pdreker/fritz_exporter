@@ -175,6 +175,7 @@ fritzexporter/
   fritzdevice.py        # FritzDevice, FritzCollector, FritzCredentials
   fritzcapabilities.py  # FritzCapability (ABC) + all concrete capability classes
   fritz_aha.py          # AHA (smart home) XML parsing
+  tr064_remote.py       # WAN remote TR-064 (/tr064) URL rewriting
   action_blacklists.py  # TR-064 actions that must never be called
   data_donation.py      # --donate / --sanitize: collect + upload anonymized device data
   exceptions.py         # Project-level exceptions
@@ -238,6 +239,7 @@ Both paths produce the same `ExporterConfig` / `DeviceConfig` attrs objects and 
 | Device | `connection_timeout` | `FRITZ_CONNECTION_TIMEOUT` | *(none — no timeout)* |
 | Device | `use_tls` | `FRITZ_USE_TLS` | `False` |
 | Device | `port` | `FRITZ_DEVICE_PORT` | *(none — fritzconnection default: 49000 / TLS 49443)* |
+| Device | `remote_access` | `FRITZ_REMOTE_ACCESS` | `False` |
 
 ### Rule: keep both paths in sync
 

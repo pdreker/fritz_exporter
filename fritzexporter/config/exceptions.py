@@ -36,6 +36,11 @@ class FritzPasswordFileDoesNotExistError(ExporterError):
         super().__init__("Password file does not exist!")
 
 
+class FritzRemoteAccessRequiresTlsError(ExporterError):
+    def __init__(self) -> None:
+        super().__init__("remote_access=true requires use_tls=true (AVM WAN TR-064 is HTTPS-only).")
+
+
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
