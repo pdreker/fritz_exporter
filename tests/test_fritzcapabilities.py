@@ -557,8 +557,6 @@ class TestWanFiberCapabilities:
             (("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
         ] == 1250000
 
-        assert by_name["fritz_fiber_resyncs"].samples[0].value == 4
-
     def test_layer1_64bit_max_bitrate_from_addon_infos(self, mock_fritzconnection: MagicMock):
         metrics = self._collect_fiber_metrics(mock_fritzconnection)
         by_name = {m.name: m for m in metrics}

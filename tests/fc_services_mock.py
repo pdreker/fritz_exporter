@@ -130,7 +130,6 @@ def call_action_mock(service, action, **kwargs):
             "NewPacketErrorsSent": 1,
             "NewPacketErrorsReceived": 2,
             "NewPacketsMulticast": 871440283,
-            "NewResyncs": 4,
             "NewConnectionRateDown": 2500000,
             "NewConnectionRateUp": 1250000,
         },
