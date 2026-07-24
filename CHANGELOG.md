@@ -15,6 +15,14 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.3.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.2.2...fritzexporter-v3.3.0) (2026-07-24)
+
+
+### Features
+
+* add fibre/GPON metrics and multi-gig Layer1 rates ([#650](https://github.com/pdreker/fritz_exporter/issues/650)) ([21c1c7f](https://github.com/pdreker/fritz_exporter/commit/21c1c7fc73d96f2a567a94ff9079078eefd10566))
+* support AVM WAN remote TR-064 ([#652](https://github.com/pdreker/fritz_exporter/issues/652)) ([2b3a22a](https://github.com/pdreker/fritz_exporter/commit/2b3a22ace02db6328288b53d910e4e77e925e228))
+
 ## [3.2.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.2.1...fritzexporter-v3.2.2) (2026-07-14)
 
 
