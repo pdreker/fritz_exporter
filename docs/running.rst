@@ -36,10 +36,9 @@ To run the exporter from docker-compose create an empty directory ``fritz-export
 .. code-block:: yaml
 
   # Example file for running the exporter from the published image at hub.docker.com
-  version: "3.8"
   services:
     fritz-exporter:
-      image: pdreker/fritz_exporter:2
+      image: pdreker/fritz_exporter:3
       container_name: fritz-exporter
       restart: always
       environment:
@@ -58,10 +57,9 @@ Create an empty directory ``fritz-exporter`` and put a file ``docker-compose.yml
 
 .. code-block:: yaml
 
-  version: "3.8"
   services:
     fritz-exporter:
-      image: pdreker/fritz_exporter:2
+      image: pdreker/fritz_exporter:3
       command: --config /fritz-exporter.yml
       container_name: fritz-exporter
       restart: always
