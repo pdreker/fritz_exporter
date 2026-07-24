@@ -52,7 +52,7 @@ class TestFritzCapabilitiesMethods:
         num_caps = len(fd.capabilities)
 
         # Check
-        assert num_caps == 17  # All known capabilities
+        assert num_caps == 20  # All known capabilities
 
     def test_empty_capabilities_is_true_when_all_absent(self, mock_fritzconnection: MagicMock):
         # Prepare - use an empty service set so no capability is present
@@ -469,3 +469,102 @@ class TestHomeAutomationCapability:
         battery_low = [m for m in metrics if m.name == "fritz_ha_battery_low"]
         assert len(battery_low) == 1
         assert len(battery_low[0].samples) == 0
+
+
+def _sample_map(metric: Metric) -> dict[tuple[tuple[str, str], ...], float]:
+    return {
+        tuple(sorted(sample.labels.items())): sample.value
+        for sample in metric.samples
+    }
+
+
+@patch("fritzexporter.fritzdevice.FritzConnection")
+class TestWanFiberCapabilities:
+    """Tests for fibre WAN capability metrics."""
+
+    def _collect_fiber_metrics(self, mock_fritzconnection: MagicMock) -> list[Metric]:
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fiber_services = {
+            **fc_services_capabilities["DeviceInfo"],
+            **fc_services_capabilities["WanCommonInterfaceByteRate"],
+            "X_AVM-DE_WANFiber1": ["GetInfo", "GetInfoGPON", "GetStatistics"],
+        }
+        fc.services = create_fc_services(fiber_services)
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzFiber",
+            host_info=False,
+        )
+        collector.register(device)
+        return list(collector.collect())
+
+    def test_fiber_optical_and_sfp_metrics(self, mock_fritzconnection: MagicMock):
+        metrics = self._collect_fiber_metrics(mock_fritzconnection)
+        by_name = {m.name: m for m in metrics}
+
+        assert "fritz_fiber_optical_signal_level_dBm" in by_name
+        assert by_name["fritz_fiber_optical_signal_level_dBm"].samples[0].value == pytest.approx(
+            -15.6
+        )
+
+        thresholds = _sample_map(by_name["fritz_fiber_optical_threshold_dBm"])
+        assert thresholds[
+            (("bound", "lower"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
+        ] == pytest.approx(-28.0)
+        assert thresholds[
+            (("bound", "upper"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
+        ] == pytest.approx(-1.2)
+
+        info = by_name["fritz_fiber_info"].samples[0]
+        assert info.value == 1
+        assert info.labels["fiber_mode"] == "GPON"
+        assert info.labels["sfp_vendor"] == "AVM"
+        assert info.labels["sfp_serial_number"] == "SFP123"
+        assert by_name["fritz_fiber_tx_wavelength_nm"].samples[0].value == 1310
+
+    def test_fiber_gpon_metrics_include_serial(self, mock_fritzconnection: MagicMock):
+        metrics = self._collect_fiber_metrics(mock_fritzconnection)
+        by_name = {m.name: m for m in metrics}
+
+        gpon_info = by_name["fritz_fiber_gpon_info"].samples[0]
+        assert gpon_info.value == 1
+        assert gpon_info.labels["gpon_serial"] == "AVMG7B765C11"
+        assert gpon_info.labels["pon_id"] == "pon-1"
+        assert gpon_info.labels["uni_type"] == "Unknown"
+        assert by_name["fritz_fiber_gpon_onu_id"].samples[0].value == 6
+        assert by_name["fritz_fiber_gpon_gem_port_count"].samples[0].value == 3
+
+    def test_fiber_statistics_metrics(self, mock_fritzconnection: MagicMock):
+        metrics = self._collect_fiber_metrics(mock_fritzconnection)
+        by_name = {m.name: m for m in metrics}
+
+        bytes_map = _sample_map(by_name["fritz_fiber_data_bytes"])
+        assert bytes_map[
+            (("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
+        ] == 97008448189
+        assert bytes_map[
+            (("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
+        ] == 123456789
+
+        rates = _sample_map(by_name["fritz_fiber_connection_rate"])
+        assert rates[
+            (("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
+        ] == 2500000
+        assert rates[
+            (("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
+        ] == 1250000
+
+    def test_layer1_64bit_max_bitrate_from_addon_infos(self, mock_fritzconnection: MagicMock):
+        metrics = self._collect_fiber_metrics(mock_fritzconnection)
+        by_name = {m.name: m for m in metrics}
+
+        layer1 = _sample_map(by_name["fritz_wan_layer1_max_bitrate_bps"])
+        assert layer1[
+            (("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
+        ] == 2500000000
+        assert layer1[
+            (("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
+        ] == 1250000000

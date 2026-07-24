@@ -107,7 +107,7 @@ class FritzDevice:
 
     def get_connection_mode(self) -> GaugeMetricFamily | None:
         """
-        Returns a metric to detect whether device is in DSL, mobile fallback or offline mode.
+        Returns a metric to detect whether device is in DSL, fibre, mobile fallback or offline mode.
         """
         try:
             resp = self.fc.call_action("WANCommonInterfaceConfig", "GetCommonLinkProperties")
@@ -133,12 +133,15 @@ class FritzDevice:
             mode = 2  # DSL disconnected -> Fallback mobile connection active
         elif link_status == "Up" and access_type == "X_AVM-DE_Mobile":
             mode = 3  # DSL disabled, only mobile connection active
+        elif link_status == "Up" and access_type == "X_AVM-DE_Fiber":
+            mode = 4  # Fibre connection active
         else:
             mode = 0  # Disconnected or not available
 
         m = GaugeMetricFamily(
             "fritz_connection_mode",
-            "Connection mode: 1=DSL, 2=Mobile fallback, 3=Mobile-only, 0=offline/unknown",
+            "Connection mode: 1=DSL, 2=Mobile fallback, 3=Mobile-only, 4=Fiber, "
+            "0=offline/unknown",
             labels=["serial", "friendly_name", "access_type"],
         )
         m.add_metric([self.serial, self.friendly_name, access_type], mode)

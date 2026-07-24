@@ -98,6 +98,40 @@ def call_action_mock(service, action, **kwargs):
         ("WANCommonIFC1", "GetAddonInfos"): {
             "NewByteReceiveRate": 12345,
             "NewByteSendRate": 23456,
+            "NewX_AVM_DE_Layer1DownstreamMaxBitRate64": 2500000000,
+            "NewX_AVM_DE_Layer1UpstreamMaxBitRate64": 1250000000,
+        },
+        ("X_AVM-DE_WANFiber1", "GetInfo"): {
+            "NewOpticalSignalLevel": -15600,
+            "NewLowerOpticalThreshold": -28000,
+            "NewUpperOpticalThreshold": -1200,
+            "NewTransmitOpticalLevel": -2500,
+            "NewLowerTransmitPowerThreshold": -40000,
+            "NewUpperTransmitPowerThreshold": 0,
+            "NewSFPVendor": "AVM",
+            "NewSFPPartNumber": "SFP-PART",
+            "NewSFPSerialNumber": "SFP123",
+            "NewSFPType": 1,
+            "NewTXWaveLength": 1310,
+            "NewFiberMode": "GPON",
+        },
+        ("X_AVM-DE_WANFiber1", "GetInfoGPON"): {
+            "NewGPONSerial": "AVMG7B765C11",
+            "NewPONId": "pon-1",
+            "NewONUId": 6,
+            "NewUNIType": "Unknown",
+            "NewGEMPortCount": 3,
+        },
+        ("X_AVM-DE_WANFiber1", "GetStatistics"): {
+            "NewBytesSent": 97008448189,
+            "NewBytesReceived": 123456789,
+            "NewPacketsSent": 212024952,
+            "NewPacketsReceived": 987654321,
+            "NewPacketErrorsSent": 1,
+            "NewPacketErrorsReceived": 2,
+            "NewPacketsMulticast": 871440283,
+            "NewConnectionRateDown": 2500000,
+            "NewConnectionRateUp": 1250000,
         },
         ("WANCommonInterfaceConfig1", "GetTotalPacketsReceived"): {
             "NewTotalPacketsReceived": 12345
@@ -255,6 +289,40 @@ def call_action_no_basic_mock(service, action, **_):
         ("WANCommonIFC1", "GetAddonInfos"): {
             "NewByteReceiveRate": 12345,
             "NewByteSendRate": 23456,
+            "NewX_AVM_DE_Layer1DownstreamMaxBitRate64": 2500000000,
+            "NewX_AVM_DE_Layer1UpstreamMaxBitRate64": 1250000000,
+        },
+        ("X_AVM-DE_WANFiber1", "GetInfo"): {
+            "NewOpticalSignalLevel": -15600,
+            "NewLowerOpticalThreshold": -28000,
+            "NewUpperOpticalThreshold": -1200,
+            "NewTransmitOpticalLevel": -2500,
+            "NewLowerTransmitPowerThreshold": -40000,
+            "NewUpperTransmitPowerThreshold": 0,
+            "NewSFPVendor": "AVM",
+            "NewSFPPartNumber": "SFP-PART",
+            "NewSFPSerialNumber": "SFP123",
+            "NewSFPType": 1,
+            "NewTXWaveLength": 1310,
+            "NewFiberMode": "GPON",
+        },
+        ("X_AVM-DE_WANFiber1", "GetInfoGPON"): {
+            "NewGPONSerial": "AVMG7B765C11",
+            "NewPONId": "pon-1",
+            "NewONUId": 6,
+            "NewUNIType": "Unknown",
+            "NewGEMPortCount": 3,
+        },
+        ("X_AVM-DE_WANFiber1", "GetStatistics"): {
+            "NewBytesSent": 97008448189,
+            "NewBytesReceived": 123456789,
+            "NewPacketsSent": 212024952,
+            "NewPacketsReceived": 987654321,
+            "NewPacketErrorsSent": 1,
+            "NewPacketErrorsReceived": 2,
+            "NewPacketsMulticast": 871440283,
+            "NewConnectionRateDown": 2500000,
+            "NewConnectionRateUp": 1250000,
         },
         ("WANCommonInterfaceConfig1", "GetTotalPacketsReceived"): {
             "NewTotalPacketsReceived": 12345
@@ -399,6 +467,40 @@ def call_action_no_basic_action_error_mock(service, action, **kwargs):
         ("WANCommonIFC1", "GetAddonInfos"): {
             "NewByteReceiveRate": 12345,
             "NewByteSendRate": 23456,
+            "NewX_AVM_DE_Layer1DownstreamMaxBitRate64": 2500000000,
+            "NewX_AVM_DE_Layer1UpstreamMaxBitRate64": 1250000000,
+        },
+        ("X_AVM-DE_WANFiber1", "GetInfo"): {
+            "NewOpticalSignalLevel": -15600,
+            "NewLowerOpticalThreshold": -28000,
+            "NewUpperOpticalThreshold": -1200,
+            "NewTransmitOpticalLevel": -2500,
+            "NewLowerTransmitPowerThreshold": -40000,
+            "NewUpperTransmitPowerThreshold": 0,
+            "NewSFPVendor": "AVM",
+            "NewSFPPartNumber": "SFP-PART",
+            "NewSFPSerialNumber": "SFP123",
+            "NewSFPType": 1,
+            "NewTXWaveLength": 1310,
+            "NewFiberMode": "GPON",
+        },
+        ("X_AVM-DE_WANFiber1", "GetInfoGPON"): {
+            "NewGPONSerial": "AVMG7B765C11",
+            "NewPONId": "pon-1",
+            "NewONUId": 6,
+            "NewUNIType": "Unknown",
+            "NewGEMPortCount": 3,
+        },
+        ("X_AVM-DE_WANFiber1", "GetStatistics"): {
+            "NewBytesSent": 97008448189,
+            "NewBytesReceived": 123456789,
+            "NewPacketsSent": 212024952,
+            "NewPacketsReceived": 987654321,
+            "NewPacketErrorsSent": 1,
+            "NewPacketErrorsReceived": 2,
+            "NewPacketsMulticast": 871440283,
+            "NewConnectionRateDown": 2500000,
+            "NewConnectionRateUp": 1250000,
         },
         ("WANCommonInterfaceConfig1", "GetTotalPacketsReceived"): {
             "NewTotalPacketsReceived": 12345
@@ -546,6 +648,21 @@ fc_services_capabilities["WanDSLInterfaceConfig"] = {
 fc_services_capabilities["WanDSLInterfaceConfigAVM"] = {
     "WANDSLInterfaceConfig1": [
         "X_AVM-DE_GetDSLInfo",
+    ],
+}
+fc_services_capabilities["WanFiberInterfaceConfig"] = {
+    "X_AVM-DE_WANFiber1": [
+        "GetInfo",
+    ],
+}
+fc_services_capabilities["WanFiberGPONInfo"] = {
+    "X_AVM-DE_WANFiber1": [
+        "GetInfoGPON",
+    ],
+}
+fc_services_capabilities["WanFiberStatistics"] = {
+    "X_AVM-DE_WANFiber1": [
+        "GetStatistics",
     ],
 }
 fc_services_capabilities["WanPPPConnectionStatus"] = {

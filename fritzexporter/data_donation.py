@@ -71,6 +71,12 @@ _SANITIZATION_BLACKLIST: dict[tuple[str, str], list[str]] = {
     ],
     ("WANPPPConnection1", "GetUserName"): ["NewUserName"],
     ("WANPPPConnection1", "X_GetDNSServers"): ["NewDNSServers"],
+    ("X_AVM-DE_WANFiber1", "GetInfo"): [
+        "NewSFPSerialNumber",
+        "NewSFPPartNumber",
+        "NewSFPVendor",
+    ],
+    ("X_AVM-DE_WANFiber1", "GetInfoGPON"): ["NewGPONSerial", "NewPONId"],
     **{
         (f"WLANConfiguration{i}", action): fields
         for i in range(1, 5)

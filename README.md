@@ -14,7 +14,7 @@ This is a prometheus exporter for AVM Fritz! home network devices commonly found
 
 The exporter should work with Fritz!Box and Fritz!Repeater Devices (and maybe others). It actively checks for supported metrics and queries the for all devices configured (Yes, it has multi-device support for all you Mesh users out there.)
 
-It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
+It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Box 5690 (fibre), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
 
 ## Documentation
 

@@ -26,7 +26,7 @@ This is a prometheus exporter for AVM Fritz! home network devices commonly found
 
 The exporter should work with Fritz!Box and Fritz!Repeater Devices (and maybe others). It actively checks for supported metrics and queries the metrics for all devices configured (Yes, it has multi-device support for all you Mesh users out there.)
 
-It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
+It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Box 5690 (fibre), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
 
 
 .. note::
@@ -58,9 +58,10 @@ The following groups of metrics are currently available:
 * LAN statistics (Ethernet only)
 * WAN statistics
 * DSL statistics
+* Fibre / GPON statistics (optical levels, SFP/GPON identity, fibre counters)
 * PPP statistics
 * WiFi statistics
-* WAN Layer1 (physical link) statistics
+* WAN Layer1 (physical link) statistics, including 64-bit max bitrate for multi-gig links
 * Home Automation Devices (switches, heating valves, temperatures, power meters, and battery status; window/door sensors (open/closed) are not yet reported)
 
 If there is any information missing or not displayed on your specific device, please open an issue on GitHub.
@@ -69,6 +70,16 @@ Known Problems
 --------------
 
 * It seems like Fritz!OS does not internally count the packets for the Guest WiFi. So even though those counters are there they are always 0. This seems to be a problem with Fritz!OS and not the exporter. The counters are delivered nontheless, just in case this gets fixed by AVM.
+* On multi-gig fibre (and possibly cable) links the classic ``fritz_wan_max_bitrate`` values from ``GetCommonLinkProperties`` can be wrong (often stuck at ``1000000``) because they use a 32-bit field. Prefer ``fritz_wan_layer1_max_bitrate_bps`` from ``GetAddonInfos``, which correctly reports e.g. 2.5 Gbit/s / 1.25 Gbit/s.
+* Fibre / ``X_AVM-DE_WANFiber`` gaps observed on FRITZ!Box 5690 (Fritz!OS 8.25): the web UI shows real optical readings, but several TR-064 ``GetInfo`` / ``GetStatistics`` fields are empty or zero. The exporter still exposes the TR-064 values when present. The Fritz! team has been contacted about these issues:
+
+  * ``NewOpticalSignalLevel`` / ``NewTransmitOpticalLevel`` stay at ``0`` while the UI shows real RX/TX power (e.g. about ``-19.5 dBm`` / ``2.4 dBm``)
+  * ``NewFiberMode`` stays at ``Unknown`` while the UI reports ``GPON (ITU G.984)``
+  * SFP metadata (``NewSFPVendor``, ``NewSFPPartNumber``, ``NewSFPSerialNumber``, ``NewSFPType``) is empty
+  * no TR-064 field for RX wavelength (UI shows ``1490 nm``; only ``NewTXWaveLength`` exists)
+  * laser temperature and laser supply voltage exist only in the web UI, not in TR-064
+  * ``GetStatistics`` RX counters (``NewBytesReceived`` / ``NewPacketsReceived``) and ``NewConnectionRateDown`` often stay at ``0`` while TX side is populated
+
 * If you receive ``Fatal Python error: init_interp_main: can't initialize time`` when running the container you may have to update libseccomp on your Docker host. This issue mainly happens on Raspberry Pi and is triggered by a version of libseccomp2 which is too old. See https://askubuntu.com/questions/1263284/apt-update-throws-signature-error-in-ubuntu-20-04-container-on-arm (Method 2) and https://github.com/pdreker/fritz_exporter/issues/38.
 * On some boxes LAN Packet counters are stuck at 0 even though the box reports the stats as available.
 * Fritz!OS does not allow passwords longer than 32 characters (as of 07.25). If you try to use a longer password, the admin ui will simply discard all characters after the 32nd. The UI will also cut your inserted password down to 32 characters. So you will be able to login in the UI with the long password. The exporter however does not alter your password and requests will result in a ``401 Unauthorized`` error. So please be aware of this limit and choose a suitable password.
