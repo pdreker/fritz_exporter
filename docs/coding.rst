@@ -147,7 +147,7 @@ whether values are actually fetched — is the key insight needed to understand 
 
 Additionally, ``FritzDevice.get_connection_mode()`` is called per device *before* the
 capability loop to emit a special ``fritz_connection_mode`` gauge that detects
-DSL/mobile/offline state.
+DSL/fibre/mobile/offline state.
 
 tl;dr
 -----

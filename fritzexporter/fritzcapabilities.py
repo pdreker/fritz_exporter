@@ -419,6 +419,214 @@ class WanDSLInterfaceConfigAVM(FritzCapability):
         yield self.metrics["crc"]
 
 
+class WanFiberInterfaceConfig(FritzCapability):
+    """Optical / SFP metrics from X_AVM-DE_WANFiber.GetInfo."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(("X_AVM-DE_WANFiber1", "GetInfo"))
+
+    def create_metrics(self) -> None:
+        self.metrics["optical_signal"] = GaugeMetricFamily(
+            "fritz_fiber_optical_signal_level",
+            "Current received optical signal level",
+            labels=["serial", "friendly_name"],
+            unit="dBm",
+        )
+        self.metrics["optical_threshold"] = GaugeMetricFamily(
+            "fritz_fiber_optical_threshold",
+            "Optical receive power threshold",
+            labels=["serial", "friendly_name", "bound"],
+            unit="dBm",
+        )
+        self.metrics["transmit_optical"] = GaugeMetricFamily(
+            "fritz_fiber_transmit_optical_level",
+            "Current transmit optical power level",
+            labels=["serial", "friendly_name"],
+            unit="dBm",
+        )
+        self.metrics["transmit_threshold"] = GaugeMetricFamily(
+            "fritz_fiber_transmit_power_threshold",
+            "Transmit optical power threshold",
+            labels=["serial", "friendly_name", "bound"],
+            unit="dBm",
+        )
+        self.metrics["tx_wavelength"] = GaugeMetricFamily(
+            "fritz_fiber_tx_wavelength",
+            "Fibre TX wavelength",
+            labels=["serial", "friendly_name"],
+            unit="nm",
+        )
+        self.metrics["info"] = GaugeMetricFamily(
+            "fritz_fiber_info",
+            "Fibre / SFP module information (always 1 if present)",
+            labels=[
+                "serial",
+                "friendly_name",
+                "fiber_mode",
+                "sfp_vendor",
+                "sfp_part_number",
+                "sfp_serial_number",
+                "sfp_type",
+            ],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        result = device.fc.call_action("X_AVM-DE_WANFiber1", "GetInfo")
+        labels = [device.serial, device.friendly_name]
+
+        self.metrics["optical_signal"].add_metric(labels, result["NewOpticalSignalLevel"] / 1000)
+        self.metrics["optical_threshold"].add_metric(
+            [*labels, "lower"], result["NewLowerOpticalThreshold"] / 1000
+        )
+        self.metrics["optical_threshold"].add_metric(
+            [*labels, "upper"], result["NewUpperOpticalThreshold"] / 1000
+        )
+        self.metrics["transmit_optical"].add_metric(
+            labels, result["NewTransmitOpticalLevel"] / 1000
+        )
+        self.metrics["transmit_threshold"].add_metric(
+            [*labels, "lower"], result["NewLowerTransmitPowerThreshold"] / 1000
+        )
+        self.metrics["transmit_threshold"].add_metric(
+            [*labels, "upper"], result["NewUpperTransmitPowerThreshold"] / 1000
+        )
+        self.metrics["tx_wavelength"].add_metric(labels, result["NewTXWaveLength"])
+        self.metrics["info"].add_metric(
+            [
+                *labels,
+                str(result.get("NewFiberMode") or ""),
+                str(result.get("NewSFPVendor") or ""),
+                str(result.get("NewSFPPartNumber") or ""),
+                str(result.get("NewSFPSerialNumber") or ""),
+                str(result.get("NewSFPType") or ""),
+            ],
+            1,
+        )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["optical_signal"]
+        yield self.metrics["optical_threshold"]
+        yield self.metrics["transmit_optical"]
+        yield self.metrics["transmit_threshold"]
+        yield self.metrics["tx_wavelength"]
+        yield self.metrics["info"]
+
+
+class WanFiberGPONInfo(FritzCapability):
+    """GPON identity metrics from X_AVM-DE_WANFiber.GetInfoGPON."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(("X_AVM-DE_WANFiber1", "GetInfoGPON"))
+
+    def create_metrics(self) -> None:
+        self.metrics["gpon_info"] = GaugeMetricFamily(
+            "fritz_fiber_gpon_info",
+            "GPON identity information (always 1 if present)",
+            labels=["serial", "friendly_name", "gpon_serial", "pon_id", "uni_type"],
+        )
+        self.metrics["onu_id"] = GaugeMetricFamily(
+            "fritz_fiber_gpon_onu_id",
+            "GPON ONU identifier",
+            labels=["serial", "friendly_name"],
+        )
+        self.metrics["gem_ports"] = GaugeMetricFamily(
+            "fritz_fiber_gpon_gem_port_count",
+            "Number of GPON GEM ports",
+            labels=["serial", "friendly_name"],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        result = device.fc.call_action("X_AVM-DE_WANFiber1", "GetInfoGPON")
+        labels = [device.serial, device.friendly_name]
+        self.metrics["gpon_info"].add_metric(
+            [
+                *labels,
+                str(result.get("NewGPONSerial") or ""),
+                str(result.get("NewPONId") or ""),
+                str(result.get("NewUNIType") or ""),
+            ],
+            1,
+        )
+        self.metrics["onu_id"].add_metric(labels, result["NewONUId"])
+        self.metrics["gem_ports"].add_metric(labels, result["NewGEMPortCount"])
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["gpon_info"]
+        yield self.metrics["onu_id"]
+        yield self.metrics["gem_ports"]
+
+
+class WanFiberStatistics(FritzCapability):
+    """Fibre link statistics from X_AVM-DE_WANFiber.GetStatistics."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(("X_AVM-DE_WANFiber1", "GetStatistics"))
+
+    def create_metrics(self) -> None:
+        self.metrics["data"] = CounterMetricFamily(
+            "fritz_fiber_data",
+            "Fibre data transferred",
+            labels=["serial", "friendly_name", "direction"],
+            unit="bytes",
+        )
+        self.metrics["packets"] = CounterMetricFamily(
+            "fritz_fiber_data_packets",
+            "Fibre packets transferred",
+            labels=["serial", "friendly_name", "direction"],
+        )
+        self.metrics["packet_errors"] = CounterMetricFamily(
+            "fritz_fiber_packet_errors",
+            "Fibre packet errors",
+            labels=["serial", "friendly_name", "direction"],
+        )
+        self.metrics["multicast"] = CounterMetricFamily(
+            "fritz_fiber_packets_multicast",
+            "Fibre multicast packets",
+            labels=["serial", "friendly_name"],
+        )
+        self.metrics["connection_rate"] = GaugeMetricFamily(
+            "fritz_fiber_connection_rate",
+            "Fibre connection rate as reported by the device (see docs for unit quirks)",
+            labels=["serial", "friendly_name", "direction"],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        result = device.fc.call_action("X_AVM-DE_WANFiber1", "GetStatistics")
+        labels = [device.serial, device.friendly_name]
+
+        self.metrics["data"].add_metric([*labels, "tx"], result["NewBytesSent"])
+        self.metrics["data"].add_metric([*labels, "rx"], result["NewBytesReceived"])
+        self.metrics["packets"].add_metric([*labels, "tx"], result["NewPacketsSent"])
+        self.metrics["packets"].add_metric([*labels, "rx"], result["NewPacketsReceived"])
+        self.metrics["packet_errors"].add_metric([*labels, "tx"], result["NewPacketErrorsSent"])
+        self.metrics["packet_errors"].add_metric(
+            [*labels, "rx"], result["NewPacketErrorsReceived"]
+        )
+        self.metrics["multicast"].add_metric(labels, result["NewPacketsMulticast"])
+        self.metrics["connection_rate"].add_metric(
+            [*labels, "rx"], result["NewConnectionRateDown"]
+        )
+        self.metrics["connection_rate"].add_metric(
+            [*labels, "tx"], result["NewConnectionRateUp"]
+        )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["data"]
+        yield self.metrics["packets"]
+        yield self.metrics["packet_errors"]
+        yield self.metrics["multicast"]
+        yield self.metrics["connection_rate"]
+
+
 class WanPPPConnectionStatus(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
@@ -563,6 +771,12 @@ class WanCommonInterfaceByteRate(FritzCapability):
             labels=["serial", "friendly_name", "direction"],
             unit="bytes",
         )
+        self.metrics["layer1max"] = GaugeMetricFamily(
+            "fritz_wan_layer1_max_bitrate",
+            "Layer1 max bitrate (64-bit; correct for multi-gig fibre/cable)",
+            labels=["serial", "friendly_name", "direction"],
+            unit="bps",
+        )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         fritz_wan_result = device.fc.call_action("WANCommonIFC1", "GetAddonInfos")
@@ -575,10 +789,24 @@ class WanCommonInterfaceByteRate(FritzCapability):
             [device.serial, device.friendly_name, "tx"], wan_byterate_tx
         )
 
+        # Classic Layer1*MaxBitRate is ui4 and saturates/misreports on multi-gig links.
+        # Prefer the AVM 64-bit fields when the firmware provides them.
+        layer1_rx = fritz_wan_result.get("NewX_AVM_DE_Layer1DownstreamMaxBitRate64")
+        layer1_tx = fritz_wan_result.get("NewX_AVM_DE_Layer1UpstreamMaxBitRate64")
+        if layer1_rx is not None:
+            self.metrics["layer1max"].add_metric(
+                [device.serial, device.friendly_name, "rx"], layer1_rx
+            )
+        if layer1_tx is not None:
+            self.metrics["layer1max"].add_metric(
+                [device.serial, device.friendly_name, "tx"], layer1_tx
+            )
+
     def _get_metric_values(
         self,
     ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["wanbyterate"]
+        yield self.metrics["layer1max"]
 
 
 class WanCommonInterfaceDataPackets(FritzCapability):
