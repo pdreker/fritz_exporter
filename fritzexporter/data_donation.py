@@ -22,6 +22,11 @@ logger = logging.getLogger("fritzexporter.donate_data")
 
 _SANITIZED = "<SANITIZED>"
 
+# A sanitation entry is [service, action] (blank the whole action) or
+# [service, action, field] (blank just that field).
+_SANITATION_ENTRY_LEN_WHOLE_ACTION = 2
+_SANITATION_ENTRY_LEN_SINGLE_FIELD = 3
+
 _SANITIZATION_BLACKLIST: dict[tuple[str, str], list[str]] = {
     ("DeviceConfig1", "GetPersistentData"): ["NewPersistentData"],
     ("DeviceConfig1", "X_AVM-DE_GetConfigFile"): ["NewConfigFile"],
@@ -157,10 +162,12 @@ def _apply_custom_sanitization(res: dict[tuple[str, str], dict], sanitation: lis
         svc_action = (entry[0], entry[1])
         if svc_action not in res:
             continue
-        if len(entry) == 2:  # noqa: PLR2004
+        if len(entry) == _SANITATION_ENTRY_LEN_WHOLE_ACTION:
             for field in res[svc_action]:
                 res[svc_action][field] = _SANITIZED
-        elif len(entry) == 3 and entry[2] in res[svc_action]:  # noqa: PLR2004
+        elif (
+            len(entry) == _SANITATION_ENTRY_LEN_SINGLE_FIELD and entry[2] in res[svc_action]
+        ):
             res[svc_action][entry[2]] = _SANITIZED
 
 
@@ -182,7 +189,7 @@ def jsonify_action_results(ar: dict[tuple[str, str], dict]) -> dict[str, dict]:
     return out
 
 
-def upload_data(basedata) -> None:  # noqa: ANN001
+def upload_data(basedata: dict[str, Any]) -> None:
     donation_url = os.getenv("FRITZ_DONATION_URL", "https://fritz.dreker.de/data/donate")
     headers = {"Content-Type": "application/json"}
     resp = requests.post(donation_url, data=json.dumps(basedata), headers=headers, timeout=10)

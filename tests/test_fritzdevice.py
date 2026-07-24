@@ -14,6 +14,7 @@ from prometheus_client.core import Metric
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 from fritzexporter.fritz_aha import parse_aha_device_xml
+from fritzexporter.tr064_remote import ConnectionOptions
 
 from .fc_services_mock import (
     call_action_mock,
@@ -239,7 +240,7 @@ class TestFritzDevice:
         _ = FritzDevice(
             FritzCredentials("somehost", "someuser", "password"),
             "FritzMock",
-            connection_timeout=10,
+            connection=ConnectionOptions(connection_timeout=10),
         )
 
         # Check: timeout must be forwarded to FritzConnection
@@ -279,8 +280,7 @@ class TestFritzDevice:
         _ = FritzDevice(
             FritzCredentials("somehost", "someuser", "password"),
             "FritzMock",
-            use_tls=True,
-            port=49443,
+            connection=ConnectionOptions(use_tls=True, port=49443),
         )
 
         assert mock_fritzconnection.call_args == call(
@@ -614,7 +614,9 @@ class TestFritzCollector:
         creds = FritzCredentials("offlinehost", "user", "pass")
 
         # Act
-        collector.register_offline(creds, "OfflineDevice", connection_timeout=15)
+        collector.register_offline(
+            creds, "OfflineDevice", connection=ConnectionOptions(connection_timeout=15)
+        )
 
         # Check: timeout stored so that retry uses the same bound
         assert len(collector.offline_devices) == 1
@@ -630,7 +632,9 @@ class TestFritzCollector:
 
         collector = FritzCollector()
         creds = FritzCredentials("somehost", "someuser", "password")
-        collector.register_offline(creds, "FritzMock", connection_timeout=7)
+        collector.register_offline(
+            creds, "FritzMock", connection=ConnectionOptions(connection_timeout=7)
+        )
 
         # Device comes back during retry
         fc.call_action.side_effect = call_action_mock
@@ -654,7 +658,9 @@ class TestFritzCollector:
         creds = FritzCredentials("offlinehost", "user", "pass")
 
         collector.register_offline(
-            creds, "OfflineDevice", use_tls=True, port=49443, remote_access=True
+            creds,
+            "OfflineDevice",
+            connection=ConnectionOptions(use_tls=True, port=49443, remote_access=True),
         )
 
         assert len(collector.offline_devices) == 1
@@ -671,7 +677,9 @@ class TestFritzCollector:
         collector = FritzCollector()
         creds = FritzCredentials("somehost", "someuser", "password")
         collector.register_offline(
-            creds, "FritzMock", use_tls=True, port=49443, remote_access=True
+            creds,
+            "FritzMock",
+            connection=ConnectionOptions(use_tls=True, port=49443, remote_access=True),
         )
 
         fc.call_action.side_effect = call_action_mock
