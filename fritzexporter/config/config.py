@@ -33,6 +33,15 @@ def _convert_optional_int(value: int | str | None) -> int | None:
     return timeout
 
 
+def _convert_optional_port(value: int | str | None) -> int | None:
+    if value is None:
+        return None
+    port = int(value)
+    if port == 0:
+        return None
+    return port
+
+
 def _read_config_file(config_file_path: str) -> dict:
     try:
         with Path(config_file_path).open() as config_file:
@@ -70,6 +79,8 @@ def _read_config_from_env() -> dict:
     host_info: str = os.getenv("FRITZ_HOST_INFO", "False")
     wifi_client_info: str = os.getenv("FRITZ_WIFI_CLIENT_INFO", "False")
     connection_timeout = os.getenv("FRITZ_CONNECTION_TIMEOUT")
+    use_tls = os.getenv("FRITZ_USE_TLS", "False")
+    device_port = os.getenv("FRITZ_DEVICE_PORT")
 
     config: dict[Any, Any] = {}
     if exporter_port:
@@ -88,6 +99,8 @@ def _read_config_from_env() -> dict:
         "wifi_client_info": wifi_client_info,
         "name": name,
         "connection_timeout": connection_timeout,
+        "use_tls": use_tls,
+        "port": device_port,
     }
     if hostname:
         device["hostname"] = hostname
@@ -177,6 +190,14 @@ class DeviceConfig:
         converter=_convert_optional_int,
         validator=validators.optional(validators.ge(1)),
     )
+    use_tls: bool = field(default=False, converter=converters.to_bool)
+    port: int | None = field(
+        default=None,
+        converter=_convert_optional_port,
+        validator=validators.optional(
+            validators.and_(validators.ge(1), validators.le(65535)),
+        ),
+    )
 
     @password.validator  # ty: ignore[unresolved-attribute]
     def check_password(self, _: attrs.Attribute, value: str | None) -> None:
@@ -203,6 +224,8 @@ class DeviceConfig:
         host_info = device.get("host_info", False)
         wifi_client_info = device.get("wifi_client_info", False)
         connection_timeout = device.get("connection_timeout")
+        use_tls = device.get("use_tls", False)
+        port = device.get("port")
 
         return cls(
             hostname=hostname,
@@ -213,4 +236,6 @@ class DeviceConfig:
             host_info=host_info,
             wifi_client_info=wifi_client_info,
             connection_timeout=connection_timeout,
+            use_tls=use_tls,
+            port=port,
         )

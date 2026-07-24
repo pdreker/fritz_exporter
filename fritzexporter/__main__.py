@@ -90,6 +90,8 @@ def _register_device(
             host_info=dev.host_info,
             wifi_client_info=dev.wifi_client_info,
             connection_timeout=dev.connection_timeout,
+            use_tls=dev.use_tls,
+            port=dev.port,
         )
     except (FritzConnectionException, FritzAuthorizationError, FritzDeviceHasNoCapabilitiesError):
         logger.exception(
@@ -103,6 +105,8 @@ def _register_device(
             host_info=dev.host_info,
             wifi_client_info=dev.wifi_client_info,
             connection_timeout=dev.connection_timeout,
+            use_tls=dev.use_tls,
+            port=dev.port,
         )
         return
 

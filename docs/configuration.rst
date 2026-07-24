@@ -42,6 +42,16 @@ If you only need a single device this is the easiest way to configure the export
 | ``FRITZ_CONNECTION_TIMEOUT`` | Optional per-device TR-064 connect timeout in      |           |
 |                              | seconds. ``0`` or empty means no timeout.          |           |
 +------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_USE_TLS``            | Use HTTPS/TLS for TR-064 to the device.            | False     |
+|                              | Only ``true`` or ``1`` enable this. Certificate    |           |
+|                              | verification is disabled by ``fritzconnection``    |           |
+|                              | (Fritz!Box self-signed certs).                     |           |
++------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_DEVICE_PORT``        | Optional TR-064 port on the device. Defaults to    |           |
+|                              | ``49000`` (HTTP) or ``49443`` (TLS) via            |           |
+|                              | ``fritzconnection``. Distinct from ``FRITZ_PORT``  |           |
+|                              | (exporter listen port). ``0`` or empty = default.  |           |
++------------------------------+----------------------------------------------------+-----------+
 
 .. note::
 
@@ -78,6 +88,8 @@ To use the config file you have to specify the the location of the config and mo
       host_info: True
       wifi_client_info: True # optional, per-client WiFi signal/speed (higher cardinality)
       connection_timeout: 10 # optional, seconds; 0 disables timeout
+      use_tls: false # optional; true = HTTPS TR-064 (default port 49443)
+      port: 49000 # optional TR-064 port; omit for fritzconnection defaults
     - name: Repeater Wohnzimmer # optional
       hostname: repeater-Wohnzimmer
       username: prometheus

@@ -1,0 +1,14 @@
+# Config with TLS and explicit TR-064 port on one device
+exporter_port: 9787
+listen_address: 127.0.0.1
+devices:
+  - name: Fritz!Box TLS
+    hostname: 192.168.1.1
+    username: prometheus1
+    password: prometheus2
+    use_tls: true
+    port: 49443
+  - name: Fritz!Box Plain
+    hostname: 192.168.1.2
+    username: prometheus3
+    password: prometheus4

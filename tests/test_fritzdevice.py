@@ -128,7 +128,12 @@ class TestFritzDevice:
 
         assert mock_fritzconnection.call_count == 1
         assert mock_fritzconnection.call_args == call(
-            address="somehost", user="someuser", password="password", timeout=None
+            address="somehost",
+            user="someuser",
+            password="password",
+            timeout=None,
+            use_tls=False,
+            port=None,
         )
 
     def test_should_complain_about_password(self, mock_fritzconnection: MagicMock, caplog):
@@ -239,7 +244,12 @@ class TestFritzDevice:
 
         # Check: timeout must be forwarded to FritzConnection
         assert mock_fritzconnection.call_args == call(
-            address="somehost", user="someuser", password="password", timeout=10
+            address="somehost",
+            user="someuser",
+            password="password",
+            timeout=10,
+            use_tls=False,
+            port=None,
         )
 
     def test_connection_timeout_none_by_default(self, mock_fritzconnection: MagicMock, caplog):
@@ -253,7 +263,33 @@ class TestFritzDevice:
 
         # Check: no explicit timeout → None is passed (fritzconnection's own default)
         assert mock_fritzconnection.call_args == call(
-            address="somehost", user="someuser", password="password", timeout=None
+            address="somehost",
+            user="someuser",
+            password="password",
+            timeout=None,
+            use_tls=False,
+            port=None,
+        )
+
+    def test_use_tls_and_port_passed_to_fritzconnection(self, mock_fritzconnection: MagicMock):
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        _ = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            use_tls=True,
+            port=49443,
+        )
+
+        assert mock_fritzconnection.call_args == call(
+            address="somehost",
+            user="someuser",
+            password="password",
+            timeout=None,
+            use_tls=True,
+            port=49443,
         )
 
 
@@ -582,8 +618,7 @@ class TestFritzCollector:
 
         # Check: timeout stored so that retry uses the same bound
         assert len(collector.offline_devices) == 1
-        stored_timeout = collector.offline_devices[0][3]
-        assert stored_timeout == 15
+        assert collector.offline_devices[0].connection_timeout == 15
 
     def test_retry_offline_devices_uses_connection_timeout(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare: register device offline with a specific timeout
@@ -604,7 +639,46 @@ class TestFritzCollector:
 
         # Check: FritzConnection was called with the stored timeout during the retry
         assert mock_fritzconnection.call_args == call(
-            address="somehost", user="someuser", password="password", timeout=7
+            address="somehost",
+            user="someuser",
+            password="password",
+            timeout=7,
+            use_tls=False,
+            port=None,
+        )
+        assert len(collector.devices) == 1
+        assert len(collector.offline_devices) == 0
+
+    def test_register_offline_preserves_tls_and_port(self, mock_fritzconnection: MagicMock):
+        collector = FritzCollector()
+        creds = FritzCredentials("offlinehost", "user", "pass")
+
+        collector.register_offline(creds, "OfflineDevice", use_tls=True, port=49443)
+
+        assert len(collector.offline_devices) == 1
+        offline = collector.offline_devices[0]
+        assert offline.use_tls is True
+        assert offline.port == 49443
+
+    def test_retry_offline_devices_uses_tls_and_port(self, mock_fritzconnection: MagicMock):
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = FritzConnectionException("not reachable")
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        collector = FritzCollector()
+        creds = FritzCredentials("somehost", "someuser", "password")
+        collector.register_offline(creds, "FritzMock", use_tls=True, port=49443)
+
+        fc.call_action.side_effect = call_action_mock
+        list(collector.collect())
+
+        assert mock_fritzconnection.call_args == call(
+            address="somehost",
+            user="someuser",
+            password="password",
+            timeout=None,
+            use_tls=True,
+            port=49443,
         )
         assert len(collector.devices) == 1
         assert len(collector.offline_devices) == 0

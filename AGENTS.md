@@ -236,6 +236,8 @@ Both paths produce the same `ExporterConfig` / `DeviceConfig` attrs objects and 
 | Device | `host_info` | `FRITZ_HOST_INFO` | `False` |
 | Device | `wifi_client_info` | `FRITZ_WIFI_CLIENT_INFO` | `False` |
 | Device | `connection_timeout` | `FRITZ_CONNECTION_TIMEOUT` | *(none — no timeout)* |
+| Device | `use_tls` | `FRITZ_USE_TLS` | `False` |
+| Device | `port` | `FRITZ_DEVICE_PORT` | *(none — fritzconnection default: 49000 / TLS 49443)* |
 
 ### Rule: keep both paths in sync
 
