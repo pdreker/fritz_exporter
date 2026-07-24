@@ -591,6 +591,11 @@ class WanFiberStatistics(FritzCapability):
             "Fibre multicast packets",
             labels=["serial", "friendly_name"],
         )
+        self.metrics["resyncs"] = CounterMetricFamily(
+            "fritz_fiber_resyncs",
+            "Number of fibre link resynchronizations",
+            labels=["serial", "friendly_name"],
+        )
         self.metrics["connection_rate"] = GaugeMetricFamily(
             "fritz_fiber_connection_rate",
             "Fibre connection rate as reported by the device (see docs for unit quirks)",
@@ -610,6 +615,7 @@ class WanFiberStatistics(FritzCapability):
             [*labels, "rx"], result["NewPacketErrorsReceived"]
         )
         self.metrics["multicast"].add_metric(labels, result["NewPacketsMulticast"])
+        self.metrics["resyncs"].add_metric(labels, result["NewResyncs"])
         self.metrics["connection_rate"].add_metric(
             [*labels, "rx"], result["NewConnectionRateDown"]
         )
@@ -624,6 +630,7 @@ class WanFiberStatistics(FritzCapability):
         yield self.metrics["packets"]
         yield self.metrics["packet_errors"]
         yield self.metrics["multicast"]
+        yield self.metrics["resyncs"]
         yield self.metrics["connection_rate"]
 
 
