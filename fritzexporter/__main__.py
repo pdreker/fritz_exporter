@@ -16,6 +16,7 @@ from fritzexporter.config import DeviceConfig, ExporterError, get_config
 from fritzexporter.data_donation import donate_data
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
+from fritzexporter.tr064_remote import ConnectionOptions
 
 from . import __version__
 
@@ -83,16 +84,19 @@ def _register_device(
 ) -> None:
     password = _resolve_password(dev)
     creds = FritzCredentials(dev.hostname, dev.username, password)
+    connection = ConnectionOptions(
+        connection_timeout=dev.connection_timeout,
+        use_tls=dev.use_tls,
+        port=dev.port,
+        remote_access=dev.remote_access,
+    )
     try:
         fritz_device = FritzDevice(
             creds,
             dev.name,
             host_info=dev.host_info,
             wifi_client_info=dev.wifi_client_info,
-            connection_timeout=dev.connection_timeout,
-            use_tls=dev.use_tls,
-            port=dev.port,
-            remote_access=dev.remote_access,
+            connection=connection,
         )
     except FritzConnectionException, FritzAuthorizationError, FritzDeviceHasNoCapabilitiesError:
         logger.exception(
@@ -105,10 +109,7 @@ def _register_device(
             dev.name,
             host_info=dev.host_info,
             wifi_client_info=dev.wifi_client_info,
-            connection_timeout=dev.connection_timeout,
-            use_tls=dev.use_tls,
-            port=dev.port,
-            remote_access=dev.remote_access,
+            connection=connection,
         )
         return
 

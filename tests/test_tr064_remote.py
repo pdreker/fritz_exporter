@@ -4,6 +4,7 @@ import requests
 from requests.adapters import HTTPAdapter
 
 from fritzexporter.tr064_remote import (
+    ConnectionOptions,
     Tr064RemoteAccessSession,
     create_fritz_connection,
     rewrite_tr064_remote_url,
@@ -96,10 +97,7 @@ class TestCreateFritzConnection:
             address="box.example",
             user="user",
             password="pass",
-            timeout=None,
-            use_tls=True,
-            port=11243,
-            remote_access=True,
+            connection=ConnectionOptions(use_tls=True, port=11243, remote_access=True),
         )
 
         assert len(captured_sessions) == 1
@@ -127,8 +125,5 @@ class TestCreateFritzConnection:
                 address="box.example",
                 user="user",
                 password="pass",
-                timeout=None,
-                use_tls=True,
-                port=11243,
-                remote_access=True,
+                connection=ConnectionOptions(use_tls=True, port=11243, remote_access=True),
             )

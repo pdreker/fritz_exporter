@@ -16,7 +16,7 @@ from prometheus_client.registry import Collector
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzcapabilities import FritzCapabilities
-from fritzexporter.tr064_remote import create_fritz_connection
+from fritzexporter.tr064_remote import ConnectionOptions, create_fritz_connection
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
 
@@ -42,18 +42,16 @@ class OfflineDevice(NamedTuple):
 
 
 class FritzDevice:
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         creds: FritzCredentials,
         name: str,
         *,
         host_info: bool = False,
         wifi_client_info: bool = False,
-        connection_timeout: int | None = None,
-        use_tls: bool = False,
-        port: int | None = None,
-        remote_access: bool = False,
+        connection: ConnectionOptions | None = None,
     ) -> None:
+        connection = connection or ConnectionOptions()
         self.host: str = creds.host
         self.serial: str = "n/a"
         self.model: str = "n/a"
@@ -73,10 +71,7 @@ class FritzDevice:
                 address=creds.host,
                 user=creds.user,
                 password=creds.password,
-                timeout=connection_timeout,
-                use_tls=use_tls,
-                port=port,
-                remote_access=remote_access,
+                connection=connection,
             )
         except FritzConnectionException:
             logger.exception("unable to connect to %s.", creds.host)
@@ -180,28 +175,26 @@ class FritzCollector(Collector):
         self.devices.append(fritzdev)
         logger.debug("registered device %s (%s) to collector", fritzdev.host, fritzdev.model)
 
-    def register_offline(  # noqa: PLR0913
+    def register_offline(
         self,
         creds: FritzCredentials,
         friendly_name: str,
         *,
         host_info: bool = False,
         wifi_client_info: bool = False,
-        connection_timeout: int | None = None,
-        use_tls: bool = False,
-        port: int | None = None,
-        remote_access: bool = False,
+        connection: ConnectionOptions | None = None,
     ) -> None:
+        connection = connection or ConnectionOptions()
         self.offline_devices.append(
             OfflineDevice(
                 creds,
                 friendly_name,
                 host_info,
-                connection_timeout,
+                connection.connection_timeout,
                 wifi_client_info,
-                use_tls,
-                port,
-                remote_access,
+                connection.use_tls,
+                connection.port,
+                connection.remote_access,
             )
         )
         logger.debug("registered offline device %s (%s) to collector", creds.host, friendly_name)
@@ -215,10 +208,12 @@ class FritzCollector(Collector):
                     offline.friendly_name,
                     host_info=offline.host_info,
                     wifi_client_info=offline.wifi_client_info,
-                    connection_timeout=offline.connection_timeout,
-                    use_tls=offline.use_tls,
-                    port=offline.port,
-                    remote_access=offline.remote_access,
+                    connection=ConnectionOptions(
+                        connection_timeout=offline.connection_timeout,
+                        use_tls=offline.use_tls,
+                        port=offline.port,
+                        remote_access=offline.remote_access,
+                    ),
                 )
                 logger.info(
                     "Device %s (%s) is back online, registering to collector.",

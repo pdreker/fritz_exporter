@@ -11,6 +11,7 @@ from urllib.parse import urlsplit, urlunsplit
 from xml.etree.ElementTree import ParseError
 
 import requests
+from attrs import define
 from fritzconnection import FritzConnection  # type: ignore[import]
 from fritzconnection.core.exceptions import FritzConnectionException  # type: ignore[import]
 
@@ -66,26 +67,34 @@ def remote_tr064_session(*, enabled: bool) -> Iterator[None]:
         requests.Session = original_session  # type: ignore[misc]
 
 
-def create_fritz_connection(  # noqa: PLR0913
+@define(frozen=True)
+class ConnectionOptions:
+    """TR-064 connection options shared by ``FritzDevice`` and ``create_fritz_connection``."""
+
+    connection_timeout: float | tuple[float, float] | None = None
+    use_tls: bool = False
+    port: int | None = None
+    remote_access: bool = False
+
+
+def create_fritz_connection(
     *,
     address: str,
     user: str,
     password: str,
-    timeout: float | tuple[float, float] | None,
-    use_tls: bool,
-    port: int | None,
-    remote_access: bool = False,
+    connection: ConnectionOptions | None = None,
 ) -> FritzConnection:
     """Create a FritzConnection, optionally rewriting paths for WAN remote access."""
-    with remote_tr064_session(enabled=remote_access):
+    options = connection or ConnectionOptions()
+    with remote_tr064_session(enabled=options.remote_access):
         try:
             return FritzConnection(
                 address=address,
                 user=user,
                 password=password,
-                timeout=timeout,
-                use_tls=use_tls,
-                port=port,
+                timeout=options.connection_timeout,
+                use_tls=options.use_tls,
+                port=options.port,
             )
         except ParseError as err:
             # Fritz returns HTML (often text/html; charset=utf-8) for missing/auth
