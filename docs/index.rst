@@ -71,6 +71,7 @@ Known Problems
 
 * It seems like Fritz!OS does not internally count the packets for the Guest WiFi. So even though those counters are there they are always 0. This seems to be a problem with Fritz!OS and not the exporter. The counters are delivered nontheless, just in case this gets fixed by AVM.
 * On multi-gig fibre (and possibly cable) links the classic ``fritz_wan_max_bitrate`` values from ``GetCommonLinkProperties`` can be wrong (often stuck at ``1000000``) because they use a 32-bit field. Prefer ``fritz_wan_layer1_max_bitrate_bps`` from ``GetAddonInfos``, which correctly reports e.g. 2.5 Gbit/s / 1.25 Gbit/s.
+* On WAN types that don't support the 64-bit Layer1 max bitrate fields (observed on cable), FRITZ!OS reports ``NewX_AVM_DE_Layer1DownstreamMaxBitRate64`` / ``NewX_AVM_DE_Layer1UpstreamMaxBitRate64`` as an empty string rather than omitting them or returning ``None``. The exporter treats this the same as "not provided" and simply omits ``fritz_wan_layer1_max_bitrate_bps`` for that direction/device — it does not indicate a fault, only that this WAN type doesn't expose the field.
 * Fibre / ``X_AVM-DE_WANFiber`` gaps observed on FRITZ!Box 5690 (Fritz!OS 8.25): the web UI shows real optical readings, but several TR-064 ``GetInfo`` / ``GetStatistics`` fields are empty or zero. The exporter still exposes the TR-064 values when present. The Fritz! team has been contacted about these issues:
 
   * ``NewOpticalSignalLevel`` / ``NewTransmitOpticalLevel`` stay at ``0`` while the UI shows real RX/TX power (e.g. about ``-19.5 dBm`` / ``2.4 dBm``)

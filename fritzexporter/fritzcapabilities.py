@@ -784,14 +784,19 @@ class WanCommonInterfaceByteRate(FritzCapability):
         )
 
         # Classic Layer1*MaxBitRate is ui4 and saturates/misreports on multi-gig links.
-        # Prefer the AVM 64-bit fields when the firmware provides them.
+        # Prefer the AVM 64-bit fields when the firmware provides them. On WAN
+        # types that don't support them (observed on cable), FRITZ!OS reports
+        # the field as an empty string rather than omitting it or returning
+        # None, which crashes exposition when Prometheus scrapes (the client
+        # library does float("") to format the sample) -- treat both as "not
+        # provided".
         layer1_rx = fritz_wan_result.get("NewX_AVM_DE_Layer1DownstreamMaxBitRate64")
         layer1_tx = fritz_wan_result.get("NewX_AVM_DE_Layer1UpstreamMaxBitRate64")
-        if layer1_rx is not None:
+        if layer1_rx not in (None, ""):
             self.metrics["layer1max"].add_metric(
                 [device.serial, device.friendly_name, "rx"], layer1_rx
             )
-        if layer1_tx is not None:
+        if layer1_tx not in (None, ""):
             self.metrics["layer1max"].add_metric(
                 [device.serial, device.friendly_name, "tx"], layer1_tx
             )
