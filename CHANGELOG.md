@@ -15,6 +15,13 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.3.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.3.0...fritzexporter-v3.3.1) (2026-07-24)
+
+
+### Bug Fixes
+
+* audit and reduce noqa suppressions ([#659](https://github.com/pdreker/fritz_exporter/issues/659)) ([e1d2750](https://github.com/pdreker/fritz_exporter/commit/e1d2750ebebb81e772ad0da825ea130b8f7270a4))
+
 ## [3.3.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.2.2...fritzexporter-v3.3.0) (2026-07-24)
 
 
