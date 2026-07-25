@@ -1,27 +1,103 @@
+from typing import Any
 from xml.etree.ElementTree import Element
 
 from defusedxml import ElementTree
 
 
-def parse_aha_device_xml(deviceinfo: str) -> dict[str, str]:
+def _findtext(elem: Element, tag: str) -> str | None:
+    text = elem.findtext(tag)
+    return text.strip() if text is not None else None
+
+
+def _find_int(elem: Element, tag: str) -> int | None:
+    text = _findtext(elem, tag)
+    if text is None:
+        return None
     try:
-        device: Element = ElementTree.fromstring(deviceinfo)
+        return int(text)
+    except ValueError:
+        return None
 
-        battery_level = device.find("battery")
-        battery_low = device.find("batterylow")
 
-        result = {}
+def _parse_switch(device: Element) -> dict[str, Any] | None:
+    switch = device.find("switch")
+    if switch is None:
+        return None
+    return {
+        "state": _findtext(switch, "state"),
+        "mode": _findtext(switch, "mode"),
+        "lock": _findtext(switch, "lock"),
+    }
 
-        if battery_level is not None:
-            result["battery_level"] = battery_level.text or ""
 
-        if battery_low is not None:
-            result["battery_low"] = battery_low.text or ""
+def _parse_powermeter(device: Element) -> dict[str, Any] | None:
+    powermeter = device.find("powermeter")
+    if powermeter is None:
+        return None
+    return {
+        "power": _find_int(powermeter, "power"),
+        "energy": _find_int(powermeter, "energy"),
+    }
 
+
+def _parse_temperature(device: Element) -> dict[str, Any] | None:
+    temperature = device.find("temperature")
+    if temperature is None:
+        return None
+    return {
+        "celsius": _find_int(temperature, "celsius"),
+        "offset": _find_int(temperature, "offset"),
+    }
+
+
+def _parse_hkr(device: Element) -> dict[str, Any] | None:
+    hkr = device.find("hkr")
+    if hkr is None:
+        return None
+    return {
+        "tist": _find_int(hkr, "tist"),
+        "tsoll": _find_int(hkr, "tsoll"),
+        "absenk": _find_int(hkr, "absenk"),
+        "komfort": _find_int(hkr, "komfort"),
+        "battery_level": _find_int(hkr, "battery"),
+        "battery_low": _findtext(hkr, "batterylow"),
+    }
+
+
+def parse_aha_devicelist_xml(content: str) -> list[dict[str, Any]]:
+    try:
+        devicelist: Element = ElementTree.fromstring(content)
     except ElementTree.ParseError:
-        return {}
-    else:
-        return result
+        return []
+
+    devices = []
+    for device in devicelist.findall("device"):
+        hkr = _parse_hkr(device)
+        # On some firmware versions battery data is only reported nested
+        # inside <hkr> instead of as a direct child of <device>.
+        battery_level = _find_int(device, "battery")
+        battery_low = _findtext(device, "batterylow")
+        if battery_level is None and hkr is not None:
+            battery_level = hkr["battery_level"]
+            battery_low = hkr["battery_low"]
+
+        devices.append(
+            {
+                "ain": device.attrib.get("identifier", ""),
+                "device_id": device.attrib.get("id", ""),
+                "manufacturer": device.attrib.get("manufacturer", ""),
+                "productname": device.attrib.get("productname", ""),
+                "device_name": _findtext(device, "name") or "",
+                "present": _findtext(device, "present") == "1",
+                "battery_level": battery_level,
+                "battery_low": battery_low,
+                "switch": _parse_switch(device),
+                "powermeter": _parse_powermeter(device),
+                "temperature": _parse_temperature(device),
+                "hkr": hkr,
+            }
+        )
+    return devices
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>

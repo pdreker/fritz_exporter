@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from fritzconnection.core.exceptions import (
     FritzActionError,
     FritzServiceError,
-    FritzArrayIndexError,
 )
 
 
@@ -18,18 +17,18 @@ def create_fc_services(services_mock):
         services[svc] = FCService(actions)
     return services
 
-def call_http_mock(action, ain, **_):
+def call_http_mock(action, ain=None, **_):
     return {
         "content": """<?xml version="1.0" encoding="utf-8"?>
-        <device>
+        <devicelist version="1">
+        <device identifier="123456789012" id="123" functionbitmask="1"
+                fwversion="1.2" manufacturer="AVM" productname="MockDevice">
             <present>1</present>
             <name>Fritz!DECT 200</name>
-            <manufacturer>AVM</manufacturer>
-            <manufacturerURL>http://www.avm.de</manufacturerURL>
-            <model>Fritz!DECT 200</model>
             <battery>100</battery>
             <batterylow>0</batterylow>
-        </device>""",
+        </device>
+        </devicelist>""",
         "content-type": "text/xml",
         "encoding": "utf-8"
     }
@@ -192,45 +191,14 @@ def call_action_mock(service, action, **kwargs):
             "MaxCharsDeviceName": 32,
             "MinCharsDeviceName": 10,
         },
-        ("X_AVM-DE_Homeauto1", "GetGenericDeviceInfos"): {
+        ("X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos"): {
             "NewAIN": "123456789012",
-            "NewDeviceId": 123,
-            "NewFunctionBitMask": 1,
-            "NewFirmwareVersion": "1.2",
-            "NewManufacturer": "AVM",
-            "NewProductName": "MockDevice",
-            "NewDeviceName": "MockDeviceName",
-            "NewPresent": "CONNECTED",
-            "NewMultimeterIsEnabled": "ENABLED",
-            "NewMultimeterIsValid": "VALID",
-            "NewMultimeterPower": 1234,
-            "NewMultimeterEnergy": 12345,
-            "NewTemperatureIsEnabled": "ENABLED",
-            "NewTemperatureIsValid": "VALID",
-            "NewTemperatureCelsius": 234,
-            "NewTemperatureOffset": 0,
-            "NewSwitchIsEnabled": "ENABLED",
-            "NewSwitchIsValid": "VALID",
-            "NewSwitchState": "ON",
-            "NewSwitchMode": "MANUAL",
-            "NewSwitchLock": False,
-            "NewHkrIsEnabled": "ENABLED",
-            "NewHkrIsValid": "VALID",
-            "NewHkrIsTemperature": 245,
             "NewHkrSetVentilStatus": "OPEN",
-            "NewHkrSetTemperature": 234,
             "NewHkrReduceVentilStatus": "CLOSED",
-            "NewHkrReduceTemperature": 234,
             "NewHkrComfortVentilStatus": "OPEN",
-            "NewHkrComfortTemperature": 234,
         },
     }
 
-    if service == "X_AVM-DE_Homeauto1" and action == "GetGenericDeviceInfos":
-        if kwargs["NewIndex"] == 0:
-            return call_action_responses[(service, action)]
-        else:
-            raise FritzArrayIndexError
     if (service, action) not in call_action_responses:
         raise FritzServiceError(f"Unknown service/action: {service}/{action}")
     return call_action_responses[(service, action)]
@@ -376,37 +344,11 @@ def call_action_no_basic_mock(service, action, **_):
             "NewX_AVM-DE_Model": "Mockgear",
             "NewX_AVM-DE_Speed": 1000,
         },
-        ("X_AVM-DE_Homeauto1", "GetGenericDeviceInfos"): {
+        ("X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos"): {
             "NewAIN": "123456789012",
-            "NewDeviceId": 123,
-            "NewFunctionBitMask": 1,
-            "NewFirmwareVersion": "1.2",
-            "NewManufacturer": "AVM",
-            "NewProductName": "MockDevice",
-            "NewDeviceName": "MockDeviceName",
-            "NewPresent": "CONNECTED",
-            "NewMultimeterIsEnabled": "ENABLED",
-            "NewMultimeterIsValid": "VALID",
-            "NewMultimeterPower": 1234,
-            "NewMultimeterEnergy": 12345,
-            "NewTemperatureIsEnabled": "ENABLED",
-            "NewTemperatureIsValid": "VALID",
-            "NewTemperatureCelsius": 234,
-            "NewTemperatureOffset": 0,
-            "NewSwitchIsEnabled": "ENABLED",
-            "NewSwitchIsValid": "VALID",
-            "NewSwitchState": "ON",
-            "NewSwitchMode": "MANUAL",
-            "NewSwitchLock": False,
-            "NewHkrIsEnabled": "ENABLED",
-            "NewHkrIsValid": "VALID",
-            "NewHkrIsTemperature": 245,
             "NewHkrSetVentilStatus": "OPEN",
-            "NewHkrSetTemperature": 234,
             "NewHkrReduceVentilStatus": "CLOSED",
-            "NewHkrReduceTemperature": 234,
             "NewHkrComfortVentilStatus": "OPEN",
-            "NewHkrComfortTemperature": 234,
         },
     }
 
@@ -554,37 +496,11 @@ def call_action_no_basic_action_error_mock(service, action, **kwargs):
             "NewX_AVM-DE_Model": "Mockgear",
             "NewX_AVM-DE_Speed": 1000,
         },
-        ("X_AVM-DE_Homeauto1", "GetGenericDeviceInfos"): {
+        ("X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos"): {
             "NewAIN": "123456789012",
-            "NewDeviceId": 123,
-            "NewFunctionBitMask": 1,
-            "NewFirmwareVersion": "1.2",
-            "NewManufacturer": "AVM",
-            "NewProductName": "MockDevice",
-            "NewDeviceName": "MockDeviceName",
-            "NewPresent": "CONNECTED",
-            "NewMultimeterIsEnabled": "ENABLED",
-            "NewMultimeterIsValid": "VALID",
-            "NewMultimeterPower": 1234,
-            "NewMultimeterEnergy": 12345,
-            "NewTemperatureIsEnabled": "ENABLED",
-            "NewTemperatureIsValid": "VALID",
-            "NewTemperatureCelsius": 234,
-            "NewTemperatureOffset": 0,
-            "NewSwitchIsEnabled": "ENABLED",
-            "NewSwitchIsValid": "VALID",
-            "NewSwitchState": "ON",
-            "NewSwitchMode": "MANUAL",
-            "NewSwitchLock": False,
-            "NewHkrIsEnabled": "ENABLED",
-            "NewHkrIsValid": "VALID",
-            "NewHkrIsTemperature": 245,
             "NewHkrSetVentilStatus": "OPEN",
-            "NewHkrSetTemperature": 234,
             "NewHkrReduceVentilStatus": "CLOSED",
-            "NewHkrReduceTemperature": 234,
             "NewHkrComfortVentilStatus": "OPEN",
-            "NewHkrComfortTemperature": 234,
         },
     }
 
@@ -812,7 +728,7 @@ fc_services_capabilities["HostInfo"] = {
 fc_services_capabilities["HomeAutomation"] = {
     "X_AVM-DE_Homeauto1": [
         "GetInfo",
-        "GetGenericDeviceInfos",
+        "GetSpecificDeviceInfos",
     ],
 }
 
