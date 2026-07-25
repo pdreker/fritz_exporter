@@ -23,6 +23,7 @@ def parse_aha_device_xml(deviceinfo: str) -> dict[str, str]:
     else:
         return result
 
+
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
