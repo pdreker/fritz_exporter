@@ -568,3 +568,61 @@ class TestWanFiberCapabilities:
         assert layer1[
             (("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
         ] == 1250000000
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestWanCommonInterfaceByteRateCableWan:
+    """Regression tests for WAN types (e.g. cable) that don't populate the
+    AVM 64-bit Layer1 max bitrate fields. FRITZ!OS reports them as an empty
+    string rather than omitting them or returning None in this case, which
+    previously crashed metric exposition (the client library does
+    float("") to format the sample value)."""
+
+    def test_empty_string_64bit_fields_are_skipped(self, mock_fritzconnection: MagicMock):
+        # Prepare - same as GetAddonInfos in fc_services_mock.py, except the
+        # two 64-bit fields come back as empty strings, as observed on a
+        # cable WAN connection.
+        fc = mock_fritzconnection.return_value
+
+        def call_action_cable_addon_infos(service, action, **kwargs):
+            if (service, action) == ("WANCommonIFC1", "GetAddonInfos"):
+                return {
+                    "NewByteReceiveRate": 12345,
+                    "NewByteSendRate": 23456,
+                    "NewX_AVM_DE_Layer1DownstreamMaxBitRate64": "",
+                    "NewX_AVM_DE_Layer1UpstreamMaxBitRate64": "",
+                }
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = call_action_cable_addon_infos
+        fc.services = create_fc_services(
+            {
+                **fc_services_capabilities["DeviceInfo"],
+                **fc_services_capabilities["WanCommonInterfaceByteRate"],
+            }
+        )
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzCable",
+            host_info=False,
+        )
+        collector.register(device)
+
+        # Act - this used to raise ValueError: could not convert string to
+        # float: '' while formatting the layer1max sample.
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check - the field is silently skipped rather than emitted empty...
+        by_name = {m.name: m for m in metrics}
+        assert by_name["fritz_wan_layer1_max_bitrate_bps"].samples == []
+
+        # ...and the sibling byte-rate metric from the same call is unaffected.
+        byterate = _sample_map(by_name["fritz_wan_datarate_bytes"])
+        assert byterate[
+            (("direction", "rx"), ("friendly_name", "FritzCable"), ("serial", "1234567890"))
+        ] == 12345
+        assert byterate[
+            (("direction", "tx"), ("friendly_name", "FritzCable"), ("serial", "1234567890"))
+        ] == 23456
