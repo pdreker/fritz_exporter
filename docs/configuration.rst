@@ -40,7 +40,7 @@ If you only need a single device this is the easiest way to configure the export
 |                              | Only "true" or "1" will enable this feature.       |           |
 +------------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_CONNECTION_TIMEOUT`` | Optional per-device TR-064 connect timeout in      |           |
-|                              | seconds. ``0`` or empty means no timeout.          |           |
+|                              | seconds. ``0`` or unset means no timeout.          |           |
 +------------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_USE_TLS``            | Use HTTPS/TLS for TR-064 to the device.            | False     |
 |                              | Only ``true`` or ``1`` enable this. Certificate    |           |
@@ -50,7 +50,7 @@ If you only need a single device this is the easiest way to configure the export
 | ``FRITZ_DEVICE_PORT``        | Optional TR-064 port on the device. Defaults to    |           |
 |                              | ``49000`` (HTTP) or ``49443`` (TLS) via            |           |
 |                              | ``fritzconnection``. Distinct from ``FRITZ_PORT``  |           |
-|                              | (exporter listen port). ``0`` or empty = default.  |           |
+|                              | (exporter listen port). ``0`` or unset = default.  |           |
 +------------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_REMOTE_ACCESS``      | Use AVM WAN remote TR-064 (``/tr064`` URL prefix). | False     |
 |                              | Requires ``FRITZ_USE_TLS=true``. Only ``true`` or  |           |
