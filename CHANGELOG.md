@@ -15,6 +15,22 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.3.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.3.1...fritzexporter-v3.3.2) (2026-07-25)
+
+
+### Bug Fixes
+
+* clean up remaining ruff format and lint failures ([#662](https://github.com/pdreker/fritz_exporter/issues/662)) ([bf9468f](https://github.com/pdreker/fritz_exporter/commit/bf9468f7a013ace26e022cfa3deb152e1c95562d))
+* patch FritzConnection at its actual construction site in WanFiber tests ([#661](https://github.com/pdreker/fritz_exporter/issues/661)) ([79c7362](https://github.com/pdreker/fritz_exporter/commit/79c736285eeef308cf94ccdcb6e97f5a16af0259)), closes [#658](https://github.com/pdreker/fritz_exporter/issues/658)
+* reject explicitly-empty env config values instead of silently defaulting ([#664](https://github.com/pdreker/fritz_exporter/issues/664)) ([b9fa363](https://github.com/pdreker/fritz_exporter/commit/b9fa36372f22d654cbee3ae929c5fc900ac06a25)), closes [#654](https://github.com/pdreker/fritz_exporter/issues/654)
+* skip empty-string Layer1 64-bit max bitrate on unsupported WAN types ([#668](https://github.com/pdreker/fritz_exporter/issues/668)) ([b0f99cd](https://github.com/pdreker/fritz_exporter/commit/b0f99cd07f3219de441e60ef9c1345ae9aa7b766))
+* stop swallowing lint/test failures in CI, add ty gate ([#663](https://github.com/pdreker/fritz_exporter/issues/663)) ([e2d1611](https://github.com/pdreker/fritz_exporter/commit/e2d16117e13492e74e3cb16290d95cee11e049a4)), closes [#657](https://github.com/pdreker/fritz_exporter/issues/657)
+
+
+### Performance Improvements
+
+* collect home-automation metrics via a single AHA HTTP call ([#667](https://github.com/pdreker/fritz_exporter/issues/667)) ([daf19de](https://github.com/pdreker/fritz_exporter/commit/daf19dea430ec5b7817e2d0e5ad3cba073b880a5))
+
 ## [3.3.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.3.0...fritzexporter-v3.3.1) (2026-07-24)
 
 
