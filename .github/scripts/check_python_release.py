@@ -35,7 +35,7 @@ def current_minor() -> tuple[int, int]:
 
 
 def newest_stable_cycle() -> tuple[tuple[int, int], str]:
-    with urllib.request.urlopen(ENDOFLIFE_URL, timeout=30) as resp:
+    with urllib.request.urlopen(ENDOFLIFE_URL, timeout=30) as resp:  # noqa: S310
         cycles = json.load(resp)
     best_key: tuple[int, int] | None = None
     best_latest = ""
@@ -55,8 +55,8 @@ def newest_stable_cycle() -> tuple[tuple[int, int], str]:
 
 
 def issue_exists(title: str) -> bool:
-    out = subprocess.run(
-        ["gh", "issue", "list", "--state", "open", "--search", title, "--json", "title"],
+    out = subprocess.run(  # noqa: S603
+        ["gh", "issue", "list", "--state", "open", "--search", title, "--json", "title"],  # noqa: S607
         capture_output=True,
         text=True,
         check=True,
@@ -68,13 +68,13 @@ def main() -> None:
     cur = current_minor()
     newest, latest_patch = newest_stable_cycle()
     if newest <= cur:
-        print(f"Up to date: running {cur[0]}.{cur[1]}, newest stable is {newest[0]}.{newest[1]}")
+        print(f"Up to date: running {cur[0]}.{cur[1]}, newest stable is {newest[0]}.{newest[1]}")  # noqa: T201
         return
 
     version = f"{newest[0]}.{newest[1]}"
     title = f"New stable Python release available: {version}"
     if issue_exists(title):
-        print(f"Issue already open: {title}")
+        print(f"Issue already open: {title}")  # noqa: T201
         return
 
     body = (
@@ -89,9 +89,9 @@ def main() -> None:
     create = ["gh", "issue", "create", "--title", title, "--body", body]
     # Use the label if it exists; otherwise fall back to an unlabelled issue
     # rather than failing the whole run.
-    if subprocess.run([*create, "--label", ISSUE_LABEL]).returncode != 0:
-        subprocess.run(create, check=True)
-    print(f"Opened issue: {title}")
+    if subprocess.run([*create, "--label", ISSUE_LABEL]).returncode != 0:  # noqa: S603, PLW1510
+        subprocess.run(create, check=True)  # noqa: S603
+    print(f"Opened issue: {title}")  # noqa: T201
 
 
 if __name__ == "__main__":

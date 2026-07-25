@@ -606,16 +606,10 @@ class WanFiberStatistics(FritzCapability):
         self.metrics["packets"].add_metric([*labels, "tx"], result["NewPacketsSent"])
         self.metrics["packets"].add_metric([*labels, "rx"], result["NewPacketsReceived"])
         self.metrics["packet_errors"].add_metric([*labels, "tx"], result["NewPacketErrorsSent"])
-        self.metrics["packet_errors"].add_metric(
-            [*labels, "rx"], result["NewPacketErrorsReceived"]
-        )
+        self.metrics["packet_errors"].add_metric([*labels, "rx"], result["NewPacketErrorsReceived"])
         self.metrics["multicast"].add_metric(labels, result["NewPacketsMulticast"])
-        self.metrics["connection_rate"].add_metric(
-            [*labels, "rx"], result["NewConnectionRateDown"]
-        )
-        self.metrics["connection_rate"].add_metric(
-            [*labels, "tx"], result["NewConnectionRateUp"]
-        )
+        self.metrics["connection_rate"].add_metric([*labels, "rx"], result["NewConnectionRateDown"])
+        self.metrics["connection_rate"].add_metric([*labels, "tx"], result["NewConnectionRateUp"])
 
     def _get_metric_values(
         self,
@@ -1452,10 +1446,19 @@ class HostInfo(FritzCapability):
 
 class HomeAutomation(FritzCapability):
     _HA_LABELS: ClassVar[list[str]] = [
-        "serial", "friendly_name", "ain", "device_name", "device_id", "manufacturer", "productname",
+        "serial",
+        "friendly_name",
+        "ain",
+        "device_name",
+        "device_id",
+        "manufacturer",
+        "productname",
     ]
     _DEVICE_PRESENT_MAP: ClassVar[dict[str, int]] = {
-        "DISCONNECTED": 0, "REGISTERED": 1, "CONNECTED": 2, "UNKNOWN": 3,
+        "DISCONNECTED": 0,
+        "REGISTERED": 1,
+        "CONNECTED": 2,
+        "UNKNOWN": 3,
     }
     _SWITCH_MODE_MAP: ClassVar[dict[str, int]] = {"MANUAL": 0, "AUTO": 1, "UNDEFINED": 2}
     _SWITCH_STATE_MAP: ClassVar[dict[str, int]] = {"OFF": 0, "ON": 1, "TOGGLE": 2, "UNDEFINED": 3}

@@ -165,9 +165,7 @@ def _apply_custom_sanitization(res: dict[tuple[str, str], dict], sanitation: lis
         if len(entry) == _SANITATION_ENTRY_LEN_WHOLE_ACTION:
             for field in res[svc_action]:
                 res[svc_action][field] = _SANITIZED
-        elif (
-            len(entry) == _SANITATION_ENTRY_LEN_SINGLE_FIELD and entry[2] in res[svc_action]
-        ):
+        elif len(entry) == _SANITATION_ENTRY_LEN_SINGLE_FIELD and entry[2] in res[svc_action]:
             res[svc_action][entry[2]] = _SANITIZED
 
 
@@ -248,11 +246,11 @@ def donate_data(
         upload_data(basedata)
     else:
         sys.stdout.write(
-            f"---------------- Donation data for device {model} "
-            "---------------------\n"
+            f"---------------- Donation data for device {model} ---------------------\n"
         )
         sys.stdout.write(f"{json.dumps(basedata, indent=2)}\n")
         sys.stdout.write("----------------- END ------------------\n\n")
+
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
 #
