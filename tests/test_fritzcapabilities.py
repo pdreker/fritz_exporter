@@ -478,7 +478,7 @@ def _sample_map(metric: Metric) -> dict[tuple[tuple[str, str], ...], float]:
     }
 
 
-@patch("fritzexporter.fritzdevice.FritzConnection")
+@patch("fritzexporter.tr064_remote.FritzConnection")
 class TestWanFiberCapabilities:
     """Tests for fibre WAN capability metrics."""
 
