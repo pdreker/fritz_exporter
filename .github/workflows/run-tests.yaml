@@ -22,7 +22,6 @@ jobs:
         run: uv sync --all-groups
       - name: Lint with ruff
         id: ruff
-        continue-on-error: true
         run: |
           uv run ruff check . | tee lint.log
           ruff_check=${PIPESTATUS[0]}
@@ -33,9 +32,10 @@ jobs:
           cat lint.log >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           exit $rescode
+      - name: Type check with ty
+        run: uv run ty check
       - name: Run pytest
         id: pytest
-        continue-on-error: true
         run: |
           uv run pytest | tee test.log
           rescode=${PIPESTATUS[0]}

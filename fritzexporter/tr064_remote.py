@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 from xml.etree.ElementTree import ParseError
 
@@ -40,12 +41,16 @@ class Tr064RemoteAccessSession(requests.Session):
     """
 
     def request(
-        self, method: str | bytes, url: str | bytes, *args: object, **kwargs: object
+        self,
+        method: str | bytes,
+        url: str | bytes,
+        *args: Any,  # noqa: ANN401
+        **kwargs: Any,  # noqa: ANN401
     ) -> requests.Response:
         if isinstance(url, bytes):
             url = url.decode()
         url = rewrite_tr064_remote_url(url)
-        return super().request(method, url, *args, **kwargs)  # type: ignore[arg-type]
+        return super().request(method, url, *args, **kwargs)
 
 
 @contextmanager
@@ -60,18 +65,18 @@ def remote_tr064_session(*, enabled: bool) -> Iterator[None]:
         return
 
     original_session = requests.Session
-    requests.Session = Tr064RemoteAccessSession  # type: ignore[misc,assignment]
+    requests.Session = Tr064RemoteAccessSession  # ty: ignore[invalid-assignment]
     try:
         yield
     finally:
-        requests.Session = original_session  # type: ignore[misc]
+        requests.Session = original_session
 
 
 @define(frozen=True)
 class ConnectionOptions:
     """TR-064 connection options shared by ``FritzDevice`` and ``create_fritz_connection``."""
 
-    connection_timeout: float | tuple[float, float] | None = None
+    connection_timeout: int | None = None
     use_tls: bool = False
     port: int | None = None
     remote_access: bool = False
