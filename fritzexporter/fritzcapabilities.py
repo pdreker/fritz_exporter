@@ -19,7 +19,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
 from fritzconnection.lib.fritzhosts import FritzHosts  # type: ignore[import]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
-from fritzexporter.fritz_aha import parse_aha_device_xml
+from fritzexporter.fritz_aha import parse_aha_devicelist_xml
 
 if TYPE_CHECKING:
     from fritzexporter.fritzdevice import FritzDevice
@@ -1459,15 +1459,9 @@ class HomeAutomation(FritzCapability):
         "manufacturer",
         "productname",
     ]
-    _DEVICE_PRESENT_MAP: ClassVar[dict[str, int]] = {
-        "DISCONNECTED": 0,
-        "REGISTERED": 1,
-        "CONNECTED": 2,
-        "UNKNOWN": 3,
-    }
-    _SWITCH_MODE_MAP: ClassVar[dict[str, int]] = {"MANUAL": 0, "AUTO": 1, "UNDEFINED": 2}
-    _SWITCH_STATE_MAP: ClassVar[dict[str, int]] = {"OFF": 0, "ON": 1, "TOGGLE": 2, "UNDEFINED": 3}
     _HKR_VALVE_MAP: ClassVar[dict[str, int]] = {"CLOSED": 0, "OPEN": 1, "TEMP": 2}
+    _HTTP_SWITCH_STATE_MAP: ClassVar[dict[str | None, int]] = {"0": 0, "1": 1}
+    _HTTP_SWITCH_MODE_MAP: ClassVar[dict[str | None, int]] = {"manuell": 0, "auto": 1}
 
     def __init__(self) -> None:
         super().__init__()
@@ -1529,135 +1523,118 @@ class HomeAutomation(FritzCapability):
         for key, metric_name, help_text in metric_definitions:
             self.metrics[key] = GaugeMetricFamily(metric_name, help_text, labels=labels)
 
-    def _build_ha_labels(self, device: FritzDevice, ha_result: dict[str, Any]) -> list[str]:
+    def _build_ha_labels(self, device: FritzDevice, ha_device: dict[str, Any]) -> list[str]:
         return [
             device.serial,
             device.friendly_name,
-            ha_result["NewAIN"],
-            ha_result["NewDeviceName"],
-            str(ha_result["NewDeviceId"]),
-            ha_result["NewManufacturer"],
-            ha_result["NewProductName"],
+            ha_device["ain"],
+            ha_device["device_name"],
+            str(ha_device["device_id"]),
+            ha_device["manufacturer"],
+            ha_device["productname"],
         ]
 
-    def _collect_multimeter(self, ha_result: dict[str, Any], labels: list[str]) -> None:
-        if (
-            ha_result["NewMultimeterIsEnabled"] == "ENABLED"
-            and ha_result["NewMultimeterIsValid"] == "VALID"
-        ):
-            self.metrics["multimeter_power"].add_metric(
-                labels,
-                ha_result["NewMultimeterPower"] / 100.0,
-            )
-            self.metrics["multimeter_energy"].add_metric(labels, ha_result["NewMultimeterEnergy"])
+    def _collect_multimeter(self, ha_device: dict[str, Any], labels: list[str]) -> None:
+        powermeter = ha_device["powermeter"]
+        if powermeter is None:
+            return
+        if powermeter["power"] is not None:
+            self.metrics["multimeter_power"].add_metric(labels, powermeter["power"] / 1000.0)
+        if powermeter["energy"] is not None:
+            self.metrics["multimeter_energy"].add_metric(labels, powermeter["energy"])
 
-    def _collect_temperature(self, ha_result: dict[str, Any], labels: list[str]) -> None:
-        if (
-            ha_result["NewTemperatureIsEnabled"] == "ENABLED"
-            and ha_result["NewTemperatureIsValid"] == "VALID"
-        ):
-            self.metrics["temperature"].add_metric(
-                labels,
-                ha_result["NewTemperatureCelsius"] / 10.0,
-            )
-            self.metrics["temperature_offset"].add_metric(
-                labels,
-                ha_result["NewTemperatureOffset"] / 10.0,
-            )
+    def _collect_temperature(self, ha_device: dict[str, Any], labels: list[str]) -> None:
+        temperature = ha_device["temperature"]
+        if temperature is None:
+            return
+        if temperature["celsius"] is not None:
+            self.metrics["temperature"].add_metric(labels, temperature["celsius"] / 10.0)
+        if temperature["offset"] is not None:
+            self.metrics["temperature_offset"].add_metric(labels, temperature["offset"] / 10.0)
 
-    def _collect_switch(self, ha_result: dict[str, Any], labels: list[str]) -> None:
-        if (
-            ha_result["NewSwitchIsEnabled"] == "ENABLED"
-            and ha_result["NewSwitchIsValid"] == "VALID"
-        ):
+    def _collect_switch(self, ha_device: dict[str, Any], labels: list[str]) -> None:
+        switch = ha_device["switch"]
+        if switch is None:
+            return
+        if switch["state"] in self._HTTP_SWITCH_STATE_MAP:
             self.metrics["switch_state"].add_metric(
-                labels,
-                self._SWITCH_STATE_MAP[ha_result["NewSwitchState"]],
+                labels, self._HTTP_SWITCH_STATE_MAP[switch["state"]]
             )
+        if switch["mode"] in self._HTTP_SWITCH_MODE_MAP:
             self.metrics["switch_mode"].add_metric(
-                labels,
-                self._SWITCH_MODE_MAP[ha_result["NewSwitchMode"]],
+                labels, self._HTTP_SWITCH_MODE_MAP[switch["mode"]]
             )
-            self.metrics["switch_lock"].add_metric(
-                labels,
-                1 if ha_result["NewSwitchLock"] else 0,
-            )
+        if switch["lock"] is not None:
+            self.metrics["switch_lock"].add_metric(labels, 1 if switch["lock"] == "1" else 0)
 
-    def _collect_heater(self, ha_result: dict[str, Any], labels: list[str]) -> None:
-        if ha_result["NewHkrIsEnabled"] == "ENABLED" and ha_result["NewHkrIsValid"] == "VALID":
-            self.metrics["heater_temperature"].add_metric(
-                labels,
-                ha_result["NewHkrIsTemperature"] / 10.0,
-            )
-            self.metrics["heater_set_temperature"].add_metric(
-                labels,
-                ha_result["NewHkrSetTemperature"] / 10.0,
-            )
-            self.metrics["heater_valve_set_state"].add_metric(
-                labels,
-                self._HKR_VALVE_MAP[ha_result["NewHkrSetVentilStatus"]],
-            )
-            self.metrics["heater_reduced_temperature"].add_metric(
-                labels,
-                ha_result["NewHkrReduceTemperature"] / 10.0,
-            )
-            self.metrics["heater_comfort_temperature"].add_metric(
-                labels,
-                ha_result["NewHkrComfortTemperature"] / 10.0,
-            )
-            self.metrics["heater_reduced_valve_state"].add_metric(
-                labels,
-                self._HKR_VALVE_MAP[ha_result["NewHkrReduceVentilStatus"]],
-            )
-            self.metrics["heater_comfort_valve_state"].add_metric(
-                labels,
-                self._HKR_VALVE_MAP[ha_result["NewHkrComfortVentilStatus"]],
-            )
+    def _collect_heater(self, ha_device: dict[str, Any], labels: list[str]) -> None:
+        hkr = ha_device["hkr"]
+        if hkr is None:
+            return
+        # HKR temperatures from the AHA HTTP API are reported in half-degree
+        # steps, unlike the plain <temperature> element (tenths of a degree).
+        if hkr["tist"] is not None:
+            self.metrics["heater_temperature"].add_metric(labels, hkr["tist"] / 2.0)
+        if hkr["tsoll"] is not None:
+            self.metrics["heater_set_temperature"].add_metric(labels, hkr["tsoll"] / 2.0)
+        if hkr["absenk"] is not None:
+            self.metrics["heater_reduced_temperature"].add_metric(labels, hkr["absenk"] / 2.0)
+        if hkr["komfort"] is not None:
+            self.metrics["heater_comfort_temperature"].add_metric(labels, hkr["komfort"] / 2.0)
 
-    def _collect_battery(self, device: FritzDevice, ain: str, labels: list[str]) -> None:
-        # Battery data comes from the AHA HTTP API, not TR-064.
-        # "battery" XML element maps to "battery_level".
+    def _collect_heater_valve_state(self, device: FritzDevice, ain: str, labels: list[str]) -> None:
+        # The valve/ventil status fields are not exposed by the AHA HTTP API's
+        # getdevicelistinfos response, so they still require one TR-064 call
+        # per thermostat (identified by AIN, not by enumeration index).
         try:
-            http_result = device.fc.call_http("getdeviceinfos", ain)
-        except FritzHttpInterfaceError:
-            logger.debug("Got FritzHttpInterfaceError for ain %s, skipping", ain)
+            ha_result = device.fc.call_action(
+                "X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos", NewAIN=ain
+            )
+        except FritzArgumentError, FritzActionError, FritzArrayIndexError:
+            logger.debug("Could not fetch HKR valve state for ain %s, skipping", ain)
             return
-        if "content" not in http_result:
-            return
-        http_data = parse_aha_device_xml(http_result["content"])
-        if "battery_level" in http_data:
-            self.metrics["battery_level"].add_metric(labels, float(http_data["battery_level"]))
-        if "battery_low" in http_data:
+
+        if "NewHkrSetVentilStatus" in ha_result:
+            self.metrics["heater_valve_set_state"].add_metric(
+                labels, self._HKR_VALVE_MAP[ha_result["NewHkrSetVentilStatus"]]
+            )
+        if "NewHkrReduceVentilStatus" in ha_result:
+            self.metrics["heater_reduced_valve_state"].add_metric(
+                labels, self._HKR_VALVE_MAP[ha_result["NewHkrReduceVentilStatus"]]
+            )
+        if "NewHkrComfortVentilStatus" in ha_result:
+            self.metrics["heater_comfort_valve_state"].add_metric(
+                labels, self._HKR_VALVE_MAP[ha_result["NewHkrComfortVentilStatus"]]
+            )
+
+    def _collect_battery(self, ha_device: dict[str, Any], labels: list[str]) -> None:
+        if ha_device["battery_level"] is not None:
+            self.metrics["battery_level"].add_metric(labels, float(ha_device["battery_level"]))
+        if ha_device["battery_low"] is not None:
             self.metrics["battery_low"].add_metric(
-                labels,
-                1 if http_data["battery_low"] == "1" else 0,
+                labels, 1 if ha_device["battery_low"] == "1" else 0
             )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        index = 0
-        while True:
-            logger.debug("Fetching home automation device information for index %d", index)
-            try:
-                ha_result = device.fc.call_action(
-                    "X_AVM-DE_Homeauto1", "GetGenericDeviceInfos", NewIndex=index
-                )
-            except FritzArrayIndexError:
-                logger.debug("Got IndexError for index %d, stopping", index)
-                break
+        try:
+            http_result = device.fc.call_http("getdevicelistinfos")
+        except FritzHttpInterfaceError:
+            logger.debug("Got FritzHttpInterfaceError for device %s, skipping", device.host)
+            return
+        if "content" not in http_result:
+            return
 
-            ain = ha_result["NewAIN"]
-            labels = self._build_ha_labels(device, ha_result)
+        for ha_device in parse_aha_devicelist_xml(http_result["content"]):
+            labels = self._build_ha_labels(device, ha_device)
 
-            self.metrics["devicepresent"].add_metric(
-                labels,
-                self._DEVICE_PRESENT_MAP[ha_result["NewPresent"]],
-            )
-            self._collect_multimeter(ha_result, labels)
-            self._collect_temperature(ha_result, labels)
-            self._collect_switch(ha_result, labels)
-            self._collect_heater(ha_result, labels)
-            index += 1
-            self._collect_battery(device, ain, labels)
+            self.metrics["devicepresent"].add_metric(labels, 2 if ha_device["present"] else 0)
+            self._collect_multimeter(ha_device, labels)
+            self._collect_temperature(ha_device, labels)
+            self._collect_switch(ha_device, labels)
+            self._collect_heater(ha_device, labels)
+            self._collect_battery(ha_device, labels)
+            if ha_device["hkr"] is not None:
+                self._collect_heater_valve_state(device, ha_device["ain"], labels)
 
     def _get_metric_values(
         self,

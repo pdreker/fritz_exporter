@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fritzconnection.core.exceptions import (
     FritzActionError,
+    FritzArgumentError,
     FritzArrayIndexError,
     FritzHttpInterfaceError,
     FritzServiceError,
@@ -242,62 +243,52 @@ class TestHostInfoCapability:
 class TestHomeAutomationCapability:
     """Tests for HomeAutomation capability edge cases."""
 
-    def _make_ha_response(
+    def _make_device_xml(
         self,
-        multimeter_enabled=True,
-        multimeter_valid=True,
-        temperature_enabled=True,
-        temperature_valid=True,
-        switch_enabled=True,
-        switch_valid=True,
-        hkr_enabled=True,
-        hkr_valid=True,
-    ) -> dict:
-        return {
-            "NewAIN": "123456789012",
-            "NewDeviceId": 123,
-            "NewFunctionBitMask": 1,
-            "NewFirmwareVersion": "1.2",
-            "NewManufacturer": "AVM",
-            "NewProductName": "MockDevice",
-            "NewDeviceName": "MockDeviceName",
-            "NewPresent": "CONNECTED",
-            "NewMultimeterIsEnabled": "ENABLED" if multimeter_enabled else "DISABLED",
-            "NewMultimeterIsValid": "VALID" if multimeter_valid else "INVALID",
-            "NewMultimeterPower": 1234,
-            "NewMultimeterEnergy": 12345,
-            "NewTemperatureIsEnabled": "ENABLED" if temperature_enabled else "DISABLED",
-            "NewTemperatureIsValid": "VALID" if temperature_valid else "INVALID",
-            "NewTemperatureCelsius": 234,
-            "NewTemperatureOffset": 0,
-            "NewSwitchIsEnabled": "ENABLED" if switch_enabled else "DISABLED",
-            "NewSwitchIsValid": "VALID" if switch_valid else "INVALID",
-            "NewSwitchState": "ON",
-            "NewSwitchMode": "MANUAL",
-            "NewSwitchLock": False,
-            "NewHkrIsEnabled": "ENABLED" if hkr_enabled else "DISABLED",
-            "NewHkrIsValid": "VALID" if hkr_valid else "INVALID",
-            "NewHkrIsTemperature": 245,
-            "NewHkrSetVentilStatus": "OPEN",
-            "NewHkrSetTemperature": 234,
-            "NewHkrReduceVentilStatus": "CLOSED",
-            "NewHkrReduceTemperature": 234,
-            "NewHkrComfortVentilStatus": "OPEN",
-            "NewHkrComfortTemperature": 234,
-        }
+        ain="123456789012",
+        include_powermeter=True,
+        include_temperature=True,
+        include_switch=True,
+        include_hkr=True,
+        battery: str | None = "100",
+        batterylow: str | None = "0",
+    ) -> str:
+        parts = [
+            f'<device identifier="{ain}" id="123" functionbitmask="1" '
+            'fwversion="1.2" manufacturer="AVM" productname="MockDevice">',
+            "<present>1</present>",
+            "<name>MockDeviceName</name>",
+        ]
+        if battery is not None:
+            parts.append(f"<battery>{battery}</battery>")
+        if batterylow is not None:
+            parts.append(f"<batterylow>{batterylow}</batterylow>")
+        if include_powermeter:
+            parts.append("<powermeter><power>1234</power><energy>12345</energy></powermeter>")
+        if include_temperature:
+            parts.append("<temperature><celsius>234</celsius><offset>0</offset></temperature>")
+        if include_switch:
+            parts.append("<switch><state>1</state><mode>manuell</mode><lock>0</lock></switch>")
+        if include_hkr:
+            parts.append(
+                "<hkr><tist>245</tist><tsoll>234</tsoll><absenk>234</absenk>"
+                "<komfort>234</komfort></hkr>"
+            )
+        parts.append("</device>")
+        return "".join(parts)
 
-    def _setup_ha_device(self, mock_fc, ha_response: dict) -> tuple:
+    def _make_devicelist_xml(self, *device_xml: str) -> str:
+        return f'<devicelist version="1">{"".join(device_xml)}</devicelist>'
+
+    def _setup_ha_device(self, mock_fc, devicelist_xml: str) -> tuple:
         fc = mock_fc.return_value
 
-        def ha_mock(service, action, **kwargs):
-            if service == "X_AVM-DE_Homeauto1" and action == "GetGenericDeviceInfos":
-                if kwargs.get("NewIndex", 0) == 0:
-                    return ha_response
-                raise FritzArrayIndexError
-            return call_action_mock(service, action, **kwargs)
-
-        fc.call_action.side_effect = ha_mock
-        fc.call_http.side_effect = call_http_mock
+        fc.call_action.side_effect = call_action_mock
+        fc.call_http.side_effect = lambda action, ain=None, **kw: {
+            "content": devicelist_xml,
+            "content-type": "text/xml",
+            "encoding": "utf-8",
+        }
         fc.services = create_fc_services(fc_services_capabilities["HomeAutomation"])
 
         collector = FritzCollector()
@@ -307,21 +298,8 @@ class TestHomeAutomationCapability:
 
     def test_homeautomation_with_disabled_multimeter(self, mock_fritzconnection: MagicMock):
         # Prepare
-        ha_response = self._make_ha_response(multimeter_enabled=False)
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, ha_response)
-
-        # Act
-        metrics: list[Metric] = list(collector.collect())
-
-        # Check - multimeter metrics should have no samples
-        power_metrics = [m for m in metrics if m.name == "fritz_ha_multimeter_power_W"]
-        assert len(power_metrics) == 1
-        assert len(power_metrics[0].samples) == 0
-
-    def test_homeautomation_with_invalid_multimeter(self, mock_fritzconnection: MagicMock):
-        # Prepare
-        ha_response = self._make_ha_response(multimeter_valid=False)
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, ha_response)
+        xml = self._make_devicelist_xml(self._make_device_xml(include_powermeter=False))
+        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -333,8 +311,8 @@ class TestHomeAutomationCapability:
 
     def test_homeautomation_with_disabled_temperature(self, mock_fritzconnection: MagicMock):
         # Prepare
-        ha_response = self._make_ha_response(temperature_enabled=False)
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, ha_response)
+        xml = self._make_devicelist_xml(self._make_device_xml(include_temperature=False))
+        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -346,8 +324,8 @@ class TestHomeAutomationCapability:
 
     def test_homeautomation_with_disabled_switch(self, mock_fritzconnection: MagicMock):
         # Prepare
-        ha_response = self._make_ha_response(switch_enabled=False)
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, ha_response)
+        xml = self._make_devicelist_xml(self._make_device_xml(include_switch=False))
+        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -359,8 +337,8 @@ class TestHomeAutomationCapability:
 
     def test_homeautomation_with_disabled_heater(self, mock_fritzconnection: MagicMock):
         # Prepare
-        ha_response = self._make_ha_response(hkr_enabled=False)
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, ha_response)
+        xml = self._make_devicelist_xml(self._make_device_xml(include_hkr=False))
+        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -370,11 +348,82 @@ class TestHomeAutomationCapability:
         assert len(heater_metrics) == 1
         assert len(heater_metrics[0].samples) == 0
 
+        # No hkr block means no need to fetch valve state via TR-064
+        valve_metrics = [m for m in metrics if m.name == "fritz_ha_heater_valve_set_state"]
+        assert len(valve_metrics) == 1
+        assert len(valve_metrics[0].samples) == 0
+
+    def test_homeautomation_heater_includes_valve_state(self, mock_fritzconnection: MagicMock):
+        # Prepare - a device with an hkr block should also get its valve
+        # state via a supplemental TR-064 GetSpecificDeviceInfos call.
+        xml = self._make_devicelist_xml(self._make_device_xml())
+        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
+
+        # Act
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check
+        heater_temp = [m for m in metrics if m.name == "fritz_ha_heater_temperature_C"]
+        assert heater_temp[0].samples[0].value == 245 / 2.0
+
+        valve_set = [m for m in metrics if m.name == "fritz_ha_heater_valve_set_state"]
+        assert len(valve_set[0].samples) == 1
+        assert valve_set[0].samples[0].value == 1  # OPEN
+
+    def test_homeautomation_valve_state_lookup_failure_is_skipped(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare - GetSpecificDeviceInfos can fail for a device (e.g. it
+        # disappeared between the two calls); the heater temperatures from
+        # the bulk HTTP call should still be reported.
+        caplog.set_level(logging.DEBUG)
+        xml = self._make_devicelist_xml(self._make_device_xml())
+        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
+
+        def failing_action(service, action, **kwargs):
+            if service == "X_AVM-DE_Homeauto1" and action == "GetSpecificDeviceInfos":
+                raise FritzArgumentError("unknown ain")
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = failing_action
+
+        # Act
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check
+        heater_temp = [m for m in metrics if m.name == "fritz_ha_heater_temperature_C"]
+        assert len(heater_temp[0].samples) == 1
+
+        valve_set = [m for m in metrics if m.name == "fritz_ha_heater_valve_set_state"]
+        assert len(valve_set[0].samples) == 0
+
+        assert any(
+            "Could not fetch HKR valve state" in record.message for record in caplog.records
+        )
+
+    def test_homeautomation_multiple_devices_in_one_response(self, mock_fritzconnection: MagicMock):
+        # Prepare - two devices returned from a single getdevicelistinfos call
+        xml = self._make_devicelist_xml(
+            self._make_device_xml(ain="111111111111", include_hkr=False),
+            self._make_device_xml(ain="222222222222", include_hkr=False),
+        )
+        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
+
+        # Act
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check - both devices show up as separate label sets
+        device_present = [m for m in metrics if m.name == "fritz_ha_device_present"]
+        assert len(device_present) == 1
+        assert len(device_present[0].samples) == 2
+        ains = {s.labels["ain"] for s in device_present[0].samples}
+        assert ains == {"111111111111", "222222222222"}
+
     def test_homeautomation_with_fritz_http_interface_error(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
         caplog.set_level(logging.DEBUG)
-        ha_response = self._make_ha_response()
-        collector, device, fc = self._setup_ha_device(mock_fritzconnection, ha_response)
+        xml = self._make_devicelist_xml(self._make_device_xml())
+        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Make call_http raise FritzHttpInterfaceError
         fc.call_http.side_effect = FritzHttpInterfaceError("HTTP interface error")
@@ -382,14 +431,11 @@ class TestHomeAutomationCapability:
         # Act
         metrics: list[Metric] = list(collector.collect())
 
-        # Check - should still produce device present metric, no battery metrics
+        # Check - the whole device list comes from this one call, so on
+        # failure no home automation devices are reported at all.
         device_present = [m for m in metrics if m.name == "fritz_ha_device_present"]
         assert len(device_present) == 1
-        assert len(device_present[0].samples) == 1
-
-        battery_metrics = [m for m in metrics if m.name == "fritz_ha_battery_level_percent"]
-        assert len(battery_metrics) == 1
-        assert len(battery_metrics[0].samples) == 0
+        assert len(device_present[0].samples) == 0
 
         # Warning should be logged
         assert any(
@@ -399,36 +445,26 @@ class TestHomeAutomationCapability:
 
     def test_homeautomation_no_content_in_http_result(self, mock_fritzconnection: MagicMock):
         # Prepare
-        ha_response = self._make_ha_response()
-        collector, device, fc = self._setup_ha_device(mock_fritzconnection, ha_response)
+        xml = self._make_devicelist_xml(self._make_device_xml())
+        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Make call_http return a response without 'content'
-        fc.call_http.side_effect = lambda action, ain, **kw: {"status": "ok"}
+        fc.call_http.side_effect = lambda action, ain=None, **kw: {"status": "ok"}
 
         # Act
         metrics: list[Metric] = list(collector.collect())
 
-        # Check - battery metrics should have no samples since no content
-        battery_metrics = [m for m in metrics if m.name == "fritz_ha_battery_level_percent"]
-        assert len(battery_metrics) == 1
-        assert len(battery_metrics[0].samples) == 0
+        # Check - no devices at all since there is no content to parse
+        device_present = [m for m in metrics if m.name == "fritz_ha_device_present"]
+        assert len(device_present) == 1
+        assert len(device_present[0].samples) == 0
 
     def test_homeautomation_no_battery_low_in_http_data(self, mock_fritzconnection: MagicMock):
-        # Prepare - return XML without batterylow element
-        ha_response = self._make_ha_response()
-        collector, device, fc = self._setup_ha_device(mock_fritzconnection, ha_response)
-
-        # Make call_http return XML without batterylow
-        fc.call_http.side_effect = lambda action, ain, **kw: {
-            "content": """<?xml version="1.0" encoding="utf-8"?>
-            <device>
-                <present>1</present>
-                <name>Fritz!DECT 200</name>
-                <battery>75</battery>
-            </device>""",
-            "content-type": "text/xml",
-            "encoding": "utf-8",
-        }
+        # Prepare - device XML without batterylow element
+        xml = self._make_devicelist_xml(
+            self._make_device_xml(battery="75", batterylow=None, include_hkr=False)
+        )
+        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -444,19 +480,11 @@ class TestHomeAutomationCapability:
         assert len(battery_low[0].samples) == 0
 
     def test_homeautomation_no_battery_in_xml(self, mock_fritzconnection: MagicMock):
-        # Prepare - return XML without battery element (but has content)
-        ha_response = self._make_ha_response()
-        collector, device, fc = self._setup_ha_device(mock_fritzconnection, ha_response)
-
-        fc.call_http.side_effect = lambda action, ain, **kw: {
-            "content": """<?xml version="1.0" encoding="utf-8"?>
-            <device>
-                <present>1</present>
-                <name>Fritz!DECT 200</name>
-            </device>""",
-            "content-type": "text/xml",
-            "encoding": "utf-8",
-        }
+        # Prepare - device XML without battery element (but has content)
+        xml = self._make_devicelist_xml(
+            self._make_device_xml(battery=None, batterylow=None, include_hkr=False)
+        )
+        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())

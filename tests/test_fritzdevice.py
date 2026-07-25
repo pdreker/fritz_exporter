@@ -13,7 +13,7 @@ from prometheus_client.core import Metric
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
-from fritzexporter.fritz_aha import parse_aha_device_xml
+from fritzexporter.fritz_aha import parse_aha_devicelist_xml
 from fritzexporter.tr064_remote import ConnectionOptions
 
 from .fc_services_mock import (
@@ -199,36 +199,35 @@ class TestFritzDevice:
     def test_should_correctly_parse_aha_xml(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
         deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
-        <device>
+        <devicelist version="1">
+        <device identifier="123456789012" id="123" functionbitmask="1"
+                fwversion="1.2" manufacturer="AVM" productname="Fritz!DECT 200">
             <present>1</present>
-            <name>Fritz!DECT 200
-            </name>
-            <manufacturer>AVM</manufacturer>
-            <manufacturerURL>http://www.avm.de</manufacturerURL>
-            <model>Fritz!DECT 200</model>
+            <name>Fritz!DECT 200</name>
             <battery>100</battery>
             <batterylow>0</batterylow>
         </device>
+        </devicelist>
         """
         # Act
-        device_data = parse_aha_device_xml(deviceinfo)
+        devices = parse_aha_devicelist_xml(deviceinfo)
 
         # Check
-        assert device_data["battery_level"] == "100"
-        assert device_data["battery_low"] == "0"
+        assert len(devices) == 1
+        assert devices[0]["battery_level"] == 100
+        assert devices[0]["battery_low"] == "0"
 
     def test_should_correctly_parse_aha_xml_when_empty(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
         deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
-        <device>
-        </device>
+        <devicelist version="1">
+        </devicelist>
         """
         # Act
-        device_data = parse_aha_device_xml(deviceinfo)
+        devices = parse_aha_devicelist_xml(deviceinfo)
 
         # Check
-        assert "battery_level" not in device_data
-        assert "battery_low" not in device_data
+        assert devices == []
 
     def test_connection_timeout_passed_to_fritzconnection(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
@@ -1131,13 +1130,58 @@ class TestFritzDeviceAuthError:
         ) in caplog.record_tuples
 
 
-class TestParseAhaDeviceXml:
-    def test_should_return_empty_dict_on_parse_error(self):
+class TestParseAhaDevicelistXml:
+    def test_should_return_empty_list_on_parse_error(self):
         # Prepare
         invalid_xml = "this is not valid xml <<<"
 
         # Act
-        result = parse_aha_device_xml(invalid_xml)
+        result = parse_aha_devicelist_xml(invalid_xml)
 
         # Check
-        assert result == {}
+        assert result == []
+
+    def test_should_ignore_non_numeric_int_fields(self):
+        # Prepare
+        deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
+        <devicelist version="1">
+        <device identifier="123456789012" id="123" functionbitmask="1"
+                fwversion="1.2" manufacturer="AVM" productname="Fritz!DECT 200">
+            <present>1</present>
+            <name>Fritz!DECT 200</name>
+            <battery>not-a-number</battery>
+        </device>
+        </devicelist>
+        """
+        # Act
+        devices = parse_aha_devicelist_xml(deviceinfo)
+
+        # Check
+        assert devices[0]["battery_level"] is None
+
+    def test_should_fall_back_to_hkr_battery_when_missing_on_device(self):
+        # Prepare - some firmware versions only report battery data nested
+        # inside <hkr> instead of as a direct child of <device>.
+        deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
+        <devicelist version="1">
+        <device identifier="123456789012" id="123" functionbitmask="1"
+                fwversion="1.2" manufacturer="AVM" productname="Comet DECT">
+            <present>1</present>
+            <name>Comet DECT</name>
+            <hkr>
+                <tist>245</tist>
+                <tsoll>234</tsoll>
+                <absenk>234</absenk>
+                <komfort>234</komfort>
+                <battery>80</battery>
+                <batterylow>1</batterylow>
+            </hkr>
+        </device>
+        </devicelist>
+        """
+        # Act
+        devices = parse_aha_devicelist_xml(deviceinfo)
+
+        # Check
+        assert devices[0]["battery_level"] == 80
+        assert devices[0]["battery_low"] == "1"
