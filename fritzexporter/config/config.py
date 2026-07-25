@@ -85,11 +85,11 @@ def _read_config_from_env() -> dict:
     remote_access = os.getenv("FRITZ_REMOTE_ACCESS", "False")
 
     config: dict[Any, Any] = {}
-    if exporter_port:
+    if exporter_port is not None:
         config["exporter_port"] = exporter_port
-    if log_level:
+    if log_level is not None:
         config["log_level"] = log_level
-    if listen_address:
+    if listen_address is not None:
         config["listen_address"] = listen_address
 
     config["devices"] = []
@@ -105,7 +105,7 @@ def _read_config_from_env() -> dict:
         "port": device_port,
         "remote_access": remote_access,
     }
-    if hostname:
+    if hostname is not None:
         device["hostname"] = hostname
     config["devices"].append(device)
 

@@ -222,6 +222,104 @@ class TestEnvConfig:
             get_config(None)
 
 
+class TestEnvEmptyVsUnsetValues:
+    """An explicitly-empty env var (VAR=) must fail validation, not silently
+    behave like an unset one falling back to the default."""
+
+    @pytest.fixture(autouse=True)
+    def _required_vars(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
+        monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
+
+    def test_port_unset_uses_default(self, monkeypatch):
+        monkeypatch.delenv("FRITZ_PORT", raising=False)
+
+        config = get_config(None)
+
+        assert config.exporter_port == 9787
+
+    def test_port_empty_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_PORT", "")
+
+        with pytest.raises(ValueError, match="invalid literal for int"):
+            get_config(None)
+
+    def test_log_level_unset_uses_default(self, monkeypatch):
+        monkeypatch.delenv("FRITZ_LOG_LEVEL", raising=False)
+
+        config = get_config(None)
+
+        assert config.log_level == "INFO"
+
+    def test_log_level_empty_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_LOG_LEVEL", "")
+
+        with pytest.raises(ValueError, match="must be in"):
+            get_config(None)
+
+    def test_listen_address_unset_uses_default(self, monkeypatch):
+        monkeypatch.delenv("FRITZ_LISTEN_ADDRESS", raising=False)
+
+        config = get_config(None)
+
+        assert config.listen_address == "127.0.0.1"
+
+    def test_listen_address_empty_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_LISTEN_ADDRESS", "")
+
+        with pytest.raises(ValueError, match="does not appear to be"):
+            get_config(None)
+
+    def test_hostname_unset_uses_default(self, monkeypatch):
+        monkeypatch.delenv("FRITZ_HOSTNAME", raising=False)
+
+        config = get_config(None)
+
+        assert config.devices[0].hostname == "fritz.box"
+
+    def test_hostname_empty_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_HOSTNAME", "")
+
+        with pytest.raises(ValueError, match="Length of 'hostname'"):
+            get_config(None)
+
+    def test_connection_timeout_empty_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_CONNECTION_TIMEOUT", "")
+
+        with pytest.raises(ValueError, match="invalid literal for int"):
+            get_config(None)
+
+    def test_device_port_empty_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_DEVICE_PORT", "")
+
+        with pytest.raises(ValueError, match="invalid literal for int"):
+            get_config(None)
+
+    def test_host_info_empty_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_HOST_INFO", "")
+
+        with pytest.raises(ValueError, match="Cannot convert value to bool"):
+            get_config(None)
+
+    def test_wifi_client_info_empty_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_WIFI_CLIENT_INFO", "")
+
+        with pytest.raises(ValueError, match="Cannot convert value to bool"):
+            get_config(None)
+
+    def test_use_tls_empty_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USE_TLS", "")
+
+        with pytest.raises(ValueError, match="Cannot convert value to bool"):
+            get_config(None)
+
+    def test_remote_access_empty_raises(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_REMOTE_ACCESS", "")
+
+        with pytest.raises(ValueError, match="Cannot convert value to bool"):
+            get_config(None)
+
+
 class TestConfigEdgeCases:
     def test_bind_all_interfaces_logs_warning_for_ipv6(self, caplog):
         caplog.set_level(logging.WARNING)
