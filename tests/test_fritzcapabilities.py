@@ -9,6 +9,7 @@ from fritzconnection.core.exceptions import (
     FritzHttpInterfaceError,
     FritzServiceError,
 )
+from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import Metric
 
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
@@ -638,8 +639,7 @@ class TestWanCommonInterfaceByteRateCableWan:
         )
         collector.register(device)
 
-        # Act - this used to raise ValueError: could not convert string to
-        # float: '' while formatting the layer1max sample.
+        # Act
         metrics: list[Metric] = list(collector.collect())
 
         # Check - the field is silently skipped rather than emitted empty...
@@ -654,3 +654,12 @@ class TestWanCommonInterfaceByteRateCableWan:
         assert byterate[
             (("direction", "tx"), ("friendly_name", "FritzCable"), ("serial", "1234567890"))
         ] == 23456
+
+        # ...and, crucially, rendering the actual exposition text does not
+        # raise. add_metric() stores a value as-is with no conversion, so
+        # asserting on samples alone (above) does NOT prove the ValueError
+        # this regression is named after is actually fixed - only rendering
+        # does, since that's where floatToGoString() calls float(value).
+        registry = CollectorRegistry()
+        registry.register(collector)
+        generate_latest(registry)

@@ -9,6 +9,7 @@ from fritzconnection.core.exceptions import (
     FritzConnectionException,
     FritzServiceError,
 )
+from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import Metric
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
@@ -370,6 +371,36 @@ class TestFritzCollector:
                 assert s.labels["serial"] == "1234567890"
                 assert "friendly_name" in s.labels
                 assert s.labels["friendly_name"] == "FritzMock"
+
+    def test_should_render_full_exposition_without_raising(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare - a full-fixture device exercising every capability, fed
+        # through the actual Prometheus text-exposition formatter. Unlike
+        # every other test here (which only inspects the collect() Metric/
+        # Sample objects), this is the one place that renders exposition
+        # text: add_metric() stores a value as-is with no conversion, and
+        # a non-numeric value (see #668/#669) only blows up later, inside
+        # generate_latest()'s float() formatting - so only rendering can
+        # actually catch that class of bug.
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.call_http.side_effect = call_http_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        collector = FritzCollector()
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        collector.register(device)
+
+        registry = CollectorRegistry()
+        registry.register(collector)
+
+        # Act / Check - must not raise
+        output = generate_latest(registry)
+
+        assert b"fritz_uptime_seconds" in output
 
     def test_should_collect_host_info_from_device(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
