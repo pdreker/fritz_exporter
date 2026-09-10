@@ -361,8 +361,8 @@ class TestWanDocsisCable:
         metrics = self._collect_docsis_metrics(mock_fritzconnection)
         by_name = {m.name: m for m in metrics}
 
-        assert "fritz_docsis_power_dbmv_dBmV" in by_name
-        power = _sample_map(by_name["fritz_docsis_power_dbmv_dBmV"])
+        assert "fritz_docsis_power_dBmV" in by_name
+        power = _sample_map(by_name["fritz_docsis_power_dBmV"])
 
         # Downstream DOCSIS 3.1 ch33
         assert power[
@@ -399,7 +399,7 @@ class TestWanDocsisCable:
         metrics = self._collect_docsis_metrics(mock_fritzconnection)
         by_name = {m.name: m for m in metrics}
 
-        mer = _sample_map(by_name["fritz_docsis_mer_db_dB"])
+        mer = _sample_map(by_name["fritz_docsis_mer_dB"])
         assert mer[
             (
                 ("channel_id", "33"),
@@ -409,7 +409,7 @@ class TestWanDocsisCable:
             )
         ] == pytest.approx(39.8)
 
-        mse = _sample_map(by_name["fritz_docsis_mse_db_dB"])
+        mse = _sample_map(by_name["fritz_docsis_mse_dB"])
         assert mse[
             (
                 ("channel_id", "5"),
@@ -495,8 +495,8 @@ class TestWanDocsisCable:
         by_name = {m.name: m for m in metrics}
         # Metric families are always yielded (matching other capabilities),
         # but with no samples when the collector is disabled.
-        assert "fritz_docsis_power_dbmv_dBmV" in by_name
-        assert by_name["fritz_docsis_power_dbmv_dBmV"].samples == []
+        assert "fritz_docsis_power_dBmV" in by_name
+        assert by_name["fritz_docsis_power_dBmV"].samples == []
         assert by_name["fritz_docsis_channel_info"].samples == []
 
     def test_docsis_check_capability_keeps_disabled(self, mock_fritzconnection: MagicMock):
@@ -551,5 +551,5 @@ class TestWanDocsisCable:
         # DOCSIS metric families present but empty (fetch failed), and device
         # reachability still collected
         by_name = {m.name: m for m in metrics}
-        assert by_name["fritz_docsis_power_dbmv_dBmV"].samples == []
+        assert by_name["fritz_docsis_power_dBmV"].samples == []
         assert "fritz_device_reachable" in by_name

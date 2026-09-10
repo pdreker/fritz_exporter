@@ -1685,19 +1685,19 @@ class WanDocsisCable(FritzCapability):
 
     def create_metrics(self) -> None:
         self.metrics["power"] = GaugeMetricFamily(
-            "fritz_docsis_power_dbmv",
+            "fritz_docsis_power",
             "DOCSIS channel signal power level",
             labels=["serial", "friendly_name", "direction", "channel_id", "standard"],
             unit="dBmV",
         )
         self.metrics["mer"] = GaugeMetricFamily(
-            "fritz_docsis_mer_db",
+            "fritz_docsis_mer",
             "DOCSIS 3.1 downstream Modulation Error Ratio",
             labels=["serial", "friendly_name", "channel_id", "standard"],
             unit="dB",
         )
         self.metrics["mse"] = GaugeMetricFamily(
-            "fritz_docsis_mse_db",
+            "fritz_docsis_mse",
             "DOCSIS 3.0 downstream Mean Squared Error",
             labels=["serial", "friendly_name", "channel_id", "standard"],
             unit="dB",
