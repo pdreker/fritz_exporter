@@ -49,6 +49,7 @@ def parse_cmdline() -> argparse.Namespace:
 
     parser.add_argument(
         "--collector.docsis",
+        dest="collector_docsis",
         action="store_true",
         help="Enable the DOCSIS cable channel collector (reads data from the "
         "Fritz!Box web interface, requires a cable box)",
@@ -103,7 +104,7 @@ def _register_device(
             dev.name,
             host_info=dev.host_info,
             wifi_client_info=dev.wifi_client_info,
-            docsis=getattr(args, "collector.docsis", False),
+            docsis=args.collector_docsis,
             connection=connection,
         )
     except FritzConnectionException, FritzAuthorizationError, FritzDeviceHasNoCapabilitiesError:
@@ -117,7 +118,7 @@ def _register_device(
             dev.name,
             host_info=dev.host_info,
             wifi_client_info=dev.wifi_client_info,
-            docsis=getattr(args, "collector.docsis", False),
+            docsis=args.collector_docsis,
             connection=connection,
         )
         return

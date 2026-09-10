@@ -1739,8 +1739,11 @@ class WanDocsisCable(FritzCapability):
 
         try:
             raw = device.docsis_client.fetch_docsis_data()
-        except FritzDocsisError:
-            logger.exception("Failed to fetch DOCSIS data from %s", device.host)
+        except FritzDocsisError as e:
+            # A transient web-UI failure (e.g. session expiry) should not break
+            # the whole scrape; log at warning and leave the metric families
+            # empty for this cycle.
+            logger.warning("Failed to fetch DOCSIS data from %s: %s", device.host, e)
             return
 
         data = parse_docsis_response(raw)
@@ -1757,12 +1760,14 @@ class WanDocsisCable(FritzCapability):
                 self.metrics["mer"].add_metric(channel_labels, ch["mer_db"])
             if ch["mse_db"] is not None:
                 self.metrics["mse"].add_metric(channel_labels, ch["mse_db"])
-            self.metrics["corrected_errors"].add_metric(
-                channel_labels, ch["corrected_errors"]
-            )
-            self.metrics["uncorrected_errors"].add_metric(
-                channel_labels, ch["uncorrected_errors"]
-            )
+            if ch["corrected_errors"] is not None:
+                self.metrics["corrected_errors"].add_metric(
+                    channel_labels, ch["corrected_errors"]
+                )
+            if ch["uncorrected_errors"] is not None:
+                self.metrics["uncorrected_errors"].add_metric(
+                    channel_labels, ch["uncorrected_errors"]
+                )
             if ch["latency_ms"] is not None:
                 self.metrics["latency"].add_metric(channel_labels, ch["latency_ms"])
             self.metrics["info"].add_metric(

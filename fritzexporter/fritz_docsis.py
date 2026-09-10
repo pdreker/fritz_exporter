@@ -18,11 +18,17 @@ import logging
 import re
 import time
 import xml.etree.ElementTree as ET
-from typing import Any
+from typing import Any, TypedDict
 
 import requests
 
 logger = logging.getLogger("fritzexporter.fritz_docsis")
+
+__all__ = [
+    "FritzDocsisError",
+    "FritzDocsisClient",
+    "parse_docsis_response",
+]
 
 # The login_sid.lua challenge-response scheme changed in Fritz!OS 7.24.
 # Newer firmware uses PBKDF2-SHA256 ("2$iter1$salt1$iter2$salt2"), older
@@ -36,6 +42,40 @@ _HTML_RESPONSE_PREFIXES = ("<", "\ufeff<")
 
 class FritzDocsisError(Exception):
     """Raised when DOCSIS data cannot be retrieved from the Fritz!Box."""
+
+
+class DownstreamChannel(TypedDict):
+    """Normalized DOCSIS downstream channel."""
+
+    channel_id: int
+    standard: str
+    modulation: str
+    frequency: str
+    power_dbmv: float | None
+    mer_db: float | None
+    mse_db: float | None
+    corrected_errors: int | None
+    uncorrected_errors: int | None
+    latency_ms: float | None
+    fft: str
+
+
+class UpstreamChannel(TypedDict):
+    """Normalized DOCSIS upstream channel."""
+
+    channel_id: int
+    standard: str
+    modulation: str
+    frequency: str
+    power_dbmv: float | None
+
+
+class DocsisData(TypedDict):
+    """Normalized DOCSIS channel data."""
+
+    ready_state: str
+    downstream: list[DownstreamChannel]
+    upstream: list[UpstreamChannel]
 
 
 class FritzDocsisClient:
@@ -181,7 +221,12 @@ class FritzDocsisClient:
             raise FritzDocsisError(f"data.lua request failed: {e}") from e
 
         text = resp.text
-        if not text or text.lstrip().startswith(_HTML_RESPONSE_PREFIXES):
+        content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
+        is_html = (
+            "text/html" in content_type
+            or text.lstrip().startswith(_HTML_RESPONSE_PREFIXES)
+        )
+        if not text or is_html:
             raise FritzDocsisError(
                 "Fritz!Box returned HTML instead of JSON (SID invalid or no permission)"
             )
@@ -192,7 +237,11 @@ class FritzDocsisClient:
             raise FritzDocsisError(f"could not parse data.lua JSON response: {e}") from e
 
     def fetch_docsis_data(self) -> dict[str, Any]:
-        """Fetch fresh DOCSIS data, re-authenticating once if the session expired."""
+        """Fetch fresh DOCSIS data, re-authenticating once if the session expired.
+
+        Each HTTP request is bounded by the client ``timeout``, so the retry
+        path (re-login + re-fetch) is bounded to roughly twice that.
+        """
         sid = self._ensure_sid()
         try:
             return self._fetch_docinfo(sid)
@@ -214,25 +263,26 @@ def _to_float(value: Any) -> float | None:
         return None
 
 
-def _to_int(value: Any) -> int:
-    """Convert a value to int, defaulting to 0 on failure."""
+def _to_int(value: Any) -> int | None:
+    """Convert a value to int, None on failure (unknown)."""
     if value is None or value == "":
-        return 0
+        return None
     try:
         return int(value)
     except (TypeError, ValueError):
-        return 0
+        return None
 
 
-def parse_docsis_response(raw: dict[str, Any]) -> dict[str, Any]:
+def parse_docsis_response(raw: dict[str, Any]) -> DocsisData:
     """Parse the raw data.lua?page=docInfo JSON into a normalized structure.
 
-    Returns a dict with ``ready_state``, ``downstream`` and ``upstream`` lists
-    of channel dicts. Downstream channels carry the quality fields (MER/MSE,
-    errors, latency); upstream channels carry power/modulation/frequency.
+    Returns a :class:`DocsisData` with ``ready_state``, ``downstream`` and
+    ``upstream`` lists of channel dicts. Downstream channels carry the quality
+    fields (MER/MSE, errors, latency); upstream channels carry
+    power/modulation/frequency.
     """
     inner = raw.get("data", {})
-    result: dict[str, Any] = {
+    result: DocsisData = {
         "ready_state": inner.get("readyState", "unknown"),
         "downstream": [],
         "upstream": [],
@@ -246,7 +296,7 @@ def parse_docsis_response(raw: dict[str, Any]) -> dict[str, Any]:
         for ch in channels:
             result["downstream"].append(
                 {
-                    "channel_id": _to_int(ch.get("channelID")),
+                    "channel_id": _to_int(ch.get("channelID")) or 0,
                     "standard": standard,
                     "modulation": str(ch.get("modulation") or ""),
                     "frequency": str(ch.get("frequency") or ""),
@@ -268,7 +318,7 @@ def parse_docsis_response(raw: dict[str, Any]) -> dict[str, Any]:
         for ch in channels:
             result["upstream"].append(
                 {
-                    "channel_id": _to_int(ch.get("channelID")),
+                    "channel_id": _to_int(ch.get("channelID")) or 0,
                     "standard": standard,
                     "modulation": str(ch.get("modulation") or ""),
                     "frequency": str(ch.get("frequency") or ""),
