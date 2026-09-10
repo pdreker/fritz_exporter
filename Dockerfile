@@ -20,8 +20,9 @@ COPY README.md pyproject.toml /app/
 COPY fritzexporter /app/fritzexporter
 COPY tests /app/tests
 
-RUN pip install . && \
-    pip install pytest pytest-mock pytest-cov coverage types-pyyaml types-requests
+RUN pip install .
+
+RUN pip install pytest pytest-mock pytest-cov coverage types-pyyaml types-requests
 
 RUN pytest
 
