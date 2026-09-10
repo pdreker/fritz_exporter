@@ -20,6 +20,7 @@ from fritzconnection.lib.fritzhosts import FritzHosts  # type: ignore[import]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
+from fritzexporter.fritz_docsis import FritzDocsisError, parse_docsis_response
 
 if TYPE_CHECKING:
     from fritzexporter.fritzdevice import FritzDevice
@@ -1656,6 +1657,154 @@ class HomeAutomation(FritzCapability):
         yield self.metrics["heater_comfort_valve_state"]
         yield self.metrics["battery_level"]
         yield self.metrics["battery_low"]
+
+
+class WanDocsisCable(FritzCapability):
+    """DOCSIS cable channel statistics from the Fritz!Box web UI.
+
+    The TR-064 API does not expose DOCSIS channel data on AVM cable boxes.
+    This capability is opt-in (enabled via ``--collector.docsis``) and reads
+    the data from the internal web endpoint ``data.lua?page=docInfo``, the
+    same one the Fritz!Box web UI uses. It requires a web login with the
+    configured credentials.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Not auto-detected via TR-064; presence is controlled by the
+        # --collector.docsis flag instead.
+        self.present = False
+
+    def check_capability(self, device: FritzDevice) -> None:
+        # This capability is opt-in only. The base implementation would set
+        # present = all([]) = True because there are no TR-064 requirements,
+        # which would wrongly enable DOCSIS collection on every device.
+        # Presence is instead set explicitly by FritzDevice when the
+        # --collector.docsis flag is given.
+        self.present = False
+
+    def create_metrics(self) -> None:
+        self.metrics["power"] = GaugeMetricFamily(
+            "fritz_docsis_power_dbmv",
+            "DOCSIS channel signal power level",
+            labels=["serial", "friendly_name", "direction", "channel_id", "standard"],
+            unit="dBmV",
+        )
+        self.metrics["mer"] = GaugeMetricFamily(
+            "fritz_docsis_mer_db",
+            "DOCSIS 3.1 downstream Modulation Error Ratio",
+            labels=["serial", "friendly_name", "channel_id", "standard"],
+            unit="dB",
+        )
+        self.metrics["mse"] = GaugeMetricFamily(
+            "fritz_docsis_mse_db",
+            "DOCSIS 3.0 downstream Mean Squared Error",
+            labels=["serial", "friendly_name", "channel_id", "standard"],
+            unit="dB",
+        )
+        self.metrics["corrected_errors"] = CounterMetricFamily(
+            "fritz_docsis_corrected_errors_total",
+            "DOCSIS downstream corrected codeword errors",
+            labels=["serial", "friendly_name", "channel_id", "standard"],
+        )
+        self.metrics["uncorrected_errors"] = CounterMetricFamily(
+            "fritz_docsis_uncorrected_errors_total",
+            "DOCSIS downstream uncorrected codeword errors",
+            labels=["serial", "friendly_name", "channel_id", "standard"],
+        )
+        self.metrics["latency"] = GaugeMetricFamily(
+            "fritz_docsis_latency_ms",
+            "DOCSIS downstream channel latency",
+            labels=["serial", "friendly_name", "channel_id", "standard"],
+            unit="ms",
+        )
+        self.metrics["info"] = GaugeMetricFamily(
+            "fritz_docsis_channel_info",
+            "DOCSIS channel information (always 1 if present)",
+            labels=[
+                "serial",
+                "friendly_name",
+                "direction",
+                "channel_id",
+                "standard",
+                "modulation",
+                "frequency",
+            ],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        if not device.docsis_client:
+            logger.debug("No DOCSIS client on device %s, skipping", device.host)
+            return
+
+        try:
+            raw = device.docsis_client.fetch_docsis_data()
+        except FritzDocsisError:
+            logger.exception("Failed to fetch DOCSIS data from %s", device.host)
+            return
+
+        data = parse_docsis_response(raw)
+        labels = [device.serial, device.friendly_name]
+
+        for ch in data["downstream"]:
+            channel_labels = [*labels, str(ch["channel_id"]), ch["standard"]]
+            if ch["power_dbmv"] is not None:
+                self.metrics["power"].add_metric(
+                    [*labels, "downstream", str(ch["channel_id"]), ch["standard"]],
+                    ch["power_dbmv"],
+                )
+            if ch["mer_db"] is not None:
+                self.metrics["mer"].add_metric(channel_labels, ch["mer_db"])
+            if ch["mse_db"] is not None:
+                self.metrics["mse"].add_metric(channel_labels, ch["mse_db"])
+            self.metrics["corrected_errors"].add_metric(
+                channel_labels, ch["corrected_errors"]
+            )
+            self.metrics["uncorrected_errors"].add_metric(
+                channel_labels, ch["uncorrected_errors"]
+            )
+            if ch["latency_ms"] is not None:
+                self.metrics["latency"].add_metric(channel_labels, ch["latency_ms"])
+            self.metrics["info"].add_metric(
+                [
+                    *labels,
+                    "downstream",
+                    str(ch["channel_id"]),
+                    ch["standard"],
+                    ch["modulation"],
+                    ch["frequency"],
+                ],
+                1,
+            )
+
+        for ch in data["upstream"]:
+            if ch["power_dbmv"] is not None:
+                self.metrics["power"].add_metric(
+                    [*labels, "upstream", str(ch["channel_id"]), ch["standard"]],
+                    ch["power_dbmv"],
+                )
+            self.metrics["info"].add_metric(
+                [
+                    *labels,
+                    "upstream",
+                    str(ch["channel_id"]),
+                    ch["standard"],
+                    ch["modulation"],
+                    ch["frequency"],
+                ],
+                1,
+            )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["power"]
+        yield self.metrics["mer"]
+        yield self.metrics["mse"]
+        yield self.metrics["corrected_errors"]
+        yield self.metrics["uncorrected_errors"]
+        yield self.metrics["latency"]
+        yield self.metrics["info"]
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>

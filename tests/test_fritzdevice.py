@@ -326,6 +326,7 @@ class TestFritzCollector:
             "MeshTopology",
             "HostInfo",
             "HomeAutomation",
+            "WanDocsisCable",
         ]
 
         assert list(collector._capability_instances.capabilities.keys()) == all_capas

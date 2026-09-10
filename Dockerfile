@@ -10,6 +10,21 @@ COPY fritzexporter /app/fritzexporter
 
 RUN python -m build --wheel
 
+# Run the test suite in a separate stage
+FROM python:3.14.7-alpine AS test
+WORKDIR /app
+
+RUN pip install --upgrade pip
+
+COPY README.md pyproject.toml /app/
+COPY fritzexporter /app/fritzexporter
+COPY tests /app/tests
+
+RUN pip install . && \
+    pip install pytest pytest-mock pytest-cov coverage types-pyyaml types-requests
+
+RUN pytest
+
 # Build the actual runner
 FROM python:3.14.7-alpine
 

@@ -33,6 +33,22 @@ class Test_Main:
 
         assert "donate_data" in args
 
+    def test_cli_args_collector_docsis(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["fritzexporter", "--collector.docsis"])
+
+        args = parse_cmdline()
+
+        assert "collector.docsis" in args
+        assert getattr(args, "collector.docsis") is True
+
+    def test_cli_args_collector_docsis_default_false(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["fritzexporter"])
+
+        args = parse_cmdline()
+
+        assert "collector.docsis" in args
+        assert getattr(args, "collector.docsis") is False
+
     def test_cli_args_upload_data(self, monkeypatch):
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--upload-data"])
 

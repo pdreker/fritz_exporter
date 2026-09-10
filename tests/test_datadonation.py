@@ -237,7 +237,7 @@ class TestDataDonation:
             '"WanCommonInterfaceDataBytes", "WanCommonInterfaceByteRate", '
             '"WanCommonInterfaceDataPackets", "WlanConfigurationInfo", "WlanAssociatedDevices", '
             '"MeshTopology", "HostInfo", '
-            '"HomeAutomation"], "action_results": {"Hosts1": {"GetHostNumberOfEntries": '
+            '"HomeAutomation", "WanDocsisCable"], "action_results": {"Hosts1": {"GetHostNumberOfEntries": '
             '{"NewHostNumberOfEntries": "3"}}}}}',
             headers={"Content-Type": "application/json"},timeout=10,
         )
