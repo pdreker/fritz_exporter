@@ -334,7 +334,17 @@ class TestWanDocsisCable:
         self, mock_fritzconnection: MagicMock, docsis_raw: dict | None = None
     ) -> list[Metric]:
         fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = call_action_mock
+
+        def cable_call_action_mock(service, action, **kwargs):
+            result = call_action_mock(service, action, **kwargs)
+            # Report a cable WAN access type so DOCSIS is auto-detected.
+            # WANCommonInterfaceConfig1 reports "X_AVM-DE_Cable" on real boxes.
+            if (service, action) == ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"):
+                result = dict(result)
+                result["NewWANAccessType"] = "X_AVM-DE_Cable"
+            return result
+
+        fc.call_action.side_effect = cable_call_action_mock
         services = {
             **fc_services_capabilities["DeviceInfo"],
             **fc_services_capabilities["WanCommonInterfaceByteRate"],
@@ -346,7 +356,6 @@ class TestWanDocsisCable:
             FritzCredentials("somehost", "someuser", "password"),
             "FritzCable",
             host_info=False,
-            docsis=True,
         )
 
         # Stub out the DOCSIS client so no real HTTP happens
@@ -472,8 +481,8 @@ class TestWanDocsisCable:
         assert us31.labels["modulation"] == "64QAM"
         assert us31.labels["frequency"] == "41.800"
 
-    def test_docsis_disabled_by_default(self, mock_fritzconnection: MagicMock):
-        """Without the docsis flag, no DOCSIS samples are produced."""
+    def test_docsis_disabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
+        """On a non-cable box (WAN access type != Cable), no DOCSIS samples."""
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
         services = {
@@ -487,7 +496,6 @@ class TestWanDocsisCable:
             FritzCredentials("somehost", "someuser", "password"),
             "FritzCable",
             host_info=False,
-            docsis=False,
         )
         collector.register(device)
         metrics = list(collector.collect())
@@ -499,8 +507,10 @@ class TestWanDocsisCable:
         assert by_name["fritz_docsis_power_dBmV"].samples == []
         assert by_name["fritz_docsis_channel_info"].samples == []
 
-    def test_docsis_check_capability_keeps_disabled(self, mock_fritzconnection: MagicMock):
-        """check_capability must not auto-enable DOCSIS (empty requirements)."""
+    def test_docsis_check_capability_disabled_on_non_cable(
+        self, mock_fritzconnection: MagicMock
+    ):
+        """check_capability must not enable DOCSIS on a non-cable box."""
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
         services = {
@@ -513,20 +523,53 @@ class TestWanDocsisCable:
             FritzCredentials("somehost", "someuser", "password"),
             "FritzCable",
             host_info=False,
-            docsis=False,
         )
 
-        # check_present runs during FritzCapabilities.__init__; the DOCSIS
-        # capability must stay disabled even though it has no TR-064
-        # requirements (all([]) would otherwise be True).
+        # The mock returns NewWANAccessType "PPPoE", so DOCSIS must stay disabled.
         assert device.capabilities["WanDocsisCable"].present is False
+
+    def test_docsis_check_capability_enabled_on_cable(self, mock_fritzconnection: MagicMock):
+        """check_capability auto-enables DOCSIS when WAN access type is Cable."""
+        fc = mock_fritzconnection.return_value
+
+        def cable_call_action_mock(service, action, **kwargs):
+            result = call_action_mock(service, action, **kwargs)
+            if (service, action) == ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"):
+                result = dict(result)
+                result["NewWANAccessType"] = "X_AVM-DE_Cable"
+            return result
+
+        fc.call_action.side_effect = cable_call_action_mock
+        services = {
+            **fc_services_capabilities["DeviceInfo"],
+            **fc_services_capabilities["WanCommonInterfaceByteRate"],
+        }
+        fc.services = create_fc_services(services)
+
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzCable",
+            host_info=False,
+        )
+
+        assert device.capabilities["WanDocsisCable"].present is True
+        # The DOCSIS client should be created for the web-interface login.
+        assert device.docsis_client is not None
 
     def test_docsis_fetch_error_does_not_break_collection(
         self, mock_fritzconnection: MagicMock, caplog
     ):
         """If the DOCSIS fetch fails, other metrics still collect."""
         fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = call_action_mock
+
+        def cable_call_action_mock(service, action, **kwargs):
+            result = call_action_mock(service, action, **kwargs)
+            if (service, action) == ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"):
+                result = dict(result)
+                result["NewWANAccessType"] = "X_AVM-DE_Cable"
+            return result
+
+        fc.call_action.side_effect = cable_call_action_mock
         services = {
             **fc_services_capabilities["DeviceInfo"],
             **fc_services_capabilities["WanCommonInterfaceByteRate"],
@@ -538,7 +581,6 @@ class TestWanDocsisCable:
             FritzCredentials("somehost", "someuser", "password"),
             "FritzCable",
             host_info=False,
-            docsis=True,
         )
         mock_client = MagicMock()
         mock_client.fetch_docsis_data.side_effect = FritzDocsisError("boom")

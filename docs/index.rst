@@ -63,6 +63,7 @@ The following groups of metrics are currently available:
 * PPP statistics
 * WiFi statistics
 * WAN Layer1 (physical link) statistics, including 64-bit max bitrate for multi-gig links
+* DOCSIS cable channel statistics (auto-detected on cable boxes; power, MER/MSE, corrected/uncorrected errors, latency)
 * Home Automation Devices (switches, heating valves, temperatures, power meters, and battery status; window/door sensors (open/closed) are not yet reported)
 
 Exporter self-monitoring
