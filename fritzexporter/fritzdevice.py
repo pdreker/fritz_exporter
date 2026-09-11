@@ -40,7 +40,6 @@ class OfflineDevice(NamedTuple):
     use_tls: bool = False
     port: int | None = None
     remote_access: bool = False
-    docsis: bool = False
 
 
 class FritzDevice:
@@ -51,7 +50,6 @@ class FritzDevice:
         *,
         host_info: bool = False,
         wifi_client_info: bool = False,
-        docsis: bool = False,
         connection: ConnectionOptions | None = None,
     ) -> None:
         connection = connection or ConnectionOptions()
@@ -61,7 +59,6 @@ class FritzDevice:
         self.friendly_name: str = name
         self.host_info: bool = host_info
         self.wifi_client_info: bool = wifi_client_info
-        self.docsis: bool = docsis
         self.docsis_client: FritzDocsisClient | None = None
         self.available: bool = True
 
@@ -100,7 +97,7 @@ class FritzDevice:
                 "Ensure prometheus is configured appropriately.",
                 creds.host,
             )
-        if docsis:
+        if self.capabilities["WanDocsisCable"].present:
             logger.info(
                 "DOCSIS collector enabled on device %s. "
                 "Reading cable channel data from the web interface.",
@@ -113,7 +110,6 @@ class FritzDevice:
                 use_tls=connection.use_tls,
                 port=connection.port,
             )
-            self.capabilities["WanDocsisCable"].present = True
         if self.capabilities.empty():
             logger.critical("Device %s has no detected capabilities. Exiting.", creds.host)
             raise FritzDeviceHasNoCapabilitiesError
@@ -200,7 +196,6 @@ class FritzCollector(Collector):
         *,
         host_info: bool = False,
         wifi_client_info: bool = False,
-        docsis: bool = False,
         connection: ConnectionOptions | None = None,
     ) -> None:
         connection = connection or ConnectionOptions()
@@ -214,7 +209,6 @@ class FritzCollector(Collector):
                 connection.use_tls,
                 connection.port,
                 connection.remote_access,
-                docsis,
             )
         )
         logger.debug("registered offline device %s (%s) to collector", creds.host, friendly_name)
@@ -228,7 +222,6 @@ class FritzCollector(Collector):
                     offline.friendly_name,
                     host_info=offline.host_info,
                     wifi_client_info=offline.wifi_client_info,
-                    docsis=offline.docsis,
                     connection=ConnectionOptions(
                         connection_timeout=offline.connection_timeout,
                         use_tls=offline.use_tls,

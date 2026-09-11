@@ -1663,25 +1663,48 @@ class WanDocsisCable(FritzCapability):
     """DOCSIS cable channel statistics from the Fritz!Box web UI.
 
     The TR-064 API does not expose DOCSIS channel data on AVM cable boxes.
-    This capability is opt-in (enabled via ``--collector.docsis``) and reads
-    the data from the internal web endpoint ``data.lua?page=docInfo``, the
-    same one the Fritz!Box web UI uses. It requires a web login with the
-    configured credentials.
+    This capability is auto-detected on cable boxes (``NewWANAccessType`` is
+    ``"Cable"`` or ``"X_AVM-DE_Cable"``) and reads the data from the internal
+    web endpoint ``data.lua?page=docInfo``, the same one the Fritz!Box web UI
+    uses. It requires a web login with the configured credentials.
     """
 
     def __init__(self) -> None:
         super().__init__()
-        # Not auto-detected via TR-064; presence is controlled by the
-        # --collector.docsis flag instead.
+        # Not auto-detected via TR-064 service/action presence; presence is
+        # determined by the WAN access type reported by the box.
         self.present = False
 
     def check_capability(self, device: FritzDevice) -> None:
-        # This capability is opt-in only. The base implementation would set
-        # present = all([]) = True because there are no TR-064 requirements,
-        # which would wrongly enable DOCSIS collection on every device.
-        # Presence is instead set explicitly by FritzDevice when the
-        # --collector.docsis flag is given.
-        self.present = False
+        # The base implementation would set present = all([]) = True because
+        # there are no TR-064 requirements, which would wrongly enable DOCSIS
+        # collection on every device. Instead, probe the WAN access type: cable
+        # boxes report NewWANAccessType == "Cable" (WANCommonIFC1) or
+        # "X_AVM-DE_Cable" (WANCommonInterfaceConfig1).
+        try:
+            wan_status = device.fc.call_action(
+                "WANCommonInterfaceConfig1", "GetCommonLinkProperties"
+            )
+        except (
+            FritzServiceError,
+            FritzActionError,
+            FritzInternalError,
+            FritzArgumentError,
+            FritzConnectionException,
+        ):
+            logger.debug(
+                "No WAN access type info on %s, DOCSIS capability disabled", device.host
+            )
+            self.present = False
+            return
+
+        self.present = wan_status.get("NewWANAccessType") in ("Cable", "X_AVM-DE_Cable")
+        logger.debug(
+            "Capability %s set to %s on device %s",
+            type(self).__name__,
+            self.present,
+            device.host,
+        )
 
     def create_metrics(self) -> None:
         self.metrics["power"] = GaugeMetricFamily(
