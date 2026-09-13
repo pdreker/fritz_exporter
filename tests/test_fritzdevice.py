@@ -1,4 +1,5 @@
 import logging
+import threading
 from pprint import pprint
 from unittest.mock import MagicMock, call, patch
 
@@ -985,6 +986,111 @@ class TestFritzCollector:
         # rx + tx series for each of the two backhaul links
         datarate = [m for m in metrics if m.name == "fritz_mesh_link_current_data_rate_kbps"]
         assert len(datarate[0].samples) == 4
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestConcurrentScrapes:
+    """Two Prometheus instances scraping in parallel must not deadlock.
+
+    Regression: with the collector lock held across the whole scrape (including
+    blocking TR-064 calls), a first scrape that hangs inside a call blocks every
+    concurrent scrape in ``_collect_lock.acquire()`` forever — all Prometheus
+    instances scraping the exporter stop receiving metrics until it is restarted.
+    The second scrape must give up after the (bounded) lock deadline instead.
+    """
+
+    def _create_collector(self, mock_fritzconnection: MagicMock) -> FritzCollector:
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.call_http.side_effect = call_http_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        collector = FritzCollector()
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+        collector.register(device)
+        return collector
+
+    def test_second_parallel_scrape_returns_when_first_scrape_is_wedged(
+        self, mock_fritzconnection: MagicMock, monkeypatch
+    ):
+        # Shrink the lock deadline so the test does not wait the real 30s.
+        monkeypatch.setattr("fritzexporter.fritzdevice.SCRAPE_LOCK_TIMEOUT", 0.2)
+
+        entered_block = threading.Event()
+        release = threading.Event()  # never set -> first scrape stays wedged
+
+        collector = self._create_collector(mock_fritzconnection)
+
+        def wedged_call_action(service, action, **kwargs):
+            if (service, action) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
+                entered_block.set()
+                release.wait()  # the device "hangs" inside the TR-064 call
+            return call_action_mock(service, action, **kwargs)
+
+        mock_fritzconnection.return_value.call_action.side_effect = wedged_call_action
+
+        results: list = []
+        failures: list = []
+
+        def scrape() -> None:
+            try:
+                results.append(list(collector.collect()))
+            except BaseException as exc:  # noqa: BLE001 - surface thread failures
+                failures.append(exc)
+
+        first = threading.Thread(target=scrape)
+        first.start()
+        entered_ok = entered_block.wait(5)
+
+        # Second Prometheus instance scrapes while the first scrape is wedged.
+        second = threading.Thread(target=scrape)
+        second.start()
+
+        try:
+            assert entered_ok, "first scrape never entered the blocked call"
+            # The second scrape must release instead of blocking forever.
+            second.join(timeout=5)
+            assert not second.is_alive(), "concurrent scrape deadlocked behind wedged scrape"
+            assert not failures, failures
+        finally:
+            # Always let the wedged first scrape finish so it can never leak out
+            # of this test (a leaked non-daemon thread would hang the test run).
+            release.set()
+            first.join(timeout=5)
+        assert not first.is_alive()
+
+    def test_wedged_device_marked_unreachable_and_parallel_scrapes_complete(
+        self, mock_fritzconnection: MagicMock
+    ):
+        # Models the new finite (10s) default connection_timeout: the hung call
+        # raises after the deadline instead of blocking forever, so the first
+        # scrape completes, marks the device unreachable, and parallel scrapes
+        # finish as well.
+        collector = self._create_collector(mock_fritzconnection)
+
+        def timeout_call_action(service, action, **kwargs):
+            if (service, action) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
+                raise FritzConnectionException("device unreachable (timed out)")
+            return call_action_mock(service, action, **kwargs)
+
+        mock_fritzconnection.return_value.call_action.side_effect = timeout_call_action
+
+        results: list = []
+
+        def scrape() -> None:
+            results.append(list(collector.collect()))
+
+        threads = [threading.Thread(target=scrape) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=5)
+
+        assert not any(thread.is_alive() for thread in threads), "scrape deadlocked"
+        assert len(results) == 2
+        for metrics in results:
+            reachable = [m for m in metrics if m.name == "fritz_device_reachable"]
+            assert reachable and reachable[0].samples[0].value == 0.0
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")

@@ -23,6 +23,11 @@ logger = logging.getLogger("fritzexporter.fritzdevice")
 
 FRITZ_MAX_PASSWORD_LENGTH = 32
 
+# Maximum time a concurrent scrape waits for the collector lock before giving
+# up and returning an empty scrape. Prevents one wedged/slow scrape from
+# blocking every other Prometheus instance indefinitely.
+SCRAPE_LOCK_TIMEOUT: float = 30.0
+
 
 class FritzCredentials(NamedTuple):
     host: str
@@ -229,7 +234,19 @@ class FritzCollector(Collector):
         self.offline_devices = still_offline
 
     def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
-        with self._collect_lock:
+        # The lock is held for the whole scrape (blocking TR-064 calls included),
+        # so acquiring it must be bounded: a slow or wedged first scrape would
+        # otherwise block every concurrent scrape from other Prometheus instances
+        # indefinitely. If the lock cannot be taken within the deadline, return an
+        # empty scrape — the exporter stays responsive and the in-flight scrape
+        # still finishes on its own because every TR-064 call is now time-bounded.
+        if not self._collect_lock.acquire(timeout=SCRAPE_LOCK_TIMEOUT):
+            logger.warning(
+                "Skipping scrape: previous scrape still in progress after %.0fs",
+                SCRAPE_LOCK_TIMEOUT,
+            )
+            return
+        try:
             # Attempt to bring offline devices back online before collecting
             self._retry_offline_devices()
 
@@ -265,6 +282,8 @@ class FritzCollector(Collector):
             yield device_up
 
             yield from collected
+        finally:
+            self._collect_lock.release()
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
