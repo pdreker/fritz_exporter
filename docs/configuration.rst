@@ -39,8 +39,8 @@ If you only need a single device this is the easiest way to configure the export
 | ``FRITZ_WIFI_CLIENT_INFO``   | Enable per-client WiFi metrics (signal/speed).     | False     |
 |                              | Only "true" or "1" will enable this feature.       |           |
 +------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_CONNECTION_TIMEOUT`` | Optional per-device TR-064 connect timeout in      |           |
-|                              | seconds. ``0`` or unset means no timeout.          |           |
+| ``FRITZ_CONNECTION_TIMEOUT`` | Per-device TR-064 connect/read timeout in          | 10        |
+|                              | seconds. ``0`` disables the timeout.               |           |
 +------------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_USE_TLS``            | Use HTTPS/TLS for TR-064 to the device.            | False     |
 |                              | Only ``true`` or ``1`` enable this. Certificate    |           |
@@ -98,7 +98,7 @@ To use the config file you have to specify the the location of the config and mo
       password: prometheus
       host_info: True
       wifi_client_info: True # optional, per-client WiFi signal/speed (higher cardinality)
-      connection_timeout: 10 # optional, seconds; 0 disables timeout
+      connection_timeout: 10 # optional, seconds; 0 disables timeout (default 10)
       use_tls: false # optional; true = HTTPS TR-064 (default port 49443)
       port: 49000 # optional TR-064 port; omit for fritzconnection defaults
       remote_access: false # optional; true = WAN TR-064 (/tr064 prefix; requires use_tls)
