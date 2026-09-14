@@ -391,6 +391,9 @@ class TestFritzCollector:
         assert len(collector.devices) == 1
         assert device is collector.devices[0]
         for m in metrics:
+            # Exporter self-monitoring counters carry no device labels.
+            if m.name in {"fritz_scrapes_timeouts", "fritz_scrapes_failed"}:
+                continue
             for s in m.samples:
                 assert "serial" in s.labels
                 assert s.labels["serial"] == "1234567890"
