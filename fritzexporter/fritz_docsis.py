@@ -211,9 +211,9 @@ class FritzDocsisClient:
     # Data fetching
     # ------------------------------------------------------------------
 
-    def _fetch_docinfo(self, sid: str) -> dict[str, Any]:
+    def _fetch_page(self, sid: str, page: str) -> dict[str, Any]:
         """POST to data.lua and return the parsed JSON document."""
-        payload = {"sid": sid, "page": "docInfo", "xhrId": "all", "xhr": "1"}
+        payload = {"sid": sid, "page": page, "xhrId": "all", "xhr": "1"}
         try:
             resp = self.session.post(f"{self.base_url}/data.lua", data=payload)
             resp.raise_for_status()
@@ -236,21 +236,25 @@ class FritzDocsisClient:
         except ValueError as e:
             raise FritzDocsisError(f"could not parse data.lua JSON response: {e}") from e
 
-    def fetch_docsis_data(self) -> dict[str, Any]:
-        """Fetch fresh DOCSIS data, re-authenticating once if the session expired.
+    def fetch_page(self, page: str) -> dict[str, Any]:
+        """Fetch a ``data.lua`` page, re-authenticating once if the session expired.
 
         Each HTTP request is bounded by the client ``timeout``, so the retry
         path (re-login + re-fetch) is bounded to roughly twice that.
         """
         sid = self._ensure_sid()
         try:
-            return self._fetch_docinfo(sid)
+            return self._fetch_page(sid, page)
         except FritzDocsisError:
             # Session may have expired server-side; try re-logging in once.
-            logger.debug("DOCSIS data fetch failed, re-authenticating...")
+            logger.debug("data.lua fetch failed, re-authenticating...")
             self._invalidate_sid()
             sid = self._ensure_sid()
-            return self._fetch_docinfo(sid)
+            return self._fetch_page(sid, page)
+
+    def fetch_docsis_data(self) -> dict[str, Any]:
+        """Fetch fresh DOCSIS data (the ``docInfo`` page)."""
+        return self.fetch_page("docInfo")
 
 
 def _to_float(value: Any) -> float | None:
