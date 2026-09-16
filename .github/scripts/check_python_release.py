@@ -35,7 +35,7 @@ def current_minor() -> tuple[int, int]:
 
 
 def newest_stable_cycle() -> tuple[tuple[int, int], str]:
-    with urllib.request.urlopen(ENDOFLIFE_URL, timeout=30) as resp:  # noqa: S310
+    with urllib.request.urlopen(ENDOFLIFE_URL, timeout=30) as resp:
         cycles = json.load(resp)
     best_key: tuple[int, int] | None = None
     best_latest = ""
