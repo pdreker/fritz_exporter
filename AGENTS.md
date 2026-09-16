@@ -55,6 +55,8 @@ attrs validators and converters are the **primary defence against bad config inp
 
 **Converter pattern for optional typed fields** (e.g. `connection_timeout`):
 ```python
+DEFAULT_CONNECTION_TIMEOUT: int = 10
+
 def _convert_optional_int(value: int | str | None) -> int | None:
     if value is None:
         return None
@@ -66,13 +68,14 @@ def _convert_optional_int(value: int | str | None) -> int | None:
 @define
 class DeviceConfig:
     connection_timeout: int | None = field(
-        default=None,
+        default=DEFAULT_CONNECTION_TIMEOUT,
         converter=_convert_optional_int,
         validator=validators.optional(validators.ge(1)),
     )
 ```
 
-This handles all of: `None` (absent in YAML), `0` (explicit "no timeout"), `"15"` (string from env var), and rejects negatives — all in one place.
+An omitted YAML value uses the 10-second default. This converter handles explicit `None` or `0`
+(no timeout), `"15"` (string from env var), and rejects negatives — all in one place.
 
 **Custom validator method pattern** (for logic that can't use built-ins):
 ```python

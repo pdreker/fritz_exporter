@@ -238,8 +238,9 @@ class FritzCollector(Collector):
         # so acquiring it must be bounded: a slow or wedged first scrape would
         # otherwise block every concurrent scrape from other Prometheus instances
         # indefinitely. If the lock cannot be taken within the deadline, return an
-        # empty scrape — the exporter stays responsive and the in-flight scrape
-        # still finishes on its own because every TR-064 call is now time-bounded.
+        # empty scrape — the exporter stays responsive and a finite configured timeout
+        # ensures the in-flight scrape eventually releases the lock. With
+        # connection_timeout=0, the in-flight scrape may still remain blocked.
         if not self._collect_lock.acquire(timeout=SCRAPE_LOCK_TIMEOUT):
             logger.warning(
                 "Skipping scrape: previous scrape still in progress after %.0fs",
