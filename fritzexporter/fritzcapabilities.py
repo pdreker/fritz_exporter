@@ -18,6 +18,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
 )
 from fritzconnection.lib.fritzhosts import FritzHosts  # type: ignore[import]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
+from requests.exceptions import RequestException
 
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
 
@@ -86,7 +87,7 @@ class FritzCapability(ABC):
             if device.capabilities[name].present and device.available:
                 try:
                     self._generate_metric_values(device)
-                except FritzConnectionException:
+                except FritzConnectionException, RequestException:
                     logger.exception(
                         "Device %s is unreachable, skipping %s metrics for this collection cycle",
                         device.host,
@@ -1222,7 +1223,7 @@ class MeshTopology(FritzCapability):
             # for this device — do NOT mark it unavailable.
             logger.debug("No mesh topology available from %s (not the mesh master)", device.host)
             return
-        except FritzConnectionException:
+        except FritzConnectionException, RequestException:
             # The mesh list is fetched over HTTP; a transient failure should not
             # mark the whole device unavailable — just skip mesh metrics this cycle.
             logger.warning("Failed to retrieve mesh topology from %s", device.host)

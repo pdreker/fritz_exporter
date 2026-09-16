@@ -13,6 +13,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
 )
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
+from requests.exceptions import RequestException
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzcapabilities import FritzCapabilities
@@ -78,7 +79,7 @@ class FritzDevice:
                 password=creds.password,
                 connection=connection,
             )
-        except FritzConnectionException:
+        except FritzConnectionException, RequestException:
             logger.exception("unable to connect to %s.", creds.host)
             raise
 
@@ -140,7 +141,7 @@ class FritzDevice:
                 "No WAN connection-mode info on %s (no WAN service); skipping metric.", self.host
             )
             return None
-        except FritzConnectionException:
+        except FritzConnectionException, RequestException:
             logger.exception("Failed to retrieve connection mode info from %s", self.host)
             self.available = False
             return None
@@ -229,6 +230,7 @@ class FritzCollector(Collector):
                 FritzConnectionException,
                 FritzAuthorizationError,
                 FritzDeviceHasNoCapabilitiesError,
+                RequestException,
             ):
                 still_offline.append(offline)
         self.offline_devices = still_offline
