@@ -72,6 +72,7 @@ target-version = "py314"
 extend-exclude = [
     "tests",
     "docs",
+    "AGENTS.md",
 ]
 
 [tool.ruff.lint]
