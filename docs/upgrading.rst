@@ -1,6 +1,26 @@
 Upgrade Notes (potentially breaking changes)
 ============================================
 
+Unreleased
+----------
+
+Default connection timeout added
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``connection_timeout`` (env: ``FRITZ_CONNECTION_TIMEOUT``) now defaults to **10
+seconds** instead of no timeout. The timeout is used for the initial TR-064
+connection as well as every HTTP read done during a scrape (including smart-home
+AHA calls), so a slow or wedged device can no longer block the exporter
+indefinitely.
+
+Setting ``connection_timeout: 0`` restores the previous behaviour (no timeout).
+
+**Why:** the exporter used to block a scrape forever on a device that stopped
+responding. Parallel scrapes (e.g. multiple Prometheus instances) would then
+accumulate behind that stuck scrape and all stop receiving metrics until the
+exporter was restarted. The new default bounds this so scrapes complete and
+report the device as unreachable.
+
 v3.0.0
 ------
 
