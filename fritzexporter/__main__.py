@@ -11,6 +11,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
 )
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
+from requests.exceptions import RequestException
 
 from fritzexporter.config import DeviceConfig, ExporterError, get_config
 from fritzexporter.data_donation import donate_data
@@ -98,7 +99,12 @@ def _register_device(
             wifi_client_info=dev.wifi_client_info,
             connection=connection,
         )
-    except FritzConnectionException, FritzAuthorizationError, FritzDeviceHasNoCapabilitiesError:
+    except (
+        FritzConnectionException,
+        FritzAuthorizationError,
+        FritzDeviceHasNoCapabilitiesError,
+        RequestException,
+    ):
         logger.exception(
             "Failed to initialize device %s (%s), it will be reported as down",
             dev.hostname,

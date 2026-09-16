@@ -10,8 +10,11 @@ from fritzconnection.core.exceptions import (
     FritzConnectionException,
     FritzServiceError,
 )
+from http.client import RemoteDisconnected
+
 from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import Metric
+from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
@@ -292,6 +295,27 @@ class TestFritzDevice:
             use_tls=True,
             port=49443,
         )
+
+    def test_should_log_and_reraise_transport_error_on_connect(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare: the connection fails at transport level, not at protocol level
+        caplog.set_level(logging.DEBUG)
+        mock_fritzconnection.side_effect = RequestsConnectionError(
+            "Connection aborted.",
+            RemoteDisconnected("Remote end closed connection without response"),
+        )
+
+        # Act / Check: the failure is reported before it propagates to the caller
+        with pytest.raises(RequestsConnectionError):
+            FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+
+        assert any(
+            "unable to connect to somehost" in record.message
+            for record in caplog.records
+            if record.levelno == logging.ERROR
+        )
+
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
@@ -986,6 +1010,125 @@ class TestFritzCollector:
         # rx + tx series for each of the two backhaul links
         datarate = [m for m in metrics if m.name == "fritz_mesh_link_current_data_rate_kbps"]
         assert len(datarate[0].samples) == 4
+
+    def test_should_survive_transport_error_from_the_aha_interface(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare: TR-064 works, but the AHA HTTP interface fails at transport level
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        collector = FritzCollector()
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        collector.register(device)
+
+        fc.call_http.side_effect = RequestsConnectionError(
+            "Connection aborted.",
+            RemoteDisconnected("Remote end closed connection without response"),
+        )
+
+        # Act: one failing sub-collector must not abort the whole collection cycle
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check: exposition still works and the device is reported unreachable
+        registry = CollectorRegistry()
+        registry.register(collector)
+        generate_latest(registry)
+
+        device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
+        assert len(device_reachable_metrics) == 1
+        assert device_reachable_metrics[0].samples[0].value == 0.0
+
+    def test_should_survive_transport_error_on_connection_mode(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare: the very first TR-064 call of a cycle fails at transport level
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        collector = FritzCollector()
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        collector.register(device)
+
+        fc.call_action.side_effect = RequestsConnectionError(
+            "Connection aborted.",
+            RemoteDisconnected("Remote end closed connection without response"),
+        )
+
+        # Act: collect() must not propagate the transport error
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check: the device is reported as unreachable instead
+        device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
+        assert len(device_reachable_metrics) == 1
+        assert device_reachable_metrics[0].samples[0].value == 0.0
+
+    def test_offline_device_stays_offline_on_transport_error(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare: retrying an offline device fails at transport level
+        caplog.set_level(logging.DEBUG)
+        mock_fritzconnection.side_effect = RequestsConnectionError(
+            "Connection aborted.",
+            RemoteDisconnected("Remote end closed connection without response"),
+        )
+
+        collector = FritzCollector()
+        collector.register_offline(FritzCredentials("offlinehost", "user", "pass"), "OfflineDevice")
+
+        # Act: the failed retry must not abort the whole collection cycle
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check: the device just stays offline and is retried on the next cycle
+        assert len(collector.devices) == 0
+        assert len(collector.offline_devices) == 1
+        device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
+        assert len(device_reachable_metrics) == 1
+        assert device_reachable_metrics[0].samples[0].value == 0.0
+
+    @patch("fritzexporter.fritzcapabilities.FritzHosts")
+    def test_should_skip_mesh_metrics_on_transport_error_but_keep_device_available(
+        self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare: the mesh list is a plain HTTP fetch; a transport error there is
+        # transient and must be treated like the existing FritzConnectionException
+        # case - skip the mesh metrics, but do NOT mark the device unavailable.
+        caplog.set_level(logging.DEBUG)
+
+        def call_with_mesh(service, action, **kwargs):
+            if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
+                return {"NewX_AVM-DE_MeshListPath": "/meshlist.lua"}
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_with_mesh
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        collector = FritzCollector()
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        collector.register(device)
+
+        mock_fritzhosts.return_value.get_mesh_topology.side_effect = RequestsConnectionError(
+            "Connection aborted.",
+            RemoteDisconnected("Remote end closed connection without response"),
+        )
+
+        # Act
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check: no mesh samples, but the device is still reachable
+        mesh = [m for m in metrics if m.name == "fritz_mesh_link_available"]
+        assert len(mesh) == 1
+        assert len(mesh[0].samples) == 0
+        device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
+        assert device_reachable_metrics[0].samples[0].value == 1.0
+
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
