@@ -9,8 +9,9 @@ Default connection timeout added
 
 ``connection_timeout`` (env: ``FRITZ_CONNECTION_TIMEOUT``) now defaults to **10
 seconds** instead of no timeout. The timeout is used for the initial TR-064
-connection as well as every read done during a scrape, so a slow or wedged
-device can no longer block the exporter indefinitely.
+connection as well as every HTTP read done during a scrape (including smart-home
+AHA calls), so a slow or wedged device can no longer block the exporter
+indefinitely.
 
 Setting ``connection_timeout: 0`` restores the previous behaviour (no timeout).
 
