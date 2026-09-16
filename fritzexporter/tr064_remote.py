@@ -64,23 +64,42 @@ def fritz_connection_session(*, remote_access: bool, timeout: int | None) -> Ite
     exception type used by the exporter.
     """
     original_session = requests.Session
-    base_session = Tr064RemoteAccessSession if remote_access else original_session
 
-    class FritzConnectionSession(base_session):  # type: ignore[misc, valid-type]
-        def request(
-            self,
-            method: str | bytes,
-            url: str | bytes,
-            *args: Any,  # noqa: ANN401
-            **kwargs: Any,  # noqa: ANN401
-        ) -> requests.Response:
-            if timeout is not None and kwargs.get("timeout") is None:
-                kwargs["timeout"] = timeout
-            try:
-                return super().request(method, url, *args, **kwargs)
-            except requests.Timeout as err:
-                msg = "Request to Fritz device timed out"
-                raise FritzConnectionException(msg) from err
+    if remote_access:
+
+        class FritzConnectionSession(Tr064RemoteAccessSession):
+            def request(
+                self,
+                method: str | bytes,
+                url: str | bytes,
+                *args: Any,  # noqa: ANN401
+                **kwargs: Any,  # noqa: ANN401
+            ) -> requests.Response:
+                if timeout is not None and kwargs.get("timeout") is None:
+                    kwargs["timeout"] = timeout
+                try:
+                    return super().request(method, url, *args, **kwargs)
+                except requests.Timeout as err:
+                    msg = "Request to Fritz device timed out"
+                    raise FritzConnectionException(msg) from err
+
+    else:
+
+        class FritzConnectionSession(requests.Session):
+            def request(
+                self,
+                method: str | bytes,
+                url: str | bytes,
+                *args: Any,  # noqa: ANN401
+                **kwargs: Any,  # noqa: ANN401
+            ) -> requests.Response:
+                if timeout is not None and kwargs.get("timeout") is None:
+                    kwargs["timeout"] = timeout
+                try:
+                    return super().request(method, url, *args, **kwargs)
+                except requests.Timeout as err:
+                    msg = "Request to Fritz device timed out"
+                    raise FritzConnectionException(msg) from err
 
     requests.Session = FritzConnectionSession  # ty: ignore[invalid-assignment]
     try:
