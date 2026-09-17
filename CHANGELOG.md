@@ -15,6 +15,16 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.3.3](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.3.2...fritzexporter-v3.3.3) (2026-09-17)
+
+
+### Bug Fixes
+
+* **deps:** configure Dependabot for uv ([#679](https://github.com/pdreker/fritz_exporter/issues/679)) ([73c7ae8](https://github.com/pdreker/fritz_exporter/commit/73c7ae8008409800cc243ee9145652a583455aeb))
+* **lint:** exclude agent instructions from Ruff ([b71565a](https://github.com/pdreker/fritz_exporter/commit/b71565a328edff89582b2a832886f955201664b7))
+* prevent parallel scrapes from deadlocking behind a stuck device ([#677](https://github.com/pdreker/fritz_exporter/issues/677)) ([813c774](https://github.com/pdreker/fritz_exporter/commit/813c77460d829807a5428ed5086efb5654a0effc))
+* treat requests transport errors as an unreachable device ([af25c89](https://github.com/pdreker/fritz_exporter/commit/af25c890a549c7aecdfce26cf65a7eb027823787))
+
 ## [3.3.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.3.1...fritzexporter-v3.3.2) (2026-07-25)
 
 
