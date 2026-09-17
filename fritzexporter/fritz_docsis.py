@@ -28,6 +28,7 @@ __all__ = [
     "FritzDocsisError",
     "FritzDocsisClient",
     "parse_docsis_response",
+    "parse_monitor_segment",
 ]
 
 # The login_sid.lua challenge-response scheme changed in Fritz!OS 7.24.
@@ -76,6 +77,26 @@ class DocsisData(TypedDict):
     ready_state: str
     downstream: list[DownstreamChannel]
     upstream: list[UpstreamChannel]
+
+
+class SegmentSeries(TypedDict):
+    """One ``/api/v0/monitor/segment/<n>`` series (own or total).
+
+    ``downstream`` and ``upstream`` are the raw per-sample utilization lists
+    (percent). The newest sample is the last element of each list.
+    """
+
+    media_type: str
+    type: str
+    downstream: list[float | None]
+    upstream: list[float | None]
+
+
+class MonitorSegmentData(TypedDict):
+    """Normalized ``/api/v0/monitor/segment/<n>`` response."""
+
+    last_sample_time: int | None
+    series: list[SegmentSeries]
 
 
 class FritzDocsisClient:
@@ -256,6 +277,66 @@ class FritzDocsisClient:
         """Fetch fresh DOCSIS data (the ``docInfo`` page)."""
         return self.fetch_page("docInfo")
 
+    # ------------------------------------------------------------------
+    # REST API (/api/v0/...) fetching
+    # ------------------------------------------------------------------
+
+    def _fetch_api(self, sid: str, path: str) -> dict[str, Any]:
+        """GET a Fritz!OS REST API path and return the parsed JSON document.
+
+        ``path`` is the API path (e.g. ``/api/v0/generic/box``). The REST API
+        authenticates via an ``Authorization: AVM-SID <sid>`` header; passing
+        the SID as a query parameter is rejected with HTTP 400.
+        """
+        headers = {"Authorization": f"AVM-SID {sid}"}
+        try:
+            resp = self.session.get(f"{self.base_url}{path}", headers=headers)
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            raise FritzDocsisError(f"REST API request failed for {path}: {e}") from e
+
+        text = resp.text
+        content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
+        is_html = (
+            "text/html" in content_type
+            or text.lstrip().startswith(_HTML_RESPONSE_PREFIXES)
+        )
+        if not text or is_html:
+            raise FritzDocsisError(
+                f"Fritz!Box returned HTML instead of JSON for {path} "
+                "(SID invalid or no permission)"
+            )
+
+        try:
+            return resp.json()
+        except ValueError as e:
+            raise FritzDocsisError(
+                f"could not parse REST API JSON response for {path}: {e}"
+            ) from e
+
+    def fetch_api(self, path: str) -> dict[str, Any]:
+        """Fetch a Fritz!OS REST API path, re-authenticating once if needed.
+
+        ``path`` is the API path below the host, e.g. ``/api/v0/generic/box``.
+        """
+        sid = self._ensure_sid()
+        try:
+            return self._fetch_api(sid, path)
+        except FritzDocsisError:
+            logger.debug("REST API fetch failed, re-authenticating...")
+            self._invalidate_sid()
+            sid = self._ensure_sid()
+            return self._fetch_api(sid, path)
+
+    def fetch_monitor_segment(self, segment: int = 0) -> dict[str, Any]:
+        """Fetch a network-utilization monitor segment (shared cable medium).
+
+        Segment ``0`` covers the last hour, split into minute-granular average
+        samples; higher indices are longer-horizon aggregates. Returns the raw
+        JSON document (see :func:`parse_monitor_segment`).
+        """
+        return self.fetch_api(f"/api/v0/monitor/segment/{segment}")
+
 
 def _to_float(value: Any) -> float | None:
     """Safely convert a value (string or number) to float, None on failure."""
@@ -330,6 +411,33 @@ def parse_docsis_response(raw: dict[str, Any]) -> DocsisData:
                 }
             )
 
+    return result
+
+
+def parse_monitor_segment(raw: dict[str, Any]) -> MonitorSegmentData:
+    """Parse a ``/api/v0/monitor/segment/<n>`` response into normalized data.
+
+    The response has a top-level ``lastSampleTime`` (Unix epoch seconds of the
+    newest bucket) and a ``data`` list holding one series per ``type`` — ``own``
+    (traffic this box generates) and ``total`` (traffic of every subscriber in
+    the shared cable segment). Each series carries ``downstream`` and
+    ``upstream`` utilization series in percent; the newest sample is the last
+    element of each list. Unknown/non-numeric samples become ``None``.
+    """
+    series: list[SegmentSeries] = []
+    for entry in raw.get("data", []):
+        series.append(
+            {
+                "media_type": str(entry.get("mediaType") or ""),
+                "type": str(entry.get("type") or ""),
+                "downstream": [_to_float(v) for v in entry.get("downstream", [])],
+                "upstream": [_to_float(v) for v in entry.get("upstream", [])],
+            }
+        )
+    result: MonitorSegmentData = {
+        "last_sample_time": _to_int(raw.get("lastSampleTime")),
+        "series": series,
+    }
     return result
 
 
