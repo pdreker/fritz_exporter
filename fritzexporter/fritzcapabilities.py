@@ -20,7 +20,11 @@ from fritzconnection.lib.fritzhosts import FritzHosts  # type: ignore[import]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
-from fritzexporter.fritz_docsis import FritzDocsisError, parse_docsis_response
+from fritzexporter.fritz_docsis import (
+    FritzDocsisError,
+    parse_docsis_response,
+    parse_monitor_segment,
+)
 
 if TYPE_CHECKING:
     from fritzexporter.fritzdevice import FritzDevice
@@ -1833,6 +1837,110 @@ class WanDocsisCable(FritzCapability):
         yield self.metrics["uncorrected_errors"]
         yield self.metrics["latency"]
         yield self.metrics["info"]
+
+
+class WanSegmentUtilizationCable(FritzCapability):
+    """Shared cable-segment utilization from the Fritz!Box REST API.
+
+    DOCSIS reports the physical channel state, but not how busy the *shared*
+    coax segment is — i.e. how much of the medium the neighbours consume
+    alongside us. The Fritz!OS REST endpoint ``/api/v0/monitor/segment/<n>``
+    exposes exactly that: per-sample utilization of the shared medium, split
+    into the traffic this box generates (``own``) and the total on the segment
+    (``total``, including all other subscribers), for downstream and upstream.
+
+    Segment ``0`` covers the last hour at minute granularity (60 one-minute
+    averages). We expose only the *newest* sample of each series — the last
+    element of each list — aligned by the shared ``lastSampleTime``.
+
+    Auto-detected on cable boxes (the same probe as :class:`WanDocsisCable`).
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Presence mirrors WanDocsisCable - determined by the WAN access type.
+        self.present = False
+
+    def check_capability(self, device: FritzDevice) -> None:
+        try:
+            wan_status = device.fc.call_action(
+                "WANCommonInterfaceConfig1", "GetCommonLinkProperties"
+            )
+        except (
+            FritzServiceError,
+            FritzActionError,
+            FritzInternalError,
+            FritzArgumentError,
+            FritzConnectionException,
+        ):
+            logger.debug(
+                "No WAN access type info on %s, segment utilization capability disabled",
+                device.host,
+            )
+            self.present = False
+            return
+
+        self.present = wan_status.get("NewWANAccessType") in ("Cable", "X_AVM-DE_Cable")
+        logger.debug(
+            "Capability %s set to %s on device %s",
+            type(self).__name__,
+            self.present,
+            device.host,
+        )
+
+    def create_metrics(self) -> None:
+        self.metrics["utilization"] = GaugeMetricFamily(
+            "fritz_segment_utilization_percent",
+            "Shared cable segment utilization of the newest sample",
+            labels=["serial", "friendly_name", "direction", "scope"],
+            unit="percent",
+        )
+        self.metrics["sample_age"] = GaugeMetricFamily(
+            "fritz_segment_sample_timestamp_seconds",
+            "Unix timestamp of the newest shared-segment utilization sample",
+            labels=["serial", "friendly_name"],
+            unit="seconds",
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        if not device.docsis_client:
+            logger.debug("No DOCSIS client on device %s, skipping", device.host)
+            return
+
+        try:
+            raw = device.docsis_client.fetch_monitor_segment(0)
+        except FritzDocsisError as e:
+            # Transient web/REST failure must not abort the whole scrape.
+            logger.warning(
+                "Failed to fetch segment utilization data from %s: %s", device.host, e
+            )
+            return
+
+        data = parse_monitor_segment(raw)
+        labels = [device.serial, device.friendly_name]
+
+        if data["last_sample_time"] is not None:
+            self.metrics["sample_age"].add_metric(labels, data["last_sample_time"])
+
+        # "own" -> what our traffic contributes, "total" -> whole shared medium.
+        for series in data["series"]:
+            for direction in ("downstream", "upstream"):
+                samples = series[direction]
+                if not samples:
+                    continue
+                newest = samples[-1]
+                if newest is None:
+                    continue
+                self.metrics["utilization"].add_metric(
+                    [*labels, direction, series["type"]],
+                    newest,
+                )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["utilization"]
+        yield self.metrics["sample_age"]
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
