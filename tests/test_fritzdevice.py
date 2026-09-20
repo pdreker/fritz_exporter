@@ -1071,6 +1071,23 @@ class TestGetConnectionMode:
         assert metric.samples[0].value == 4
         assert metric.samples[0].labels["access_type"] == "X_AVM-DE_Fiber"
 
+    def test_get_connection_mode_cable(self, mock_fc: MagicMock):
+        # Prepare
+        device, fc = self._create_device(mock_fc)
+        fc.call_action.side_effect = lambda s, a, **kw: (
+            {"NewPhysicalLinkStatus": "Up", "NewWANAccessType": "X_AVM-DE_Cable"}
+            if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties")
+            else call_action_mock(s, a, **kw)
+        )
+
+        # Act
+        metric = device.get_connection_mode()
+
+        # Check
+        assert metric is not None
+        assert metric.samples[0].value == 5
+        assert metric.samples[0].labels["access_type"] == "X_AVM-DE_Cable"
+
     def test_get_connection_mode_offline(self, mock_fc: MagicMock):
         # Prepare
         device, fc = self._create_device(mock_fc)
