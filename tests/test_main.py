@@ -1,8 +1,10 @@
 import logging
+from http.client import RemoteDisconnected
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 from fritzconnection.core.exceptions import FritzConnectionException
+from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from fritzexporter.__main__ import main, parse_cmdline
 
@@ -179,6 +181,38 @@ class Test_Main:
         hostnames = [c.args[0].host for c in mock_collector.register_offline.call_args_list]
         assert "fritz.box" in hostnames
         assert "repeater-wohnzimmer" in hostnames  # hostnames are lowercased by DeviceConfig
+
+    @patch("prometheus_client.core.REGISTRY.register")
+    @patch("fritzexporter.__main__.start_http_server")
+    @patch("fritzexporter.__main__.FritzCollector")
+    def test_startup_transport_error_registers_device_as_offline(
+        self, mock_collector_cls: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
+        monkeypatch, caplog
+    ):
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "fritzexporter",
+                "--config",
+                "tests/conffiles/validconfig.yaml",
+            ],
+        )
+        monkeypatch.setenv("FRITZ_EXPORTER_UNDER_TEST", "true")
+
+        caplog.set_level(logging.DEBUG)
+
+        mock_collector = MagicMock()
+        mock_collector_cls.return_value = mock_collector
+
+        # A transport-level failure at startup must not be fatal either
+        with patch("fritzexporter.__main__.FritzDevice") as mock_device_cls:
+            mock_device_cls.side_effect = RequestsConnectionError(
+            "Connection aborted.",
+            RemoteDisconnected("Remote end closed connection without response"),
+        )
+            main()
+
+        assert mock_collector.register_offline.call_count == 2
 
     @patch("prometheus_client.core.REGISTRY.register")
     @patch("fritzexporter.__main__.start_http_server")

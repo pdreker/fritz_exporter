@@ -54,18 +54,54 @@ class Tr064RemoteAccessSession(requests.Session):
 
 
 @contextmanager
-def remote_tr064_session(*, enabled: bool) -> Iterator[None]:
-    """While enabled, make ``requests.Session`` the remote-access subclass.
+def fritz_connection_session(*, remote_access: bool, timeout: int | None) -> Iterator[None]:
+    """Configure sessions created while initializing ``FritzConnection``.
 
     FritzConnection creates its Session inside ``__init__`` before loading the
     router API, so the subclass must be installed before FritzConnection runs.
+    Its AHA HTTP calls omit a timeout, unlike its TR-064 SOAP calls; add the
+    configured timeout to every request and normalize request timeouts to the
+    exception type used by the exporter.
     """
-    if not enabled:
-        yield
-        return
-
     original_session = requests.Session
-    requests.Session = Tr064RemoteAccessSession  # ty: ignore[invalid-assignment]
+
+    if remote_access:
+
+        class FritzConnectionSession(Tr064RemoteAccessSession):
+            def request(
+                self,
+                method: str | bytes,
+                url: str | bytes,
+                *args: Any,  # noqa: ANN401
+                **kwargs: Any,  # noqa: ANN401
+            ) -> requests.Response:
+                if timeout is not None and kwargs.get("timeout") is None:
+                    kwargs["timeout"] = timeout
+                try:
+                    return super().request(method, url, *args, **kwargs)
+                except requests.Timeout as err:
+                    msg = "Request to Fritz device timed out"
+                    raise FritzConnectionException(msg) from err
+
+    else:
+
+        class FritzConnectionSession(requests.Session):
+            def request(
+                self,
+                method: str | bytes,
+                url: str | bytes,
+                *args: Any,  # noqa: ANN401
+                **kwargs: Any,  # noqa: ANN401
+            ) -> requests.Response:
+                if timeout is not None and kwargs.get("timeout") is None:
+                    kwargs["timeout"] = timeout
+                try:
+                    return super().request(method, url, *args, **kwargs)
+                except requests.Timeout as err:
+                    msg = "Request to Fritz device timed out"
+                    raise FritzConnectionException(msg) from err
+
+    requests.Session = FritzConnectionSession  # ty: ignore[invalid-assignment]
     try:
         yield
     finally:
@@ -91,7 +127,9 @@ def create_fritz_connection(
 ) -> FritzConnection:
     """Create a FritzConnection, optionally rewriting paths for WAN remote access."""
     options = connection or ConnectionOptions()
-    with remote_tr064_session(enabled=options.remote_access):
+    with fritz_connection_session(
+        remote_access=options.remote_access, timeout=options.connection_timeout
+    ):
         try:
             return FritzConnection(
                 address=address,

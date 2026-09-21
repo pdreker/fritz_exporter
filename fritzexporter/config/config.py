@@ -24,6 +24,11 @@ from .exceptions import (
 
 logger = logging.getLogger("fritzexporter.config")
 
+# Default per-call TR-064 connect/read timeout in seconds. A finite default keeps
+# a wedged device from blocking a scrape (and the collector lock) indefinitely;
+# set 0 explicitly to disable the timeout.
+DEFAULT_CONNECTION_TIMEOUT: int = 10
+
 
 def _convert_optional_int(value: int | str | None) -> int | None:
     if value is None:
@@ -93,18 +98,19 @@ def _read_config_from_env() -> dict:
         config["listen_address"] = listen_address
 
     config["devices"] = []
-    device = {
+    device: dict[str, Any] = {
         "username": username,
         "password": password,
         "password_file": password_file,
         "host_info": host_info,
         "wifi_client_info": wifi_client_info,
         "name": name,
-        "connection_timeout": connection_timeout,
         "use_tls": use_tls,
         "port": device_port,
         "remote_access": remote_access,
     }
+    if connection_timeout is not None:
+        device["connection_timeout"] = connection_timeout
     if hostname is not None:
         device["hostname"] = hostname
     config["devices"].append(device)
@@ -189,7 +195,7 @@ class DeviceConfig:
     host_info: bool = field(default=False, converter=converters.to_bool)
     wifi_client_info: bool = field(default=False, converter=converters.to_bool)
     connection_timeout: int | None = field(
-        default=None,
+        default=DEFAULT_CONNECTION_TIMEOUT,
         converter=_convert_optional_int,
         validator=validators.optional(validators.ge(1)),
     )
@@ -233,7 +239,7 @@ class DeviceConfig:
         name = device.get("name", "")
         host_info = device.get("host_info", False)
         wifi_client_info = device.get("wifi_client_info", False)
-        connection_timeout = device.get("connection_timeout")
+        connection_timeout = device.get("connection_timeout", DEFAULT_CONNECTION_TIMEOUT)
         use_tls = device.get("use_tls", False)
         port = device.get("port")
         remote_access = device.get("remote_access", False)

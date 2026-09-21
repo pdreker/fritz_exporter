@@ -81,6 +81,56 @@ class TestTr064RemoteAccessSession:
 
 class TestCreateFritzConnection:
     @patch("fritzexporter.tr064_remote.FritzConnection")
+    def test_connection_timeout_applies_to_aha_http_requests(self, mock_fc: MagicMock):
+        captured_sessions: list[requests.Session] = []
+
+        def fake_fc(**_kwargs: object) -> MagicMock:
+            session = requests.Session()
+            captured_sessions.append(session)
+            return MagicMock()
+
+        mock_fc.side_effect = fake_fc
+
+        create_fritz_connection(
+            address="box.example",
+            user="user",
+            password="password",
+            connection=ConnectionOptions(connection_timeout=10),
+        )
+
+        with patch.object(requests.Session, "request", return_value=MagicMock()) as request:
+            captured_sessions[0].get("https://box.example/webservices/homeautoswitch.lua")
+
+        assert request.call_args.kwargs["timeout"] == 10
+
+    @patch("fritzexporter.tr064_remote.FritzConnection")
+    def test_request_timeout_becomes_fritz_connection_exception(self, mock_fc: MagicMock):
+        from fritzconnection.core.exceptions import FritzConnectionException
+        import pytest
+
+        captured_sessions: list[requests.Session] = []
+
+        def fake_fc(**_kwargs: object) -> MagicMock:
+            session = requests.Session()
+            captured_sessions.append(session)
+            return MagicMock()
+
+        mock_fc.side_effect = fake_fc
+
+        create_fritz_connection(
+            address="box.example",
+            user="user",
+            password="password",
+            connection=ConnectionOptions(connection_timeout=10),
+        )
+
+        with (
+            patch.object(requests.Session, "request", side_effect=requests.ReadTimeout),
+            pytest.raises(FritzConnectionException, match="timed out"),
+        ):
+            captured_sessions[0].get("https://box.example/webservices/homeautoswitch.lua")
+
+    @patch("fritzexporter.tr064_remote.FritzConnection")
     def test_remote_access_uses_rewriting_session(self, mock_fc: MagicMock):
         captured_sessions: list[requests.Session] = []
 

@@ -170,6 +170,14 @@ class TestEnvConfig:
 
         assert config.devices[0].connection_timeout == 15
 
+    def test_connection_timeout_unset_uses_default(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
+        monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
+
+        config = get_config(None)
+
+        assert config.devices[0].connection_timeout == 10
+
     def test_connection_timeout_env_zero_disables_timeout(self, monkeypatch):
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
@@ -399,15 +407,15 @@ class TestConfigEdgeCases:
         config = get_config(testfile)
 
         assert config.devices[0].connection_timeout == 10
-        assert config.devices[1].connection_timeout is None
+        assert config.devices[1].connection_timeout == 10
 
-    def test_connection_timeout_defaults_to_none(self):
+    def test_connection_timeout_defaults_to_ten(self):
         testfile = "tests/conffiles/validconfig.yaml"
 
         config = get_config(testfile)
 
         for dev in config.devices:
-            assert dev.connection_timeout is None
+            assert dev.connection_timeout == 10
 
     def test_connection_timeout_zero_disables_timeout(self):
         config = DeviceConfig(

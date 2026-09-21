@@ -13,6 +13,7 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
 )
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
+from requests.exceptions import RequestException
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritz_docsis import FritzDocsisClient
@@ -23,6 +24,11 @@ logger = logging.getLogger("fritzexporter.fritzdevice")
 
 
 FRITZ_MAX_PASSWORD_LENGTH = 32
+
+# Maximum time a concurrent scrape waits for the collector lock before giving
+# up and returning an empty scrape. Prevents one wedged/slow scrape from
+# blocking every other Prometheus instance indefinitely.
+SCRAPE_LOCK_TIMEOUT: float = 30.0
 
 
 class FritzCredentials(NamedTuple):
@@ -75,7 +81,7 @@ class FritzDevice:
                 password=creds.password,
                 connection=connection,
             )
-        except FritzConnectionException:
+        except FritzConnectionException, RequestException:
             logger.exception("unable to connect to %s.", creds.host)
             raise
 
@@ -150,7 +156,7 @@ class FritzDevice:
                 "No WAN connection-mode info on %s (no WAN service); skipping metric.", self.host
             )
             return None
-        except FritzConnectionException:
+        except FritzConnectionException, RequestException:
             logger.exception("Failed to retrieve connection mode info from %s", self.host)
             self.available = False
             return None
@@ -241,12 +247,26 @@ class FritzCollector(Collector):
                 FritzConnectionException,
                 FritzAuthorizationError,
                 FritzDeviceHasNoCapabilitiesError,
+                RequestException,
             ):
                 still_offline.append(offline)
         self.offline_devices = still_offline
 
     def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
-        with self._collect_lock:
+        # The lock is held for the whole scrape (blocking TR-064 calls included),
+        # so acquiring it must be bounded: a slow or wedged first scrape would
+        # otherwise block every concurrent scrape from other Prometheus instances
+        # indefinitely. If the lock cannot be taken within the deadline, return an
+        # empty scrape — the exporter stays responsive and a finite configured timeout
+        # ensures the in-flight scrape eventually releases the lock. With
+        # connection_timeout=0, the in-flight scrape may still remain blocked.
+        if not self._collect_lock.acquire(timeout=SCRAPE_LOCK_TIMEOUT):
+            logger.warning(
+                "Skipping scrape: previous scrape still in progress after %.0fs",
+                SCRAPE_LOCK_TIMEOUT,
+            )
+            return
+        try:
             # Attempt to bring offline devices back online before collecting
             self._retry_offline_devices()
 
@@ -282,6 +302,8 @@ class FritzCollector(Collector):
             yield device_up
 
             yield from collected
+        finally:
+            self._collect_lock.release()
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
