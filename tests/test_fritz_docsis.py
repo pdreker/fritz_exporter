@@ -9,6 +9,7 @@ from prometheus_client.core import Metric
 from fritzexporter.fritz_docsis import (
     FritzDocsisClient,
     FritzDocsisError,
+    parse_connections_response,
     parse_docsis_response,
     parse_monitor_segment,
 )
@@ -840,4 +841,207 @@ class TestWanSegmentUtilizationCable:
 
         by_name = {m.name: m for m in metrics}
         assert by_name["fritz_segment_utilization_percent"].samples == []
+        assert "fritz_device_reachable" in by_name
+
+
+# ---------------------------------------------------------------------------
+# Sample /api/v0/generic/connections payload (modeled on api_connections.json)
+# ---------------------------------------------------------------------------
+
+CONNECTIONS_RAW = {
+    "connection": [
+        {
+            "ip6_mode": "ipv6_native",
+            "ip4_uptime": "689223",
+            "conn_date": "09.09.2026",
+            "ip6_connstatus": "connected",
+            "name": "internet",
+            "media_type": "Cable",
+            "UID": "connection0001",
+            "ip4_connstatus": "connected",
+            "ip6_uptime": "689224",
+        },
+        {
+            "ip6_mode": "ipv6_off",
+            "name": "internet2",
+            "media_type": "LTE",
+            "UID": "connection0002",
+            "ip4_uptime": "",
+            "ip6_uptime": "",
+            "ip4_connstatus": "disabled",
+            "ip6_connstatus": "disabled",
+        },
+    ],
+    "opmode": "opmode_standard",
+}
+
+
+# ---------------------------------------------------------------------------
+# parse_connections_response
+# ---------------------------------------------------------------------------
+
+
+class TestParseConnectionsResponse:
+    def test_parses_entries(self):
+        connections = parse_connections_response(CONNECTIONS_RAW["connection"])
+
+        assert len(connections) == 2
+        active, disabled = connections
+        assert active["uid"] == "connection0001"
+        assert active["name"] == "internet"
+        assert active["media_type"] == "Cable"
+        assert active["ip4_uptime"] == 689223
+        assert active["ip6_uptime"] == 689224
+        assert active["ip4_connstatus"] == "connected"
+        assert active["ip6_connstatus"] == "connected"
+
+        assert disabled["ip4_uptime"] is None
+        assert disabled["ip6_uptime"] is None
+        assert disabled["ip4_connstatus"] == "disabled"
+
+    def test_handles_empty_list(self):
+        assert parse_connections_response([]) == []
+
+
+# ---------------------------------------------------------------------------
+# WanConnectionStatusCable capability metrics
+# ---------------------------------------------------------------------------
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestWanConnectionStatusCable:
+    def _cable_fc(self, mock_fritzconnection: MagicMock) -> MagicMock:
+        fc = mock_fritzconnection.return_value
+
+        def cable_call_action_mock(service, action, **kwargs):
+            result = call_action_mock(service, action, **kwargs)
+            if (service, action) == ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"):
+                result = dict(result)
+                result["NewWANAccessType"] = "X_AVM-DE_Cable"
+            return result
+
+        fc.call_action.side_effect = cable_call_action_mock
+        services = {
+            **fc_services_capabilities["DeviceInfo"],
+            **fc_services_capabilities["WanCommonInterfaceByteRate"],
+        }
+        fc.services = create_fc_services(services)
+        return fc
+
+    def _collect(self, mock_fritzconnection: MagicMock, connections_raw: list | None = None):
+        self._cable_fc(mock_fritzconnection)
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzCable",
+            host_info=False,
+        )
+        mock_client = MagicMock()
+        mock_client.fetch_docsis_data.return_value = DOCSIS_RAW
+        mock_client.fetch_monitor_segment.return_value = SEGMENT_RAW
+        mock_client.fetch_connections.return_value = (
+            connections_raw if connections_raw is not None else CONNECTIONS_RAW["connection"]
+        )
+        device.docsis_client = mock_client
+
+        collector.register(device)
+        return list(collector.collect())
+
+    def test_uptime_samples_per_stack(self, mock_fritzconnection: MagicMock):
+        metrics = self._collect(mock_fritzconnection)
+        by_name = {m.name: m for m in metrics}
+
+        assert "fritz_connection_uptime_seconds" in by_name
+        keyed = {
+            (s.labels["connection"], s.labels["stack"]): s.value
+            for s in by_name["fritz_connection_uptime_seconds"].samples
+        }
+        assert keyed == {
+            ("connection0001", "ipv4"): 689223,
+            ("connection0001", "ipv6"): 689224,
+        }
+        # the disabled connection reports empty uptimes -> no samples
+        sample = by_name["fritz_connection_uptime_seconds"].samples[0]
+        assert sample.labels["friendly_name"] == "FritzCable"
+        assert sample.labels["connection_name"] == "internet"
+
+    def test_status_samples_carry_state_label(self, mock_fritzconnection: MagicMock):
+        metrics = self._collect(mock_fritzconnection)
+        by_name = {m.name: m for m in metrics}
+
+        assert "fritz_connection_status" in by_name
+        keyed = {
+            (s.labels["connection"], s.labels["stack"], s.labels["state"]): s.value
+            for s in by_name["fritz_connection_status"].samples
+        }
+        assert keyed == {
+            ("connection0001", "ipv4", "connected"): 1,
+            ("connection0001", "ipv6", "connected"): 1,
+            ("connection0002", "ipv4", "disabled"): 1,
+            ("connection0002", "ipv6", "disabled"): 1,
+        }
+
+    def test_no_client_no_samples(self, mock_fritzconnection: MagicMock):
+        """Disabled capability (no docsis client) yields empty metric families."""
+        self._cable_fc(mock_fritzconnection)
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzCable",
+            host_info=False,
+        )
+        device.docsis_client = None
+        collector.register(device)
+        metrics = list(collector.collect())
+
+        by_name = {m.name: m for m in metrics}
+        assert by_name["fritz_connection_uptime_seconds"].samples == []
+        assert by_name["fritz_connection_status"].samples == []
+
+    def test_disabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        services = {
+            **fc_services_capabilities["DeviceInfo"],
+            **fc_services_capabilities["WanCommonInterfaceByteRate"],
+        }
+        fc.services = create_fc_services(services)
+
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzCable",
+            host_info=False,
+        )
+        assert device.capabilities["WanConnectionStatusCable"].present is False
+
+        collector = FritzCollector()
+        collector.register(device)
+        metrics = list(collector.collect())
+        by_name = {m.name: m for m in metrics}
+        assert by_name["fritz_connection_uptime_seconds"].samples == []
+        assert by_name["fritz_connection_status"].samples == []
+
+    def test_fetch_error_does_not_break_collection(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        self._cable_fc(mock_fritzconnection)
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzCable",
+            host_info=False,
+        )
+        mock_client = MagicMock()
+        mock_client.fetch_docsis_data.return_value = DOCSIS_RAW
+        mock_client.fetch_monitor_segment.return_value = SEGMENT_RAW
+        mock_client.fetch_connections.side_effect = FritzDocsisError("boom")
+        device.docsis_client = mock_client
+
+        collector.register(device)
+        with caplog.at_level(logging.ERROR):
+            metrics = list(collector.collect())
+
+        by_name = {m.name: m for m in metrics}
+        assert by_name["fritz_connection_uptime_seconds"].samples == []
+        assert by_name["fritz_connection_status"].samples == []
         assert "fritz_device_reachable" in by_name
