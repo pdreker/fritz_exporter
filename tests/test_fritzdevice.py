@@ -328,6 +328,7 @@ class TestFritzCollector:
             "HomeAutomation",
             "WanDocsisCable",
             "WanSegmentUtilizationCable",
+            "WanConnectionStatusCable",
         ]
 
         assert list(collector._capability_instances.capabilities.keys()) == all_capas

@@ -29,6 +29,7 @@ __all__ = [
     "FritzDocsisClient",
     "parse_docsis_response",
     "parse_monitor_segment",
+    "parse_connections_response",
 ]
 
 # The login_sid.lua challenge-response scheme changed in Fritz!OS 7.24.
@@ -97,6 +98,22 @@ class MonitorSegmentData(TypedDict):
 
     last_sample_time: int | None
     series: list[SegmentSeries]
+
+
+class ConnectionInfo(TypedDict):
+    """Normalized ``/api/v0/generic/connections`` entry for one connection.
+
+    Uptimes are in seconds; ``None`` means the field was empty/absent in the
+    response (e.g. a disabled connection reports an empty uptime).
+    """
+
+    uid: str
+    name: str
+    media_type: str
+    ip4_connstatus: str
+    ip6_connstatus: str
+    ip4_uptime: int | None
+    ip6_uptime: int | None
 
 
 class FritzDocsisClient:
@@ -337,6 +354,18 @@ class FritzDocsisClient:
         """
         return self.fetch_api(f"/api/v0/monitor/segment/{segment}")
 
+    def fetch_connections(self) -> list[dict[str, Any]]:
+        """Fetch the ``/api/v0/generic/connections`` list.
+
+        Returns the raw ``connection`` list from the response. Each entry
+        describes one configured WAN connection (e.g. the active cable
+        ``internet`` connection and disabled fallbacks) and carries
+        ``ip4_uptime``/``ip6_uptime`` (seconds) and the
+        ``ip4_connstatus``/``ip6_connstatus`` state strings.
+        """
+        raw = self.fetch_api("/api/v0/generic/connections")
+        return raw.get("connection", [])
+
 
 def _to_float(value: Any) -> float | None:
     """Safely convert a value (string or number) to float, None on failure."""
@@ -439,6 +468,30 @@ def parse_monitor_segment(raw: dict[str, Any]) -> MonitorSegmentData:
         "series": series,
     }
     return result
+
+
+def parse_connections_response(raw: list[dict[str, Any]]) -> list[ConnectionInfo]:
+    """Parse the ``connection`` list from ``/api/v0/generic/connections``.
+
+    ``raw`` is the list of connection entries (see
+    :meth:`FritzDocsisClient.fetch_connections`). Uptime fields are numeric
+    strings in seconds; empty or missing values (reported for disabled
+    connections) become ``None`` so callers can skip them.
+    """
+    connections: list[ConnectionInfo] = []
+    for entry in raw:
+        connections.append(
+            {
+                "uid": str(entry.get("UID") or ""),
+                "name": str(entry.get("name") or ""),
+                "media_type": str(entry.get("media_type") or ""),
+                "ip4_connstatus": str(entry.get("ip4_connstatus") or ""),
+                "ip6_connstatus": str(entry.get("ip6_connstatus") or ""),
+                "ip4_uptime": _to_int(entry.get("ip4_uptime")),
+                "ip6_uptime": _to_int(entry.get("ip6_uptime")),
+            }
+        )
+    return connections
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>

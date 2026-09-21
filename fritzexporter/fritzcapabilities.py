@@ -22,6 +22,7 @@ from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
 from fritzexporter.fritz_docsis import (
     FritzDocsisError,
+    parse_connections_response,
     parse_docsis_response,
     parse_monitor_segment,
 )
@@ -1941,6 +1942,115 @@ class WanSegmentUtilizationCable(FritzCapability):
     ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["utilization"]
         yield self.metrics["sample_age"]
+
+
+class WanConnectionStatusCable(
+    FritzCapability
+):
+    """Per-connection IPv4/IPv6 uptime and connection state from the Fritz!Box REST API.
+
+    The TR-064 API only exposes uptime/state for the single *active* connection
+    of the supported interface types (PPP, DSL, ...). The Fritz!OS REST
+    endpoint ``/api/v0/generic/connections`` instead reports every configured
+    WAN connection — including disabled fallbacks — with per-stack fields:
+    ``ip4_uptime``/``ip6_uptime`` (seconds) and ``ip4_connstatus``/
+    ``ip6_connstatus`` (``"connected"``, ``"disabled"``, ``"connecting"``, ...).
+
+    Uptimes are exposed as counters (they reset on each reconnect, like the
+    PPP uptime metric), and the state as a gauge with the state string as a
+    label: the value is ``1`` for the currently reported state of the
+    connection, so a stack reports exactly one sample whose labels carry its
+    state.
+
+    Auto-detected on cable boxes (the same probe as :class:`WanDocsisCable`);
+    the data is fetched through the same authenticated client.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Presence mirrors WanDocsisCable - determined by the WAN access type.
+        self.present = False
+
+    def check_capability(self, device: FritzDevice) -> None:
+        try:
+            wan_status = device.fc.call_action(
+                "WANCommonInterfaceConfig1", "GetCommonLinkProperties"
+            )
+        except (
+            FritzServiceError,
+            FritzActionError,
+            FritzInternalError,
+            FritzArgumentError,
+            FritzConnectionException,
+        ):
+            logger.debug(
+                "No WAN access type info on %s, connection status capability disabled",
+                device.host,
+            )
+            self.present = False
+            return
+
+        self.present = wan_status.get("NewWANAccessType") in ("Cable", "X_AVM-DE_Cable")
+        logger.debug(
+            "Capability %s set to %s on device %s",
+            type(self).__name__,
+            self.present,
+            device.host,
+        )
+
+    def create_metrics(self) -> None:
+        self.metrics["uptime"] = CounterMetricFamily(
+            "fritz_connection_uptime",
+            "Per-stack uptime of a WAN connection in seconds (resets on reconnect)",
+            labels=["serial", "friendly_name", "connection", "connection_name", "stack"],
+            unit="seconds",
+        )
+        self.metrics["status"] = GaugeMetricFamily(
+            "fritz_connection_status",
+            "Per-stack connection state of a WAN connection (always 1, state in label)",
+            labels=[
+                "serial",
+                "friendly_name",
+                "connection",
+                "connection_name",
+                "stack",
+                "state",
+            ],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        if not device.docsis_client:
+            logger.debug("No DOCSIS client on device %s, skipping", device.host)
+            return
+
+        try:
+            raw = device.docsis_client.fetch_connections()
+        except FritzDocsisError as e:
+            # Transient web/REST failure must not abort the whole scrape.
+            logger.warning(
+                "Failed to fetch connection status data from %s: %s", device.host, e
+            )
+            return
+
+        labels = [device.serial, device.friendly_name]
+        for conn in parse_connections_response(raw):
+            base_labels = [*labels, conn["uid"], conn["name"]]
+            for stack, uptime_key, status_key in (
+                ("ipv4", "ip4_uptime", "ip4_connstatus"),
+                ("ipv6", "ip6_uptime", "ip6_connstatus"),
+            ):
+                uptime = conn[uptime_key]
+                if uptime is not None:
+                    self.metrics["uptime"].add_metric([*base_labels, stack], uptime)
+                state = conn[status_key]
+                if state:
+                    self.metrics["status"].add_metric([*base_labels, stack, state], 1)
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["uptime"]
+        yield self.metrics["status"]
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
