@@ -1891,13 +1891,13 @@ class WanSegmentUtilizationCable(FritzCapability):
 
     def create_metrics(self) -> None:
         self.metrics["utilization"] = GaugeMetricFamily(
-            "fritz_segment_utilization_percent",
+            "fritz_cable_segment_utilization_percent",
             "Shared cable segment utilization of the newest sample",
             labels=["serial", "friendly_name", "direction", "scope"],
             unit="percent",
         )
         self.metrics["sample_age"] = GaugeMetricFamily(
-            "fritz_segment_sample_timestamp_seconds",
+            "fritz_cable_segment_sample_timestamp_seconds",
             "Unix timestamp of the newest shared-segment utilization sample",
             labels=["serial", "friendly_name"],
             unit="seconds",

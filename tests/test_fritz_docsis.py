@@ -711,14 +711,14 @@ class TestWanSegmentUtilizationCable:
         metrics = self._collect(mock_fritzconnection)
         by_name = {m.name: m for m in metrics}
 
-        assert "fritz_segment_utilization_percent" in by_name
-        util = _sample_map(by_name["fritz_segment_utilization_percent"])
+        assert "fritz_cable_segment_utilization_percent" in by_name
+        util = _sample_map(by_name["fritz_cable_segment_utilization_percent"])
         assert util  # at least one sample was emitted
 
         # Newest value of each of the four (direction, scope) combinations.
         keyed = {
             (s.labels["direction"], s.labels["scope"]): s.value
-            for s in by_name["fritz_segment_utilization_percent"].samples
+            for s in by_name["fritz_cable_segment_utilization_percent"].samples
         }
         assert keyed[("downstream", "own")] == pytest.approx(1.2345)
         assert keyed[("upstream", "own")] == pytest.approx(9.87)
@@ -735,8 +735,8 @@ class TestWanSegmentUtilizationCable:
         metrics = self._collect(mock_fritzconnection)
         by_name = {m.name: m for m in metrics}
 
-        assert "fritz_segment_sample_timestamp_seconds" in by_name
-        age = by_name["fritz_segment_sample_timestamp_seconds"]
+        assert "fritz_cable_segment_sample_timestamp_seconds" in by_name
+        age = by_name["fritz_cable_segment_sample_timestamp_seconds"]
         assert len(age.samples) == 1
         assert age.samples[0].value == 1789671960
         assert age.samples[0].labels["friendly_name"] == "FritzCable"
@@ -754,7 +754,7 @@ class TestWanSegmentUtilizationCable:
             "lastSampleTime": 1700000000,
         }
         metrics = self._collect(mock_fritzconnection, raw)
-        util = next(m for m in metrics if m.name == "fritz_segment_utilization_percent")
+        util = next(m for m in metrics if m.name == "fritz_cable_segment_utilization_percent")
         # downstream newest is null and upstream is empty -> nothing emitted
         assert util.samples == []
 
@@ -777,9 +777,9 @@ class TestWanSegmentUtilizationCable:
         metrics = list(collector.collect())
 
         by_name = {m.name: m for m in metrics}
-        assert "fritz_segment_utilization_percent" in by_name
-        assert by_name["fritz_segment_utilization_percent"].samples == []
-        assert by_name["fritz_segment_sample_timestamp_seconds"].samples == []
+        assert "fritz_cable_segment_utilization_percent" in by_name
+        assert by_name["fritz_cable_segment_utilization_percent"].samples == []
+        assert by_name["fritz_cable_segment_sample_timestamp_seconds"].samples == []
 
     def test_check_capability_enabled_on_cable(self, mock_fritzconnection: MagicMock):
         fc = mock_fritzconnection.return_value
@@ -840,7 +840,7 @@ class TestWanSegmentUtilizationCable:
             metrics = list(collector.collect())
 
         by_name = {m.name: m for m in metrics}
-        assert by_name["fritz_segment_utilization_percent"].samples == []
+        assert by_name["fritz_cable_segment_utilization_percent"].samples == []
         assert "fritz_device_reachable" in by_name
 
 
