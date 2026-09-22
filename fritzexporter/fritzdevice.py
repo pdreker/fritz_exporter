@@ -192,6 +192,13 @@ class FritzCollector(Collector):
         # which are the authority on what each device actually supports.
         self._capability_instances: FritzCapabilities = FritzCapabilities()
         self._collect_lock = threading.RLock()
+        # Counters describing the exporter's own operation (self-monitoring).
+        # Guarded by a dedicated lock because scrapes increment/read them from
+        # threads that do NOT hold _collect_lock (e.g. the lock-timeout path).
+        self._scrape_stats_lock = threading.Lock()
+        self._scrapes_per_device: dict[tuple[str, str], int] = {}
+        self._scrape_timeouts: int = 0
+        self._scrape_failures: int = 0
 
     def register(self, fritzdev: FritzDevice) -> None:
         self.devices.append(fritzdev)
@@ -252,6 +259,39 @@ class FritzCollector(Collector):
                 still_offline.append(offline)
         self.offline_devices = still_offline
 
+    def _build_self_monitoring_metrics(
+        self,
+    ) -> tuple[CounterMetricFamily, CounterMetricFamily, CounterMetricFamily]:
+        """Build exporter self-monitoring counters for the completed cycle.
+
+        Marks the cycle as a completed scrape for every device that was processed
+        (reachable or not; offline-registered devices are never scraped) and
+        reports the accumulated lock timeouts and scrape failures.
+        """
+        with self._scrape_stats_lock:
+            for dev in self.devices:
+                key = (dev.serial, dev.friendly_name)
+                self._scrapes_per_device[key] = self._scrapes_per_device.get(key, 0) + 1
+            scrapes_total = CounterMetricFamily(
+                "fritz_scrapes_total",
+                "Total number of completed scrape cycles per Fritz device.",
+                labels=["serial", "friendly_name"],
+            )
+            for (serial, friendly_name), count in self._scrapes_per_device.items():
+                scrapes_total.add_metric([serial, friendly_name], float(count))
+            timeouts_total = CounterMetricFamily(
+                "fritz_scrapes_timeouts_total",
+                "Scrapes skipped because a previous scrape was still in progress "
+                "when the collector lock deadline was reached.",
+            )
+            timeouts_total.add_metric([], float(self._scrape_timeouts))
+            failures_total = CounterMetricFamily(
+                "fritz_scrapes_failed_total",
+                "Scrapes aborted by an unexpected error during collection.",
+            )
+            failures_total.add_metric([], float(self._scrape_failures))
+        return scrapes_total, timeouts_total, failures_total
+
     def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
         # The lock is held for the whole scrape (blocking TR-064 calls included),
         # so acquiring it must be bounded: a slow or wedged first scrape would
@@ -261,6 +301,8 @@ class FritzCollector(Collector):
         # ensures the in-flight scrape eventually releases the lock. With
         # connection_timeout=0, the in-flight scrape may still remain blocked.
         if not self._collect_lock.acquire(timeout=SCRAPE_LOCK_TIMEOUT):
+            with self._scrape_stats_lock:
+                self._scrape_timeouts += 1
             logger.warning(
                 "Skipping scrape: previous scrape still in progress after %.0fs",
                 SCRAPE_LOCK_TIMEOUT,
@@ -289,6 +331,13 @@ class FritzCollector(Collector):
             for name, capa in self._capability_instances.items():
                 collected.extend(list(capa.get_metrics(self.devices, name)))
 
+            # Built under the stats lock, yielded outside it, so the counters in
+            # one output agree with the fritz_device_reachable gauge of the same cycle.
+            scrapes_total, timeouts_total, failures_total = self._build_self_monitoring_metrics()
+            yield scrapes_total
+            yield timeouts_total
+            yield failures_total
+
             # Yield device availability metric for all known devices
             device_up = GaugeMetricFamily(
                 "fritz_device_reachable",
@@ -302,6 +351,12 @@ class FritzCollector(Collector):
             yield device_up
 
             yield from collected
+        except Exception:
+            # An unexpected error aborts the whole scrape (the lock is released
+            # below); record it so the exporter's own health reflects it.
+            with self._scrape_stats_lock:
+                self._scrape_failures += 1
+            raise
         finally:
             self._collect_lock.release()
 

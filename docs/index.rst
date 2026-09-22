@@ -65,6 +65,21 @@ The following groups of metrics are currently available:
 * DOCSIS cable channel statistics (auto-detected on cable boxes; power, MER/MSE, corrected/uncorrected errors, latency)
 * Home Automation Devices (switches, heating valves, temperatures, power meters, and battery status; window/door sensors (open/closed) are not yet reported)
 
+Exporter self-monitoring
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+In addition to the Fritz device data above, the exporter reports metrics about
+its own operation:
+
+* ``fritz_device_reachable`` -- whether a device was reachable during the last scrape
+* ``fritz_scrapes_total`` -- number of completed scrape cycles per device
+* ``fritz_scrapes_timeouts_total`` -- scrapes skipped because a previous scrape
+  was still in progress when the collector lock deadline was reached
+* ``fritz_scrapes_failed_total`` -- scrapes aborted by an unexpected error
+
+The standard ``prometheus_client`` process and interpreter metrics
+(``process_*``, ``python_gc_*``, ``python_info``) are exposed as well.
+
 If there is any information missing or not displayed on your specific device, please open an issue on GitHub.
 
 Known Problems
