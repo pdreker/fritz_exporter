@@ -93,7 +93,7 @@ class FritzCapability(ABC):
             if device.capabilities[name].present and device.available:
                 try:
                     self._generate_metric_values(device)
-                except FritzConnectionException, RequestException:
+                except (FritzConnectionException, RequestException):
                     logger.exception(
                         "Device %s is unreachable, skipping %s metrics for this collection cycle",
                         device.host,
@@ -1229,7 +1229,7 @@ class MeshTopology(FritzCapability):
             # for this device — do NOT mark it unavailable.
             logger.debug("No mesh topology available from %s (not the mesh master)", device.host)
             return
-        except FritzConnectionException, RequestException:
+        except (FritzConnectionException, RequestException):
             # The mesh list is fetched over HTTP; a transient failure should not
             # mark the whole device unavailable — just skip mesh metrics this cycle.
             logger.warning("Failed to retrieve mesh topology from %s", device.host)
@@ -1597,7 +1597,7 @@ class HomeAutomation(FritzCapability):
             ha_result = device.fc.call_action(
                 "X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos", NewAIN=ain
             )
-        except FritzArgumentError, FritzActionError, FritzArrayIndexError:
+        except (FritzArgumentError, FritzActionError, FritzArrayIndexError):
             logger.debug("Could not fetch HKR valve state for ain %s, skipping", ain)
             return
 
@@ -1848,46 +1848,24 @@ class WanSegmentUtilization(FritzCapability):
     per-sample utilization of the shared medium, split into the traffic this
     box generates (``own``) and the total on the segment (``total``, including
     all other subscribers), for downstream and upstream. On cable boxes this
-    is the shared coax segment; the endpoint itself is not cable-specific.
+    is the shared coax segment; the endpoint itself is not cable-specific and
+    is available on any Fritz!OS 7+ box.
 
     Segment ``0`` covers the last hour at minute granularity (60 one-minute
     averages). We expose only the *newest* sample of each series — the last
     element of each list — aligned by the shared ``lastSampleTime``.
 
-    Auto-detected on cable boxes (the same probe as :class:`WanDocsisCable`).
+    Auto-detected on any box exposing the common WAN interface service (the
+    REST API requires Fritz!OS 7+); the data is fetched through the shared
+    web UI client.
     """
 
     def __init__(self) -> None:
         super().__init__()
-        # Presence mirrors WanDocsisCable - determined by the WAN access type.
-        self.present = False
-
-    def check_capability(self, device: FritzDevice) -> None:
-        try:
-            wan_status = device.fc.call_action(
-                "WANCommonInterfaceConfig1", "GetCommonLinkProperties"
-            )
-        except (
-            FritzServiceError,
-            FritzActionError,
-            FritzInternalError,
-            FritzArgumentError,
-            FritzConnectionException,
-        ):
-            logger.debug(
-                "No WAN access type info on %s, segment utilization capability disabled",
-                device.host,
-            )
-            self.present = False
-            return
-
-        self.present = wan_status.get("NewWANAccessType") in ("Cable", "X_AVM-DE_Cable")
-        logger.debug(
-            "Capability %s set to %s on device %s",
-            type(self).__name__,
-            self.present,
-            device.host,
-        )
+        # The REST API is available on any Fritz!OS 7+ box, independent of
+        # the WAN access type (cable/DSL/fiber). Presence is determined by the
+        # common WAN interface service, which all modern boxes expose.
+        self.requirements.append(("WANCommonInterfaceConfig1", "GetCommonLinkProperties"))
 
     def create_metrics(self) -> None:
         self.metrics["utilization"] = GaugeMetricFamily(
@@ -1960,41 +1938,17 @@ class WanConnectionStatus(FritzCapability):
     (``"disabled"``, ``"connecting"``, ...). The state string is kept as the
     ``state`` label so callers can disambiguate the non-connected cases.
 
-    Auto-detected on cable boxes (the same probe as :class:`WanDocsisCable`);
-    the data is fetched through the same authenticated client.
+    Auto-detected on any box exposing the common WAN interface service (the
+    REST API requires Fritz!OS 7+); the data is fetched through the shared
+    web UI client.
     """
 
     def __init__(self) -> None:
         super().__init__()
-        # Presence mirrors WanDocsisCable - determined by the WAN access type.
-        self.present = False
-
-    def check_capability(self, device: FritzDevice) -> None:
-        try:
-            wan_status = device.fc.call_action(
-                "WANCommonInterfaceConfig1", "GetCommonLinkProperties"
-            )
-        except (
-            FritzServiceError,
-            FritzActionError,
-            FritzInternalError,
-            FritzArgumentError,
-            FritzConnectionException,
-        ):
-            logger.debug(
-                "No WAN access type info on %s, connection status capability disabled",
-                device.host,
-            )
-            self.present = False
-            return
-
-        self.present = wan_status.get("NewWANAccessType") in ("Cable", "X_AVM-DE_Cable")
-        logger.debug(
-            "Capability %s set to %s on device %s",
-            type(self).__name__,
-            self.present,
-            device.host,
-        )
+        # The REST API is available on any Fritz!OS 7+ box, independent of
+        # the WAN access type (cable/DSL/fiber). Presence is determined by the
+        # common WAN interface service, which all modern boxes expose.
+        self.requirements.append(("WANCommonInterfaceConfig1", "GetCommonLinkProperties"))
 
     def create_metrics(self) -> None:
         self.metrics["uptime"] = CounterMetricFamily(
