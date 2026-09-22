@@ -16,8 +16,8 @@ from prometheus_client.registry import Collector
 from requests.exceptions import RequestException
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
-from fritzexporter.fritz_docsis import FritzDocsisClient
 from fritzexporter.fritzcapabilities import FritzCapabilities
+from fritzexporter.fritz_webui import FritzWebUiClient
 from fritzexporter.tr064_remote import ConnectionOptions, create_fritz_connection
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
@@ -65,7 +65,7 @@ class FritzDevice:
         self.friendly_name: str = name
         self.host_info: bool = host_info
         self.wifi_client_info: bool = wifi_client_info
-        self.docsis_client: FritzDocsisClient | None = None
+        self.webui_client: FritzWebUiClient | None = None
         self.available: bool = True
 
         if len(creds.password) > FRITZ_MAX_PASSWORD_LENGTH:
@@ -109,7 +109,7 @@ class FritzDevice:
                 "Reading cable channel data from the web interface.",
                 creds.host,
             )
-            self.docsis_client = FritzDocsisClient(
+            self.webui_client = FritzWebUiClient(
                 creds.host,
                 creds.user,
                 creds.password,
