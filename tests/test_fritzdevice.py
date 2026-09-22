@@ -1156,6 +1156,10 @@ class TestConcurrentScrapes:
 
         collector = FritzCollector()
         device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+        # These tests exercise the collector lock, not the web UI fetch path.
+        # Disable the web UI client so the REST capabilities (enabled on this
+        # device via WANCommonInterfaceConfig1) skip their HTTP fetch.
+        device.webui_client = None
         collector.register(device)
         return collector
 

@@ -119,6 +119,7 @@ class TestWanSegmentUtilization:
         services = {
             **fc_services_capabilities["DeviceInfo"],
             **fc_services_capabilities["WanCommonInterfaceByteRate"],
+            **fc_services_capabilities["WanCommonInterfaceConfig"],
         }
         fc.services = create_fc_services(services)
 
@@ -187,12 +188,15 @@ class TestWanSegmentUtilization:
         # downstream newest is null and upstream is empty -> nothing emitted
         assert util.samples == []
 
-    def test_disabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
+    def test_enabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
+        """The REST API is not cable-specific; present on any box with the
+        common WAN interface service."""
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
         services = {
             **fc_services_capabilities["DeviceInfo"],
             **fc_services_capabilities["WanCommonInterfaceByteRate"],
+            **fc_services_capabilities["WanCommonInterfaceConfig"],
         }
         fc.services = create_fc_services(services)
 
@@ -224,6 +228,7 @@ class TestWanSegmentUtilization:
         services = {
             **fc_services_capabilities["DeviceInfo"],
             **fc_services_capabilities["WanCommonInterfaceByteRate"],
+            **fc_services_capabilities["WanCommonInterfaceConfig"],
         }
         fc.services = create_fc_services(services)
 
@@ -250,6 +255,7 @@ class TestWanSegmentUtilization:
         services = {
             **fc_services_capabilities["DeviceInfo"],
             **fc_services_capabilities["WanCommonInterfaceByteRate"],
+            **fc_services_capabilities["WanCommonInterfaceConfig"],
         }
         fc.services = create_fc_services(services)
 
@@ -353,6 +359,7 @@ class TestWanConnectionStatus:
         services = {
             **fc_services_capabilities["DeviceInfo"],
             **fc_services_capabilities["WanCommonInterfaceByteRate"],
+            **fc_services_capabilities["WanCommonInterfaceConfig"],
         }
         fc.services = create_fc_services(services)
         return fc
@@ -426,12 +433,15 @@ class TestWanConnectionStatus:
         assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
         assert by_name["fritz_wan_connection_status"].samples == []
 
-    def test_disabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
+    def test_enabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
+        """The REST API is not cable-specific; present on any box with the
+        common WAN interface service."""
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
         services = {
             **fc_services_capabilities["DeviceInfo"],
             **fc_services_capabilities["WanCommonInterfaceByteRate"],
+            **fc_services_capabilities["WanCommonInterfaceConfig"],
         }
         fc.services = create_fc_services(services)
 
@@ -440,7 +450,7 @@ class TestWanConnectionStatus:
             "FritzCable",
             host_info=False,
         )
-        assert device.capabilities["WanConnectionStatus"].present is False
+        assert device.capabilities["WanConnectionStatus"].present is True
 
         collector = FritzCollector()
         collector.register(device)
@@ -448,6 +458,55 @@ class TestWanConnectionStatus:
         by_name = {m.name: m for m in metrics}
         assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
         assert by_name["fritz_wan_connection_status"].samples == []
+
+    def test_fetches_connection_status(
+        self, mock_fritzconnection: MagicMock
+    ):
+        """The REST connection status is technology-independent: it is fetched
+        and emitted regardless of the WAN access type."""
+        fc = mock_fritzconnection.return_value
+        # Plain call_action_mock reports NewWANAccessType "PPPoE"; the
+        # capability is enabled via the common WAN interface service alone.
+        fc.call_action.side_effect = call_action_mock
+        services = {
+            **fc_services_capabilities["DeviceInfo"],
+            **fc_services_capabilities["WanCommonInterfaceByteRate"],
+            **fc_services_capabilities["WanCommonInterfaceConfig"],
+        }
+        fc.services = create_fc_services(services)
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzCable",
+            host_info=False,
+        )
+        assert device.capabilities["WanConnectionStatus"].present is True
+
+        mock_client = MagicMock()
+        mock_client.fetch_page.return_value = {}
+        mock_client.fetch_api.return_value = CONNECTIONS_RAW
+        device.webui_client = mock_client
+
+        collector.register(device)
+        metrics = list(collector.collect())
+        by_name = {m.name: m for m in metrics}
+
+        # Connection status was fetched and emitted on the non-cable box.
+        keyed = {
+            (s.labels["connection"], s.labels["stack"], s.labels["state"]): s.value
+            for s in by_name["fritz_wan_connection_status"].samples
+        }
+        assert keyed == {
+            ("connection0001", "ipv4", "connected"): 1,
+            ("connection0001", "ipv6", "connected"): 1,
+            ("connection0002", "ipv4", "disabled"): 0,
+            ("connection0002", "ipv6", "disabled"): 0,
+        }
+        # WanSegmentUtilization shares the same web UI client, so fetch_api is
+        # also called for the segment endpoint; assert the connections endpoint
+        # was among the calls.
+        mock_client.fetch_api.assert_any_call("/api/v0/generic/connections")
 
     def test_fetch_error_does_not_break_collection(
         self, mock_fritzconnection: MagicMock, caplog
