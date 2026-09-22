@@ -1958,10 +1958,10 @@ class WanConnectionStatusCable(
     ``ip6_connstatus`` (``"connected"``, ``"disabled"``, ``"connecting"``, ...).
 
     Uptimes are exposed as counters (they reset on each reconnect, like the
-    PPP uptime metric), and the state as a gauge with the state string as a
-    label: the value is ``1`` for the currently reported state of the
-    connection, so a stack reports exactly one sample whose labels carry its
-    state.
+    PPP uptime metric), and the state as a gauge whose value is ``1`` when the
+    stack reports ``"connected"`` and ``0`` for any other state
+    (``"disabled"``, ``"connecting"``, ...). The state string is kept as the
+    ``state`` label so callers can disambiguate the non-connected cases.
 
     Auto-detected on cable boxes (the same probe as :class:`WanDocsisCable`);
     the data is fetched through the same authenticated client.
@@ -2008,7 +2008,7 @@ class WanConnectionStatusCable(
         )
         self.metrics["status"] = GaugeMetricFamily(
             "fritz_wan_connection_status",
-            "Per-stack connection state of a WAN connection (always 1, state in label)",
+            "Per-stack connection state of a WAN connection (1 when connected, 0 otherwise; state in label)",
             labels=[
                 "serial",
                 "friendly_name",
@@ -2045,7 +2045,8 @@ class WanConnectionStatusCable(
                     self.metrics["uptime"].add_metric([*base_labels, stack], uptime)
                 state = conn[status_key]
                 if state:
-                    self.metrics["status"].add_metric([*base_labels, stack, state], 1)
+                    connected = 1 if state == "connected" else 0
+                    self.metrics["status"].add_metric([*base_labels, stack, state], connected)
 
     def _get_metric_values(
         self,
