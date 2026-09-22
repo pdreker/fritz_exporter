@@ -2001,13 +2001,13 @@ class WanConnectionStatusCable(
 
     def create_metrics(self) -> None:
         self.metrics["uptime"] = CounterMetricFamily(
-            "fritz_connection_uptime",
+            "fritz_wan_connection_uptime",
             "Per-stack uptime of a WAN connection in seconds (resets on reconnect)",
             labels=["serial", "friendly_name", "connection", "connection_name", "stack"],
             unit="seconds",
         )
         self.metrics["status"] = GaugeMetricFamily(
-            "fritz_connection_status",
+            "fritz_wan_connection_status",
             "Per-stack connection state of a WAN connection (always 1, state in label)",
             labels=[
                 "serial",
