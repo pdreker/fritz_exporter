@@ -977,8 +977,8 @@ class TestWanConnectionStatusCable:
         assert keyed == {
             ("connection0001", "ipv4", "connected"): 1,
             ("connection0001", "ipv6", "connected"): 1,
-            ("connection0002", "ipv4", "disabled"): 1,
-            ("connection0002", "ipv6", "disabled"): 1,
+            ("connection0002", "ipv4", "disabled"): 0,
+            ("connection0002", "ipv6", "disabled"): 0,
         }
 
     def test_no_client_no_samples(self, mock_fritzconnection: MagicMock):
