@@ -951,17 +951,17 @@ class TestWanConnectionStatusCable:
         metrics = self._collect(mock_fritzconnection)
         by_name = {m.name: m for m in metrics}
 
-        assert "fritz_connection_uptime_seconds" in by_name
+        assert "fritz_wan_connection_uptime_seconds" in by_name
         keyed = {
             (s.labels["connection"], s.labels["stack"]): s.value
-            for s in by_name["fritz_connection_uptime_seconds"].samples
+            for s in by_name["fritz_wan_connection_uptime_seconds"].samples
         }
         assert keyed == {
             ("connection0001", "ipv4"): 689223,
             ("connection0001", "ipv6"): 689224,
         }
         # the disabled connection reports empty uptimes -> no samples
-        sample = by_name["fritz_connection_uptime_seconds"].samples[0]
+        sample = by_name["fritz_wan_connection_uptime_seconds"].samples[0]
         assert sample.labels["friendly_name"] == "FritzCable"
         assert sample.labels["connection_name"] == "internet"
 
@@ -969,10 +969,10 @@ class TestWanConnectionStatusCable:
         metrics = self._collect(mock_fritzconnection)
         by_name = {m.name: m for m in metrics}
 
-        assert "fritz_connection_status" in by_name
+        assert "fritz_wan_connection_status" in by_name
         keyed = {
             (s.labels["connection"], s.labels["stack"], s.labels["state"]): s.value
-            for s in by_name["fritz_connection_status"].samples
+            for s in by_name["fritz_wan_connection_status"].samples
         }
         assert keyed == {
             ("connection0001", "ipv4", "connected"): 1,
@@ -995,8 +995,8 @@ class TestWanConnectionStatusCable:
         metrics = list(collector.collect())
 
         by_name = {m.name: m for m in metrics}
-        assert by_name["fritz_connection_uptime_seconds"].samples == []
-        assert by_name["fritz_connection_status"].samples == []
+        assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
+        assert by_name["fritz_wan_connection_status"].samples == []
 
     def test_disabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
         fc = mock_fritzconnection.return_value
@@ -1018,8 +1018,8 @@ class TestWanConnectionStatusCable:
         collector.register(device)
         metrics = list(collector.collect())
         by_name = {m.name: m for m in metrics}
-        assert by_name["fritz_connection_uptime_seconds"].samples == []
-        assert by_name["fritz_connection_status"].samples == []
+        assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
+        assert by_name["fritz_wan_connection_status"].samples == []
 
     def test_fetch_error_does_not_break_collection(
         self, mock_fritzconnection: MagicMock, caplog
@@ -1042,6 +1042,6 @@ class TestWanConnectionStatusCable:
             metrics = list(collector.collect())
 
         by_name = {m.name: m for m in metrics}
-        assert by_name["fritz_connection_uptime_seconds"].samples == []
-        assert by_name["fritz_connection_status"].samples == []
+        assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
+        assert by_name["fritz_wan_connection_status"].samples == []
         assert "fritz_device_reachable" in by_name
