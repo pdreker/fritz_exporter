@@ -352,8 +352,8 @@ class TestFritzCollector:
             "HostInfo",
             "HomeAutomation",
             "WanDocsisCable",
-            "WanSegmentUtilizationCable",
-            "WanConnectionStatusCable",
+            "WanSegmentUtilization",
+            "WanConnectionStatus",
         ]
 
         assert list(collector._capability_instances.capabilities.keys()) == all_capas
