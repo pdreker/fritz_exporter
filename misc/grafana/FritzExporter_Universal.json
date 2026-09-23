@@ -3,8 +3,8 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "klsN8SL6d",
-    "generation": 28,
-    "creationTimestamp": "2026-09-17T20:00:57Z",
+    "generation": 6,
+    "creationTimestamp": "2026-09-22T22:32:44Z",
     "labels": {},
     "annotations": {}
   },
@@ -22,9 +22,6 @@
               "matchAny": false,
               "tags": [],
               "type": "dashboard"
-            },
-            "labels": {
-              "grafana.app/export-label": "grafana-1"
             }
           },
           "enable": true,
@@ -60,6 +57,7 @@
                       "spec": {
                         "dsType": "prometheus",
                         "editorMode": "code",
+                        "exemplar": false,
                         "expr": "fritz_wan_connection_status{friendly_name=\"${box}\"}",
                         "groupBy": [
                           {
@@ -69,12 +67,13 @@
                             "type": "time"
                           }
                         ],
+                        "instant": true,
                         "interval": "",
-                        "legendFormat": "{{connection_name}} {{stack}}",
+                        "legendFormat": "{{media_type}} {{stack}}",
                         "measurement": "fritzbox_value",
                         "orderByTime": "ASC",
                         "policy": "default",
-                        "range": true,
+                        "range": false,
                         "resultFormat": "time_series",
                         "select": [
                           [
@@ -124,7 +123,7 @@
                 "colorMode": "background",
                 "graphMode": "none",
                 "justifyMode": "center",
-                "orientation": "horizontal",
+                "orientation": "vertical",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
                   "calcs": [
@@ -205,6 +204,7 @@
                       "spec": {
                         "dsType": "prometheus",
                         "editorMode": "code",
+                        "exemplar": false,
                         "expr": "fritz_ppp_connection_uptime_seconds_total{friendly_name=\"${box}\"}",
                         "groupBy": [
                           {
@@ -214,6 +214,7 @@
                             "type": "time"
                           }
                         ],
+                        "instant": false,
                         "interval": "",
                         "legendFormat": "",
                         "measurement": "fritzbox_value",
@@ -262,10 +263,11 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "fritz_connection_uptime_seconds_total{friendly_name=\"${box}\"}",
-                        "instant": false,
-                        "legendFormat": "{{connection_name}} {{stack}}",
-                        "range": true
+                        "exemplar": false,
+                        "expr": "fritz_wan_connection_uptime_seconds_total{friendly_name=\"${box}\"}",
+                        "instant": true,
+                        "legendFormat": "{{media_type}} {{stack}}",
+                        "range": false
                       },
                       "labels": {
                         "grafana.app/export-label": "prometheus-1",
@@ -292,7 +294,7 @@
                 "colorMode": "value",
                 "graphMode": "none",
                 "justifyMode": "center",
-                "orientation": "horizontal",
+                "orientation": "vertical",
                 "percentChangeColorMode": "standard",
                 "reduceOptions": {
                   "calcs": [
@@ -637,7 +639,7 @@
         "kind": "Panel",
         "spec": {
           "id": 21,
-          "title": "Fritzbox Uptime",
+          "title": "Fritz!Box Uptime",
           "description": "",
           "links": [],
           "data": {
@@ -755,8 +757,12 @@
                         "color": "rgba(245, 54, 54, 0.9)"
                       },
                       {
-                        "value": 1,
-                        "color": "rgba(50, 172, 45, 0.97)"
+                        "value": 3600,
+                        "color": "semi-dark-yellow"
+                      },
+                      {
+                        "value": 86400,
+                        "color": "semi-dark-green"
                       }
                     ]
                   }
@@ -1080,7 +1086,7 @@
                     "min"
                   ],
                   "displayMode": "table",
-                  "placement": "bottom",
+                  "placement": "right",
                   "showLegend": true
                 },
                 "tooltip": {
@@ -1741,12 +1747,14 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
+                        "exemplar": false,
                         "expr": "(fritz_host_active{friendly_name=\"${box}\",interface!=\"\"}) * on(instance,hostname,mac_address) group_right() fritz_host_active",
                         "format": "time_series",
                         "instant": true,
                         "interval": "",
                         "intervalFactor": 1,
-                        "legendFormat": ""
+                        "legendFormat": "",
+                        "range": false
                       },
                       "labels": {
                         "grafana.app/export-label": "prometheus-1",
@@ -3405,6 +3413,130 @@
           }
         }
       },
+      "panel-46": {
+        "kind": "Panel",
+        "spec": {
+          "id": 46,
+          "title": "IP Addresses",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "exemplar": false,
+                        "expr": "fritz_wan_connection_status{friendly_name=\"${box}\",state=\"connected\"}",
+                        "instant": true,
+                        "legendFormat": "__auto",
+                        "range": false
+                      },
+                      "labels": {
+                        "grafana.app/export-label": "prometheus-1",
+                        "grafana.app/export-datasource-name": "Prometheus"
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [
+                {
+                  "kind": "Transformation",
+                  "group": "labelsToFields",
+                  "spec": {
+                    "options": {
+                      "keepLabels": [
+                        "ip_address",
+                        "stack"
+                      ],
+                      "mode": "columns"
+                    }
+                  }
+                },
+                {
+                  "kind": "Transformation",
+                  "group": "merge",
+                  "spec": {
+                    "options": {}
+                  }
+                },
+                {
+                  "kind": "Transformation",
+                  "group": "organize",
+                  "spec": {
+                    "options": {
+                      "excludeByName": {
+                        "Time": true,
+                        "fritz_wan_connection_status": true,
+                        "ip_address": false
+                      },
+                      "includeByName": {},
+                      "indexByName": {
+                        "Time": 2,
+                        "fritz_wan_connection_status": 3,
+                        "ip_address": 0,
+                        "stack": 1
+                      },
+                      "renameByName": {}
+                    }
+                  }
+                }
+              ],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "table",
+            "version": "13.2.2",
+            "spec": {
+              "options": {
+                "cellHeight": "sm",
+                "frameIndex": 0,
+                "showHeader": false
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "text"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": false,
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
       "panel-8": {
         "kind": "Panel",
         "spec": {
@@ -3724,10 +3856,10 @@
                         "x": 6,
                         "y": 0,
                         "width": 6,
-                        "height": 6,
+                        "height": 3,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-13"
+                          "name": "panel-21"
                         }
                       }
                     },
@@ -3762,8 +3894,8 @@
                       "spec": {
                         "x": 0,
                         "y": 3,
-                        "width": 3,
-                        "height": 3,
+                        "width": 6,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-44"
@@ -3773,39 +3905,13 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 3,
-                        "y": 3,
-                        "width": 3,
-                        "height": 3,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-21"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 6,
-                        "width": 6,
-                        "height": 6,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-10"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
                         "x": 6,
-                        "y": 6,
+                        "y": 3,
                         "width": 6,
-                        "height": 6,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-26"
+                          "name": "panel-13"
                         }
                       }
                     },
@@ -3839,7 +3945,33 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 12,
+                        "y": 7,
+                        "width": 6,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-10"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 6,
+                        "y": 7,
+                        "width": 6,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-46"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 11,
                         "width": 12,
                         "height": 6,
                         "element": {
@@ -3858,6 +3990,19 @@
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-24"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 17,
+                        "width": 12,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-26"
                         }
                       }
                     }
@@ -3934,7 +4079,7 @@
                         "x": 0,
                         "y": 0,
                         "width": 4,
-                        "height": 5,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-38"
@@ -3947,7 +4092,7 @@
                         "x": 4,
                         "y": 0,
                         "width": 11,
-                        "height": 10,
+                        "height": 8,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-37"
@@ -3960,7 +4105,7 @@
                         "x": 15,
                         "y": 0,
                         "width": 9,
-                        "height": 10,
+                        "height": 8,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-45"
@@ -3971,9 +4116,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 5,
+                        "y": 4,
                         "width": 4,
-                        "height": 5,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-43"
@@ -3984,7 +4129,7 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 10,
+                        "y": 8,
                         "width": 8,
                         "height": 8,
                         "element": {
@@ -3997,7 +4142,7 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 8,
-                        "y": 10,
+                        "y": 8,
                         "width": 7,
                         "height": 8,
                         "element": {
@@ -4010,7 +4155,7 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 15,
-                        "y": 10,
+                        "y": 8,
                         "width": 9,
                         "height": 8,
                         "element": {
@@ -4023,7 +4168,7 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 18,
+                        "y": 16,
                         "width": 12,
                         "height": 8,
                         "element": {
@@ -4036,7 +4181,7 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 12,
-                        "y": 18,
+                        "y": 16,
                         "width": 12,
                         "height": 8,
                         "element": {
