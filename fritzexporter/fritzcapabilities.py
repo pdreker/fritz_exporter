@@ -1405,13 +1405,34 @@ class HostInfo(FritzCapability):
                     host_index,
                     host_ip,
                 )
-                avm_host_result = device.fc.call_action(
-                    "Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP", NewIPAddress=host_ip
-                )
-                host_interface = avm_host_result["NewInterfaceType"]
-                host_port = str(avm_host_result["NewX_AVM-DE_Port"])
-                host_model = avm_host_result["NewX_AVM-DE_Model"]
-                host_speed = avm_host_result["NewX_AVM-DE_Speed"]
+                try:
+                    avm_host_result = device.fc.call_action(
+                        "Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP", NewIPAddress=host_ip
+                    )
+                except FritzLookUpError:
+                    # The host's IP left the host table between GetGenericHostEntry
+                    # and this lookup (a client disconnected or its lease was
+                    # reassigned mid-scan), so the box reports UPnP errorCode 714,
+                    # NoSuchEntryInArray. This is a benign race on the DHCP server's
+                    # host table, not a device outage: fall back to "n/a" extended
+                    # info for this host and keep scanning. Letting it bubble up
+                    # would flip the whole device to unreachable for this cycle.
+                    logger.debug(
+                        "Host %s (IP %s) left the host table during scan of device "
+                        "serial %s; using n/a extended info for this host",
+                        host_index,
+                        host_ip,
+                        device.serial,
+                    )
+                    host_interface = "n/a"
+                    host_port = "n/a"
+                    host_model = "n/a"
+                    host_speed = 0
+                else:
+                    host_interface = avm_host_result["NewInterfaceType"]
+                    host_port = str(avm_host_result["NewX_AVM-DE_Port"])
+                    host_model = avm_host_result["NewX_AVM-DE_Model"]
+                    host_speed = avm_host_result["NewX_AVM-DE_Speed"]
             else:
                 logger.debug(
                     "Unable to fetch extended AVM host information for host number %s: no IP found",

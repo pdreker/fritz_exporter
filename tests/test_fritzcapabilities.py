@@ -7,6 +7,7 @@ from fritzconnection.core.exceptions import (
     FritzArgumentError,
     FritzArrayIndexError,
     FritzHttpInterfaceError,
+    FritzLookUpError,
     FritzServiceError,
 )
 from prometheus_client import CollectorRegistry, generate_latest
@@ -230,6 +231,89 @@ class TestHostInfoCapability:
         # Check - benign shrink path is logged and no unreachable error is emitted
         assert any(
             "Host table shrank during scan of device serial" in record.message
+            for record in caplog.records
+            if record.levelno == logging.DEBUG
+        )
+        assert not any(
+            "is unreachable, skipping HostInfo metrics for this collection cycle"
+            in record.message
+            for record in caplog.records
+        )
+
+    def test_host_leaving_mid_scan_keeps_device_reachable(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # A host leaving mid-scan makes X_AVM-DE_GetSpecificHostEntryByIP raise
+        # FritzLookUpError (UPnP errorCode 714, NoSuchEntryInArray): the host's IP
+        # disappeared from the host table between GetGenericHostEntry and the
+        # per-IP lookup. This is a benign race on the DHCP server's host table, not
+        # a device outage. The device must stay reachable; skip the extended info
+        # for the vanished host (fall back to "n/a") and keep the other hosts.
+        caplog.set_level(logging.DEBUG)
+
+        fc = mock_fritzconnection.return_value
+
+        def host_leaving_mock(service, action, **kwargs):
+            if service == "Hosts1" and action == "GetHostNumberOfEntries":
+                return {"NewHostNumberOfEntries": 2}
+            if service == "Hosts1" and action == "GetGenericHostEntry":
+                index = kwargs.get("NewIndex", 0)
+                return {
+                    "NewIPAddress": f"192.168.178.{10 + index}",
+                    "NewMACAddress": f"AA:BB:CC:DD:EE:0{index}",
+                    "NewHostName": f"host-{index}",
+                    "NewActive": 1,
+                }
+            if service == "Hosts1" and action == "X_AVM-DE_GetSpecificHostEntryByIP":
+                ip = kwargs.get("NewIPAddress")
+                if ip == "192.168.178.10":
+                    # host 0 left the table between the generic read and this lookup
+                    raise FritzLookUpError
+                return {
+                    "NewInterfaceType": "eth",
+                    "NewX_AVM-DE_Port": "LAN1",
+                    "NewX_AVM-DE_Model": "Mockgear",
+                    "NewX_AVM-DE_Speed": 1000,
+                }
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = host_leaving_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True
+        )
+        collector.register(device)
+
+        # Act
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check - device stays reachable despite the mid-scan host leaving
+        reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
+        assert len(reachable_metrics) == 1
+        fritzmock_samples = [
+            s for s in reachable_metrics[0].samples if s.labels["friendly_name"] == "FritzMock"
+        ]
+        assert len(fritzmock_samples) == 1
+        assert fritzmock_samples[0].value == 1.0
+
+        # Check - both hosts are still exported; the vanished host falls back to "n/a"
+        host_active_metrics = [m for m in metrics if m.name == "fritz_host_active"]
+        assert len(host_active_metrics) == 1
+        assert len(host_active_metrics[0].samples) == 2
+        vanished = [
+            s for s in host_active_metrics[0].samples if s.labels["ip_address"] == "192.168.178.10"
+        ]
+        assert len(vanished) == 1
+        assert vanished[0].labels["interface"] == "n/a"
+        assert vanished[0].labels["port"] == "n/a"
+        assert vanished[0].labels["model"] == "n/a"
+        assert vanished[0].value == 1.0
+
+        # Check - benign lookup-miss path is logged and no unreachable error is emitted
+        assert any(
+            "left the host table during scan of device serial" in record.message
             for record in caplog.records
             if record.levelno == logging.DEBUG
         )
