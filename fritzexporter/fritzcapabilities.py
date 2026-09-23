@@ -1954,7 +1954,15 @@ class WanConnectionStatus(FritzCapability):
         self.metrics["uptime"] = CounterMetricFamily(
             "fritz_wan_connection_uptime",
             "Per-stack uptime of a WAN connection in seconds (resets on reconnect)",
-            labels=["serial", "friendly_name", "connection", "connection_name", "stack"],
+            labels=[
+                "serial",
+                "friendly_name",
+                "connection",
+                "connection_name",
+                "media_type",
+                "ip_address",
+                "stack",
+            ],
             unit="seconds",
         )
         self.metrics["status"] = GaugeMetricFamily(
@@ -1965,6 +1973,8 @@ class WanConnectionStatus(FritzCapability):
                 "friendly_name",
                 "connection",
                 "connection_name",
+                "media_type",
+                "ip_address",
                 "stack",
                 "state",
             ],
@@ -1986,18 +1996,22 @@ class WanConnectionStatus(FritzCapability):
 
         labels = [device.serial, device.friendly_name]
         for conn in parse_connections_response(raw.get("connection", [])):
-            base_labels = [*labels, conn["uid"], conn["name"]]
-            for stack, uptime_key, status_key in (
-                ("ipv4", "ip4_uptime", "ip4_connstatus"),
-                ("ipv6", "ip6_uptime", "ip6_connstatus"),
+            base_labels = [*labels, conn["uid"], conn["name"], conn["media_type"]]
+            for stack, uptime_key, status_key, ip_key in (
+                ("ipv4", "ip4_uptime", "ip4_connstatus", "ip4_addr"),
+                ("ipv6", "ip6_uptime", "ip6_connstatus", "ip6_addr"),
             ):
                 uptime = conn[uptime_key]
                 if uptime is not None:
-                    self.metrics["uptime"].add_metric([*base_labels, stack], uptime)
+                    self.metrics["uptime"].add_metric(
+                        [*base_labels, conn[ip_key], stack], uptime
+                    )
                 state = conn[status_key]
                 if state:
                     connected = 1 if state == "connected" else 0
-                    self.metrics["status"].add_metric([*base_labels, stack, state], connected)
+                    self.metrics["status"].add_metric(
+                        [*base_labels, conn[ip_key], stack, state], connected
+                    )
 
     def _get_metric_values(
         self,

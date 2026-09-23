@@ -57,6 +57,8 @@ class ConnectionInfo(TypedDict):
     ip6_connstatus: str
     ip4_uptime: int | None
     ip6_uptime: int | None
+    ip4_addr: str
+    ip6_addr: str
 
 
 def _to_float(value: Any) -> float | None:
@@ -124,6 +126,8 @@ def parse_connections_response(raw: list[dict[str, Any]]) -> list[ConnectionInfo
                 "ip6_connstatus": str(entry.get("ip6_connstatus") or ""),
                 "ip4_uptime": _to_int(entry.get("ip4_uptime")),
                 "ip6_uptime": _to_int(entry.get("ip6_uptime")),
+                "ip4_addr": str(entry.get("ip4_masqaddr") or ""),
+                "ip6_addr": str(entry.get("ip6_addr") or ""),
             }
         )
     return connections
