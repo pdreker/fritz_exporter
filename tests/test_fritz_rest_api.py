@@ -295,6 +295,8 @@ CONNECTIONS_RAW = {
             "UID": "connection0001",
             "ip4_connstatus": "connected",
             "ip6_uptime": "689224",
+            "ip4_masqaddr": "217.11.144.246",
+            "ip6_addr": "2a02:590:24::5d76:9fd9:2847:3632/64",
         },
         {
             "ip6_mode": "ipv6_off",
@@ -305,6 +307,8 @@ CONNECTIONS_RAW = {
             "ip6_uptime": "",
             "ip4_connstatus": "disabled",
             "ip6_connstatus": "disabled",
+            "ip4_masqaddr": "0.0.0.0",
+            "ip6_addr": "",
         },
     ],
     "opmode": "opmode_standard",
@@ -329,10 +333,14 @@ class TestParseConnectionsResponse:
         assert active["ip6_uptime"] == 689224
         assert active["ip4_connstatus"] == "connected"
         assert active["ip6_connstatus"] == "connected"
+        assert active["ip4_addr"] == "217.11.144.246"
+        assert active["ip6_addr"] == "2a02:590:24::5d76:9fd9:2847:3632/64"
 
         assert disabled["ip4_uptime"] is None
         assert disabled["ip6_uptime"] is None
         assert disabled["ip4_connstatus"] == "disabled"
+        assert disabled["ip4_addr"] == "0.0.0.0"
+        assert disabled["ip6_addr"] == ""
 
     def test_handles_empty_list(self):
         assert parse_connections_response([]) == []
@@ -399,6 +407,8 @@ class TestWanConnectionStatus:
         sample = by_name["fritz_wan_connection_uptime_seconds"].samples[0]
         assert sample.labels["friendly_name"] == "FritzCable"
         assert sample.labels["connection_name"] == "internet"
+        assert sample.labels["media_type"] == "Cable"
+        assert sample.labels["ip_address"] == "217.11.144.246"
 
     def test_status_samples_carry_state_label(self, mock_fritzconnection: MagicMock):
         metrics = self._collect(mock_fritzconnection)
@@ -414,6 +424,26 @@ class TestWanConnectionStatus:
             ("connection0001", "ipv6", "connected"): 1,
             ("connection0002", "ipv4", "disabled"): 0,
             ("connection0002", "ipv6", "disabled"): 0,
+        }
+        # media_type and per-stack ip_address labels are carried through
+        # from the REST response
+        media_types = {
+            (s.labels["connection"], s.labels["media_type"])
+            for s in by_name["fritz_wan_connection_status"].samples
+        }
+        assert media_types == {
+            ("connection0001", "Cable"),
+            ("connection0002", "LTE"),
+        }
+        ip_addresses = {
+            (s.labels["connection"], s.labels["stack"], s.labels["ip_address"])
+            for s in by_name["fritz_wan_connection_status"].samples
+        }
+        assert ip_addresses == {
+            ("connection0001", "ipv4", "217.11.144.246"),
+            ("connection0001", "ipv6", "2a02:590:24::5d76:9fd9:2847:3632/64"),
+            ("connection0002", "ipv4", "0.0.0.0"),
+            ("connection0002", "ipv6", ""),
         }
 
     def test_no_client_no_samples(self, mock_fritzconnection: MagicMock):
