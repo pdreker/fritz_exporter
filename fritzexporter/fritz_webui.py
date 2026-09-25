@@ -69,7 +69,6 @@ class FritzWebUiClient:
         host_port = f"{host}:{port}" if port else host
         self.base_url = f"{scheme}://{host_port}"
         self.session = requests.Session()
-        self.session.timeout = timeout
         self._sid: str | None = None
         self._sid_expiry: float = 0.0
 
@@ -102,7 +101,9 @@ class FritzWebUiClient:
         """Fetch the login challenge / SID from login_sid.lua."""
         params = {"username": self.username} if self.username else {}
         try:
-            resp = self.session.get(f"{self.base_url}/login_sid.lua", params=params)
+            resp = self.session.get(
+                f"{self.base_url}/login_sid.lua", params=params, timeout=self.timeout
+            )
             resp.raise_for_status()
         except requests.RequestException as e:
             raise FritzWebUiError(f"login_sid.lua request failed: {e}") from e
@@ -145,6 +146,7 @@ class FritzWebUiClient:
             resp = self.session.post(
                 f"{self.base_url}/login_sid.lua",
                 data={"username": self.username, "response": response},
+                timeout=self.timeout,
             )
             resp.raise_for_status()
         except requests.RequestException as e:
@@ -184,7 +186,9 @@ class FritzWebUiClient:
         """POST to data.lua and return the parsed JSON document."""
         payload = {"sid": sid, "page": page, "xhrId": "all", "xhr": "1"}
         try:
-            resp = self.session.post(f"{self.base_url}/data.lua", data=payload)
+            resp = self.session.post(
+                f"{self.base_url}/data.lua", data=payload, timeout=self.timeout
+            )
             resp.raise_for_status()
         except requests.RequestException as e:
             raise FritzWebUiError(f"data.lua request failed: {e}") from e
@@ -234,7 +238,9 @@ class FritzWebUiClient:
         """
         headers = {"Authorization": f"AVM-SID {sid}"}
         try:
-            resp = self.session.get(f"{self.base_url}{path}", headers=headers)
+            resp = self.session.get(
+                f"{self.base_url}{path}", headers=headers, timeout=self.timeout
+            )
             resp.raise_for_status()
         except requests.RequestException as e:
             raise FritzWebUiError(f"REST API request failed for {path}: {e}") from e
