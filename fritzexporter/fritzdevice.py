@@ -81,7 +81,7 @@ class FritzDevice:
                 password=creds.password,
                 connection=connection,
             )
-        except (FritzConnectionException, RequestException):
+        except FritzConnectionException, RequestException:
             logger.exception("unable to connect to %s.", creds.host)
             raise
 
@@ -135,7 +135,7 @@ class FritzDevice:
             self.serial = device_info["NewSerialNumber"]
             self.model = device_info["NewModelName"]
 
-        except (FritzServiceError, FritzActionError):
+        except FritzServiceError, FritzActionError:
             logger.exception(
                 "Fritz Device %s does not provide basic device "
                 "info (Service: DeviceInfo1, Action: GetInfo)."
@@ -156,7 +156,7 @@ class FritzDevice:
             resp = self.fc.call_action("WANCommonInterfaceConfig", "GetCommonLinkProperties")
             link_status = resp.get("NewPhysicalLinkStatus")
             access_type = resp.get("NewWANAccessType") or ""
-        except (FritzServiceError, FritzActionError):
+        except FritzServiceError, FritzActionError:
             # Device simply has no WAN interface (e.g. a mesh repeater). That does
             # NOT make it unavailable — skip the connection-mode metric but keep
             # the device available so its other capabilities (uptime, WLAN, hosts)
@@ -165,7 +165,7 @@ class FritzDevice:
                 "No WAN connection-mode info on %s (no WAN service); skipping metric.", self.host
             )
             return None
-        except (FritzConnectionException, RequestException):
+        except FritzConnectionException, RequestException:
             logger.exception("Failed to retrieve connection mode info from %s", self.host)
             self.available = False
             return None

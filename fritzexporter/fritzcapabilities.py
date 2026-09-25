@@ -93,7 +93,7 @@ class FritzCapability(ABC):
             if device.capabilities[name].present and device.available:
                 try:
                     self._generate_metric_values(device)
-                except (FritzConnectionException, RequestException):
+                except FritzConnectionException, RequestException:
                     logger.exception(
                         "Device %s is unreachable, skipping %s metrics for this collection cycle",
                         device.host,
@@ -1229,7 +1229,7 @@ class MeshTopology(FritzCapability):
             # for this device — do NOT mark it unavailable.
             logger.debug("No mesh topology available from %s (not the mesh master)", device.host)
             return
-        except (FritzConnectionException, RequestException):
+        except FritzConnectionException, RequestException:
             # The mesh list is fetched over HTTP; a transient failure should not
             # mark the whole device unavailable — just skip mesh metrics this cycle.
             logger.warning("Failed to retrieve mesh topology from %s", device.host)
@@ -1618,7 +1618,7 @@ class HomeAutomation(FritzCapability):
             ha_result = device.fc.call_action(
                 "X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos", NewAIN=ain
             )
-        except (FritzArgumentError, FritzActionError, FritzArrayIndexError):
+        except FritzArgumentError, FritzActionError, FritzArrayIndexError:
             logger.debug("Could not fetch HKR valve state for ain %s, skipping", ain)
             return
 
