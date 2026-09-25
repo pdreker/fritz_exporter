@@ -17,6 +17,7 @@ from requests.exceptions import RequestException
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritzcapabilities import FritzCapabilities
+from fritzexporter.fritz_webui import FritzWebUiClient
 from fritzexporter.tr064_remote import ConnectionOptions, create_fritz_connection
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
@@ -64,6 +65,7 @@ class FritzDevice:
         self.friendly_name: str = name
         self.host_info: bool = host_info
         self.wifi_client_info: bool = wifi_client_info
+        self.webui_client: FritzWebUiClient | None = None
         self.available: bool = True
 
         if len(creds.password) > FRITZ_MAX_PASSWORD_LENGTH:
@@ -100,6 +102,28 @@ class FritzDevice:
                 "This will cause slow responses from the exporter. "
                 "Ensure prometheus is configured appropriately.",
                 creds.host,
+            )
+        # The web UI client is shared by every capability that reads data from
+        # the Fritz!Box web interface (DOCSIS channel data, REST API endpoints).
+        # Create it if any of them is present, so a DSL/fiber box can still use
+        # the technology-agnostic REST capabilities.
+        webui_capabilities = (
+            "WanDocsisCable",
+            "WanSegmentUtilization",
+            "WanConnectionStatus",
+        )
+        if any(self.capabilities[name].present for name in webui_capabilities):
+            logger.info(
+                "Web interface collector enabled on device %s. "
+                "Reading web-interface data.",
+                creds.host,
+            )
+            self.webui_client = FritzWebUiClient(
+                creds.host,
+                creds.user,
+                creds.password,
+                use_tls=connection.use_tls,
+                port=connection.port,
             )
         if self.capabilities.empty():
             logger.critical("Device %s has no detected capabilities. Exiting.", creds.host)
@@ -154,12 +178,14 @@ class FritzDevice:
             mode = 3  # DSL disabled, only mobile connection active
         elif link_status == "Up" and access_type == "X_AVM-DE_Fiber":
             mode = 4  # Fibre connection active
+        elif link_status == "Up" and access_type in ("Cable", "X_AVM-DE_Cable"):
+            mode = 5  # Cable (DOCSIS) connection active
         else:
             mode = 0  # Disconnected or not available
 
         m = GaugeMetricFamily(
             "fritz_connection_mode",
-            "Connection mode: 1=DSL, 2=Mobile fallback, 3=Mobile-only, 4=Fiber, 0=offline/unknown",
+            "Connection mode: 1=DSL, 2=Mobile fallback, 3=Mobile-only, 4=Fiber, 5=Cable, 0=offline/unknown",
             labels=["serial", "friendly_name", "access_type"],
         )
         m.add_metric([self.serial, self.friendly_name, access_type], mode)

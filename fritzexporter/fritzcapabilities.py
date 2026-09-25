@@ -21,6 +21,12 @@ from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from requests.exceptions import RequestException
 
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
+from fritzexporter.fritz_docsis import DOC_INFO_PAGE, parse_docsis_response
+from fritzexporter.fritz_rest_generic import (
+    parse_connections_response,
+    parse_monitor_segment,
+)
+from fritzexporter.fritz_webui import FritzWebUiError
 
 if TYPE_CHECKING:
     from fritzexporter.fritzdevice import FritzDevice
@@ -1399,13 +1405,34 @@ class HostInfo(FritzCapability):
                     host_index,
                     host_ip,
                 )
-                avm_host_result = device.fc.call_action(
-                    "Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP", NewIPAddress=host_ip
-                )
-                host_interface = avm_host_result["NewInterfaceType"]
-                host_port = str(avm_host_result["NewX_AVM-DE_Port"])
-                host_model = avm_host_result["NewX_AVM-DE_Model"]
-                host_speed = avm_host_result["NewX_AVM-DE_Speed"]
+                try:
+                    avm_host_result = device.fc.call_action(
+                        "Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP", NewIPAddress=host_ip
+                    )
+                except FritzLookUpError:
+                    # The host's IP left the host table between GetGenericHostEntry
+                    # and this lookup (a client disconnected or its lease was
+                    # reassigned mid-scan), so the box reports UPnP errorCode 714,
+                    # NoSuchEntryInArray. This is a benign race on the DHCP server's
+                    # host table, not a device outage: fall back to "n/a" extended
+                    # info for this host and keep scanning. Letting it bubble up
+                    # would flip the whole device to unreachable for this cycle.
+                    logger.debug(
+                        "Host %s (IP %s) left the host table during scan of device "
+                        "serial %s; using n/a extended info for this host",
+                        host_index,
+                        host_ip,
+                        device.serial,
+                    )
+                    host_interface = "n/a"
+                    host_port = "n/a"
+                    host_model = "n/a"
+                    host_speed = 0
+                else:
+                    host_interface = avm_host_result["NewInterfaceType"]
+                    host_port = str(avm_host_result["NewX_AVM-DE_Port"])
+                    host_model = avm_host_result["NewX_AVM-DE_Model"]
+                    host_speed = avm_host_result["NewX_AVM-DE_Speed"]
             else:
                 logger.debug(
                     "Unable to fetch extended AVM host information for host number %s: no IP found",
@@ -1657,6 +1684,361 @@ class HomeAutomation(FritzCapability):
         yield self.metrics["heater_comfort_valve_state"]
         yield self.metrics["battery_level"]
         yield self.metrics["battery_low"]
+
+
+class WanDocsisCable(FritzCapability):
+    """DOCSIS cable channel statistics from the Fritz!Box web UI.
+
+    The TR-064 API does not expose DOCSIS channel data on AVM cable boxes.
+    This capability is auto-detected on cable boxes (``NewWANAccessType`` is
+    ``"Cable"`` or ``"X_AVM-DE_Cable"``) and reads the data from the internal
+    web endpoint ``data.lua?page=docInfo``, the same one the Fritz!Box web UI
+    uses. It requires a web login with the configured credentials.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Not auto-detected via TR-064 service/action presence; presence is
+        # determined by the WAN access type reported by the box.
+        self.present = False
+
+    def check_capability(self, device: FritzDevice) -> None:
+        # The base implementation would set present = all([]) = True because
+        # there are no TR-064 requirements, which would wrongly enable DOCSIS
+        # collection on every device. Instead, probe the WAN access type: cable
+        # boxes report NewWANAccessType == "Cable" (WANCommonIFC1) or
+        # "X_AVM-DE_Cable" (WANCommonInterfaceConfig1).
+        try:
+            wan_status = device.fc.call_action(
+                "WANCommonInterfaceConfig1", "GetCommonLinkProperties"
+            )
+        except (
+            FritzServiceError,
+            FritzActionError,
+            FritzInternalError,
+            FritzArgumentError,
+            FritzConnectionException,
+        ):
+            logger.debug(
+                "No WAN access type info on %s, DOCSIS capability disabled", device.host
+            )
+            self.present = False
+            return
+
+        self.present = wan_status.get("NewWANAccessType") in ("Cable", "X_AVM-DE_Cable")
+        logger.debug(
+            "Capability %s set to %s on device %s",
+            type(self).__name__,
+            self.present,
+            device.host,
+        )
+
+    def create_metrics(self) -> None:
+        self.metrics["power"] = GaugeMetricFamily(
+            "fritz_docsis_power",
+            "DOCSIS channel signal power level",
+            labels=["serial", "friendly_name", "direction", "channel_id", "standard"],
+            unit="dBmV",
+        )
+        self.metrics["mer"] = GaugeMetricFamily(
+            "fritz_docsis_mer",
+            "DOCSIS 3.1 downstream Modulation Error Ratio",
+            labels=["serial", "friendly_name", "channel_id", "standard"],
+            unit="dB",
+        )
+        self.metrics["mse"] = GaugeMetricFamily(
+            "fritz_docsis_mse",
+            "DOCSIS 3.0 downstream Mean Squared Error",
+            labels=["serial", "friendly_name", "channel_id", "standard"],
+            unit="dB",
+        )
+        self.metrics["corrected_errors"] = CounterMetricFamily(
+            "fritz_docsis_corrected_errors_total",
+            "DOCSIS downstream corrected codeword errors",
+            labels=["serial", "friendly_name", "channel_id", "standard"],
+        )
+        self.metrics["uncorrected_errors"] = CounterMetricFamily(
+            "fritz_docsis_uncorrected_errors_total",
+            "DOCSIS downstream uncorrected codeword errors",
+            labels=["serial", "friendly_name", "channel_id", "standard"],
+        )
+        self.metrics["latency"] = GaugeMetricFamily(
+            "fritz_docsis_latency_ms",
+            "DOCSIS downstream channel latency",
+            labels=["serial", "friendly_name", "channel_id", "standard"],
+            unit="ms",
+        )
+        self.metrics["info"] = GaugeMetricFamily(
+            "fritz_docsis_channel_info",
+            "DOCSIS channel information (always 1 if present)",
+            labels=[
+                "serial",
+                "friendly_name",
+                "direction",
+                "channel_id",
+                "standard",
+                "modulation",
+                "frequency",
+            ],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        if not device.webui_client:
+            logger.debug("No web UI client on device %s, skipping", device.host)
+            return
+
+        try:
+            raw = device.webui_client.fetch_page(DOC_INFO_PAGE)
+        except FritzWebUiError as e:
+            # A transient web-UI failure (e.g. session expiry) should not break
+            # the whole scrape; log at warning and leave the metric families
+            # empty for this cycle.
+            logger.warning("Failed to fetch DOCSIS data from %s: %s", device.host, e)
+            return
+
+        data = parse_docsis_response(raw)
+        labels = [device.serial, device.friendly_name]
+
+        for ch in data["downstream"]:
+            channel_labels = [*labels, str(ch["channel_id"]), ch["standard"]]
+            if ch["power_dbmv"] is not None:
+                self.metrics["power"].add_metric(
+                    [*labels, "downstream", str(ch["channel_id"]), ch["standard"]],
+                    ch["power_dbmv"],
+                )
+            if ch["mer_db"] is not None:
+                self.metrics["mer"].add_metric(channel_labels, ch["mer_db"])
+            if ch["mse_db"] is not None:
+                self.metrics["mse"].add_metric(channel_labels, ch["mse_db"])
+            if ch["corrected_errors"] is not None:
+                self.metrics["corrected_errors"].add_metric(
+                    channel_labels, ch["corrected_errors"]
+                )
+            if ch["uncorrected_errors"] is not None:
+                self.metrics["uncorrected_errors"].add_metric(
+                    channel_labels, ch["uncorrected_errors"]
+                )
+            if ch["latency_ms"] is not None:
+                self.metrics["latency"].add_metric(channel_labels, ch["latency_ms"])
+            self.metrics["info"].add_metric(
+                [
+                    *labels,
+                    "downstream",
+                    str(ch["channel_id"]),
+                    ch["standard"],
+                    ch["modulation"],
+                    ch["frequency"],
+                ],
+                1,
+            )
+
+        for ch in data["upstream"]:
+            if ch["power_dbmv"] is not None:
+                self.metrics["power"].add_metric(
+                    [*labels, "upstream", str(ch["channel_id"]), ch["standard"]],
+                    ch["power_dbmv"],
+                )
+            self.metrics["info"].add_metric(
+                [
+                    *labels,
+                    "upstream",
+                    str(ch["channel_id"]),
+                    ch["standard"],
+                    ch["modulation"],
+                    ch["frequency"],
+                ],
+                1,
+            )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["power"]
+        yield self.metrics["mer"]
+        yield self.metrics["mse"]
+        yield self.metrics["corrected_errors"]
+        yield self.metrics["uncorrected_errors"]
+        yield self.metrics["latency"]
+        yield self.metrics["info"]
+
+
+class WanSegmentUtilization(FritzCapability):
+    """Shared network-segment utilization from the Fritz!Box REST API.
+
+    The Fritz!OS REST endpoint ``/api/v0/monitor/segment/<n>`` exposes
+    per-sample utilization of the shared medium, split into the traffic this
+    box generates (``own``) and the total on the segment (``total``, including
+    all other subscribers), for downstream and upstream. On cable boxes this
+    is the shared coax segment; the endpoint itself is not cable-specific and
+    is available on any Fritz!OS 7+ box.
+
+    Segment ``0`` covers the last hour at minute granularity (60 one-minute
+    averages). We expose only the *newest* sample of each series — the last
+    element of each list — aligned by the shared ``lastSampleTime``.
+
+    Auto-detected on any box exposing the common WAN interface service (the
+    REST API requires Fritz!OS 7+); the data is fetched through the shared
+    web UI client.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # The REST API is available on any Fritz!OS 7+ box, independent of
+        # the WAN access type (cable/DSL/fiber). Presence is determined by the
+        # common WAN interface service, which all modern boxes expose.
+        self.requirements.append(("WANCommonInterfaceConfig1", "GetCommonLinkProperties"))
+
+    def create_metrics(self) -> None:
+        self.metrics["utilization"] = GaugeMetricFamily(
+            "fritz_cable_segment_utilization_percent",
+            "Shared cable segment utilization of the newest sample",
+            labels=["serial", "friendly_name", "direction", "scope"],
+            unit="percent",
+        )
+        self.metrics["sample_age"] = GaugeMetricFamily(
+            "fritz_cable_segment_sample_timestamp_seconds",
+            "Unix timestamp of the newest shared-segment utilization sample",
+            labels=["serial", "friendly_name"],
+            unit="seconds",
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        if not device.webui_client:
+            logger.debug("No web UI client on device %s, skipping", device.host)
+            return
+
+        try:
+            raw = device.webui_client.fetch_api("/api/v0/monitor/segment/0")
+        except FritzWebUiError as e:
+            # Transient web/REST failure must not abort the whole scrape.
+            logger.warning(
+                "Failed to fetch segment utilization data from %s: %s", device.host, e
+            )
+            return
+
+        data = parse_monitor_segment(raw)
+        labels = [device.serial, device.friendly_name]
+
+        if data["last_sample_time"] is not None:
+            self.metrics["sample_age"].add_metric(labels, data["last_sample_time"])
+
+        # "own" -> what our traffic contributes, "total" -> whole shared medium.
+        for series in data["series"]:
+            for direction in ("downstream", "upstream"):
+                samples = series[direction]
+                if not samples:
+                    continue
+                newest = samples[-1]
+                if newest is None:
+                    continue
+                self.metrics["utilization"].add_metric(
+                    [*labels, direction, series["type"]],
+                    newest,
+                )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["utilization"]
+        yield self.metrics["sample_age"]
+
+
+class WanConnectionStatus(FritzCapability):
+    """Per-connection IPv4/IPv6 uptime and connection state from the Fritz!Box REST API.
+
+    The TR-064 API only exposes uptime/state for the single *active* connection
+    of the supported interface types (PPP, DSL, ...). The Fritz!OS REST
+    endpoint ``/api/v0/generic/connections`` instead reports every configured
+    WAN connection — including disabled fallbacks — with per-stack fields:
+    ``ip4_uptime``/``ip6_uptime`` (seconds) and ``ip4_connstatus``/
+    ``ip6_connstatus`` (``"connected"``, ``"disabled"``, ``"connecting"``, ...).
+
+    Uptimes are exposed as counters (they reset on each reconnect, like the
+    PPP uptime metric), and the state as a gauge whose value is ``1`` when the
+    stack reports ``"connected"`` and ``0`` for any other state
+    (``"disabled"``, ``"connecting"``, ...). The state string is kept as the
+    ``state`` label so callers can disambiguate the non-connected cases.
+
+    Auto-detected on any box exposing the common WAN interface service (the
+    REST API requires Fritz!OS 7+); the data is fetched through the shared
+    web UI client.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # The REST API is available on any Fritz!OS 7+ box, independent of
+        # the WAN access type (cable/DSL/fiber). Presence is determined by the
+        # common WAN interface service, which all modern boxes expose.
+        self.requirements.append(("WANCommonInterfaceConfig1", "GetCommonLinkProperties"))
+
+    def create_metrics(self) -> None:
+        self.metrics["uptime"] = CounterMetricFamily(
+            "fritz_wan_connection_uptime",
+            "Per-stack uptime of a WAN connection in seconds (resets on reconnect)",
+            labels=[
+                "serial",
+                "friendly_name",
+                "connection",
+                "connection_name",
+                "media_type",
+                "ip_address",
+                "stack",
+            ],
+            unit="seconds",
+        )
+        self.metrics["status"] = GaugeMetricFamily(
+            "fritz_wan_connection_status",
+            "Per-stack connection state of a WAN connection (1 when connected, 0 otherwise; state in label)",
+            labels=[
+                "serial",
+                "friendly_name",
+                "connection",
+                "connection_name",
+                "media_type",
+                "ip_address",
+                "stack",
+                "state",
+            ],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        if not device.webui_client:
+            logger.debug("No web UI client on device %s, skipping", device.host)
+            return
+
+        try:
+            raw = device.webui_client.fetch_api("/api/v0/generic/connections")
+        except FritzWebUiError as e:
+            # Transient web/REST failure must not abort the whole scrape.
+            logger.warning(
+                "Failed to fetch connection status data from %s: %s", device.host, e
+            )
+            return
+
+        labels = [device.serial, device.friendly_name]
+        for conn in parse_connections_response(raw.get("connection", [])):
+            base_labels = [*labels, conn["uid"], conn["name"], conn["media_type"]]
+            for stack, uptime_key, status_key, ip_key in (
+                ("ipv4", "ip4_uptime", "ip4_connstatus", "ip4_addr"),
+                ("ipv6", "ip6_uptime", "ip6_connstatus", "ip6_addr"),
+            ):
+                uptime = conn[uptime_key]
+                if uptime is not None:
+                    self.metrics["uptime"].add_metric(
+                        [*base_labels, conn[ip_key], stack], uptime
+                    )
+                state = conn[status_key]
+                if state:
+                    connected = 1 if state == "connected" else 0
+                    self.metrics["status"].add_metric(
+                        [*base_labels, conn[ip_key], stack, state], connected
+                    )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["uptime"]
+        yield self.metrics["status"]
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
