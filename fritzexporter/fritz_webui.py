@@ -21,7 +21,7 @@ import hashlib
 import logging
 import re
 import time
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 from typing import Any
 
 import requests
