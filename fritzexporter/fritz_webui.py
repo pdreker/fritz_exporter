@@ -21,16 +21,16 @@ import hashlib
 import logging
 import re
 import time
-from defusedxml import ElementTree as ET
 from typing import Any
 
 import requests
+from defusedxml import ElementTree
 
 logger = logging.getLogger("fritzexporter.fritz_webui")
 
 __all__ = [
-    "FritzWebUiError",
     "FritzWebUiClient",
+    "FritzWebUiError",
 ]
 
 # The login_sid.lua challenge-response scheme changed in Fritz!OS 7.24.
@@ -41,6 +41,7 @@ _PBKDF2_CHALLENGE_RE = re.compile(r"^2\$(\d+)\$([0-9a-f]+)\$(\d+)\$([0-9a-f]+)$"
 # data.lua (and the REST API) return HTML (the login page) instead of JSON
 # when the SID is invalid or the session has expired.
 _HTML_RESPONSE_PREFIXES = ("<", "\ufeff<")
+_HTML_RESPONSE_HINT = "(SID invalid or no permission)"
 
 
 class FritzWebUiError(Exception):
@@ -50,7 +51,7 @@ class FritzWebUiError(Exception):
 class FritzWebUiClient:
     """Fetches data from a Fritz!Box via its web interface (web login)."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         host: str,
         username: str,
@@ -80,14 +81,17 @@ class FritzWebUiClient:
     def _md5_response(challenge: str, password: str) -> str:
         """Compute the legacy MD5 challenge-response (Fritz!OS < 7.24)."""
         combined = (challenge + "-" + password).encode("utf-16-le")
-        return f"{challenge}-{hashlib.md5(combined).hexdigest()}"
+        # MD5 is mandated by the Fritz!Box login protocol for older firmware;
+        # it is not used for security here.
+        return f"{challenge}-{hashlib.md5(combined).hexdigest()}"  # noqa: S324
 
     @staticmethod
     def _pbkdf2_response(challenge: str, password: str) -> str:
         """Compute the PBKDF2-SHA256 challenge-response (Fritz!OS >= 7.24)."""
         match = _PBKDF2_CHALLENGE_RE.match(challenge)
         if not match:
-            raise FritzWebUiError(f"unexpected PBKDF2 challenge format: {challenge!r}")
+            msg = f"unexpected PBKDF2 challenge format: {challenge!r}"
+            raise FritzWebUiError(msg)
         iter1, salt1_hex, iter2, salt2_hex = match.groups()
         iter1, iter2 = int(iter1), int(iter2)
         salt1 = bytes.fromhex(salt1_hex)
@@ -106,12 +110,14 @@ class FritzWebUiClient:
             )
             resp.raise_for_status()
         except requests.RequestException as e:
-            raise FritzWebUiError(f"login_sid.lua request failed: {e}") from e
+            msg = f"login_sid.lua request failed: {e}"
+            raise FritzWebUiError(msg) from e
 
         try:
-            root = ET.fromstring(resp.text)
-        except ET.ParseError as e:
-            raise FritzWebUiError(f"could not parse login_sid.lua response: {e}") from e
+            root = ElementTree.fromstring(resp.text)
+        except ElementTree.ParseError as e:
+            msg = f"could not parse login_sid.lua response: {e}"
+            raise FritzWebUiError(msg) from e
 
         def _find(tag: str) -> str:
             elem = root.find(tag)
@@ -132,9 +138,8 @@ class FritzWebUiClient:
             return info["sid"]
 
         if info["block_time"] and info["block_time"] != "0":
-            raise FritzWebUiError(
-                f"login blocked for {info['block_time']} seconds (too many failed attempts)"
-            )
+            msg = f"login blocked for {info['block_time']} seconds (too many failed attempts)"
+            raise FritzWebUiError(msg)
 
         challenge = info["challenge"]
         if challenge.startswith("2$"):
@@ -150,17 +155,20 @@ class FritzWebUiClient:
             )
             resp.raise_for_status()
         except requests.RequestException as e:
-            raise FritzWebUiError(f"login POST failed: {e}") from e
+            msg = f"login POST failed: {e}"
+            raise FritzWebUiError(msg) from e
 
         try:
-            root = ET.fromstring(resp.text)
-        except ET.ParseError as e:
-            raise FritzWebUiError(f"could not parse login response: {e}") from e
+            root = ElementTree.fromstring(resp.text)
+        except ElementTree.ParseError as e:
+            msg = f"could not parse login response: {e}"
+            raise FritzWebUiError(msg) from e
 
         sid_elem = root.find("SID")
         sid = sid_elem.text if sid_elem is not None else ""
         if not sid or sid == "0000000000000000":
-            raise FritzWebUiError("login failed: wrong password or username")
+            msg = "login failed: wrong password or username"
+            raise FritzWebUiError(msg)
 
         logger.debug("Fritz!Box web login successful, SID obtained")
         return sid
@@ -191,23 +199,21 @@ class FritzWebUiClient:
             )
             resp.raise_for_status()
         except requests.RequestException as e:
-            raise FritzWebUiError(f"data.lua request failed: {e}") from e
+            msg = f"data.lua request failed: {e}"
+            raise FritzWebUiError(msg) from e
 
         text = resp.text
         content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
-        is_html = (
-            "text/html" in content_type
-            or text.lstrip().startswith(_HTML_RESPONSE_PREFIXES)
-        )
+        is_html = "text/html" in content_type or text.lstrip().startswith(_HTML_RESPONSE_PREFIXES)
         if not text or is_html:
-            raise FritzWebUiError(
-                "Fritz!Box returned HTML instead of JSON (SID invalid or no permission)"
-            )
+            msg = f"Fritz!Box returned HTML instead of JSON {_HTML_RESPONSE_HINT}"
+            raise FritzWebUiError(msg)
 
         try:
             return resp.json()
         except ValueError as e:
-            raise FritzWebUiError(f"could not parse data.lua JSON response: {e}") from e
+            msg = f"could not parse data.lua JSON response: {e}"
+            raise FritzWebUiError(msg) from e
 
     def fetch_page(self, page: str) -> dict[str, Any]:
         """Fetch a ``data.lua`` page, re-authenticating once if the session expired.
@@ -238,31 +244,24 @@ class FritzWebUiClient:
         """
         headers = {"Authorization": f"AVM-SID {sid}"}
         try:
-            resp = self.session.get(
-                f"{self.base_url}{path}", headers=headers, timeout=self.timeout
-            )
+            resp = self.session.get(f"{self.base_url}{path}", headers=headers, timeout=self.timeout)
             resp.raise_for_status()
         except requests.RequestException as e:
-            raise FritzWebUiError(f"REST API request failed for {path}: {e}") from e
+            msg = f"REST API request failed for {path}: {e}"
+            raise FritzWebUiError(msg) from e
 
         text = resp.text
         content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
-        is_html = (
-            "text/html" in content_type
-            or text.lstrip().startswith(_HTML_RESPONSE_PREFIXES)
-        )
+        is_html = "text/html" in content_type or text.lstrip().startswith(_HTML_RESPONSE_PREFIXES)
         if not text or is_html:
-            raise FritzWebUiError(
-                f"Fritz!Box returned HTML instead of JSON for {path} "
-                "(SID invalid or no permission)"
-            )
+            msg = f"Fritz!Box returned HTML instead of JSON for {path} {_HTML_RESPONSE_HINT}"
+            raise FritzWebUiError(msg)
 
         try:
             return resp.json()
         except ValueError as e:
-            raise FritzWebUiError(
-                f"could not parse REST API JSON response for {path}: {e}"
-            ) from e
+            msg = f"could not parse REST API JSON response for {path}: {e}"
+            raise FritzWebUiError(msg) from e
 
     def fetch_api(self, path: str) -> dict[str, Any]:
         """Fetch a Fritz!OS REST API path, re-authenticating once if needed.

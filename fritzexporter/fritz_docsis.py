@@ -62,7 +62,7 @@ class DocsisData(TypedDict):
     upstream: list[UpstreamChannel]
 
 
-def _to_float(value: Any) -> float | None:
+def _to_float(value: Any) -> float | None:  # noqa: ANN401
     """Safely convert a value (string or number) to float, None on failure."""
     if value is None or value == "":
         return None
@@ -72,7 +72,7 @@ def _to_float(value: Any) -> float | None:
         return None
 
 
-def _to_int(value: Any) -> int | None:
+def _to_int(value: Any) -> int | None:  # noqa: ANN401
     """Convert a value to int, None on failure (unknown)."""
     if value is None or value == "":
         return None
