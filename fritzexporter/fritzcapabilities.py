@@ -21,7 +21,12 @@ from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from requests.exceptions import RequestException
 
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
-from fritzexporter.fritz_docsis import DOC_INFO_PAGE, parse_docsis_response
+from fritzexporter.fritz_docsis import (
+    DOC_INFO_PAGE,
+    DownstreamChannel,
+    UpstreamChannel,
+    parse_docsis_response,
+)
 from fritzexporter.fritz_rest_generic import (
     parse_connections_response,
     parse_monitor_segment,
@@ -1719,9 +1724,7 @@ class WanDocsisCable(FritzCapability):
             FritzArgumentError,
             FritzConnectionException,
         ):
-            logger.debug(
-                "No WAN access type info on %s, DOCSIS capability disabled", device.host
-            )
+            logger.debug("No WAN access type info on %s, DOCSIS capability disabled", device.host)
             self.present = False
             return
 
@@ -1782,6 +1785,55 @@ class WanDocsisCable(FritzCapability):
             ],
         )
 
+    def _emit_downstream_metrics(self, labels: list[str], ch: DownstreamChannel) -> None:
+        """Emit the quality metrics for one DOCSIS downstream channel."""
+        channel_labels = [*labels, str(ch["channel_id"]), ch["standard"]]
+        if ch["power_dbmv"] is not None:
+            self.metrics["power"].add_metric(
+                [*labels, "downstream", str(ch["channel_id"]), ch["standard"]],
+                ch["power_dbmv"],
+            )
+        if ch["mer_db"] is not None:
+            self.metrics["mer"].add_metric(channel_labels, ch["mer_db"])
+        if ch["mse_db"] is not None:
+            self.metrics["mse"].add_metric(channel_labels, ch["mse_db"])
+        if ch["corrected_errors"] is not None:
+            self.metrics["corrected_errors"].add_metric(channel_labels, ch["corrected_errors"])
+        if ch["uncorrected_errors"] is not None:
+            self.metrics["uncorrected_errors"].add_metric(channel_labels, ch["uncorrected_errors"])
+        if ch["latency_ms"] is not None:
+            self.metrics["latency"].add_metric(channel_labels, ch["latency_ms"])
+        self.metrics["info"].add_metric(
+            [
+                *labels,
+                "downstream",
+                str(ch["channel_id"]),
+                ch["standard"],
+                ch["modulation"],
+                ch["frequency"],
+            ],
+            1,
+        )
+
+    def _emit_upstream_metrics(self, labels: list[str], ch: UpstreamChannel) -> None:
+        """Emit the metrics for one DOCSIS upstream channel."""
+        if ch["power_dbmv"] is not None:
+            self.metrics["power"].add_metric(
+                [*labels, "upstream", str(ch["channel_id"]), ch["standard"]],
+                ch["power_dbmv"],
+            )
+        self.metrics["info"].add_metric(
+            [
+                *labels,
+                "upstream",
+                str(ch["channel_id"]),
+                ch["standard"],
+                ch["modulation"],
+                ch["frequency"],
+            ],
+            1,
+        )
+
     def _generate_metric_values(self, device: FritzDevice) -> None:
         if not device.webui_client:
             logger.debug("No web UI client on device %s, skipping", device.host)
@@ -1800,55 +1852,10 @@ class WanDocsisCable(FritzCapability):
         labels = [device.serial, device.friendly_name]
 
         for ch in data["downstream"]:
-            channel_labels = [*labels, str(ch["channel_id"]), ch["standard"]]
-            if ch["power_dbmv"] is not None:
-                self.metrics["power"].add_metric(
-                    [*labels, "downstream", str(ch["channel_id"]), ch["standard"]],
-                    ch["power_dbmv"],
-                )
-            if ch["mer_db"] is not None:
-                self.metrics["mer"].add_metric(channel_labels, ch["mer_db"])
-            if ch["mse_db"] is not None:
-                self.metrics["mse"].add_metric(channel_labels, ch["mse_db"])
-            if ch["corrected_errors"] is not None:
-                self.metrics["corrected_errors"].add_metric(
-                    channel_labels, ch["corrected_errors"]
-                )
-            if ch["uncorrected_errors"] is not None:
-                self.metrics["uncorrected_errors"].add_metric(
-                    channel_labels, ch["uncorrected_errors"]
-                )
-            if ch["latency_ms"] is not None:
-                self.metrics["latency"].add_metric(channel_labels, ch["latency_ms"])
-            self.metrics["info"].add_metric(
-                [
-                    *labels,
-                    "downstream",
-                    str(ch["channel_id"]),
-                    ch["standard"],
-                    ch["modulation"],
-                    ch["frequency"],
-                ],
-                1,
-            )
+            self._emit_downstream_metrics(labels, ch)
 
         for ch in data["upstream"]:
-            if ch["power_dbmv"] is not None:
-                self.metrics["power"].add_metric(
-                    [*labels, "upstream", str(ch["channel_id"]), ch["standard"]],
-                    ch["power_dbmv"],
-                )
-            self.metrics["info"].add_metric(
-                [
-                    *labels,
-                    "upstream",
-                    str(ch["channel_id"]),
-                    ch["standard"],
-                    ch["modulation"],
-                    ch["frequency"],
-                ],
-                1,
-            )
+            self._emit_upstream_metrics(labels, ch)
 
     def _get_metric_values(
         self,
@@ -1911,9 +1918,7 @@ class WanSegmentUtilization(FritzCapability):
             raw = device.webui_client.fetch_api("/api/v0/monitor/segment/0")
         except FritzWebUiError as e:
             # Transient web/REST failure must not abort the whole scrape.
-            logger.warning(
-                "Failed to fetch segment utilization data from %s: %s", device.host, e
-            )
+            logger.warning("Failed to fetch segment utilization data from %s: %s", device.host, e)
             return
 
         data = parse_monitor_segment(raw)
@@ -1988,7 +1993,8 @@ class WanConnectionStatus(FritzCapability):
         )
         self.metrics["status"] = GaugeMetricFamily(
             "fritz_wan_connection_status",
-            "Per-stack connection state of a WAN connection (1 when connected, 0 otherwise; state in label)",
+            "Per-stack connection state of a WAN connection "
+            "(1 when connected, 0 otherwise; state in label)",
             labels=[
                 "serial",
                 "friendly_name",
@@ -2010,9 +2016,7 @@ class WanConnectionStatus(FritzCapability):
             raw = device.webui_client.fetch_api("/api/v0/generic/connections")
         except FritzWebUiError as e:
             # Transient web/REST failure must not abort the whole scrape.
-            logger.warning(
-                "Failed to fetch connection status data from %s: %s", device.host, e
-            )
+            logger.warning("Failed to fetch connection status data from %s: %s", device.host, e)
             return
 
         labels = [device.serial, device.friendly_name]
@@ -2024,9 +2028,7 @@ class WanConnectionStatus(FritzCapability):
             ):
                 uptime = conn[uptime_key]
                 if uptime is not None:
-                    self.metrics["uptime"].add_metric(
-                        [*base_labels, conn[ip_key], stack], uptime
-                    )
+                    self.metrics["uptime"].add_metric([*base_labels, conn[ip_key], stack], uptime)
                 state = conn[status_key]
                 if state:
                     connected = 1 if state == "connected" else 0

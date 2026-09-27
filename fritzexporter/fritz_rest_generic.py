@@ -15,11 +15,11 @@ from __future__ import annotations
 from typing import Any, TypedDict
 
 __all__ = [
-    "SegmentSeries",
-    "MonitorSegmentData",
     "ConnectionInfo",
-    "parse_monitor_segment",
+    "MonitorSegmentData",
+    "SegmentSeries",
     "parse_connections_response",
+    "parse_monitor_segment",
 ]
 
 
@@ -61,7 +61,7 @@ class ConnectionInfo(TypedDict):
     ip6_addr: str
 
 
-def _to_float(value: Any) -> float | None:
+def _to_float(value: Any) -> float | None:  # noqa: ANN401
     """Safely convert a value (string or number) to float, None on failure."""
     if value is None or value == "":
         return None
@@ -71,7 +71,7 @@ def _to_float(value: Any) -> float | None:
         return None
 
 
-def _to_int(value: Any) -> int | None:
+def _to_int(value: Any) -> int | None:  # noqa: ANN401
     """Convert a value to int, None on failure (unknown)."""
     if value is None or value == "":
         return None
@@ -91,16 +91,15 @@ def parse_monitor_segment(raw: dict[str, Any]) -> MonitorSegmentData:
     utilization series in percent; the newest sample is the last element of
     each list. Unknown/non-numeric samples become ``None``.
     """
-    series: list[SegmentSeries] = []
-    for entry in raw.get("data", []):
-        series.append(
-            {
-                "media_type": str(entry.get("mediaType") or ""),
-                "type": str(entry.get("type") or ""),
-                "downstream": [_to_float(v) for v in entry.get("downstream", [])],
-                "upstream": [_to_float(v) for v in entry.get("upstream", [])],
-            }
-        )
+    series: list[SegmentSeries] = [
+        {
+            "media_type": str(entry.get("mediaType") or ""),
+            "type": str(entry.get("type") or ""),
+            "downstream": [_to_float(v) for v in entry.get("downstream", [])],
+            "upstream": [_to_float(v) for v in entry.get("upstream", [])],
+        }
+        for entry in raw.get("data", [])
+    ]
     result: MonitorSegmentData = {
         "last_sample_time": _to_int(raw.get("lastSampleTime")),
         "series": series,
@@ -115,21 +114,20 @@ def parse_connections_response(raw: list[dict[str, Any]]) -> list[ConnectionInfo
     strings in seconds; empty or missing values (reported for disabled
     connections) become ``None`` so callers can skip them.
     """
-    connections: list[ConnectionInfo] = []
-    for entry in raw:
-        connections.append(
-            {
-                "uid": str(entry.get("UID") or ""),
-                "name": str(entry.get("name") or ""),
-                "media_type": str(entry.get("media_type") or ""),
-                "ip4_connstatus": str(entry.get("ip4_connstatus") or ""),
-                "ip6_connstatus": str(entry.get("ip6_connstatus") or ""),
-                "ip4_uptime": _to_int(entry.get("ip4_uptime")),
-                "ip6_uptime": _to_int(entry.get("ip6_uptime")),
-                "ip4_addr": str(entry.get("ip4_masqaddr") or ""),
-                "ip6_addr": str(entry.get("ip6_addr") or ""),
-            }
-        )
+    connections: list[ConnectionInfo] = [
+        {
+            "uid": str(entry.get("UID") or ""),
+            "name": str(entry.get("name") or ""),
+            "media_type": str(entry.get("media_type") or ""),
+            "ip4_connstatus": str(entry.get("ip4_connstatus") or ""),
+            "ip6_connstatus": str(entry.get("ip6_connstatus") or ""),
+            "ip4_uptime": _to_int(entry.get("ip4_uptime")),
+            "ip6_uptime": _to_int(entry.get("ip6_uptime")),
+            "ip4_addr": str(entry.get("ip4_masqaddr") or ""),
+            "ip6_addr": str(entry.get("ip6_addr") or ""),
+        }
+        for entry in raw
+    ]
     return connections
 
 

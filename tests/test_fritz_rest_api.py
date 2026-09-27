@@ -6,6 +6,7 @@ parsers (``fritz_rest_generic.py``) and the ``WanSegmentUtilization`` /
 """
 
 import logging
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -283,7 +284,7 @@ class TestWanSegmentUtilization:
 # Sample /api/v0/generic/connections payload (modeled on api_connections.json)
 # ---------------------------------------------------------------------------
 
-CONNECTIONS_RAW = {
+CONNECTIONS_RAW: dict[str, Any] = {
     "connection": [
         {
             "ip6_mode": "ipv6_native",

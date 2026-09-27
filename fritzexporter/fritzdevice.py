@@ -16,8 +16,8 @@ from prometheus_client.registry import Collector
 from requests.exceptions import RequestException
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
-from fritzexporter.fritzcapabilities import FritzCapabilities
 from fritzexporter.fritz_webui import FritzWebUiClient
+from fritzexporter.fritzcapabilities import FritzCapabilities
 from fritzexporter.tr064_remote import ConnectionOptions, create_fritz_connection
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
@@ -114,8 +114,7 @@ class FritzDevice:
         )
         if any(self.capabilities[name].present for name in webui_capabilities):
             logger.info(
-                "Web interface collector enabled on device %s. "
-                "Reading web-interface data.",
+                "Web interface collector enabled on device %s. Reading web-interface data.",
                 creds.host,
             )
             self.webui_client = FritzWebUiClient(
@@ -185,7 +184,8 @@ class FritzDevice:
 
         m = GaugeMetricFamily(
             "fritz_connection_mode",
-            "Connection mode: 1=DSL, 2=Mobile fallback, 3=Mobile-only, 4=Fiber, 5=Cable, 0=offline/unknown",
+            "Connection mode: 1=DSL, 2=Mobile fallback, 3=Mobile-only, "
+            "4=Fiber, 5=Cable, 0=offline/unknown",
             labels=["serial", "friendly_name", "access_type"],
         )
         m.add_metric([self.serial, self.friendly_name, access_type], mode)
