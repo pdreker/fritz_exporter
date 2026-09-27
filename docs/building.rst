@@ -50,8 +50,8 @@ To verify correct operation just use curl against the running exporter. It shoul
 Building and running locally (no containers)
 --------------------------------------------
 
-You can install the latest release from PyPI using ``pip install fritzexporter`` and the run it using ``python -m fritzexporter``. It is highly recommended to use a virtual environment to do so.
+You can install the latest release from PyPI using ``pip install fritzexporter`` and then run it using ``python -m fritzexporter``. It is highly recommended to use a virtual environment to do so.
 
-For development and debugging it may be necessary or simpler to run the exporter directly without Docker. To do this install `uv <https://docs.astral.sh/uv/>`_, then run ``uv sync`` from the repository root to create the virtual environment and install all dependencies.
-
-To run the exporter just use ``python -m fritzexporter --config /path/to/config.yaml`` or set environment variables as described in :ref:`environment-config`.
+For development and debugging, see :doc:`contributing` for the local
+environment setup, verification commands, and how to run the exporter from
+source.
