@@ -22,8 +22,15 @@ COPY tests /app/tests
 
 RUN pip install .
 
-RUN pip install pytest pytest-mock pytest-cov coverage types-pyyaml types-requests
+RUN pip install pytest pytest-mock pytest-cov coverage types-pyyaml types-requests ruff ty
 
+# Lint and format check (mirrors the GitHub pipeline)
+RUN ruff check . && ruff format --check .
+
+# Type check (mirrors the GitHub pipeline)
+RUN ty check
+
+# Run the test suite (produces coverage.xml via pyproject addopts)
 RUN pytest
 
 # Build the actual runner
