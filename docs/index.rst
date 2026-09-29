@@ -62,11 +62,32 @@ The following groups of metrics are currently available:
 * Fibre / GPON statistics (optical levels, SFP/GPON identity, fibre counters)
 * PPP statistics
 * WiFi statistics
-* Provider management channel (USP controller enable flags)
+* Provider management channel (USP controller enable flags, see below)
 * WAN Layer1 (physical link) statistics, including 64-bit max bitrate for multi-gig links
 * DOCSIS cable channel statistics (auto-detected on cable boxes; power, MER/MSE, corrected/uncorrected errors, latency). On the Fritz!Box 6660 Cable, DOCSIS 3.1 channels report an uncorrected-error counter but no corrected one, so ``fritz_docsis_corrected_errors_total`` has no series for them.
 * WAN segment utilization and per-connection IPv4/IPv6 status and uptime via the Fritz!OS REST API
 * Home Automation Devices (switches, heating valves, temperatures, power meters, and battery status; window/door sensors (open/closed) are not yet reported)
+
+USP controllers
+^^^^^^^^^^^^^^^
+
+USP (User Services Platform, Broadband Forum TR-369) is a protocol that lets a
+remote party read and change settings of a device. Such a party is called a
+*controller*. Fritz!OS 8 lists the configured controllers in the TR-064 service
+``X_AVM-DE_USPController1``. When a controller is enabled, the box opens an
+outgoing connection to it and accepts its management commands.
+
+* ``fritz_usp_controller_enabled`` is ``1`` when the controller with the given
+  ``index`` is enabled and ``0`` when it is configured but switched off.
+* ``fritz_usp_myfritz_enabled`` is ``1`` when the MyFRITZ controller (AVM's cloud
+  service) is enabled.
+
+On a FRITZ!Box 6660 Cable running FRITZ!OS 8.25 there is one controller, the
+MyFRITZ service, and both values are ``0``. The metrics are meant for alerting:
+a value switching to ``1`` means a remote party has been allowed to manage the
+box, which you would only expect after you (or your provider) changed that on
+purpose. The exporter only reports the flags. Endpoint IDs, host names and
+credentials are never read or exported.
 
 Exporter self-monitoring
 ^^^^^^^^^^^^^^^^^^^^^^^^
