@@ -122,7 +122,6 @@ class FritzDevice:
                 creds.user,
                 creds.password,
                 use_tls=connection.use_tls,
-                port=connection.port,
                 timeout=connection.connection_timeout,
             )
         if self.capabilities.empty():
