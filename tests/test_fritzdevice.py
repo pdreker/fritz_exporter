@@ -1165,11 +1165,11 @@ class TestFritzCollector:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        with patch("fritzexporter.fritz_webui.requests.Session") as mock_session_cls:
+            device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         collector.register(device)
 
-        device.webui_client.session = MagicMock()
-        device.webui_client.session.get.side_effect = RequestsConnectionError(
+        mock_session_cls.return_value.get.side_effect = RequestsConnectionError(
             "Connection aborted.",
             RemoteDisconnected("Remote end closed connection without response"),
         )
