@@ -2043,6 +2043,33 @@ class WanConnectionStatus(FritzCapability):
         yield self.metrics["status"]
 
 
+class WanIPv6Prefix(FritzCapability):
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(("WANIPConn1", "X_AVM_DE_GetIPv6Prefix"))
+
+    def create_metrics(self) -> None:
+        self.metrics["prefix"] = GaugeMetricFamily(
+            "fritz_wan_ipv6_prefix_info",
+            "Delegated IPv6 prefix of the WAN connection (always 1 if present)",
+            labels=["serial", "friendly_name", "prefix", "prefix_length"],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        result = device.fc.call_action("WANIPConn1", "X_AVM_DE_GetIPv6Prefix")
+        prefix = result["NewIPv6Prefix"]
+        if not prefix:
+            return
+        self.metrics["prefix"].add_metric(
+            [device.serial, device.friendly_name, prefix, str(result["NewPrefixLength"])], 1
+        )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["prefix"]
+
+
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

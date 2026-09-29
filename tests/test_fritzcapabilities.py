@@ -55,7 +55,7 @@ class TestFritzCapabilitiesMethods:
         num_caps = len(fd.capabilities)
 
         # Check
-        assert num_caps == 23  # All known capabilities
+        assert num_caps == 24  # All known capabilities
 
     def test_empty_capabilities_is_true_when_all_absent(self, mock_fritzconnection: MagicMock):
         # Prepare - use an empty service set so no capability is present
@@ -748,3 +748,49 @@ class TestWanCommonInterfaceByteRateCableWan:
         registry = CollectorRegistry()
         registry.register(collector)
         generate_latest(registry)
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestWanIPv6Prefix:
+    """Tests for the delegated IPv6 prefix info metric."""
+
+    def _collect_prefix_metric(self, mock_fritzconnection: MagicMock, prefix_result: dict | None):
+        fc = mock_fritzconnection.return_value
+
+        def call_action_prefix(service, action, **kwargs):
+            if (service, action) == ("WANIPConn1", "X_AVM_DE_GetIPv6Prefix") and prefix_result:
+                return prefix_result
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = call_action_prefix
+        fc.services = create_fc_services(
+            {
+                **fc_services_capabilities["DeviceInfo"],
+                **fc_services_capabilities["WanIPv6Prefix"],
+            }
+        )
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            host_info=False,
+        )
+        collector.register(device)
+        return {m.name: m for m in collector.collect()}
+
+    def test_prefix_info_metric(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect_prefix_metric(mock_fritzconnection, None)
+
+        samples = by_name["fritz_wan_ipv6_prefix_info"].samples
+        assert len(samples) == 1
+        assert samples[0].value == 1
+        assert samples[0].labels["prefix"] == "2001:db8:1234:5600::"
+        assert samples[0].labels["prefix_length"] == "56"
+
+    def test_empty_prefix_is_skipped(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect_prefix_metric(
+            mock_fritzconnection, {"NewIPv6Prefix": "", "NewPrefixLength": 0}
+        )
+
+        assert by_name["fritz_wan_ipv6_prefix_info"].samples == []

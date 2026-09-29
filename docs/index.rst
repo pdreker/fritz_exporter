@@ -57,7 +57,7 @@ The following groups of metrics are currently available:
 * Base Information (Model, Serial, Software Version, Uptime)
 * Software Information (Update available)
 * LAN statistics (Ethernet only)
-* WAN statistics
+* WAN statistics (including the delegated IPv6 prefix)
 * DSL statistics
 * Fibre / GPON statistics (optical levels, SFP/GPON identity, fibre counters)
 * PPP statistics
