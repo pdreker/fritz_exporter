@@ -120,6 +120,14 @@ class TestFritzWebUiClientAuth:
 # ---------------------------------------------------------------------------
 
 
+class TestFritzWebUiClientTls:
+    def test_tls_skips_certificate_verification(self):
+        # Fritz!Box devices serve a self-signed certificate.
+        client = FritzWebUiClient("fritz.box", "user", "pw", use_tls=True)
+        assert client.base_url == "https://fritz.box"
+        assert client.session.verify is False
+
+
 class TestFritzWebUiClientFetch:
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_fetch_page_returns_json(self, mock_session_cls: MagicMock):
