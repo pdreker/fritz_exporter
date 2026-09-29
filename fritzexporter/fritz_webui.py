@@ -59,7 +59,7 @@ class FritzWebUiClient:
         *,
         use_tls: bool = False,
         port: int | None = None,
-        timeout: float = 30.0,
+        timeout: float | None = None,
     ) -> None:
         self.host = host
         self.username = username

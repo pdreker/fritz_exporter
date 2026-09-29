@@ -296,6 +296,45 @@ class TestFritzDevice:
             port=49443,
         )
 
+    @patch("fritzexporter.fritzdevice.FritzWebUiClient")
+    @pytest.mark.parametrize(
+        "timeout, expected",
+        [
+            (10, 10),
+            (None, None),
+        ],
+    )
+    def test_connection_timeout_passed_to_webui_client(
+        self,
+        mock_webui_client: MagicMock,
+        mock_fritzconnection: MagicMock,
+        timeout: int | None,
+        expected: int | None,
+    ):
+        # Prepare: the FritzBox 7590 mock exposes WANCommonInterfaceConfig1, so
+        # the REST capabilities are present and the web UI client is created.
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        # Act
+        _ = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            connection=ConnectionOptions(connection_timeout=timeout),
+        )
+
+        # Check: the web UI client must receive the same timeout as TR-064
+        # (None means the timeout is disabled, matching connection_timeout=0).
+        assert mock_webui_client.call_args == call(
+            "somehost",
+            "someuser",
+            "password",
+            use_tls=False,
+            port=None,
+            timeout=expected,
+        )
+
     def test_should_log_and_reraise_transport_error_on_connect(
         self, mock_fritzconnection: MagicMock, caplog
     ):
