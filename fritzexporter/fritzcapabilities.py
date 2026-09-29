@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, ItemsView, Iterator
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, ClassVar, cast
+from urllib.parse import urlparse
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
@@ -2044,6 +2045,63 @@ class WanConnectionStatus(FritzCapability):
     ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["uptime"]
         yield self.metrics["status"]
+
+
+class ManagementServerInfo(FritzCapability):
+    """TR-069 management server (ACS) state.
+
+    Only the ACS host name and the non-sensitive flags are exported. The ACS URL
+    path, the user names and the connection request URL are credentials or
+    identifiers of the subscriber and are deliberately never read out.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(("ManagementServer1", "GetInfo"))
+
+    def create_metrics(self) -> None:
+        labels = ["serial", "friendly_name"]
+        self.metrics["acs_info"] = GaugeMetricFamily(
+            "fritz_tr069_acs_info",
+            "TR-069 management server host name (always 1 if present)",
+            labels=[*labels, "acs_host"],
+        )
+        self.metrics["inform_enabled"] = GaugeMetricFamily(
+            "fritz_tr069_periodic_inform_enabled",
+            "Whether the device periodically informs the TR-069 management server",
+            labels=labels,
+        )
+        self.metrics["inform_interval"] = GaugeMetricFamily(
+            "fritz_tr069_periodic_inform_interval",
+            "Interval of the periodic TR-069 inform",
+            labels=labels,
+            unit="seconds",
+        )
+        self.metrics["upgrades_managed"] = GaugeMetricFamily(
+            "fritz_tr069_upgrades_managed",
+            "Whether firmware upgrades are managed by the TR-069 management server",
+            labels=labels,
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        result = device.fc.call_action("ManagementServer1", "GetInfo")
+        labels = [device.serial, device.friendly_name]
+        acs_host = urlparse(result["NewURL"]).hostname
+        if acs_host:
+            self.metrics["acs_info"].add_metric([*labels, acs_host], 1)
+        self.metrics["inform_enabled"].add_metric(
+            labels, int(bool(result["NewPeriodicInformEnable"]))
+        )
+        self.metrics["inform_interval"].add_metric(labels, int(result["NewPeriodicInformInterval"]))
+        self.metrics["upgrades_managed"].add_metric(labels, int(bool(result["NewUpgradesManaged"])))
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["acs_info"]
+        yield self.metrics["inform_enabled"]
+        yield self.metrics["inform_interval"]
+        yield self.metrics["upgrades_managed"]
 
 
 class WanIPv6Prefix(FritzCapability):

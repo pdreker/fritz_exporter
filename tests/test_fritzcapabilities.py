@@ -55,7 +55,7 @@ class TestFritzCapabilitiesMethods:
         num_caps = len(fd.capabilities)
 
         # Check
-        assert num_caps == 24  # All known capabilities
+        assert num_caps == 25  # All known capabilities
 
     def test_empty_capabilities_is_true_when_all_absent(self, mock_fritzconnection: MagicMock):
         # Prepare - use an empty service set so no capability is present
@@ -743,6 +743,82 @@ class TestWanCommonInterfaceByteRateCableWan:
         registry = CollectorRegistry()
         registry.register(collector)
         generate_latest(registry)
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestManagementServer:
+    """Tests for the TR-069 management server metrics."""
+
+    def _collect(self, mock_fritzconnection: MagicMock, overrides=None):
+        fc = mock_fritzconnection.return_value
+        overrides = overrides or {}
+
+        def call_action_provider(service, action, **kwargs):
+            if (service, action) in overrides:
+                return overrides[(service, action)]()
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = call_action_provider
+        fc.services = create_fc_services(
+            {
+                **fc_services_capabilities["DeviceInfo"],
+                **fc_services_capabilities["ManagementServerInfo"],
+            }
+        )
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            host_info=False,
+        )
+        collector.register(device)
+        return {m.name: m for m in collector.collect()}
+
+    def test_management_server_metrics(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect(mock_fritzconnection)
+
+        acs = by_name["fritz_tr069_acs_info"].samples
+        assert len(acs) == 1
+        assert acs[0].labels["acs_host"] == "acs.example.invalid"
+        assert by_name["fritz_tr069_periodic_inform_enabled"].samples[0].value == 1
+        assert by_name["fritz_tr069_periodic_inform_interval_seconds"].samples[0].value == 21600
+        assert by_name["fritz_tr069_upgrades_managed"].samples[0].value == 1
+
+    def test_no_credentials_or_identifiers_are_exported(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect(mock_fritzconnection)
+
+        exposed = " ".join(
+            f"{sample.name} {sample.labels} {sample.value}"
+            for metric in by_name.values()
+            for sample in metric.samples
+        )
+        for secret in (
+            "secret",
+            "token",
+            "acs-user",
+            "cr-user",
+            "198.51.100.7",
+            "8089",
+            "/cwmp",
+        ):
+            assert secret not in exposed
+
+    def test_empty_acs_url_has_no_info_sample(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect(
+            mock_fritzconnection,
+            {
+                ("ManagementServer1", "GetInfo"): lambda: {
+                    "NewURL": "",
+                    "NewPeriodicInformEnable": False,
+                    "NewPeriodicInformInterval": 0,
+                    "NewUpgradesManaged": False,
+                }
+            },
+        )
+
+        assert by_name["fritz_tr069_acs_info"].samples == []
+        assert by_name["fritz_tr069_periodic_inform_enabled"].samples[0].value == 0
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
