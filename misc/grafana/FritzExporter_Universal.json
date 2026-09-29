@@ -2964,7 +2964,7 @@
         "spec": {
           "id": 42,
           "title": "Modulation Error Ratio",
-          "description": "DOCSIS 3.0 downstream Mean Squared Error per channel",
+          "description": "DOCSIS 3.1 downstream Modulation Error Ratio per channel",
           "links": [],
           "data": {
             "kind": "QueryGroup",
