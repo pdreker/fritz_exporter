@@ -75,6 +75,15 @@ def call_action_mock(service, action, **kwargs):
             "NewFECErrors": 12,
             "NewCRCErrors": 23,
         },
+        ("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries"): {
+            "NewUSPControllerNumberOfEntries": 2
+        },
+        ("X_AVM-DE_USPController1", "GetUSPControllerByIndex"): {
+            "NewEnable": True,
+            "NewEndpointID": "endpoint-secret-id",
+            "NewHostname": "usp.example.invalid",
+        },
+        ("X_AVM-DE_USPController1", "GetUSPMyFRITZEnable"): {"NewUSPMyFRITZEnabled": True},
         ("WANPPPConnection1", "GetStatusInfo"): {
             "NewConnectionStatus": "Connected",
             "NewUptime": 12345,
@@ -612,6 +621,13 @@ fc_services_capabilities["WanPPPConnectionStatus"] = {
         "SetIdleDisconnectTime",
         "X_AVM-DE_GetAutoDisconnectTimeSpan",
         "X_AVM-DE_SetAutoDisconnectTimeSpan",
+    ],
+}
+fc_services_capabilities["UspControllers"] = {
+    "X_AVM-DE_USPController1": [
+        "GetUSPControllerNumberOfEntries",
+        "GetUSPControllerByIndex",
+        "GetUSPMyFRITZEnable",
     ],
 }
 fc_services_capabilities["WanIPv6Prefix"] = {

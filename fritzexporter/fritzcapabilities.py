@@ -2043,6 +2043,59 @@ class WanConnectionStatus(FritzCapability):
         yield self.metrics["status"]
 
 
+class UspControllers(FritzCapability):
+    """Enable flags of the USP (TR-369) controllers configured on the device.
+
+    Controller endpoint IDs, host names and credentials are not exported.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        # GetUSPControllerByIndex needs an argument, so it cannot be a requirement.
+        self.requirements.append(("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries"))
+        self.requirements.append(("X_AVM-DE_USPController1", "GetUSPMyFRITZEnable"))
+
+    def create_metrics(self) -> None:
+        self.metrics["controller_enabled"] = GaugeMetricFamily(
+            "fritz_usp_controller_enabled",
+            "Whether a USP controller is enabled",
+            labels=["serial", "friendly_name", "index"],
+        )
+        self.metrics["myfritz_enabled"] = GaugeMetricFamily(
+            "fritz_usp_myfritz_enabled",
+            "Whether the MyFRITZ USP controller is enabled",
+            labels=["serial", "friendly_name"],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        labels = [device.serial, device.friendly_name]
+        count = int(
+            device.fc.call_action("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries")[
+                "NewUSPControllerNumberOfEntries"
+            ]
+        )
+        for index in range(count):
+            try:
+                controller = device.fc.call_action(
+                    "X_AVM-DE_USPController1", "GetUSPControllerByIndex", NewIndex=index
+                )
+            except FritzArrayIndexError:
+                continue
+            self.metrics["controller_enabled"].add_metric(
+                [*labels, str(index)], int(bool(controller["NewEnable"]))
+            )
+        myfritz = device.fc.call_action("X_AVM-DE_USPController1", "GetUSPMyFRITZEnable")
+        self.metrics["myfritz_enabled"].add_metric(
+            labels, int(bool(myfritz["NewUSPMyFRITZEnabled"]))
+        )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["controller_enabled"]
+        yield self.metrics["myfritz_enabled"]
+
+
 class WanIPv6Prefix(FritzCapability):
     def __init__(self) -> None:
         super().__init__()

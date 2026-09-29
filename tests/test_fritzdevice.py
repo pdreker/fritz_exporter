@@ -392,6 +392,7 @@ class TestFritzCollector:
             "WanDocsisCable",
             "WanSegmentUtilization",
             "WanConnectionStatus",
+            "UspControllers",
             "WanIPv6Prefix",
         ]
 
