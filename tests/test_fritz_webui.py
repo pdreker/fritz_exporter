@@ -17,14 +17,15 @@ class TestFritzWebUiClientAuth:
         # Known-good vector: challenge "12345678", password "test"
         # MD5 over UTF-16LE of "12345678-test"
         response = FritzWebUiClient._md5_response("12345678", "test")
-        assert response.startswith("12345678-")
-        assert len(response) == 8 + 1 + 32
+        assert response == "12345678-a51138a45d6b4b9a2397e5f370f4e850"
 
     def test_pbkdf2_response(self):
         challenge = "2$1000$00112233445566778899aabbccddeeff$1000$ffeeddccbbaa99887766554433221100"
         response = FritzWebUiClient._pbkdf2_response(challenge, "test")
-        assert response.startswith(challenge + "$")
-        assert len(response) == len(challenge) + 1 + 64
+        assert response == (
+            "2$1000$00112233445566778899aabbccddeeff$1000$ffeeddccbbaa99887766554433221100$"
+            "e039b5674c985eb212d01729920996ca45cb31635332d1b3c175d77a1b6bc0cc"
+        )
 
     def test_pbkdf2_response_rejects_bad_challenge(self):
         with pytest.raises(FritzWebUiError):
