@@ -207,6 +207,7 @@ class TestWanSegmentUtilization:
             "FritzCable",
             host_info=False,
         )
+        device.webui_client = None
         collector.register(device)
         metrics = list(collector.collect())
 
@@ -484,6 +485,7 @@ class TestWanConnectionStatus:
         assert device.capabilities["WanConnectionStatus"].present is True
 
         collector = FritzCollector()
+        device.webui_client = None
         collector.register(device)
         metrics = list(collector.collect())
         by_name = {m.name: m for m in metrics}
