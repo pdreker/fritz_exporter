@@ -27,7 +27,7 @@ This is a prometheus exporter for AVM Fritz! home network devices commonly found
 
 The exporter should work with Fritz!Box and Fritz!Repeater Devices (and maybe others). It actively checks for supported metrics and queries the metrics for all devices configured (Yes, it has multi-device support for all you Mesh users out there.)
 
-It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Box 5690 (fibre), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
+It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Box 5690 (fibre), a Fritz!Box 6660 Cable (DOCSIS, FRITZ!OS 8.25), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
 
 
 .. note::
@@ -63,7 +63,7 @@ The following groups of metrics are currently available:
 * PPP statistics
 * WiFi statistics
 * WAN Layer1 (physical link) statistics, including 64-bit max bitrate for multi-gig links
-* DOCSIS cable channel statistics (auto-detected on cable boxes; power, MER/MSE, corrected/uncorrected errors, latency)
+* DOCSIS cable channel statistics (auto-detected on cable boxes; power, MER/MSE, corrected/uncorrected errors, latency). On the Fritz!Box 6660 Cable, DOCSIS 3.1 channels report an uncorrected-error counter but no corrected one, so ``fritz_docsis_corrected_errors_total`` has no series for them.
 * WAN segment utilization and per-connection IPv4/IPv6 status and uptime via the Fritz!OS REST API
 * Home Automation Devices (switches, heating valves, temperatures, power meters, and battery status; window/door sensors (open/closed) are not yet reported)
 
