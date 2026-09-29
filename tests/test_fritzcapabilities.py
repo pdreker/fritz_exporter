@@ -284,6 +284,7 @@ class TestHostInfoCapability:
         device = FritzDevice(
             FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True
         )
+        device.webui_client = None
         collector.register(device)
 
         # Act
