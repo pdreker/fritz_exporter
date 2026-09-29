@@ -321,17 +321,16 @@ class TestFritzDevice:
         _ = FritzDevice(
             FritzCredentials("somehost", "someuser", "password"),
             "FritzMock",
-            connection=ConnectionOptions(connection_timeout=timeout),
+            connection=ConnectionOptions(connection_timeout=timeout, port=12345),
         )
 
-        # Check: the web UI client must receive the same timeout as TR-064
-        # (None means the timeout is disabled, matching connection_timeout=0).
+        # The Web UI uses its local default port; the configured port is for TR-064 only.
+        # The timeout remains shared with TR-064 (None disables it).
         assert mock_webui_client.call_args == call(
             "somehost",
             "someuser",
             "password",
             use_tls=False,
-            port=None,
             timeout=expected,
         )
 
