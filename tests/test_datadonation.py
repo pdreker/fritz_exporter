@@ -238,7 +238,7 @@ class TestDataDonation:
             '"WanCommonInterfaceDataPackets", "WlanConfigurationInfo", "WlanAssociatedDevices", '
             '"MeshTopology", "HostInfo", '
             '"HomeAutomation", "WanDocsisCable", "WanSegmentUtilization", '
-            '"WanConnectionStatus", "WanIPv6Prefix"], '
+            '"WanConnectionStatus", "TelephonyNumbers", "WanIPv6Prefix"], '
             '"action_results": {"Hosts1": {"GetHostNumberOfEntries": '
             '{"NewHostNumberOfEntries": "3"}}}}}',
             headers={"Content-Type": "application/json"},timeout=10,

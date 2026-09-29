@@ -75,6 +75,7 @@ def call_action_mock(service, action, **kwargs):
             "NewFECErrors": 12,
             "NewCRCErrors": 23,
         },
+        ("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers"): {"NewNumberOfNumbers": 2},
         ("WANPPPConnection1", "GetStatusInfo"): {
             "NewConnectionStatus": "Connected",
             "NewUptime": 12345,
@@ -612,6 +613,11 @@ fc_services_capabilities["WanPPPConnectionStatus"] = {
         "SetIdleDisconnectTime",
         "X_AVM-DE_GetAutoDisconnectTimeSpan",
         "X_AVM-DE_SetAutoDisconnectTimeSpan",
+    ],
+}
+fc_services_capabilities["TelephonyNumbers"] = {
+    "X_VoIP1": [
+        "X_AVM-DE_GetNumberOfNumbers",
     ],
 }
 fc_services_capabilities["WanIPv6Prefix"] = {

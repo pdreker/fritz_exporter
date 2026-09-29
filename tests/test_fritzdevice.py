@@ -392,6 +392,7 @@ class TestFritzCollector:
             "WanDocsisCable",
             "WanSegmentUtilization",
             "WanConnectionStatus",
+            "TelephonyNumbers",
             "WanIPv6Prefix",
         ]
 
