@@ -490,6 +490,7 @@ class TestFritzCollector:
             "WanDocsisCable",
             "WanSegmentUtilization",
             "WanConnectionStatus",
+            "ManagementServerInfo",
             "WanIPv6Prefix",
         ]
 
