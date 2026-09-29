@@ -364,7 +364,7 @@
                         "alias": "Download",
                         "dsType": "prometheus",
                         "editorMode": "code",
-                        "expr": "increase(fritz_wan_datarate_bytes{friendly_name=\"${box}\",direction=\"rx\"}[$__interval])",
+                        "expr": "increase(fritz_wan_data_bytes_total{friendly_name=\"${box}\",direction=\"rx\"}[$__interval])",
                         "format": "time_series",
                         "groupBy": [
                           {
@@ -432,7 +432,7 @@
                         "alias": "Upload",
                         "dsType": "prometheus",
                         "editorMode": "code",
-                        "expr": "increase(fritz_wan_datarate_bytes{friendly_name=\"${box}\",direction=\"tx\"}[$__interval])",
+                        "expr": "increase(fritz_wan_data_bytes_total{friendly_name=\"${box}\",direction=\"tx\"}[$__interval])",
                         "groupBy": [
                           {
                             "params": [
