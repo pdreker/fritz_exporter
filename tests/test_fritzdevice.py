@@ -392,6 +392,7 @@ class TestFritzCollector:
             "WanDocsisCable",
             "WanSegmentUtilization",
             "WanConnectionStatus",
+            "WanIPv6Prefix",
         ]
 
         assert list(collector._capability_instances.capabilities.keys()) == all_capas

@@ -80,6 +80,12 @@ def call_action_mock(service, action, **kwargs):
             "NewUptime": 12345,
             "NewLastConnectionError": "Timeout",
         },
+        ("WANIPConn1", "X_AVM_DE_GetIPv6Prefix"): {
+            "NewIPv6Prefix": "2001:db8:1234:5600::",
+            "NewPrefixLength": 56,
+            "NewValidLifetime": 86400,
+            "NewPreferedLifetime": 3600,
+        },
         ("WANCommonInterfaceConfig", "GetCommonLinkProperties"): {
             "NewWANAccessType": "DSL",
             "NewLayer1UpstreamMaxBitRate": 10000,
@@ -606,6 +612,11 @@ fc_services_capabilities["WanPPPConnectionStatus"] = {
         "SetIdleDisconnectTime",
         "X_AVM-DE_GetAutoDisconnectTimeSpan",
         "X_AVM-DE_SetAutoDisconnectTimeSpan",
+    ],
+}
+fc_services_capabilities["WanIPv6Prefix"] = {
+    "WANIPConn1": [
+        "X_AVM_DE_GetIPv6Prefix",
     ],
 }
 fc_services_capabilities["WanCommonInterfaceConfig"] = {
