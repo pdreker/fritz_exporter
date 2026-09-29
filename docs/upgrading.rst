@@ -4,6 +4,26 @@ Upgrade Notes (potentially breaking changes)
 Unreleased
 ----------
 
+Remote access uses one port for TR-064 and the web interface
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+With ``remote_access: true`` (env: ``FRITZ_REMOTE_ACCESS``), ``port`` now sets the
+remote HTTPS port for both TR-064 and the web interface (smart home, DOCSIS and REST
+API metrics). Without ``port`` the exporter now uses ``443`` for both; it used to
+send TR-064 to ``49443``, which the device does not serve over remote access.
+
+Local scrapes are not affected: ``port`` still sets only the TR-064 port there.
+See :ref:`ports`.
+
+Smart home (AHA) metrics now work over local TLS
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+With ``use_tls: true`` the exporter used to send smart home requests to the
+device's remote access port, which fails on the LAN. When that happened it also
+reported the device as unreachable and skipped the metrics collected after smart
+home. It now sends them to port 443, and a failed smart home fetch no longer marks
+the device unreachable.
+
 Default connection timeout added
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

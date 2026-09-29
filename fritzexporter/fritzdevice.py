@@ -104,10 +104,12 @@ class FritzDevice:
                 creds.host,
             )
         # The web UI client is shared by every capability that reads data from
-        # the Fritz!Box web interface (DOCSIS channel data, REST API endpoints).
+        # the Fritz!Box web interface (AHA smart home data, DOCSIS channel data,
+        # REST API endpoints).
         # Create it if any of them is present, so a DSL/fiber box can still use
         # the technology-agnostic REST capabilities.
         webui_capabilities = (
+            "HomeAutomation",
             "WanDocsisCable",
             "WanSegmentUtilization",
             "WanConnectionStatus",
@@ -122,6 +124,7 @@ class FritzDevice:
                 creds.user,
                 creds.password,
                 use_tls=connection.use_tls,
+                port=connection.web_port,
                 timeout=connection.connection_timeout,
             )
         if self.capabilities.empty():

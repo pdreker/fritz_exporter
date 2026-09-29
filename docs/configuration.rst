@@ -42,31 +42,52 @@ If you only need a single device this is the easiest way to configure the export
 | ``FRITZ_CONNECTION_TIMEOUT`` | Per-device TR-064 connect/read timeout in          | 10        |
 |                              | seconds. ``0`` disables the timeout.               |           |
 +------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_USE_TLS``            | Use HTTPS/TLS for TR-064 to the device.            | False     |
-|                              | Only ``true`` or ``1`` enable this. Certificate    |           |
-|                              | verification is disabled by ``fritzconnection``    |           |
-|                              | (Fritz!Box self-signed certs).                     |           |
+| ``FRITZ_USE_TLS``            | Use HTTPS for TR-064 and the web interface.        | False     |
+|                              | Only ``true`` or ``1`` enable this. The exporter   |           |
+|                              | does not verify the certificate (Fritz!Box certs   |           |
+|                              | are self-signed).                                  |           |
 +------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_DEVICE_PORT``        | Optional TR-064 port on the device. Defaults to    |           |
-|                              | ``49000`` (HTTP) or ``49443`` (TLS) via            |           |
-|                              | ``fritzconnection``. Distinct from ``FRITZ_PORT``  |           |
-|                              | (exporter listen port). ``0`` or unset = default.  |           |
+| ``FRITZ_DEVICE_PORT``        | Optional device port, see :ref:`ports`. Distinct   |           |
+|                              | from ``FRITZ_PORT`` (exporter listen port).        |           |
+|                              | ``0`` or unset = default.                          |           |
 +------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_REMOTE_ACCESS``      | Use AVM WAN remote TR-064 (``/tr064`` URL prefix). | False     |
-|                              | Requires ``FRITZ_USE_TLS=true``. Only ``true`` or  |           |
-|                              | ``1`` enable this.                                 |           |
+| ``FRITZ_REMOTE_ACCESS``      | Scrape over AVM WAN remote access, see             | False     |
+|                              | :ref:`ports`. Requires ``FRITZ_USE_TLS=true``.     |           |
+|                              | Only ``true`` or ``1`` enable this.                |           |
 +------------------------------+----------------------------------------------------+-----------+
 
 .. note::
 
   enabling ``FRITZ_HOST_INFO`` by setting it to ``true`` or ``1`` will collect extended information about every device known your fritz device which can take a long time (20+ seconds). If you really want or need the extended stats please make sure that your Prometheus scraping interval and timeouts are set accordingly.
 
-.. note::
+.. _ports:
 
-  ``FRITZ_REMOTE_ACCESS`` / ``remote_access: true`` enables AVM's WAN remote TR-064 mode
-  (path prefix ``/tr064``). It requires TLS (``use_tls: true`` / ``FRITZ_USE_TLS=true``)
-  and a hostname/port reachable via Fernwartung (often a DynDNS/MyFRITZ name and
-  forwarded HTTPS port). LAN scrapes should leave this disabled (default).
+Ports, TLS and remote access
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The exporter talks to two interfaces on the device: TR-064 for most metrics, and
+the web interface for smart home (AHA), DOCSIS and REST API metrics. Which ports
+it uses depends on ``use_tls``, ``port`` and ``remote_access``:
+
++----------------------------------+---------------------------+---------------------------+
+| Mode                             | TR-064                    | Web interface             |
++==================================+===========================+===========================+
+| Local (default)                  | ``http``, port ``49000``  | ``http``, port ``80``     |
++----------------------------------+---------------------------+---------------------------+
+| Local, ``use_tls: true``         | ``https``, port ``49443`` | ``https``, port ``443``   |
++----------------------------------+---------------------------+---------------------------+
+| ``remote_access: true``          | ``https``, ``port``       | ``https``, ``port``       |
+| (requires ``use_tls: true``)     | (default ``443``), path   | (default ``443``)         |
+|                                  | prefix ``/tr064``         |                           |
++----------------------------------+---------------------------+---------------------------+
+
+In local mode ``port`` sets the TR-064 port only; the web interface stays on 80 or 443.
+
+In remote mode the device serves TR-064 and the web interface on one port: the
+HTTPS port set for internet access to the device ("Internet > Permit Access >
+FRITZ!Box Services"). Set ``hostname`` to the device's public name (often a MyFRITZ or
+DynDNS name) and ``port`` to that port. LAN scrapes should leave remote access
+disabled (default).
 
 When using the environment vars you can only specify a single device. If you need multiple devices please use the config file.
 
@@ -99,9 +120,9 @@ To use the config file you have to specify the the location of the config and mo
       host_info: True
       wifi_client_info: True # optional, per-client WiFi signal/speed (higher cardinality)
       connection_timeout: 10 # optional, seconds; 0 disables timeout (default 10)
-      use_tls: false # optional; true = HTTPS TR-064 (default port 49443)
-      port: 49000 # optional TR-064 port; omit for fritzconnection defaults
-      remote_access: false # optional; true = WAN TR-064 (/tr064 prefix; requires use_tls)
+      use_tls: false # optional; true = HTTPS for TR-064 and the web interface
+      port: 49000 # optional; TR-064 port locally, shared remote port with remote_access
+      remote_access: false # optional; true = WAN remote access (requires use_tls)
     - name: Repeater Wohnzimmer # optional
       hostname: repeater-Wohnzimmer
       username: prometheus

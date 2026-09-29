@@ -178,10 +178,10 @@ fritzexporter/
   fritzdevice.py        # FritzDevice, FritzCollector, FritzCredentials
   fritzcapabilities.py  # FritzCapability (ABC) + all concrete capability classes
   fritz_aha.py          # AHA (smart home) XML parsing
-  fritz_webui.py        # Generic Fritz!Box web login + data.lua/REST API client
+  fritz_webui.py        # Generic Fritz!Box web login + data.lua/REST API/AHA client
   fritz_docsis.py       # DOCSIS cable channel types + parser (web UI page)
   fritz_rest_generic.py # Technology-agnostic /api/v0 REST parsers (connections, segments)
-  tr064_remote.py       # WAN remote TR-064 (/tr064) URL rewriting
+  tr064_remote.py       # TR-064/web UI ports, WAN remote TR-064 (/tr064) rewriting
   action_blacklists.py  # TR-064 actions that must never be called
   data_donation.py      # --donate / --sanitize: collect + upload anonymized device data
   exceptions.py         # Project-level exceptions

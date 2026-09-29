@@ -1,4 +1,8 @@
-"""AVM WAN remote TR-064 URL rewriting (/tr064 path prefix).
+"""Fritz!Box connection endpoints: TR-064 and web UI ports, WAN remote access.
+
+Local access uses separate ports: TR-064 on 49000 (HTTP) or 49443 (TLS), the
+web UI (login, data.lua, REST API, AHA) on 80 or 443. WAN remote access serves
+both on the one remote HTTPS port; TR-064 then needs the /tr064 path prefix.
 
 See https://fritz.support/resources/TR-064_Remote_Access.pdf
 """
@@ -17,6 +21,7 @@ from fritzconnection import FritzConnection  # type: ignore[import]
 from fritzconnection.core.exceptions import FritzConnectionException  # type: ignore[import]
 
 REMOTE_TR064_PREFIX = "/tr064"
+REMOTE_ACCESS_DEFAULT_PORT = 443
 
 
 def rewrite_tr064_remote_url(url: str) -> str:
@@ -117,6 +122,23 @@ class ConnectionOptions:
     port: int | None = None
     remote_access: bool = False
 
+    @property
+    def tr064_port(self) -> int | None:
+        """TR-064 port; ``None`` lets fritzconnection pick 49000 or 49443."""
+        if self.remote_access:
+            return self.port or REMOTE_ACCESS_DEFAULT_PORT
+        return self.port
+
+    @property
+    def web_port(self) -> int | None:
+        """Web UI port; ``None`` means the scheme default (80 or 443).
+
+        Locally, ``port`` is the TR-064 port only and does not apply here.
+        """
+        if self.remote_access:
+            return self.port or REMOTE_ACCESS_DEFAULT_PORT
+        return None
+
 
 def create_fritz_connection(
     *,
@@ -137,7 +159,7 @@ def create_fritz_connection(
                 password=password,
                 timeout=options.connection_timeout,
                 use_tls=options.use_tls,
-                port=options.port,
+                port=options.tr064_port,
             )
         except ParseError as err:
             # Fritz returns HTML (often text/html; charset=utf-8) for missing/auth
