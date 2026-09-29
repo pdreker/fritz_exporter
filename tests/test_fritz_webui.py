@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiError
 
@@ -192,6 +193,51 @@ class TestFritzWebUiClientFetch:
 
         assert result["data"]["readyState"] == "ready"
         assert session.post.call_count == 2
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_fetch_aha_retries_once_on_forbidden(self, mock_session_cls: MagicMock):
+        session = mock_session_cls.return_value
+
+        def sid_resp(sid: str) -> MagicMock:
+            resp = MagicMock()
+            resp.text = f"<SessionInfo><SID>{sid}</SID></SessionInfo>"
+            return resp
+
+        # The box answers an expired SID with 403; the client logs in again once.
+        forbidden = MagicMock()
+        forbidden.raise_for_status.side_effect = requests.HTTPError("403 Forbidden")
+        ok = MagicMock()
+        ok.text = '<devicelist version="1"></devicelist>'
+        session.get.side_effect = [
+            sid_resp("0123456789abcdef"),
+            forbidden,
+            sid_resp("fedcba9876543210"),
+            ok,
+        ]
+
+        client = FritzWebUiClient("fritz.box", "user", "pass", use_tls=True)
+        result = client.fetch_aha("getdevicelistinfos")
+
+        assert result == '<devicelist version="1"></devicelist>'
+        aha_call = session.get.call_args_list[3]
+        assert aha_call.args[0] == "https://fritz.box/webservices/homeautoswitch.lua"
+        assert aha_call.kwargs["params"] == {
+            "sid": "fedcba9876543210",
+            "switchcmd": "getdevicelistinfos",
+        }
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_fetch_aha_raises_on_empty_response(self, mock_session_cls: MagicMock):
+        session = mock_session_cls.return_value
+        login = MagicMock()
+        login.text = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
+        empty = MagicMock()
+        empty.text = ""
+        session.get.side_effect = [login, empty, login, empty]
+
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+        with pytest.raises(FritzWebUiError, match="empty AHA response"):
+            client.fetch_aha("getdevicelistinfos")
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_fetch_api_uses_auth_header(self, mock_session_cls: MagicMock):
