@@ -123,6 +123,7 @@ class FritzDevice:
                 creds.password,
                 use_tls=connection.use_tls,
                 port=connection.port,
+                timeout=connection.connection_timeout,
             )
         if self.capabilities.empty():
             logger.critical("Device %s has no detected capabilities. Exiting.", creds.host)
