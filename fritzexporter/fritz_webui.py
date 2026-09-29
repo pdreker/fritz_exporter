@@ -70,6 +70,9 @@ class FritzWebUiClient:
         host_port = f"{host}:{port}" if port else host
         self.base_url = f"{scheme}://{host_port}"
         self.session = requests.Session()
+        # Fritz!Box devices serve a self-signed certificate; match the TR-064
+        # session in fritzconnection, which does not verify it either.
+        self.session.verify = False
         self._sid: str | None = None
         self._sid_expiry: float = 0.0
 
