@@ -93,6 +93,7 @@ def call_action_mock(service, action, **kwargs):
             "NewHostname": "usp.example.invalid",
         },
         ("X_AVM-DE_USPController1", "GetUSPMyFRITZEnable"): {"NewUSPMyFRITZEnabled": True},
+        ("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers"): {"NewNumberOfNumbers": 2},
         ("WANPPPConnection1", "GetStatusInfo"): {
             "NewConnectionStatus": "Connected",
             "NewUptime": 12345,
@@ -640,6 +641,11 @@ fc_services_capabilities["UspControllers"] = {
         "GetUSPControllerNumberOfEntries",
         "GetUSPControllerByIndex",
         "GetUSPMyFRITZEnable",
+    ],
+}
+fc_services_capabilities["TelephonyNumbers"] = {
+    "X_VoIP1": [
+        "X_AVM-DE_GetNumberOfNumbers",
     ],
 }
 fc_services_capabilities["WanIPv6Prefix"] = {

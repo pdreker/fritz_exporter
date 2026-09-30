@@ -2157,6 +2157,30 @@ class UspControllers(FritzCapability):
         yield self.metrics["myfritz_enabled"]
 
 
+class TelephonyNumbers(FritzCapability):
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers"))
+
+    def create_metrics(self) -> None:
+        self.metrics["numbers"] = GaugeMetricFamily(
+            "fritz_telephony_numbers",
+            "Number of telephone numbers configured on the device",
+            labels=["serial", "friendly_name"],
+        )
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        result = device.fc.call_action("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers")
+        self.metrics["numbers"].add_metric(
+            [device.serial, device.friendly_name], int(result["NewNumberOfNumbers"])
+        )
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield self.metrics["numbers"]
+
+
 class WanIPv6Prefix(FritzCapability):
     def __init__(self) -> None:
         super().__init__()

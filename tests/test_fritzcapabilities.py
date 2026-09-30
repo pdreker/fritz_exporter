@@ -55,7 +55,7 @@ class TestFritzCapabilitiesMethods:
         num_caps = len(fd.capabilities)
 
         # Check
-        assert num_caps == 26  # All known capabilities
+        assert num_caps == 27  # All known capabilities
 
     def test_empty_capabilities_is_true_when_all_absent(self, mock_fritzconnection: MagicMock):
         # Prepare - use an empty service set so no capability is present
@@ -881,6 +881,51 @@ class TestUspControllers:
 
         assert by_name["fritz_usp_controller_enabled"].samples == []
         assert by_name["fritz_usp_myfritz_enabled"].samples[0].value == 1
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestTelephonyNumbers:
+    """Tests for the telephony number count metric."""
+
+    def _collect_numbers_metric(self, mock_fritzconnection: MagicMock, count: int | None):
+        fc = mock_fritzconnection.return_value
+
+        def call_action_numbers(service, action, **kwargs):
+            if (service, action) == ("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers") and count is not None:
+                return {"NewNumberOfNumbers": count}
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = call_action_numbers
+        fc.services = create_fc_services(
+            {
+                **fc_services_capabilities["DeviceInfo"],
+                **fc_services_capabilities["TelephonyNumbers"],
+            }
+        )
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            host_info=False,
+        )
+        collector.register(device)
+        return {m.name: m for m in collector.collect()}
+
+    def test_number_count_metric(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect_numbers_metric(mock_fritzconnection, None)
+
+        samples = by_name["fritz_telephony_numbers"].samples
+        assert len(samples) == 1
+        assert samples[0].value == 2
+        assert samples[0].labels == {"serial": "1234567890", "friendly_name": "FritzMock"}
+
+    def test_no_numbers_configured_reports_zero(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect_numbers_metric(mock_fritzconnection, 0)
+
+        samples = by_name["fritz_telephony_numbers"].samples
+        assert len(samples) == 1
+        assert samples[0].value == 0
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")

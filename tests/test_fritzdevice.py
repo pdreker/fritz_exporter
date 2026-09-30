@@ -492,6 +492,7 @@ class TestFritzCollector:
             "WanConnectionStatus",
             "ManagementServerInfo",
             "UspControllers",
+            "TelephonyNumbers",
             "WanIPv6Prefix",
         ]
 
