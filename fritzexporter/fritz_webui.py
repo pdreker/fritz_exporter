@@ -70,6 +70,9 @@ class FritzWebUiClient:
         host_port = f"{host}:{port}" if port else host
         self.base_url = f"{scheme}://{host_port}"
         self.session = requests.Session()
+        # Fritz!Box devices serve a self-signed certificate; match the TR-064
+        # session in fritzconnection, which does not verify it either.
+        self.session.verify = False
         self._sid: str | None = None
         self._sid_expiry: float = 0.0
 
@@ -230,6 +233,43 @@ class FritzWebUiClient:
             self._invalidate_sid()
             sid = self._ensure_sid()
             return self._fetch_page(sid, page)
+
+    # ------------------------------------------------------------------
+    # AHA HTTP interface (homeautoswitch.lua) fetching
+    # ------------------------------------------------------------------
+
+    def _fetch_aha(self, sid: str, command: str, params: dict[str, str]) -> str:
+        """GET an AHA command from homeautoswitch.lua and return the response text."""
+        payload = {**params, "sid": sid, "switchcmd": command}
+        try:
+            resp = self.session.get(
+                f"{self.base_url}/webservices/homeautoswitch.lua",
+                params=payload,
+                timeout=self.timeout,
+            )
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            msg = f"AHA request failed for {command}: {e}"
+            raise FritzWebUiError(msg) from e
+
+        if not resp.text:
+            msg = f"Fritz!Box returned an empty AHA response for {command}"
+            raise FritzWebUiError(msg)
+        return resp.text
+
+    def fetch_aha(self, command: str, **params: str) -> str:
+        """Run an AHA command (e.g. ``getdevicelistinfos``), re-authenticating once if needed.
+
+        The box answers an invalid or expired SID with HTTP 403.
+        """
+        sid = self._ensure_sid()
+        try:
+            return self._fetch_aha(sid, command, params)
+        except FritzWebUiError:
+            logger.debug("AHA fetch failed, re-authenticating...")
+            self._invalidate_sid()
+            sid = self._ensure_sid()
+            return self._fetch_aha(sid, command, params)
 
     # ------------------------------------------------------------------
     # REST API (/api/v0/...) fetching
