@@ -55,7 +55,7 @@ class TestFritzCapabilitiesMethods:
         num_caps = len(fd.capabilities)
 
         # Check
-        assert num_caps == 25  # All known capabilities
+        assert num_caps == 26  # All known capabilities
 
     def test_empty_capabilities_is_true_when_all_absent(self, mock_fritzconnection: MagicMock):
         # Prepare - use an empty service set so no capability is present
@@ -819,6 +819,68 @@ class TestManagementServer:
 
         assert by_name["fritz_tr069_acs_info"].samples == []
         assert by_name["fritz_tr069_periodic_inform_enabled"].samples[0].value == 0
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestUspControllers:
+    """Tests for the USP controller metrics."""
+
+    def _collect(self, mock_fritzconnection: MagicMock, overrides=None):
+        fc = mock_fritzconnection.return_value
+        overrides = overrides or {}
+
+        def call_action_provider(service, action, **kwargs):
+            if (service, action) in overrides:
+                return overrides[(service, action)]()
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = call_action_provider
+        fc.services = create_fc_services(
+            {
+                **fc_services_capabilities["DeviceInfo"],
+                **fc_services_capabilities["UspControllers"],
+            }
+        )
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            host_info=False,
+        )
+        collector.register(device)
+        return {m.name: m for m in collector.collect()}
+
+    def test_usp_controller_flags(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect(mock_fritzconnection)
+
+        controllers = {
+            sample.labels["index"]: sample.value
+            for sample in by_name["fritz_usp_controller_enabled"].samples
+        }
+        assert controllers == {"0": 1, "1": 1}
+        assert by_name["fritz_usp_myfritz_enabled"].samples[0].value == 1
+
+        exposed = " ".join(
+            f"{sample.labels}" for metric in by_name.values() for sample in metric.samples
+        )
+        assert "endpoint-secret-id" not in exposed
+        assert "usp.example.invalid" not in exposed
+
+    def test_usp_without_controllers_has_no_controller_sample(
+        self, mock_fritzconnection: MagicMock
+    ):
+        by_name = self._collect(
+            mock_fritzconnection,
+            {
+                ("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries"): lambda: {
+                    "NewUSPControllerNumberOfEntries": 0
+                }
+            },
+        )
+
+        assert by_name["fritz_usp_controller_enabled"].samples == []
+        assert by_name["fritz_usp_myfritz_enabled"].samples[0].value == 1
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
