@@ -15,6 +15,39 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.5.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.4.0...fritzexporter-v3.5.0) (2026-09-30)
+
+
+### Features
+
+* add delegated IPv6 prefix info metric ([61706fb](https://github.com/pdreker/fritz_exporter/commit/61706fb02e93ceb238ae79e48d305798f1c33a55))
+* add DOCSIS cable channel metrics, auto-detected on cable boxes ([8d009df](https://github.com/pdreker/fritz_exporter/commit/8d009df15bb28cccfd1353c3ad5e6203774ff533))
+* add per-connection IPv4/IPv6 status, uptime, IP address and media type metrics via the Fritz!OS REST API ([8d009df](https://github.com/pdreker/fritz_exporter/commit/8d009df15bb28cccfd1353c3ad5e6203774ff533))
+* add telephony number count metric ([#705](https://github.com/pdreker/fritz_exporter/issues/705)) ([df023db](https://github.com/pdreker/fritz_exporter/commit/df023db59858cadece95c0dcfabbd1526451daf9))
+* add TR-069 management server metrics ([c8dade7](https://github.com/pdreker/fritz_exporter/commit/c8dade7ddd27c314414321aa80e517ec81c68b68))
+* add USP controller enable metrics ([#708](https://github.com/pdreker/fritz_exporter/issues/708)) ([b716353](https://github.com/pdreker/fritz_exporter/commit/b7163533021fd0c506bb6c5c27ef5b5a7a88bdfe))
+* add WAN segment utilization metrics via the Fritz!OS web interface ([8d009df](https://github.com/pdreker/fritz_exporter/commit/8d009df15bb28cccfd1353c3ad5e6203774ff533))
+* report cable connections as fritz_connection_mode 5 ([8d009df](https://github.com/pdreker/fritz_exporter/commit/8d009df15bb28cccfd1353c3ad5e6203774ff533))
+
+
+### Bug Fixes
+
+* apply the connection timeout to every web UI request ([8d009df](https://github.com/pdreker/fritz_exporter/commit/8d009df15bb28cccfd1353c3ad5e6203774ff533))
+* **grafana:** use byte counters for transfer volume ([5e752f5](https://github.com/pdreker/fritz_exporter/commit/5e752f5ac75c75917ef79caec4ee0224882f5518))
+* keep scanning hosts when one leaves the host table mid-scan (UPnP error 714) ([8d009df](https://github.com/pdreker/fritz_exporter/commit/8d009df15bb28cccfd1353c3ad5e6203774ff533))
+* parse web UI XML with defusedxml ([8d009df](https://github.com/pdreker/fritz_exporter/commit/8d009df15bb28cccfd1353c3ad5e6203774ff533))
+* **tls:** separate local TLS from remote access for TR-064 and web UI ([c3684f5](https://github.com/pdreker/fritz_exporter/commit/c3684f50a84687d1414077c813c2353fd3f62752)), closes [#700](https://github.com/pdreker/fritz_exporter/issues/700)
+* **webui:** keep TR-064 port separate from UI ([4eba617](https://github.com/pdreker/fritz_exporter/commit/4eba617eb50c0859b5317abf24fc89670c831544))
+* **webui:** skip certificate verification for self-signed Fritz!Box cert ([375933d](https://github.com/pdreker/fritz_exporter/commit/375933d896330f94f1873a3f2ec00a967f3c22ad)), closes [#700](https://github.com/pdreker/fritz_exporter/issues/700)
+
+
+### Documentation
+
+* add contributing guide ([75fa095](https://github.com/pdreker/fritz_exporter/commit/75fa09534aaaf97f93d4e7de4ca7b662cb26a46d))
+* bring port, TLS and config docs up to date ([8d009df](https://github.com/pdreker/fritz_exporter/commit/8d009df15bb28cccfd1353c3ad5e6203774ff533))
+* **grafana:** correct MER panel description ([053e95f](https://github.com/pdreker/fritz_exporter/commit/053e95fa20328839f366015ea058fc6be74c1a80))
+* note DOCSIS 3.1 error counters and list FRITZ!Box 6660 as tested ([3bae33f](https://github.com/pdreker/fritz_exporter/commit/3bae33fc3dd17a1438c7b81124b5d9df792a6823))
+
 ## [3.4.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.3.2...fritzexporter-v3.4.0) (2026-09-22)
 
 
