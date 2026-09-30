@@ -39,8 +39,9 @@ If you only need a single device this is the easiest way to configure the export
 | ``FRITZ_WIFI_CLIENT_INFO``   | Enable per-client WiFi metrics (signal/speed).     | False     |
 |                              | Only "true" or "1" will enable this feature.       |           |
 +------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_CONNECTION_TIMEOUT`` | Per-device TR-064 connect/read timeout in          | 10        |
-|                              | seconds. ``0`` disables the timeout.               |           |
+| ``FRITZ_CONNECTION_TIMEOUT`` | Per-device connect/read timeout in seconds for     | 10        |
+|                              | TR-064 and the web interface. ``0`` disables the   |           |
+|                              | timeout.                                           |           |
 +------------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_USE_TLS``            | Use HTTPS for TR-064 and the web interface.        | False     |
 |                              | Only ``true`` or ``1`` enable this. The exporter   |           |
