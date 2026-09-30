@@ -6,7 +6,6 @@ from fritzconnection.core.exceptions import (
     FritzActionError,
     FritzArgumentError,
     FritzArrayIndexError,
-    FritzHttpInterfaceError,
     FritzLookUpError,
     FritzServiceError,
 )
@@ -15,6 +14,7 @@ from prometheus_client.core import Metric
 
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 from fritzexporter.fritzcapabilities import FritzCapabilities
+from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiError
 
 from .fc_services_mock import (
     call_action_mock,
@@ -55,7 +55,7 @@ class TestFritzCapabilitiesMethods:
         num_caps = len(fd.capabilities)
 
         # Check
-        assert num_caps == 25  # All known capabilities
+        assert num_caps == 27  # All known capabilities
 
     def test_empty_capabilities_is_true_when_all_absent(self, mock_fritzconnection: MagicMock):
         # Prepare - use an empty service set so no capability is present
@@ -370,15 +370,13 @@ class TestHomeAutomationCapability:
         fc = mock_fc.return_value
 
         fc.call_action.side_effect = call_action_mock
-        fc.call_http.side_effect = lambda action, ain=None, **kw: {
-            "content": devicelist_xml,
-            "content-type": "text/xml",
-            "encoding": "utf-8",
-        }
         fc.services = create_fc_services(fc_services_capabilities["HomeAutomation"])
 
         collector = FritzCollector()
         device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        # AHA data comes from the web UI client, not from fritzconnection.
+        device.webui_client = MagicMock(spec=FritzWebUiClient)
+        device.webui_client.fetch_aha.return_value = devicelist_xml
         collector.register(device)
         return collector, device, fc
 
@@ -505,14 +503,13 @@ class TestHomeAutomationCapability:
         ains = {s.labels["ain"] for s in device_present[0].samples}
         assert ains == {"111111111111", "222222222222"}
 
-    def test_homeautomation_with_fritz_http_interface_error(self, mock_fritzconnection: MagicMock, caplog):
+    def test_homeautomation_with_webui_error(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
         caplog.set_level(logging.DEBUG)
         xml = self._make_devicelist_xml(self._make_device_xml())
         collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
 
-        # Make call_http raise FritzHttpInterfaceError
-        fc.call_http.side_effect = FritzHttpInterfaceError("HTTP interface error")
+        device.webui_client.fetch_aha.side_effect = FritzWebUiError("AHA request failed")
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -525,22 +522,20 @@ class TestHomeAutomationCapability:
 
         # Warning should be logged
         assert any(
-            "Got FritzHttpInterfaceError" in record.message
+            "Failed to fetch home automation data" in record.message
             for record in caplog.records
         )
 
-    def test_homeautomation_no_content_in_http_result(self, mock_fritzconnection: MagicMock):
-        # Prepare
-        xml = self._make_devicelist_xml(self._make_device_xml())
-        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
-
-        # Make call_http return a response without 'content'
-        fc.call_http.side_effect = lambda action, ain=None, **kw: {"status": "ok"}
+    def test_homeautomation_empty_devicelist(self, mock_fritzconnection: MagicMock):
+        # Prepare - a box without any smart home devices
+        collector, device, fc = self._setup_ha_device(
+            mock_fritzconnection, self._make_devicelist_xml()
+        )
 
         # Act
         metrics: list[Metric] = list(collector.collect())
 
-        # Check - no devices at all since there is no content to parse
+        # Check - no devices at all
         device_present = [m for m in metrics if m.name == "fritz_ha_device_present"]
         assert len(device_present) == 1
         assert len(device_present[0].samples) == 0
@@ -748,6 +743,144 @@ class TestWanCommonInterfaceByteRateCableWan:
         registry = CollectorRegistry()
         registry.register(collector)
         generate_latest(registry)
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestManagementServer:
+    """Tests for the TR-069 management server metrics."""
+
+    def _collect(self, mock_fritzconnection: MagicMock, overrides=None):
+        fc = mock_fritzconnection.return_value
+        overrides = overrides or {}
+
+        def call_action_provider(service, action, **kwargs):
+            if (service, action) in overrides:
+                return overrides[(service, action)]()
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = call_action_provider
+        fc.services = create_fc_services(
+            {
+                **fc_services_capabilities["DeviceInfo"],
+                **fc_services_capabilities["ManagementServerInfo"],
+            }
+        )
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            host_info=False,
+        )
+        collector.register(device)
+        return {m.name: m for m in collector.collect()}
+
+    def test_management_server_metrics(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect(mock_fritzconnection)
+
+        acs = by_name["fritz_tr069_acs_info"].samples
+        assert len(acs) == 1
+        assert acs[0].labels["acs_host"] == "acs.example.invalid"
+        assert by_name["fritz_tr069_periodic_inform_enabled"].samples[0].value == 1
+        assert by_name["fritz_tr069_periodic_inform_interval_seconds"].samples[0].value == 21600
+        assert by_name["fritz_tr069_upgrades_managed"].samples[0].value == 1
+
+    def test_no_credentials_or_identifiers_are_exported(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect(mock_fritzconnection)
+
+        exposed = " ".join(
+            f"{sample.name} {sample.labels} {sample.value}"
+            for metric in by_name.values()
+            for sample in metric.samples
+        )
+        for secret in (
+            "secret",
+            "token",
+            "acs-user",
+            "cr-user",
+            "198.51.100.7",
+            "8089",
+            "/cwmp",
+        ):
+            assert secret not in exposed
+
+    def test_empty_acs_url_has_no_info_sample(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect(
+            mock_fritzconnection,
+            {
+                ("ManagementServer1", "GetInfo"): lambda: {
+                    "NewURL": "",
+                    "NewPeriodicInformEnable": False,
+                    "NewPeriodicInformInterval": 0,
+                    "NewUpgradesManaged": False,
+                }
+            },
+        )
+
+        assert by_name["fritz_tr069_acs_info"].samples == []
+        assert by_name["fritz_tr069_periodic_inform_enabled"].samples[0].value == 0
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestUspControllers:
+    """Tests for the USP controller metrics."""
+
+    def _collect(self, mock_fritzconnection: MagicMock, overrides=None):
+        fc = mock_fritzconnection.return_value
+        overrides = overrides or {}
+
+        def call_action_provider(service, action, **kwargs):
+            if (service, action) in overrides:
+                return overrides[(service, action)]()
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = call_action_provider
+        fc.services = create_fc_services(
+            {
+                **fc_services_capabilities["DeviceInfo"],
+                **fc_services_capabilities["UspControllers"],
+            }
+        )
+
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            host_info=False,
+        )
+        collector.register(device)
+        return {m.name: m for m in collector.collect()}
+
+    def test_usp_controller_flags(self, mock_fritzconnection: MagicMock):
+        by_name = self._collect(mock_fritzconnection)
+
+        controllers = {
+            sample.labels["index"]: sample.value
+            for sample in by_name["fritz_usp_controller_enabled"].samples
+        }
+        assert controllers == {"0": 1, "1": 1}
+        assert by_name["fritz_usp_myfritz_enabled"].samples[0].value == 1
+
+        exposed = " ".join(
+            f"{sample.labels}" for metric in by_name.values() for sample in metric.samples
+        )
+        assert "endpoint-secret-id" not in exposed
+        assert "usp.example.invalid" not in exposed
+
+    def test_usp_without_controllers_has_no_controller_sample(
+        self, mock_fritzconnection: MagicMock
+    ):
+        by_name = self._collect(
+            mock_fritzconnection,
+            {
+                ("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries"): lambda: {
+                    "NewUSPControllerNumberOfEntries": 0
+                }
+            },
+        )
+
+        assert by_name["fritz_usp_controller_enabled"].samples == []
+        assert by_name["fritz_usp_myfritz_enabled"].samples[0].value == 1
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")

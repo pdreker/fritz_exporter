@@ -331,8 +331,106 @@ class TestFritzDevice:
             "someuser",
             "password",
             use_tls=False,
+            port=None,
             timeout=expected,
         )
+
+    @patch("fritzexporter.fritzdevice.FritzWebUiClient")
+    @pytest.mark.parametrize(
+        "port, expected_tr064_port, expected_web_port",
+        [
+            # Local: port is the TR-064 port only; the web UI keeps 80/443.
+            (None, None, None),
+            (49443, 49443, None),
+        ],
+    )
+    def test_local_tls_ports(
+        self,
+        mock_webui_client: MagicMock,
+        mock_fritzconnection: MagicMock,
+        port: int | None,
+        expected_tr064_port: int | None,
+        expected_web_port: int | None,
+    ):
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        _ = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            connection=ConnectionOptions(use_tls=True, port=port),
+        )
+
+        assert mock_fritzconnection.call_args.kwargs["port"] == expected_tr064_port
+        assert mock_webui_client.call_args.kwargs["port"] == expected_web_port
+
+    @patch("fritzexporter.fritzdevice.FritzWebUiClient")
+    @pytest.mark.parametrize(
+        "port, expected",
+        [
+            # Remote: TR-064 and web UI share the remote HTTPS port.
+            (None, 443),
+            (11243, 11243),
+        ],
+    )
+    def test_remote_access_ports(
+        self,
+        mock_webui_client: MagicMock,
+        mock_fritzconnection: MagicMock,
+        port: int | None,
+        expected: int,
+    ):
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        _ = FritzDevice(
+            FritzCredentials("myfritz.example", "someuser", "password"),
+            "FritzMock",
+            connection=ConnectionOptions(use_tls=True, port=port, remote_access=True),
+        )
+
+        assert mock_fritzconnection.call_args.kwargs["port"] == expected
+        assert mock_webui_client.call_args.kwargs["port"] == expected
+
+    def test_local_tls_aha_ignores_remote_access_port(self, mock_fritzconnection: MagicMock):
+        # Regression for #700: a box that advertises a WAN remote-access port
+        # must not have AHA sent there when scraped over local TLS.
+        def remote_port_mock(service, action, **kwargs):
+            if service == "X_AVM-DE_RemoteAccess1":
+                return {"NewPort": "18228", "NewEnabled": "1"}
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = remote_port_mock
+        fc.services = create_fc_services(fc_services_capabilities["HomeAutomation"])
+
+        with patch("fritzexporter.fritz_webui.requests.Session") as mock_session_cls:
+            session = mock_session_cls.return_value
+            login = MagicMock(status_code=200, text="<SessionInfo><SID>1234567890abcdef</SID></SessionInfo>")
+            aha = MagicMock(status_code=200, text='<devicelist version="1"></devicelist>')
+            session.get.side_effect = [login, aha]
+
+            collector = FritzCollector()
+            device = FritzDevice(
+                FritzCredentials("fritz.box", "someuser", "password"),
+                "FritzMock",
+                connection=ConnectionOptions(use_tls=True),
+            )
+            collector.register(device)
+            metrics = list(collector.collect())
+
+        urls = [c.args[0] for c in session.get.call_args_list]
+        assert urls == [
+            "https://fritz.box/login_sid.lua",
+            "https://fritz.box/webservices/homeautoswitch.lua",
+        ]
+        assert session.verify is False
+        assert all(c.args[0] != "X_AVM-DE_RemoteAccess1" for c in fc.call_action.call_args_list)
+
+        reachable = [m for m in metrics if m.name == "fritz_device_reachable"]
+        assert reachable[0].samples[0].value == 1.0
 
     def test_should_log_and_reraise_transport_error_on_connect(
         self, mock_fritzconnection: MagicMock, caplog
@@ -392,6 +490,8 @@ class TestFritzCollector:
             "WanDocsisCable",
             "WanSegmentUtilization",
             "WanConnectionStatus",
+            "ManagementServerInfo",
+            "UspControllers",
             "TelephonyNumbers",
             "WanIPv6Prefix",
         ]
@@ -1068,10 +1168,11 @@ class TestFritzCollector:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        with patch("fritzexporter.fritz_webui.requests.Session") as mock_session_cls:
+            device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         collector.register(device)
 
-        fc.call_http.side_effect = RequestsConnectionError(
+        mock_session_cls.return_value.get.side_effect = RequestsConnectionError(
             "Connection aborted.",
             RemoteDisconnected("Remote end closed connection without response"),
         )
@@ -1079,14 +1180,19 @@ class TestFritzCollector:
         # Act: one failing sub-collector must not abort the whole collection cycle
         metrics: list[Metric] = list(collector.collect())
 
-        # Check: exposition still works and the device is reported unreachable
+        # Check: exposition still works, the device stays reachable, and the
+        # capabilities after HomeAutomation still run
         registry = CollectorRegistry()
         registry.register(collector)
         generate_latest(registry)
 
         device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
         assert len(device_reachable_metrics) == 1
-        assert device_reachable_metrics[0].samples[0].value == 0.0
+        assert device_reachable_metrics[0].samples[0].value == 1.0
+
+        assert "Failed to fetch home automation data" in caplog.text
+        assert "Failed to fetch segment utilization data" in caplog.text
+        assert "Failed to fetch connection status data" in caplog.text
 
     def test_should_survive_transport_error_on_connection_mode(
         self, mock_fritzconnection: MagicMock, caplog

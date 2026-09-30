@@ -75,6 +75,24 @@ def call_action_mock(service, action, **kwargs):
             "NewFECErrors": 12,
             "NewCRCErrors": 23,
         },
+        ("ManagementServer1", "GetInfo"): {
+            "NewURL": "https://user:secret@acs.example.invalid:7547/cwmp/path?token=abc",
+            "NewUsername": "acs-user",
+            "NewPeriodicInformEnable": True,
+            "NewPeriodicInformInterval": 21600,
+            "NewConnectionRequestURL": "http://198.51.100.7:8089/cr-secret-path",
+            "NewConnectionRequestUsername": "cr-user",
+            "NewUpgradesManaged": True,
+        },
+        ("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries"): {
+            "NewUSPControllerNumberOfEntries": 2
+        },
+        ("X_AVM-DE_USPController1", "GetUSPControllerByIndex"): {
+            "NewEnable": True,
+            "NewEndpointID": "endpoint-secret-id",
+            "NewHostname": "usp.example.invalid",
+        },
+        ("X_AVM-DE_USPController1", "GetUSPMyFRITZEnable"): {"NewUSPMyFRITZEnabled": True},
         ("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers"): {"NewNumberOfNumbers": 2},
         ("WANPPPConnection1", "GetStatusInfo"): {
             "NewConnectionStatus": "Connected",
@@ -613,6 +631,16 @@ fc_services_capabilities["WanPPPConnectionStatus"] = {
         "SetIdleDisconnectTime",
         "X_AVM-DE_GetAutoDisconnectTimeSpan",
         "X_AVM-DE_SetAutoDisconnectTimeSpan",
+    ],
+}
+fc_services_capabilities["ManagementServerInfo"] = {
+    "ManagementServer1": ["GetInfo"],
+}
+fc_services_capabilities["UspControllers"] = {
+    "X_AVM-DE_USPController1": [
+        "GetUSPControllerNumberOfEntries",
+        "GetUSPControllerByIndex",
+        "GetUSPMyFRITZEnable",
     ],
 }
 fc_services_capabilities["TelephonyNumbers"] = {
