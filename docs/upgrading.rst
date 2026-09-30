@@ -1,8 +1,8 @@
 Upgrade Notes (potentially breaking changes)
 ============================================
 
-Unreleased
-----------
+v3.5.0
+------
 
 Remote access uses one port for TR-064 and the web interface
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,6 +23,9 @@ device's remote access port, which fails on the LAN. When that happened it also
 reported the device as unreachable and skipped the metrics collected after smart
 home. It now sends them to port 443, and a failed smart home fetch no longer marks
 the device unreachable.
+
+v3.4.0
+------
 
 Default connection timeout added
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
