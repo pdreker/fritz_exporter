@@ -15,6 +15,13 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [3.5.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.5.0...fritzexporter-v3.5.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* log unsupported TR-064 actions at INFO instead of WARNING ([e615d1d](https://github.com/pdreker/fritz_exporter/commit/e615d1deb0a678fb1221b75f2003f706a3ebdd97)), closes [#701](https://github.com/pdreker/fritz_exporter/issues/701)
+
 ## [3.5.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.4.0...fritzexporter-v3.5.0) (2026-09-30)
 
 
