@@ -6,6 +6,7 @@ from fritzconnection.core.exceptions import (
     FritzActionError,
     FritzArgumentError,
     FritzArrayIndexError,
+    FritzInternalError,
     FritzLookUpError,
     FritzServiceError,
 )
@@ -68,17 +69,38 @@ class TestFritzCapabilitiesMethods:
         # Check - empty() should return True since no capability is present
         assert caps.empty() is True
 
+    @pytest.mark.parametrize(
+        ("error", "level", "message"),
+        [
+            # The box advertises the action but does not implement it (UPnP 401).
+            (
+                FritzActionError,
+                logging.INFO,
+                "device somehost does not support service Hosts1, action GetHostNumberOfEntries",
+            ),
+            (
+                FritzServiceError,
+                logging.INFO,
+                "device somehost does not support service Hosts1, action GetHostNumberOfEntries",
+            ),
+            (
+                FritzInternalError,
+                logging.WARNING,
+                "disabling metrics at service Hosts1, action GetHostNumberOfEntries",
+            ),
+        ],
+    )
     def test_capability_check_disables_when_call_action_raises(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog, error, level, message
     ):
-        # Prepare - service is present in services dict but call_action raises FritzServiceError
+        # Prepare - service is present in services dict but call_action raises
         caplog.set_level(logging.DEBUG)
 
         fc = mock_fritzconnection.return_value
 
         def error_on_hosts(service, action, **kwargs):
             if service == "Hosts1" and action == "GetHostNumberOfEntries":
-                raise FritzServiceError("Mock FritzServiceError for HostNumberOfEntries")
+                raise error("Mock error for HostNumberOfEntries")
             return call_action_mock(service, action, **kwargs)
 
         fc.call_action.side_effect = error_on_hosts
@@ -92,12 +114,9 @@ class TestFritzCapabilitiesMethods:
         # Check - HostNumberOfEntries capability should be disabled
         assert fd.capabilities["HostNumberOfEntries"].present is False
 
-        # Warning should have been logged
-        assert any(
-            "disabling metrics at service Hosts1, action GetHostNumberOfEntries" in record.message
-            for record in caplog.records
-            if record.levelno == logging.WARNING
-        )
+        logged = [r for r in caplog.records if "GetHostNumberOfEntries" in r.message]
+        assert [r.levelno for r in logged] == [level]
+        assert message in logged[0].message
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")

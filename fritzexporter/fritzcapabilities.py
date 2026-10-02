@@ -39,6 +39,39 @@ if TYPE_CHECKING:
 logger = logging.getLogger("fritzexporter.fritzcapability")
 
 
+def probe_action(
+    device: FritzDevice,
+    service: str,
+    action: str,
+    failures: tuple[type[Exception], ...] = (FritzInternalError,),
+) -> bool:
+    """Call a TR-064 action to confirm the device really supports it.
+
+    Some boxes advertise services or actions they do not implement and answer
+    with UPnP error 401 (Invalid Action). That is expected, so it is logged at
+    INFO; any error in ``failures`` is logged as a warning. Both return False.
+    """
+    try:
+        device.fc.call_action(service, action)
+    except FritzServiceError, FritzActionError:
+        logger.info(
+            "device %s does not support service %s, action %s; disabling its metrics",
+            device.host,
+            service,
+            action,
+        )
+        return False
+    except failures as e:
+        logger.warning(
+            "disabling metrics at service %s, action %s - fritzconnection.call_action returned %s",
+            service,
+            action,
+            str(e),
+        )
+        return False
+    return True
+
+
 class FritzCapability(ABC):
     subclasses: ClassVar[list[type[FritzCapability]]] = []
 
@@ -61,27 +94,16 @@ class FritzCapability(ABC):
             "Capability %s set to %s on device %s", type(self).__name__, self.present, device.host
         )
 
-        # It seems some boxes report service/actions they don't actually support.
-        # So try calling the requirements, and if it throws "InvalidService",
-        # "InvalidAction" or "FritzInternalError" disable this again.
+        # Some boxes report services/actions they don't actually support, so
+        # call each requirement and disable the capability if one fails.
         if self.present:
             for svc, action in self.requirements:
-                try:
-                    device.fc.call_action(svc, action)
-                except (
-                    FritzServiceError,
-                    FritzActionError,
-                    FritzInternalError,
-                    FritzArgumentError,
-                    FritzConnectionException,
-                ) as e:
-                    logger.warning(
-                        "disabling metrics at service %s, action %s - fritzconnection.call_action "
-                        "returned %s",
-                        svc,
-                        action,
-                        str(e),
-                    )
+                if not probe_action(
+                    device,
+                    svc,
+                    action,
+                    (FritzInternalError, FritzArgumentError, FritzConnectionException),
+                ):
                     self.present = False
 
     def get_metrics(
@@ -889,20 +911,7 @@ class WlanConfigurationInfo(FritzCapability):
             )
             if self.wifi_present[index]:
                 for svc, action in requirements:
-                    try:
-                        device.fc.call_action(svc, action)
-                    except (
-                        FritzServiceError,
-                        FritzActionError,
-                        FritzInternalError,
-                    ) as e:
-                        logger.warning(
-                            "disabling metrics at service %s, action %s - "
-                            "fritzconnection.call_action returned %s",
-                            svc,
-                            action,
-                            str(e),
-                        )
+                    if not probe_action(device, svc, action):
                         self.wifi_present[index] = False
         self.present = any(self.wifi_present)
 
@@ -1094,16 +1103,7 @@ class WlanAssociatedDevices(FritzCapability):
             # Only GetTotalAssociations is safe to probe live; GetGenericAssociatedDeviceInfo
             # needs an index and raises on a radio with no clients.
             if present:
-                try:
-                    device.fc.call_action(service, "GetTotalAssociations")
-                except (FritzServiceError, FritzActionError, FritzInternalError) as e:
-                    logger.warning(
-                        "disabling metrics at service %s, action GetTotalAssociations - "
-                        "fritzconnection.call_action returned %s",
-                        service,
-                        str(e),
-                    )
-                    present = False
+                present = probe_action(device, service, "GetTotalAssociations")
             self.wifi_present[index] = present
         self.present = any(self.wifi_present)
 
