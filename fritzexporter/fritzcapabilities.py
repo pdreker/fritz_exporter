@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Generator, ItemsView, Iterator
 from contextlib import suppress
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, ClassVar, cast
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit
 
 import requests
 from fritzconnection.core.exceptions import (  # type: ignore[import]
@@ -46,6 +47,9 @@ if TYPE_CHECKING:
     from fritzexporter.fritzdevice import FritzDevice
 
 logger = logging.getLogger("fritzexporter.fritzcapability")
+# The log path comes from the box: only a plain path with a query is accepted, so it cannot
+# turn into userinfo, another host or a fragment when appended to the box's address.
+_LOG_PATH_RE = re.compile(r"/(?!/)[A-Za-z0-9._~/%-]*(\?[A-Za-z0-9._~%=&-]*)?")
 event_logger = logging.getLogger("fritzexporter.event_log")
 
 
@@ -2253,15 +2257,22 @@ class EventLog(FritzCapability):
         # The session id in the URL authenticates the request. Not using fc.session
         # keeps the /tr064 path prefix, which it adds for WAN remote access, off this
         # web page; address, port and TLS are those of the TR-064 connection.
+        base = f"{device.fc.address}:{device.fc.port}"
+        url = f"{base}{path}"
+        if (
+            not isinstance(path, str)
+            or not _LOG_PATH_RE.fullmatch(path)
+            or urlsplit(url)[:2] != urlsplit(base)[:2]
+        ):
+            msg = "the reported log path is not a path on the device"
+            raise EventLogFetchError(msg)
         try:
             with requests.Session() as session:
                 # The box's certificate is self-signed, as in fritzconnection. Not trusting
                 # the environment keeps REQUESTS_CA_BUNDLE from re-enabling verification.
                 session.verify = False
                 session.trust_env = False
-                response = session.get(
-                    f"{device.fc.address}:{device.fc.port}{path}", timeout=device.fc.timeout
-                )
+                response = session.get(url, timeout=device.fc.timeout)
         except RequestException as e:
             msg = f"request failed ({type(e).__name__})"
             raise EventLogFetchError(msg) from None

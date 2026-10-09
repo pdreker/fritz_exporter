@@ -310,7 +310,7 @@ class TestEventLogCapability:
 
         def call_action(service, action, **kwargs):
             if (service, action) == ("DeviceInfo1", "X_AVM-DE_GetDeviceLogPath"):
-                return {"NewDeviceLogPath": LOG_PATH}
+                return {"NewDeviceLogPath": state.get("path", LOG_PATH)}
             if (service, action) == ("Time1", "GetInfo"):
                 if state.get("time_error"):
                     raise state["time_error"]
@@ -353,6 +353,7 @@ class TestEventLogCapability:
             with caplog.at_level(logging.INFO, logger="fritzexporter.event_log"):
                 metrics = list(collector.collect())
             state["session"] = session
+            state.setdefault("urls", []).extend(c.args[0] for c in session.get.call_args_list)
         state["metrics"] = metrics
         return [r.getMessage() for r in caplog.records if r.name == "fritzexporter.event_log"]
 
@@ -610,3 +611,53 @@ class TestEventLogCapability:
         assert len(recovered) == 1
         assert device.capabilities["EventLog"].present is True
         assert device.available is True
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "@attacker.example/x",
+            ".evil.example/",
+            "//evil.example/x",
+            "/ok\\@evil.example",
+            "/a b",
+            "/a#frag",
+            "/a\n",
+            "http://evil.example/x",
+            "",
+            None,
+            42,
+        ],
+    )
+    def test_hostile_log_path_is_rejected_without_a_request(
+        self, mock_fritzconnection, caplog, path
+    ):
+        collector, device, state = self.setup_device(
+            mock_fritzconnection, event_log=True, responses=[event_xml(PROVIDER)]
+        )
+        state["path"] = path
+        caplog.set_level(logging.DEBUG)
+
+        first = self.collect(collector, state, caplog)
+        records = list(caplog.records)
+        self.collect(collector, state, caplog)
+        records += caplog.records
+        state["path"] = LOG_PATH
+        recovered = self.collect(collector, state, caplog)
+
+        assert first == []
+        # no request for the hostile path, only for the legitimate one afterwards
+        assert state["urls"] == [f"http://somehost:49000{LOG_PATH}"]
+        assert len([r for r in records if r.levelno == logging.WARNING]) == 1
+        for record in records:
+            text = record.getMessage() + str(record.exc_info)
+            assert "evil" not in text
+            assert "attacker" not in text
+            assert str(path) not in text or str(path) in ("", "None", "42")
+        assert len(recovered) == 1
+        assert device.capabilities["EventLog"].present is True
+
+    def test_legitimate_log_path_is_fetched(self, mock_fritzconnection, caplog):
+        collector, _, state = self.setup_device(mock_fritzconnection, event_log=True)
+
+        assert len(self.collect(collector, state, caplog)) == 3
+        state["session"].get.assert_called_once_with(f"http://somehost:49000{LOG_PATH}", timeout=10)
