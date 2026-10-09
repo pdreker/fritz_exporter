@@ -52,6 +52,11 @@ class FritzWebUiError(Exception):
 _MAX_CAUSE_DEPTH = 5
 
 
+def _is_failed(resp: requests.Response) -> bool:
+    """An error status, or any redirect (redirects are never followed, see ``allow_redirects``)."""
+    return not resp.ok or resp.status_code in range(300, 400)
+
+
 def _http_error_text(resp: requests.Response) -> str:
     reason = f" {resp.reason}" if resp.reason else ""
     return f"HTTP {resp.status_code}{reason}"
@@ -146,13 +151,16 @@ class FritzWebUiClient:
         params = {"username": self.username} if self.username else {}
         try:
             resp = self.session.get(
-                f"{self.base_url}/login_sid.lua", params=params, timeout=self.timeout
+                f"{self.base_url}/login_sid.lua",
+                params=params,
+                timeout=self.timeout,
+                allow_redirects=False,
             )
         except requests.RequestException as e:
             msg = f"login_sid.lua request failed: {_failure_text(e)}"
             raise FritzWebUiError(msg) from None
 
-        if not resp.ok:
+        if _is_failed(resp):
             msg = f"login_sid.lua request failed: {_http_error_text(resp)}"
             raise FritzWebUiError(msg)
 
@@ -195,12 +203,13 @@ class FritzWebUiClient:
                 f"{self.base_url}/login_sid.lua",
                 data={"username": self.username, "response": response},
                 timeout=self.timeout,
+                allow_redirects=False,
             )
         except requests.RequestException as e:
             msg = f"login POST failed: {_failure_text(e)}"
             raise FritzWebUiError(msg) from None
 
-        if not resp.ok:
+        if _is_failed(resp):
             msg = f"login POST failed: {_http_error_text(resp)}"
             raise FritzWebUiError(msg)
 
@@ -241,13 +250,16 @@ class FritzWebUiClient:
         payload = {"sid": sid, "page": page, "xhrId": "all", "xhr": "1"}
         try:
             resp = self.session.post(
-                f"{self.base_url}/data.lua", data=payload, timeout=self.timeout
+                f"{self.base_url}/data.lua",
+                data=payload,
+                timeout=self.timeout,
+                allow_redirects=False,
             )
         except requests.RequestException as e:
             msg = f"data.lua request failed: {_failure_text(e)}"
             raise FritzWebUiError(msg) from None
 
-        if not resp.ok:
+        if _is_failed(resp):
             msg = f"data.lua request failed: {_http_error_text(resp)}"
             raise FritzWebUiError(msg)
 
@@ -292,12 +304,13 @@ class FritzWebUiClient:
                 f"{self.base_url}/webservices/homeautoswitch.lua",
                 params=payload,
                 timeout=self.timeout,
+                allow_redirects=False,
             )
         except requests.RequestException as e:
             msg = f"AHA request failed for {command}: {_failure_text(e)}"
             raise FritzWebUiError(msg) from None
 
-        if not resp.ok:
+        if _is_failed(resp):
             msg = f"AHA request failed for {command}: {_http_error_text(resp)}"
             raise FritzWebUiError(msg)
 
@@ -333,12 +346,17 @@ class FritzWebUiClient:
         """
         headers = {"Authorization": f"AVM-SID {sid}"}
         try:
-            resp = self.session.get(f"{self.base_url}{path}", headers=headers, timeout=self.timeout)
+            resp = self.session.get(
+                f"{self.base_url}{path}",
+                headers=headers,
+                timeout=self.timeout,
+                allow_redirects=False,
+            )
         except requests.RequestException as e:
             msg = f"REST API request failed for {path}: {_failure_text(e)}"
             raise FritzWebUiError(msg) from None
 
-        if not resp.ok:
+        if _is_failed(resp):
             msg = f"REST API request failed for {path}: {_http_error_text(resp)}"
             raise FritzWebUiError(msg)
 

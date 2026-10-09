@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+import requests.adapters
 import urllib3.connection
 import urllib3.exceptions
 
@@ -548,3 +549,142 @@ class TestHttpErrorText:
         resp.status_code = code
         resp.reason = reason
         assert _http_error_text(resp) == expected
+
+
+# ---------------------------------------------------------------------------
+# Redirects are never followed
+# ---------------------------------------------------------------------------
+
+_EVIL = "http://evil.example/"
+_LOGIN_XML = f"<SessionInfo><SID>{_SID}</SID></SessionInfo>"
+_CHALLENGE_XML = (
+    "<SessionInfo><SID>0000000000000000</SID>"
+    "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>"
+)
+
+
+class _RecordingAdapter(requests.adapters.BaseAdapter):
+    """Transport that answers per request and records every URL it is asked for."""
+
+    def __init__(self, answer):
+        super().__init__()
+        self.answer = answer
+        self.urls: list[str] = []
+
+    def send(self, request, stream=False, timeout=None, verify=True, cert=None, proxies=None):  # noqa: ARG002, PLR0913, FBT002
+        self.urls.append(request.url)
+        code, headers, body = self.answer(request)
+        resp = requests.Response()
+        resp.status_code = code
+        resp.reason = "Temporary Redirect" if code == 307 else "OK"  # noqa: PLR2004
+        resp.headers.update(headers)
+        resp._content = body.encode()  # noqa: SLF001
+        resp.url = request.url
+        resp.request = request
+        return resp
+
+    def close(self):
+        pass
+
+
+def _client_with(answer) -> tuple[FritzWebUiClient, _RecordingAdapter]:
+    adapter = _RecordingAdapter(answer)
+    client = FritzWebUiClient("fritz.example", "exporter", "pass")
+    client.session.mount("http://", adapter)
+    return client, adapter
+
+
+def _redirect_on(marker: str):
+    """Serve the login normally and answer the request containing ``marker`` with a 307."""
+
+    def answer(request):
+        if request.url.startswith(_EVIL):
+            return 200, {}, "{}"
+        if marker in request.url:
+            return 307, {"Location": _EVIL}, ""
+        if "login_sid.lua" in request.url:
+            return 200, {}, _LOGIN_XML
+        return 200, {"Content-Type": "application/json"}, "{}"
+
+    return answer
+
+
+class TestRedirectsAreNotFollowed:
+    @pytest.fixture(autouse=True)
+    def _debug_logging(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG)
+
+    @staticmethod
+    def _assert_not_followed(adapter, caplog, err: FritzWebUiError) -> None:
+        assert not any("evil.example" in url for url in adapter.urls)
+        assert "HTTP 307" in str(err)
+        assert "evil.example" not in str(err)
+        _assert_clean(caplog, err, "HTTP 307")
+
+    def test_login_challenge(self, caplog):
+        client, adapter = _client_with(_redirect_on("login_sid.lua"))
+        with pytest.raises(FritzWebUiError, match="login_sid.lua request failed") as info:
+            client.fetch_aha("x")
+        self._assert_not_followed(adapter, caplog, info.value)
+
+    def test_login_post(self, caplog):
+        def answer(request):
+            if request.method == "POST":
+                return 307, {"Location": _EVIL}, ""
+            return 200, {}, _CHALLENGE_XML
+
+        client, adapter = _client_with(answer)
+        with pytest.raises(FritzWebUiError, match="login POST failed") as info:
+            client.fetch_page("docInfo")
+        self._assert_not_followed(adapter, caplog, info.value)
+
+    def test_data_lua(self, caplog):
+        client, adapter = _client_with(_redirect_on("data.lua"))
+        with pytest.raises(FritzWebUiError, match="data.lua request failed") as info:
+            client.fetch_page("docInfo")
+        self._assert_not_followed(adapter, caplog, info.value)
+
+    def test_aha(self, caplog):
+        client, adapter = _client_with(_redirect_on("homeautoswitch.lua"))
+        with pytest.raises(FritzWebUiError, match="AHA request failed for x") as info:
+            client.fetch_aha("x")
+        self._assert_not_followed(adapter, caplog, info.value)
+
+    def test_rest_api(self, caplog):
+        client, adapter = _client_with(_redirect_on("/api/v0/x"))
+        with pytest.raises(FritzWebUiError, match="REST API request failed for /api/v0/x") as info:
+            client.fetch_api("/api/v0/x")
+        self._assert_not_followed(adapter, caplog, info.value)
+
+    def test_normal_flow_is_unchanged(self):
+        def answer(request):
+            if "login_sid.lua" in request.url:
+                return 200, {}, _LOGIN_XML
+            if "homeautoswitch.lua" in request.url:
+                return 200, {}, "<devicelist/>"
+            return 200, {"Content-Type": "application/json"}, '{"ok": true}'
+
+        client, adapter = _client_with(answer)
+        assert client.fetch_page("docInfo") == {"ok": True}
+        assert client.fetch_api("/api/v0/x") == {"ok": True}
+        assert client.fetch_aha("x") == "<devicelist/>"
+        assert len(adapter.urls) == 4  # one login, then one request per fetch  # noqa: PLR2004
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_every_request_disables_redirects(self, mock_session_cls: MagicMock):
+        session = mock_session_cls.return_value
+        challenge = MagicMock()
+        challenge.text = _CHALLENGE_XML
+        data = MagicMock()
+        data.text = '{"ok": true}'
+        data.json.return_value = {"ok": True}
+        session.get.side_effect = [challenge, data]
+        session.post.side_effect = [_login_ok(), data]
+        client = FritzWebUiClient("fritz.box", "exporter", "pass")
+
+        client.fetch_page("docInfo")
+        client.fetch_api("/api/v0/x")
+
+        calls = [*session.get.call_args_list, *session.post.call_args_list]
+        assert len(calls) == 4  # noqa: PLR2004
+        assert all(call.kwargs["allow_redirects"] is False for call in calls)
