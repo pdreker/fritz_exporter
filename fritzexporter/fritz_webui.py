@@ -17,6 +17,7 @@ neobiker.de / dc8wan.de shell scripts.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import logging
 import re
@@ -46,6 +47,47 @@ _HTML_RESPONSE_HINT = "(SID invalid or no permission)"
 
 class FritzWebUiError(Exception):
     """Raised when data cannot be retrieved from the Fritz!Box web interface."""
+
+
+_MAX_CAUSE_DEPTH = 5
+
+
+def _is_failed(resp: requests.Response) -> bool:
+    """An error status, or any redirect (redirects are never followed, see ``allow_redirects``)."""
+    return not resp.ok or resp.status_code in range(300, 400)
+
+
+def _http_error_text(resp: requests.Response) -> str:
+    reason = f" {resp.reason}" if resp.reason else ""
+    return f"HTTP {resp.status_code}{reason}"
+
+
+def _cause_names(exc: BaseException) -> list[str]:
+    """Class names (and errno name) along the cause chain of ``exc``, never any message text."""
+    names: list[str] = []
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen and len(names) < _MAX_CAUSE_DEPTH:
+        seen.add(id(current))
+        name = type(current).__name__
+        if type(current) is OSError and current.errno is not None:
+            name = errno.errorcode.get(current.errno, name)
+        # requests and urllib3 wrap the underlying error in ``reason`` or in ``args``
+        wrapped = [getattr(current, "reason", None), *current.args]
+        nested = next((a for a in wrapped if isinstance(a, BaseException)), None)
+        if name != "MaxRetryError":
+            names.append(name)
+        current = nested or current.__cause__ or current.__context__
+    return names
+
+
+def _failure_text(exc: requests.RequestException) -> str:
+    """Describe a failed request by class names only.
+
+    ``requests`` puts the full request URL into its exception messages, and
+    that URL carries the SID (AHA) or the user name (login).
+    """
+    return f"request failed ({': '.join(_cause_names(exc))})"
 
 
 class FritzWebUiClient:
@@ -109,12 +151,18 @@ class FritzWebUiClient:
         params = {"username": self.username} if self.username else {}
         try:
             resp = self.session.get(
-                f"{self.base_url}/login_sid.lua", params=params, timeout=self.timeout
+                f"{self.base_url}/login_sid.lua",
+                params=params,
+                timeout=self.timeout,
+                allow_redirects=False,
             )
-            resp.raise_for_status()
         except requests.RequestException as e:
-            msg = f"login_sid.lua request failed: {e}"
-            raise FritzWebUiError(msg) from e
+            msg = f"login_sid.lua request failed: {_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+        if _is_failed(resp):
+            msg = f"login_sid.lua request failed: {_http_error_text(resp)}"
+            raise FritzWebUiError(msg)
 
         try:
             root = ElementTree.fromstring(resp.text)
@@ -155,11 +203,15 @@ class FritzWebUiClient:
                 f"{self.base_url}/login_sid.lua",
                 data={"username": self.username, "response": response},
                 timeout=self.timeout,
+                allow_redirects=False,
             )
-            resp.raise_for_status()
         except requests.RequestException as e:
-            msg = f"login POST failed: {e}"
-            raise FritzWebUiError(msg) from e
+            msg = f"login POST failed: {_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+        if _is_failed(resp):
+            msg = f"login POST failed: {_http_error_text(resp)}"
+            raise FritzWebUiError(msg)
 
         try:
             root = ElementTree.fromstring(resp.text)
@@ -198,12 +250,18 @@ class FritzWebUiClient:
         payload = {"sid": sid, "page": page, "xhrId": "all", "xhr": "1"}
         try:
             resp = self.session.post(
-                f"{self.base_url}/data.lua", data=payload, timeout=self.timeout
+                f"{self.base_url}/data.lua",
+                data=payload,
+                timeout=self.timeout,
+                allow_redirects=False,
             )
-            resp.raise_for_status()
         except requests.RequestException as e:
-            msg = f"data.lua request failed: {e}"
-            raise FritzWebUiError(msg) from e
+            msg = f"data.lua request failed: {_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+        if _is_failed(resp):
+            msg = f"data.lua request failed: {_http_error_text(resp)}"
+            raise FritzWebUiError(msg)
 
         text = resp.text
         content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
@@ -246,11 +304,15 @@ class FritzWebUiClient:
                 f"{self.base_url}/webservices/homeautoswitch.lua",
                 params=payload,
                 timeout=self.timeout,
+                allow_redirects=False,
             )
-            resp.raise_for_status()
         except requests.RequestException as e:
-            msg = f"AHA request failed for {command}: {e}"
-            raise FritzWebUiError(msg) from e
+            msg = f"AHA request failed for {command}: {_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+        if _is_failed(resp):
+            msg = f"AHA request failed for {command}: {_http_error_text(resp)}"
+            raise FritzWebUiError(msg)
 
         if not resp.text:
             msg = f"Fritz!Box returned an empty AHA response for {command}"
@@ -284,11 +346,19 @@ class FritzWebUiClient:
         """
         headers = {"Authorization": f"AVM-SID {sid}"}
         try:
-            resp = self.session.get(f"{self.base_url}{path}", headers=headers, timeout=self.timeout)
-            resp.raise_for_status()
+            resp = self.session.get(
+                f"{self.base_url}{path}",
+                headers=headers,
+                timeout=self.timeout,
+                allow_redirects=False,
+            )
         except requests.RequestException as e:
-            msg = f"REST API request failed for {path}: {e}"
-            raise FritzWebUiError(msg) from e
+            msg = f"REST API request failed for {path}: {_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+        if _is_failed(resp):
+            msg = f"REST API request failed for {path}: {_http_error_text(resp)}"
+            raise FritzWebUiError(msg)
 
         text = resp.text
         content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
