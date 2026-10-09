@@ -99,6 +99,25 @@ class TestParseMonitorSegment:
         assert data["series"] == []
 
 
+    @pytest.mark.parametrize(
+        ("raw", "expected_series"),
+        [
+            ([], 0),
+            ("text", 0),
+            (None, 0),
+            ({"data": "text"}, 0),
+            ({"data": {"a": 1}}, 0),
+            ({"data": ["x", 1, None]}, 0),
+            ({"data": [{"type": "own", "downstream": "text", "upstream": 5}]}, 1),
+            ({"lastSampleTime": "abc", "data": []}, 0),
+        ],
+    )
+    def test_malformed_structures_yield_no_series(self, raw, expected_series):
+        data = parse_monitor_segment(raw)
+        assert data["last_sample_time"] is None
+        assert [s["downstream"] + s["upstream"] for s in data["series"]] in ([], [[]])
+
+
 # ---------------------------------------------------------------------------
 # WanSegmentUtilization capability metrics
 # ---------------------------------------------------------------------------
@@ -348,6 +367,15 @@ class TestParseConnectionsResponse:
         assert parse_connections_response([]) == []
 
 
+    @pytest.mark.parametrize("raw", [{}, "text", None, 5, {"a": 1}, ["x", 1, None, []]])
+    def test_malformed_structures_yield_no_connections(self, raw, caplog):
+        with caplog.at_level(logging.WARNING):
+            assert parse_connections_response(raw) == []
+        # a wrong-typed structure is reported once; an absent one (None) is not
+        expected = 0 if raw is None else 1
+        assert len(caplog.records) == expected
+
+
 # ---------------------------------------------------------------------------
 # WanConnectionStatus capability metrics
 # ---------------------------------------------------------------------------
@@ -564,3 +592,126 @@ class TestWanConnectionStatus:
         assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
         assert by_name["fritz_wan_connection_status"].samples == []
         assert "fritz_device_reachable" in by_name
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestMalformedReplyIsolation:
+    """A malformed reply must cost only that capability, not the scrape."""
+
+    @staticmethod
+    def _collect(
+        mock_fritzconnection: MagicMock,
+        segment_result: Any = SEGMENT_RAW,
+        page_result: Any = None,
+    ):
+        fc = mock_fritzconnection.return_value
+
+        def cable_call_action_mock(service, action, **kwargs):
+            result = call_action_mock(service, action, **kwargs)
+            if (service, action) == ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"):
+                result = dict(result)
+                result["NewWANAccessType"] = "X_AVM-DE_Cable"
+            return result
+
+        fc.call_action.side_effect = cable_call_action_mock
+        fc.services = create_fc_services(
+            {
+                **fc_services_capabilities["DeviceInfo"],
+                **fc_services_capabilities["WanCommonInterfaceByteRate"],
+                **fc_services_capabilities["WanCommonInterfaceConfig"],
+            }
+        )
+        collector = FritzCollector()
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzCable", host_info=False
+        )
+        mock_client = MagicMock()
+        mock_client.fetch_page.return_value = page_result if page_result is not None else {}
+        mock_client.fetch_api.side_effect = lambda path: (
+            segment_result if "segment" in path else CONNECTIONS_RAW
+        )
+        device.webui_client = mock_client
+        collector.register(device)
+        return {m.name: m for m in collector.collect()}
+
+    @staticmethod
+    def _malformed_warnings(caplog) -> list[logging.LogRecord]:
+        return [r for r in caplog.records if "malformed data" in r.getMessage()]
+
+    @pytest.mark.parametrize("segment_result", [["not", "a", "dict"], "text", {"data": "text"}])
+    def test_wrong_typed_replies_are_handled_by_the_parsers(
+        self, mock_fritzconnection: MagicMock, caplog, segment_result
+    ):
+        with caplog.at_level(logging.WARNING):
+            by_name = self._collect(mock_fritzconnection, segment_result)
+
+        # The parser absorbs the bad structure (and says so) ...
+        assert by_name["fritz_cable_segment_utilization_percent"].samples == []
+        assert any("unexpected structure" in r.getMessage() for r in caplog.records)
+        # ... so the per-capability catch is never needed.
+        assert self._malformed_warnings(caplog) == []
+        assert len(by_name["fritz_wan_connection_uptime_seconds"].samples) == 2
+        assert by_name["fritz_device_reachable"].samples[0].value == 1
+
+    def test_raising_capability_is_skipped_and_others_report(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        with (
+            patch(
+                "fritzexporter.fritzcapabilities.parse_monitor_segment",
+                side_effect=KeyError("secret-sid-value"),
+            ),
+            caplog.at_level(logging.WARNING),
+        ):
+            by_name = self._collect(mock_fritzconnection)
+
+        assert by_name["fritz_cable_segment_utilization_percent"].samples == []
+        assert len(by_name["fritz_wan_connection_uptime_seconds"].samples) == 2
+        assert by_name["fritz_device_reachable"].samples[0].value == 1
+        warnings = self._malformed_warnings(caplog)
+        assert len(warnings) == 1
+        message = warnings[0].getMessage()
+        assert "KeyError" in message
+        assert "secret-sid-value" not in message
+        # innermost frame: the mock that raised, i.e. a file:line location
+        assert ".py:" in message
+
+    def test_partial_samples_are_dropped_on_failure(self, mock_fritzconnection: MagicMock):
+        # The sample_age sample is added before the series loop raises.
+        broken = {
+            "last_sample_time": 1700000000,
+            "series": [{"downstream": [1.0], "upstream": []}],
+        }
+        with patch("fritzexporter.fritzcapabilities.parse_monitor_segment", return_value=broken):
+            by_name = self._collect(mock_fritzconnection)
+
+        assert by_name["fritz_cable_segment_utilization_percent"].samples == []
+        assert by_name["fritz_cable_segment_sample_timestamp_seconds"].samples == []
+        assert len(by_name["fritz_wan_connection_uptime_seconds"].samples) == 2
+
+    def test_raising_docsis_is_skipped_and_others_report(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        with (
+            patch(
+                "fritzexporter.fritzcapabilities.parse_docsis_response",
+                side_effect=TypeError("boom"),
+            ),
+            caplog.at_level(logging.WARNING),
+        ):
+            by_name = self._collect(mock_fritzconnection)
+
+        assert by_name["fritz_docsis_power_dBmV"].samples == []
+        assert len(by_name["fritz_wan_connection_uptime_seconds"].samples) == 2
+        assert by_name["fritz_cable_segment_utilization_percent"].samples
+        assert len(self._malformed_warnings(caplog)) == 1
+
+    def test_wrong_typed_docsis_reply_is_handled_by_the_parser(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        with caplog.at_level(logging.WARNING):
+            by_name = self._collect(mock_fritzconnection, page_result={"data": "text"})
+
+        assert by_name["fritz_docsis_power_dBmV"].samples == []
+        assert any("DOCSIS reply" in r.getMessage() for r in caplog.records)
+        assert self._malformed_warnings(caplog) == []

@@ -156,8 +156,15 @@ class FritzDevice:
         """
         try:
             resp = self.fc.call_action("WANCommonInterfaceConfig", "GetCommonLinkProperties")
+            if not isinstance(resp, dict):
+                logger.warning(
+                    "Unexpected connection mode reply from %s; treating as unknown", self.host
+                )
+                resp = {}
             link_status = resp.get("NewPhysicalLinkStatus")
-            access_type = resp.get("NewWANAccessType") or ""
+            access_type = resp.get("NewWANAccessType")
+            if not isinstance(access_type, str):
+                access_type = ""
         except FritzServiceError, FritzActionError:
             # Device simply has no WAN interface (e.g. a mesh repeater). That does
             # NOT make it unavailable — skip the connection-mode metric but keep

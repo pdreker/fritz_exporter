@@ -14,6 +14,7 @@ neobiker.de / dc8wan.de shell scripts.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Final, TypedDict
 
 __all__ = [
@@ -23,6 +24,8 @@ __all__ = [
     "UpstreamChannel",
     "parse_docsis_response",
 ]
+
+logger = logging.getLogger("fritzexporter.fritz_docsis")
 
 #: The ``data.lua`` page that carries the DOCSIS channel statistics.
 DOC_INFO_PAGE: Final[str] = "docInfo"
@@ -82,7 +85,28 @@ def _to_int(value: Any) -> int | None:  # noqa: ANN401
         return None
 
 
-def parse_docsis_response(raw: dict[str, Any]) -> DocsisData:
+def _as_dict(value: Any, rejected: list[int]) -> dict[str, Any]:  # noqa: ANN401
+    """Return ``value`` if it is a dict, else an empty dict (counted if not None)."""
+    if isinstance(value, dict):
+        return value
+    if value is not None:
+        rejected[0] += 1
+    return {}
+
+
+def _dict_entries(value: Any, rejected: list[int]) -> list[dict[str, Any]]:  # noqa: ANN401
+    """Return the dict entries of a list; count what is dropped."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        rejected[0] += 1
+        return []
+    entries = [entry for entry in value if isinstance(entry, dict)]
+    rejected[0] += len(value) - len(entries)
+    return entries
+
+
+def parse_docsis_response(raw: Any) -> DocsisData:  # noqa: ANN401
     """Parse the raw data.lua?page=docInfo JSON into a normalized structure.
 
     Returns a :class:`DocsisData` with ``ready_state``, ``downstream`` and
@@ -90,17 +114,20 @@ def parse_docsis_response(raw: dict[str, Any]) -> DocsisData:
     fields (MER/MSE, errors, latency); upstream channels carry
     power/modulation/frequency.
     """
-    inner = raw.get("data", {})
+    rejected = [0]
+    outer = _as_dict(raw, rejected)
+    inner = _as_dict(outer.get("data"), rejected)
+    ready_state = inner.get("readyState")
     result: DocsisData = {
-        "ready_state": inner.get("readyState", "unknown"),
+        "ready_state": ready_state if isinstance(ready_state, str) else "unknown",
         "downstream": [],
         "upstream": [],
     }
 
-    ch_ds = inner.get("channelDs", {})
+    ch_ds = _as_dict(inner.get("channelDs"), rejected)
     for standard, channels in (
-        ("DOCSIS 3.1", ch_ds.get("docsis31", [])),
-        ("DOCSIS 3.0", ch_ds.get("docsis30", [])),
+        ("DOCSIS 3.1", _dict_entries(ch_ds.get("docsis31"), rejected)),
+        ("DOCSIS 3.0", _dict_entries(ch_ds.get("docsis30"), rejected)),
     ):
         for ch in channels:
             result["downstream"].append(
@@ -119,10 +146,10 @@ def parse_docsis_response(raw: dict[str, Any]) -> DocsisData:
                 }
             )
 
-    ch_us = inner.get("channelUs", {})
+    ch_us = _as_dict(inner.get("channelUs"), rejected)
     for standard, channels in (
-        ("DOCSIS 3.1", ch_us.get("docsis31", [])),
-        ("DOCSIS 3.0", ch_us.get("docsis30", [])),
+        ("DOCSIS 3.1", _dict_entries(ch_us.get("docsis31"), rejected)),
+        ("DOCSIS 3.0", _dict_entries(ch_us.get("docsis30"), rejected)),
     ):
         for ch in channels:
             result["upstream"].append(
@@ -135,6 +162,11 @@ def parse_docsis_response(raw: dict[str, Any]) -> DocsisData:
                 }
             )
 
+    if rejected[0]:
+        logger.warning(
+            "DOCSIS reply had an unexpected structure; ignored %d malformed element(s)",
+            rejected[0],
+        )
     return result
 
 

@@ -4,6 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, ItemsView, Iterator
 from contextlib import suppress
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 from urllib.parse import urlparse
 
@@ -72,6 +73,17 @@ def probe_action(
     return True
 
 
+def _innermost_frame(exc: BaseException) -> str:
+    """Return ``file:line in function`` of the innermost traceback frame."""
+    tb = exc.__traceback__
+    if tb is None:
+        return "unknown"
+    while tb.tb_next is not None:
+        tb = tb.tb_next
+    code = tb.tb_frame.f_code
+    return f"{Path(code.co_filename).name}:{tb.tb_lineno} in {code.co_name}"
+
+
 class FritzCapability(ABC):
     subclasses: ClassVar[list[type[FritzCapability]]] = []
 
@@ -118,6 +130,9 @@ class FritzCapability(ABC):
                 device.capabilities[name].present,
             )
             if device.capabilities[name].present and device.available:
+                # Remember how many samples each family holds so a failure part-way
+                # through can drop this device's partial samples (and only those).
+                sample_counts = {key: len(mf.samples) for key, mf in self.metrics.items()}
                 try:
                     self._generate_metric_values(device)
                 except FritzConnectionException, RequestException:
@@ -127,6 +142,20 @@ class FritzCapability(ABC):
                         name,
                     )
                     device.available = False
+                except (KeyError, IndexError, TypeError, ValueError, AttributeError) as e:
+                    # A malformed reply must not fail the whole scrape. Only the
+                    # exception type and code location are logged, never its text
+                    # or the reply.
+                    for key, count in sample_counts.items():
+                        del self.metrics[key].samples[count:]
+                    logger.warning(
+                        "Device %s returned malformed data, skipping %s metrics "
+                        "for this collection cycle (%s at %s)",
+                        device.host,
+                        name,
+                        type(e).__name__,
+                        _innermost_frame(e),
+                    )
         yield from self._get_metric_values()
 
     @abstractmethod
@@ -1627,18 +1656,24 @@ class HomeAutomation(FritzCapability):
             logger.debug("Could not fetch HKR valve state for ain %s, skipping", ain)
             return
 
-        if "NewHkrSetVentilStatus" in ha_result:
-            self.metrics["heater_valve_set_state"].add_metric(
-                labels, self._HKR_VALVE_MAP[ha_result["NewHkrSetVentilStatus"]]
-            )
-        if "NewHkrReduceVentilStatus" in ha_result:
-            self.metrics["heater_reduced_valve_state"].add_metric(
-                labels, self._HKR_VALVE_MAP[ha_result["NewHkrReduceVentilStatus"]]
-            )
-        if "NewHkrComfortVentilStatus" in ha_result:
-            self.metrics["heater_comfort_valve_state"].add_metric(
-                labels, self._HKR_VALVE_MAP[ha_result["NewHkrComfortVentilStatus"]]
-            )
+        self._add_valve_state(
+            "heater_valve_set_state", labels, ha_result.get("NewHkrSetVentilStatus")
+        )
+        self._add_valve_state(
+            "heater_reduced_valve_state", labels, ha_result.get("NewHkrReduceVentilStatus")
+        )
+        self._add_valve_state(
+            "heater_comfort_valve_state", labels, ha_result.get("NewHkrComfortVentilStatus")
+        )
+
+    def _add_valve_state(self, metric: str, labels: list[str], status: Any) -> None:  # noqa: ANN401
+        """Add a valve state sample; absent or unknown values are skipped."""
+        value = self._HKR_VALVE_MAP.get(status) if isinstance(status, str) else None
+        if value is None:
+            if status is not None:
+                logger.debug("Ignoring unknown valve status for %s", metric)
+            return
+        self.metrics[metric].add_metric(labels, value)
 
     def _collect_battery(self, ha_device: dict[str, Any], labels: list[str]) -> None:
         if ha_device["battery_level"] is not None:
@@ -2024,7 +2059,10 @@ class WanConnectionStatus(FritzCapability):
             return
 
         labels = [device.serial, device.friendly_name]
-        for conn in parse_connections_response(raw.get("connection", [])):
+        if not isinstance(raw, dict):
+            logger.warning("Connections reply from %s had an unexpected structure", device.host)
+        connection_list = raw.get("connection") if isinstance(raw, dict) else None
+        for conn in parse_connections_response(connection_list):
             base_labels = [*labels, conn["uid"], conn["name"], conn["media_type"]]
             for stack, uptime_key, status_key, ip_key in (
                 ("ipv4", "ip4_uptime", "ip4_connstatus", "ip4_addr"),

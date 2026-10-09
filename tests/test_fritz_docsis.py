@@ -141,6 +141,39 @@ class TestParseDocsisResponse:
         assert ch["corrected_errors"] == 16
         assert ch["latency_ms"] == pytest.approx(0.31)
 
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            [],
+            "text",
+            {"data": "text"},
+            {"data": []},
+            {"data": {"channelDs": "text", "channelUs": ["x"]}},
+            {"data": {"channelDs": {"docsis31": 5, "docsis30": "x"}}},
+            {"data": {"channelDs": {"docsis31": ["x", None, 3], "docsis30": [[]]}}},
+            {"data": {"channelUs": {"docsis31": {"a": 1}, "docsis30": [1]}}},
+        ],
+    )
+    def test_malformed_structures_yield_empty_data(self, raw, caplog):
+        with caplog.at_level(logging.WARNING):
+            data = parse_docsis_response(raw)
+        # one summary warning per call, not per rejected element
+        assert len(caplog.records) == 1
+        assert data["downstream"] == []
+        assert data["upstream"] == []
+
+    def test_malformed_channel_entries_are_skipped(self):
+        raw = {
+            "data": {
+                "channelDs": {"docsis30": ["x", {"channelID": 7, "powerLevel": "1.5"}]},
+            }
+        }
+        data = parse_docsis_response(raw)
+        assert [ch["channel_id"] for ch in data["downstream"]] == [7]
+
+    def test_non_string_ready_state_is_unknown(self):
+        assert parse_docsis_response({"data": {"readyState": 5}})["ready_state"] == "unknown"
+
 
 # ---------------------------------------------------------------------------
 
