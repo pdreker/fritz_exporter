@@ -36,7 +36,16 @@ __all__ = [
 # The login_sid.lua challenge-response scheme changed in Fritz!OS 7.24.
 # Newer firmware uses PBKDF2-SHA256 ("2$iter1$salt1$iter2$salt2"), older
 # firmware uses a simple MD5 over the UTF-16LE encoded challenge-password.
-_PBKDF2_CHALLENGE_RE = re.compile(r"^2\$(\d+)\$([0-9a-f]+)\$(\d+)\$([0-9a-f]+)$")
+_PBKDF2_CHALLENGE_RE = re.compile(
+    r"2\$([0-9]{1,7})\$((?:[0-9a-fA-F]{2}){1,32})\$([0-9]{1,7})\$((?:[0-9a-fA-F]{2}){1,32})"
+)
+_LEGACY_CHALLENGE_RE = re.compile(r"[0-9A-Za-z]{1,32}")
+_BLOCK_TIME_RE = re.compile(r"[0-9]{1,6}")
+# The challenge is attacker-controlled on a hostile network: the floor keeps the
+# response from being a cheap hash of the password, the ceiling keeps the
+# PBKDF2 run (which holds the collect lock) short. Firmware sends 60000/6000.
+_PBKDF2_MIN_ITERATIONS = 1000
+_PBKDF2_MAX_ITERATIONS = 1_000_000
 
 # data.lua (and the REST API) return HTML (the login page) instead of JSON
 # when the SID is invalid or the session has expired.
@@ -83,6 +92,9 @@ class FritzWebUiClient:
     @staticmethod
     def _md5_response(challenge: str, password: str) -> str:
         """Compute the legacy MD5 challenge-response (Fritz!OS < 7.24)."""
+        if not _LEGACY_CHALLENGE_RE.fullmatch(challenge):
+            msg = "unexpected legacy login challenge format"
+            raise FritzWebUiError(msg)
         combined = (challenge + "-" + password).encode("utf-16-le")
         # MD5 is mandated by the Fritz!Box login protocol for older firmware;
         # it is not used for security here.
@@ -91,12 +103,15 @@ class FritzWebUiClient:
     @staticmethod
     def _pbkdf2_response(challenge: str, password: str) -> str:
         """Compute the PBKDF2-SHA256 challenge-response (Fritz!OS >= 7.24)."""
-        match = _PBKDF2_CHALLENGE_RE.match(challenge)
+        match = _PBKDF2_CHALLENGE_RE.fullmatch(challenge)
         if not match:
-            msg = f"unexpected PBKDF2 challenge format: {challenge!r}"
+            msg = "unexpected PBKDF2 login challenge format"
             raise FritzWebUiError(msg)
         iter1, salt1_hex, iter2, salt2_hex = match.groups()
         iter1, iter2 = int(iter1), int(iter2)
+        if not all(_PBKDF2_MIN_ITERATIONS <= n <= _PBKDF2_MAX_ITERATIONS for n in (iter1, iter2)):
+            msg = "PBKDF2 login challenge iteration count out of range"
+            raise FritzWebUiError(msg)
         salt1 = bytes.fromhex(salt1_hex)
         salt2 = bytes.fromhex(salt2_hex)
 
@@ -141,7 +156,10 @@ class FritzWebUiClient:
             return info["sid"]
 
         if info["block_time"] and info["block_time"] != "0":
-            msg = f"login blocked for {info['block_time']} seconds (too many failed attempts)"
+            if _BLOCK_TIME_RE.fullmatch(info["block_time"]):
+                msg = f"login blocked for {info['block_time']} seconds (too many failed attempts)"
+            else:
+                msg = "login blocked (too many failed attempts)"
             raise FritzWebUiError(msg)
 
         challenge = info["challenge"]
