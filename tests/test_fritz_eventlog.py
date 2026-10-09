@@ -490,7 +490,7 @@ class TestEventLogCapability:
         assert len(first) == 2
         assert second == []
 
-    def test_session_ignores_ca_bundle_environment(self, mock_fritzconnection, caplog, monkeypatch):
+    def test_session_follows_ca_bundle_environment(self, mock_fritzconnection, caplog, monkeypatch):
         monkeypatch.setenv("REQUESTS_CA_BUNDLE", "/nonexistent/ca.pem")
         monkeypatch.setenv("CURL_CA_BUNDLE", "/nonexistent/ca.pem")
         collector, _, state = self.setup_device(mock_fritzconnection, event_log=True)
@@ -508,7 +508,7 @@ class TestEventLogCapability:
         ):
             list(collector.collect())
 
-        assert seen["verify"] is False
+        assert seen["verify"] == "/nonexistent/ca.pem"
         assert [r for r in caplog.records if r.name == "fritzexporter.event_log"]
 
     def test_unparsable_body_is_retried_and_recovers(self, mock_fritzconnection, caplog):

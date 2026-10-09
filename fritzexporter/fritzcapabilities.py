@@ -2268,10 +2268,9 @@ class EventLog(FritzCapability):
             raise EventLogFetchError(msg)
         try:
             with requests.Session() as session:
-                # The box's certificate is self-signed, as in fritzconnection. Not trusting
-                # the environment keeps REQUESTS_CA_BUNDLE from re-enabling verification.
+                # The box's certificate is self-signed, as in fritzconnection. As there, a
+                # REQUESTS_CA_BUNDLE in the environment still turns verification on.
                 session.verify = False
-                session.trust_env = False
                 response = session.get(url, timeout=device.fc.timeout)
         except RequestException as e:
             msg = f"request failed ({type(e).__name__})"
