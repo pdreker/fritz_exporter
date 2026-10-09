@@ -7,6 +7,7 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 from urllib.parse import urlparse
 
+import requests
 from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
     FritzArgumentError,
@@ -16,7 +17,6 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzLookUpError,
     FritzServiceError,
 )
-from fritzconnection.lib.fritzhosts import FritzHosts  # type: ignore[import]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from requests.exceptions import RequestException
 
@@ -32,6 +32,7 @@ from fritzexporter.fritz_rest_generic import (
     parse_monitor_segment,
 )
 from fritzexporter.fritz_webui import FritzWebUiError
+from fritzexporter.safe_url import UnsafeDevicePath, device_url
 
 if TYPE_CHECKING:
     from fritzexporter.fritzdevice import FritzDevice
@@ -1175,6 +1176,31 @@ class WlanAssociatedDevices(FritzCapability):
         yield self.metrics["speed"]
 
 
+def _is_list_of_dicts(value: object) -> bool:
+    return isinstance(value, list) and all(isinstance(item, dict) for item in value)
+
+
+def _is_mesh_topology(topology: object) -> bool:
+    """Whether the parsed mesh list has the shape ``MeshTopology`` iterates over."""
+    if not isinstance(topology, dict) or not _is_list_of_dicts(topology.get("nodes", [])):
+        return False
+    for node in topology.get("nodes", []):
+        if not isinstance(node.get("uid", ""), str) or not _is_list_of_dicts(
+            node.get("node_interfaces", [])
+        ):
+            return False
+        for interface in node.get("node_interfaces", []):
+            if not _is_list_of_dicts(interface.get("node_links", [])):
+                return False
+            for link in interface.get("node_links", []):
+                if not all(
+                    isinstance(link.get(key), str | None)
+                    for key in ("uid", "node_1_uid", "node_2_uid")
+                ):
+                    return False
+    return True
+
+
 class MeshTopology(FritzCapability):
     """Mesh backhaul link quality, read from the mesh master.
 
@@ -1195,6 +1221,7 @@ class MeshTopology(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
         self.requirements.append(("Hosts1", "X_AVM-DE_GetMeshListPath"))
+        self.fetch_failing: bool = False
 
     def create_metrics(self) -> None:
         link_labels = [
@@ -1222,11 +1249,43 @@ class MeshTopology(FritzCapability):
             labels=["serial", "friendly_name", "node", "peer", "type", "interface"],
         )
 
-    def _generate_metric_values(self, device: FritzDevice) -> None:
+    @staticmethod
+    def _fetch_topology(device: FritzDevice) -> dict[str, Any]:
+        """Fetch the mesh list; raises FritzActionError where the box refuses (not the master)."""
+        path = device.fc.call_action("Hosts1", "X_AVM-DE_GetMeshListPath")[
+            "NewX_AVM-DE_MeshListPath"
+        ]
+        url = device_url(device.fc.address, device.fc.port, path)
+        # The path carries the session id and is served without digest auth, so a fresh
+        # session suffices. In remote access mode the web interface is served on the same
+        # port without the /tr064 prefix that only TR-064 needs (see tr064_remote.py and
+        # docs/configuration.rst), so fc.session, which adds it, must not be used.
+        # The box's certificate is self-signed, as in fritzconnection. A redirect is never
+        # followed: its target is chosen by whatever answers.
         try:
-            # get_mesh_topology is annotated dict | str (str only when raw=True);
-            # with the default raw=False it always returns the parsed dict.
-            topology = cast("dict[str, Any]", FritzHosts(fc=device.fc).get_mesh_topology())
+            with requests.Session() as session:
+                session.verify = False
+                response = session.get(url, timeout=device.fc.timeout, allow_redirects=False)
+        except RequestException as e:
+            # The exception's message contains the URL.
+            error = type(e)()
+            raise error from None
+        if requests.codes.multiple_choices <= response.status_code < requests.codes.bad_request:
+            msg = f"HTTP {response.status_code}"
+            raise RequestException(msg)
+        if not response.ok:
+            msg = f"HTTP {response.status_code}"
+            raise FritzActionError(msg)
+        topology = response.json()
+        if not _is_mesh_topology(topology):
+            msg = "unexpected mesh list"
+            raise TypeError(msg)
+        return topology
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        state = cast(MeshTopology, device.capabilities[self.__class__.__name__])
+        try:
+            topology = self._fetch_topology(device)
         except FritzActionError:
             # Only the mesh master can serve the topology; every other node answers
             # "Device has no access to topology information" (404). That is the normal
@@ -1234,11 +1293,24 @@ class MeshTopology(FritzCapability):
             # for this device — do NOT mark it unavailable.
             logger.debug("No mesh topology available from %s (not the mesh master)", device.host)
             return
-        except FritzConnectionException, RequestException:
+        except (
+            FritzConnectionException,
+            RequestException,
+            UnsafeDevicePath,
+            KeyError,
+            ValueError,
+            TypeError,
+        ) as e:
             # The mesh list is fetched over HTTP; a transient failure should not
             # mark the whole device unavailable — just skip mesh metrics this cycle.
-            logger.warning("Failed to retrieve mesh topology from %s", device.host)
+            # Neither the path nor the URL is logged: they carry the session id.
+            if not state.fetch_failing:
+                logger.warning(
+                    "Failed to retrieve mesh topology from %s (%s)", device.host, type(e).__name__
+                )
+            state.fetch_failing = True
             return
+        state.fetch_failing = False
 
         nodes = topology.get("nodes", [])
         uid_name = {n["uid"]: (n.get("device_name") or "n/a") for n in nodes if "uid" in n}
