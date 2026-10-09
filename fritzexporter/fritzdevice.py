@@ -46,16 +46,18 @@ class OfflineDevice(NamedTuple):
     use_tls: bool = False
     port: int | None = None
     remote_access: bool = False
+    event_log: bool = False
 
 
 class FritzDevice:
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         creds: FritzCredentials,
         name: str,
         *,
         host_info: bool = False,
         wifi_client_info: bool = False,
+        event_log: bool = False,
         connection: ConnectionOptions | None = None,
     ) -> None:
         connection = connection or ConnectionOptions()
@@ -65,6 +67,7 @@ class FritzDevice:
         self.friendly_name: str = name
         self.host_info: bool = host_info
         self.wifi_client_info: bool = wifi_client_info
+        self.event_log: bool = event_log
         self.webui_client: FritzWebUiClient | None = None
         self.available: bool = True
 
@@ -216,13 +219,14 @@ class FritzCollector(Collector):
         self.devices.append(fritzdev)
         logger.debug("registered device %s (%s) to collector", fritzdev.host, fritzdev.model)
 
-    def register_offline(
+    def register_offline(  # noqa: PLR0913
         self,
         creds: FritzCredentials,
         friendly_name: str,
         *,
         host_info: bool = False,
         wifi_client_info: bool = False,
+        event_log: bool = False,
         connection: ConnectionOptions | None = None,
     ) -> None:
         connection = connection or ConnectionOptions()
@@ -236,6 +240,7 @@ class FritzCollector(Collector):
                 connection.use_tls,
                 connection.port,
                 connection.remote_access,
+                event_log,
             )
         )
         logger.debug("registered offline device %s (%s) to collector", creds.host, friendly_name)
@@ -249,6 +254,7 @@ class FritzCollector(Collector):
                     offline.friendly_name,
                     host_info=offline.host_info,
                     wifi_client_info=offline.wifi_client_info,
+                    event_log=offline.event_log,
                     connection=ConnectionOptions(
                         connection_timeout=offline.connection_timeout,
                         use_tls=offline.use_tls,

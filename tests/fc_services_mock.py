@@ -43,6 +43,9 @@ def call_action_mock(service, action, **kwargs):
             "NewSoftwareVersion": "1.2",
             "NewUpTime": 1234,
         },
+        ("DeviceInfo1", "X_AVM-DE_GetDeviceLogPath"): {
+            "NewDeviceLogPath": "/devicelog.lua?sid=0123456789abcdef",
+        },
         ("DeviceConfig1", "GetPersistentData"): {},
         ("Hosts1", "GetHostNumberOfEntries"): {"NewHostNumberOfEntries": 3},
         ("UserInterface1", "GetInfo"): {
@@ -651,6 +654,11 @@ fc_services_capabilities["TelephonyNumbers"] = {
 fc_services_capabilities["WanIPv6Prefix"] = {
     "WANIPConn1": [
         "X_AVM_DE_GetIPv6Prefix",
+    ],
+}
+fc_services_capabilities["EventLog"] = {
+    "DeviceInfo1": [
+        "X_AVM-DE_GetDeviceLogPath",
     ],
 }
 fc_services_capabilities["WanCommonInterfaceConfig"] = {

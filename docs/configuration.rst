@@ -39,6 +39,10 @@ If you only need a single device this is the easiest way to configure the export
 | ``FRITZ_WIFI_CLIENT_INFO``   | Enable per-client WiFi metrics (signal/speed).     | False     |
 |                              | Only "true" or "1" will enable this feature.       |           |
 +------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_EVENT_LOG``          | Write new router event log entries to the          | False     |
+|                              | exporter's log. Only "true" or "1" will enable     |           |
+|                              | this feature, see :ref:`event-log`.                |           |
++------------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_CONNECTION_TIMEOUT`` | Per-device connect/read timeout in seconds for     | 10        |
 |                              | TR-064 and the web interface. ``0`` disables the   |           |
 |                              | timeout.                                           |           |
@@ -120,6 +124,7 @@ To use the config file you have to specify the the location of the config and mo
       password: prometheus
       host_info: True
       wifi_client_info: True # optional, per-client WiFi signal/speed (higher cardinality)
+      event_log: false # optional, write new router event log entries to the exporter's log
       connection_timeout: 10 # optional, seconds; 0 disables timeout (default 10)
       use_tls: false # optional; true = HTTPS for TR-064 and the web interface
       port: 49000 # optional; TR-064 port locally, shared remote port with remote_access
@@ -136,3 +141,45 @@ To use the config file you have to specify the the location of the config and mo
 .. note::
 
   Enabling ``FRITZ_WIFI_CLIENT_INFO`` (``true`` or ``1``) exposes per-station WiFi metrics (signal strength and negotiated speed) for every associated client, on the box and on mesh repeaters alike. This adds one time series per connected client, so it is disabled by default — enable it only if you want per-client visibility and are aware of the extra cardinality.
+
+.. _event-log:
+
+Event log
+---------
+
+The Fritz!Box keeps its event log (*System > Event log* in the web interface) in RAM and
+loses it on every restart, including the ones caused by a firmware update. With
+``FRITZ_EVENT_LOG`` (``event_log`` in the config file) the exporter reads the complete log
+over TR-064 (``DeviceInfo:X_AVM-DE_GetDeviceLogPath``) on every collection and writes each
+entry it has not written before to the logger ``fritzexporter.event_log``, one line per
+entry. Whatever collects the exporter's output (Loki, journald, Elasticsearch, ...) then
+keeps the history. The feature adds no metrics and is off by default, because the lines
+contain user names and addresses of your network. The exporter's log level must be
+``INFO`` or lower for the lines to appear.
+
+.. code-block:: text
+
+    event_time=2026-10-09T21:49:06+02:00 group=sys id=504 msg="Anmeldung des Benutzers exporter an der FRITZ!Box-Benutzeroberfläche von IP-Adresse 192.0.2.10."
+
+* ``id`` is the box's message type, ``group`` is ``sys``, ``net``, ``wlan`` and so on. The
+  ``msg`` text is in the language of the box, so match on ``id`` rather than on the text.
+* The box writes its own local time without a time zone. ``event_time`` is that time as
+  ISO 8601 with the UTC offset that applied at that moment, taken from the time zone rule
+  the box reports (``Time:GetInfo``). If the box does not report a usable time zone, the
+  current offset is used, or no offset at all. A time in the hour that occurs twice when
+  daylight saving time ends is resolved to the first occurrence. The log timestamp of the
+  line itself is when the exporter first saw the entry, so the first collection after a
+  start stamps the whole buffer with the current time; ``event_time`` is the real one.
+* ``msg`` is quoted, with newlines and other control characters escaped, so that an entry
+  cannot add or split lines. The ``q=`` token of a DynDNS update URL is replaced by
+  ``q=<redacted>``.
+* Entries are de-duplicated in memory, by time and message, and counted, so identical
+  entries in the same second are each written. After the exporter restarts it reads the
+  box's buffer again and entries it wrote before can appear a second time; while it runs,
+  no entry is dropped. The box folds a repeated message into one row (``... [2 Meldungen
+  seit 09.10.26 21:48:36]``); the folded row has a new time and counts as a new entry.
+* If the box does not offer the action, the exporter logs one warning and stops reading the
+  log for that device. A failed request, an error status or a body that is not an event log
+  (for example while the box restarts) is logged once per failure streak and retried on
+  the next collection. None of these fails a scrape. The warnings never contain the log
+  URL, which carries a session id.

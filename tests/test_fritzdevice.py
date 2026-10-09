@@ -50,6 +50,8 @@ class TestFritzDevice:
         # Act
         if capability == "HostInfo":
             fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True)
+        elif capability == "EventLog":
+            fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", event_log=True)
         else:
             fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
 
@@ -494,6 +496,7 @@ class TestFritzCollector:
             "UspControllers",
             "TelephonyNumbers",
             "WanIPv6Prefix",
+            "EventLog",
         ]
 
         assert list(collector._capability_instances.capabilities.keys()) == all_capas

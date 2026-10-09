@@ -58,7 +58,7 @@ Configuration System
 ``DeviceConfig``
     Represents one Fritz! device.  Fields: ``hostname``, ``username``, ``password``,
     ``password_file``, ``name``, ``host_info``, ``wifi_client_info``,
-    ``connection_timeout``, ``use_tls``, ``port``, ``remote_access``.  Hostname is
+    ``event_log``, ``connection_timeout``, ``use_tls``, ``port``, ``remote_access``.  Hostname is
     lowercased automatically via an attrs converter.  Validators check password
     length, that any password file actually exists, the port range, and that
     ``remote_access`` is only set together with ``use_tls``.

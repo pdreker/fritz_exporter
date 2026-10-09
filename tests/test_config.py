@@ -537,3 +537,24 @@ class TestWifiClientInfoConfig:
         monkeypatch.setenv("FRITZ_WIFI_CLIENT_INFO", "true")
         config = get_config(None)
         assert config.devices[0].wifi_client_info is True
+
+
+class TestEventLogConfig:
+    def test_event_log_from_config_dict(self):
+        dev = DeviceConfig.from_config(
+            {"hostname": "fritz.box", "username": "user", "password": "password", "event_log": True}
+        )
+        assert dev.event_log is True
+
+    def test_event_log_defaults_false(self):
+        dev = DeviceConfig.from_config(
+            {"hostname": "fritz.box", "username": "user", "password": "password"}
+        )
+        assert dev.event_log is False
+
+    def test_event_log_from_env(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "user")
+        monkeypatch.setenv("FRITZ_PASSWORD", "password")
+        monkeypatch.setenv("FRITZ_EVENT_LOG", "true")
+        config = get_config(None)
+        assert config.devices[0].event_log is True
