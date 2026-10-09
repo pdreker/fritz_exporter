@@ -473,6 +473,60 @@ class TestHomeAutomationCapability:
         assert len(valve_set[0].samples) == 1
         assert valve_set[0].samples[0].value == 1  # OPEN
 
+    def test_homeautomation_unknown_valve_value_is_skipped(
+        self, mock_fritzconnection: MagicMock
+    ):
+        # Prepare - the box reports a valve status this exporter does not know
+        # (or a non-string); that sample is skipped, the rest still reports.
+        xml = self._make_devicelist_xml(self._make_device_xml())
+        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
+
+        def odd_valve_action(service, action, **kwargs):
+            if service == "X_AVM-DE_Homeauto1" and action == "GetSpecificDeviceInfos":
+                return {
+                    "NewAIN": "123456789012",
+                    "NewHkrSetVentilStatus": "SOMETHING_NEW",
+                    "NewHkrReduceVentilStatus": None,
+                    "NewHkrComfortVentilStatus": "OPEN",
+                }
+            return call_action_mock(service, action, **kwargs)
+
+        fc.call_action.side_effect = odd_valve_action
+
+        # Act
+        metrics: list[Metric] = list(collector.collect())
+
+        # Check
+        by_name = {m.name: m for m in metrics}
+        assert by_name["fritz_ha_heater_valve_set_state"].samples == []
+        assert by_name["fritz_ha_heater_reduced_valve_state"].samples == []
+        assert by_name["fritz_ha_heater_comfort_valve_state"].samples[0].value == 1
+        assert len(by_name["fritz_ha_heater_temperature_C"].samples) == 1
+
+    def test_homeautomation_raising_parser_is_skipped_and_others_report(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # Prepare
+        xml = self._make_devicelist_xml(self._make_device_xml())
+        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
+
+        # Act - the AHA parser raises after the capability started; the
+        # device and its other capabilities must still be reported.
+        with (
+            patch(
+                "fritzexporter.fritzcapabilities.parse_aha_devicelist_xml",
+                side_effect=KeyError("x"),
+            ),
+            caplog.at_level(logging.WARNING),
+        ):
+            metrics: list[Metric] = list(collector.collect())
+
+        # Check
+        by_name = {m.name: m for m in metrics}
+        assert by_name["fritz_ha_heater_temperature_C"].samples == []
+        assert by_name["fritz_device_reachable"].samples[0].value == 1
+        assert len([r for r in caplog.records if "malformed data" in r.getMessage()]) == 1
+
     def test_homeautomation_valve_state_lookup_failure_is_skipped(
         self, mock_fritzconnection: MagicMock, caplog
     ):
