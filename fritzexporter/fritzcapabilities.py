@@ -4,9 +4,11 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, ItemsView, Iterator
 from contextlib import suppress
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 from urllib.parse import urlparse
 
+import requests
 from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
     FritzArgumentError,
@@ -27,6 +29,13 @@ from fritzexporter.fritz_docsis import (
     UpstreamChannel,
     parse_docsis_response,
 )
+from fritzexporter.fritz_eventlog import (
+    EventLogParseError,
+    EventLogTracker,
+    format_event,
+    parse_event_log,
+    resolve_utc_offset,
+)
 from fritzexporter.fritz_rest_generic import (
     parse_connections_response,
     parse_monitor_segment,
@@ -37,6 +46,7 @@ if TYPE_CHECKING:
     from fritzexporter.fritzdevice import FritzDevice
 
 logger = logging.getLogger("fritzexporter.fritzcapability")
+event_logger = logging.getLogger("fritzexporter.event_log")
 
 
 def probe_action(
@@ -2206,6 +2216,117 @@ class WanIPv6Prefix(FritzCapability):
         self,
     ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         yield self.metrics["prefix"]
+
+
+class EventLogFetchError(Exception):
+    """The event log page could not be fetched; the text is safe to log."""
+
+
+class EventLog(FritzCapability):
+    """Writes new router event log entries to the ``fritzexporter.event_log`` logger.
+
+    Opt-in via the device ``event_log`` flag. It adds no metrics: the box keeps the
+    log in RAM and loses it on a restart, so every collection fetches it, compares
+    it with what was already written and logs only the new entries. A log that
+    cannot be read is retried on the next collection and never fails a scrape; only a
+    missing action disables the feature for the device.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.requirements.append(("DeviceInfo1", "X_AVM-DE_GetDeviceLogPath"))
+        self.tracker = EventLogTracker()
+        self.fetch_failing: bool = False
+
+    def check_capability(self, device: FritzDevice) -> None:
+        if not device.event_log:
+            self.present = False
+            return
+        super().check_capability(device)
+
+    def create_metrics(self) -> None:
+        pass
+
+    @staticmethod
+    def _fetch_body(device: FritzDevice, path: str) -> bytes:
+        """Fetch the log page; the error text never contains the URL (it carries the session id)."""
+        # The session id in the URL authenticates the request. Not using fc.session
+        # keeps the /tr064 path prefix, which it adds for WAN remote access, off this
+        # web page; address, port and TLS are those of the TR-064 connection.
+        try:
+            with requests.Session() as session:
+                # The box's certificate is self-signed, as in fritzconnection. Not trusting
+                # the environment keeps REQUESTS_CA_BUNDLE from re-enabling verification.
+                session.verify = False
+                session.trust_env = False
+                response = session.get(
+                    f"{device.fc.address}:{device.fc.port}{path}", timeout=device.fc.timeout
+                )
+        except RequestException as e:
+            msg = f"request failed ({type(e).__name__})"
+            raise EventLogFetchError(msg) from None
+        if response.status_code != requests.codes.ok:
+            msg = f"HTTP {response.status_code} {response.reason}"
+            raise EventLogFetchError(msg)
+        return response.content
+
+    @staticmethod
+    def _read_time_zone(device: FritzDevice) -> tuple[str | None, timedelta | None]:
+        """Time zone rule and current UTC offset of the box; ``None`` where unavailable."""
+        try:
+            info = device.fc.call_action("Time1", "GetInfo")
+        except (
+            FritzServiceError,
+            FritzActionError,
+            FritzInternalError,
+            FritzConnectionException,
+            RequestException,
+        ):
+            logger.debug("no time zone from %s, event times are logged without offset", device.host)
+            return None, None
+        try:
+            current = datetime.fromisoformat(info["NewCurrentLocalTime"]).utcoffset()
+        except KeyError, ValueError:
+            current = None
+        return info.get("NewLocalTimeZoneName"), current
+
+    @staticmethod
+    def _warn_once(state: EventLog, device: FritzDevice, reason: str) -> None:
+        if not state.fetch_failing:
+            logger.warning("event log of %s could not be read, will retry: %s", device.host, reason)
+        state.fetch_failing = True
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        state = cast(EventLog, device.capabilities[self.__class__.__name__])
+        try:
+            path = device.fc.call_action("DeviceInfo1", "X_AVM-DE_GetDeviceLogPath")[
+                "NewDeviceLogPath"
+            ]
+        except (FritzServiceError, FritzActionError, FritzInternalError, KeyError) as e:
+            logger.warning(
+                "disabling the event log on %s, the action is unusable: %s", device.host, str(e)
+            )
+            state.present = False
+            return
+        try:
+            parsed = parse_event_log(self._fetch_body(device, path))
+        except (EventLogFetchError, EventLogParseError) as e:
+            self._warn_once(state, device, str(e))
+            return
+        state.fetch_failing = False
+
+        new_events = state.tracker.new_events(parsed)
+        if new_events:
+            tz_rule, current_offset = self._read_time_zone(device)
+            for event in new_events:
+                offset = resolve_utc_offset(event.timestamp, tz_rule, current_offset)
+                event_logger.info(format_event(event, offset))
+        state.tracker.commit(parsed)
+
+    def _get_metric_values(
+        self,
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        yield from ()
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>

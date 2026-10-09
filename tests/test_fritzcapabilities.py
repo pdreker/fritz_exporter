@@ -56,7 +56,7 @@ class TestFritzCapabilitiesMethods:
         num_caps = len(fd.capabilities)
 
         # Check
-        assert num_caps == 27  # All known capabilities
+        assert num_caps == 28  # All known capabilities
 
     def test_empty_capabilities_is_true_when_all_absent(self, mock_fritzconnection: MagicMock):
         # Prepare - use an empty service set so no capability is present

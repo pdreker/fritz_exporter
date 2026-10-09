@@ -97,6 +97,7 @@ def _register_device(
             dev.name,
             host_info=dev.host_info,
             wifi_client_info=dev.wifi_client_info,
+            event_log=dev.event_log,
             connection=connection,
         )
     except (
@@ -115,6 +116,7 @@ def _register_device(
             dev.name,
             host_info=dev.host_info,
             wifi_client_info=dev.wifi_client_info,
+            event_log=dev.event_log,
             connection=connection,
         )
         return
