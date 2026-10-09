@@ -1032,9 +1032,9 @@ class TestFritzCollector:
         assert len(signal) == 1
         assert len(signal[0].samples) == 0
 
-    @patch("fritzexporter.fritzcapabilities.FritzHosts")
+    @patch("fritzexporter.fritzcapabilities.MeshTopology._fetch_topology")
     def test_should_collect_mesh_backhaul_links(
-        self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, caplog
+        self, mock_fetch_topology: MagicMock, mock_fritzconnection: MagicMock, caplog
     ):
         # The mesh master exports one series per backhaul link between mesh nodes;
         # client links (to non-meshed devices) are excluded. A node pair can have
@@ -1054,7 +1054,7 @@ class TestFritzCollector:
         fc.call_action.side_effect = call_with_mesh
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
-        mock_fritzhosts.return_value.get_mesh_topology.return_value = {
+        mock_fetch_topology.return_value = {
             "nodes": [
                 {
                     "uid": "n1",
@@ -1244,9 +1244,9 @@ class TestFritzCollector:
         assert len(device_reachable_metrics) == 1
         assert device_reachable_metrics[0].samples[0].value == 0.0
 
-    @patch("fritzexporter.fritzcapabilities.FritzHosts")
+    @patch("fritzexporter.fritzcapabilities.MeshTopology._fetch_topology")
     def test_should_skip_mesh_metrics_on_transport_error_but_keep_device_available(
-        self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, caplog
+        self, mock_fetch_topology: MagicMock, mock_fritzconnection: MagicMock, caplog
     ):
         # Prepare: the mesh list is a plain HTTP fetch; a transport error there is
         # transient and must be treated like the existing FritzConnectionException
@@ -1266,7 +1266,7 @@ class TestFritzCollector:
         device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         collector.register(device)
 
-        mock_fritzhosts.return_value.get_mesh_topology.side_effect = RequestsConnectionError(
+        mock_fetch_topology.side_effect = RequestsConnectionError(
             "Connection aborted.",
             RemoteDisconnected("Remote end closed connection without response"),
         )
