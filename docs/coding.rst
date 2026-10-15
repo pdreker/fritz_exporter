@@ -18,6 +18,8 @@ A quick orientation before diving in:
       fritzdevice.py        – FritzDevice, FritzCollector, FritzCredentials
       fritzcapabilities.py  – FritzCapability (ABC) + all concrete capability classes
                               + FritzCapabilities container
+      reply.py              – Typed reading of device replies (Reply, read_action,
+                              DataError), see "Reading Device Data"
       fritz_aha.py          – XML helper for AHA (smart home) device data
       action_blacklists.py  – TR-064 service/action pairs that must never be called
       data_donation.py      – "donate-data" CLI mode: collect & upload device data
@@ -141,7 +143,7 @@ When ``FritzCollector.collect()`` runs:
       registered device** and calls ``capa._generate_metric_values(device)`` only when
       ``device.capabilities[name].present`` is ``True`` for that device.  This is how
       per-device capability support is respected even though iteration happens at the
-      global level.
+      global level.  Each call is guarded, see *Reading device data* below.
    c. After all devices have been processed, ``capa._get_metric_values()`` yields the
       now-populated metric families.
 
@@ -165,6 +167,42 @@ During ``collect()``, the global set drives iteration; the per-device sets gate 
 values are fetched from each device.
 
 
+Reading Device Data
+-------------------
+
+Every value taken from a device — a TR-064 action result, a ``data.lua`` or REST API
+JSON object, an element of the AHA XML — is read through ``fritzexporter/reply.py``,
+never by indexing the raw data:
+
+* ``read_action(device, service, action, **arguments)`` calls a TR-064 action and
+  returns a ``Reply``, a read-only typed view on the result.  ``Reply(raw, source)``
+  wraps a JSON object the same way.
+* ``reply.num(key)``, ``reply.integer(key)``, ``reply.flag(key)`` and
+  ``reply.text(key, default)`` read a required value; the ``opt_*`` variants return
+  ``None`` instead.  ``reply.obj(key)``, ``reply.objects(key)`` and ``reply.items(key)``
+  read nested objects and lists.  ``to_float``/``to_int``/``to_bool``/``to_str`` do the
+  same for single values, e.g. list items or XML text.
+
+One rule applies everywhere: a value that is missing, ``None`` or ``""`` is *absent*
+(required reads raise, optional reads return ``None``); a value that is present but
+not of the requested type raises ``DataError``.  Numbers come back as ``int``/``float``
+and labels as ``str``.  A ``DataError`` names the source and field, never the value.
+
+``FritzCapability.get_metrics`` guards each device's ``_generate_metric_values`` call:
+
+* a connection error marks the device unavailable for this scrape (as before);
+* a ``FritzWebUiError``, a ``DataError`` or any other data error (``KeyError``,
+  ``TypeError``, ...) drops the samples that device added to that capability, so no
+  partial set is exported, and logs a warning — once per failure streak, with a note
+  when reading works again.  Other capabilities and devices are not affected;
+* before samples are kept, they are checked to be renderable (numeric value, ``str``
+  labels), because ``prometheus_client`` converts values only while rendering the
+  scrape, where a bad one would fail the whole response.
+
+So a capability does not catch errors itself, except where it can do something
+better than skip, e.g. the fibre levels fall back to the TR-064 values.
+
+
 Adding a New Metric / Capability
 ---------------------------------
 
@@ -178,7 +216,8 @@ Adding a New Metric / Capability
    store them in ``self.metrics[key]``.  Use ``GaugeMetricFamily`` for current values
    and ``CounterMetricFamily`` for monotonically increasing counters.
 5. Implement ``_generate_metric_values(self, device)`` — call the TR-064 actions via
-   ``device.fc.call_action(service, action)`` and populate the metric families using
+   ``read_action(device, service, action)``, read the values with the ``Reply``
+   accessors (see *Reading device data*) and populate the metric families using
    ``self.metrics[key].add_metric(labels, value)``.
 6. Implement ``_get_metric_values(self)`` — ``yield`` each metric family from
    ``self.metrics``.

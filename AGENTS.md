@@ -182,6 +182,7 @@ fritzexporter/
   fritz_docsis.py       # DOCSIS cable channel types + parser (web UI page)
   fritz_rest_generic.py # Technology-agnostic /api/v0 REST parsers (connections, segments)
   tr064_remote.py       # TR-064/web UI ports, WAN remote TR-064 (/tr064) rewriting
+  reply.py              # Typed reading of device replies (Reply, read_action, DataError)
   action_blacklists.py  # TR-064 actions that must never be called
   data_donation.py      # --donate / --sanitize: collect + upload anonymized device data
   exceptions.py         # Project-level exceptions
@@ -207,11 +208,21 @@ fritzexporter/
 
 - **Configuration** is loaded either from a YAML file or from environment variables. Config objects are `attrs` `@define` classes with validators. See the **Dual Configuration** section below for the complete mapping and the rule that both paths must stay in sync.
 
+### Reading device data
+
+**Never index raw device data** (`result["NewFoo"]`, `raw.get("data", {})`). Read every value through `fritzexporter/reply.py`:
+
+- `read_action(device, service, action, **arguments)` returns a `Reply`; `Reply(raw, "source")` wraps JSON objects.
+- `num()`, `integer()`, `flag()`, `text(key, default)` for required values; `opt_*` for optional ones; `obj()`, `objects()`, `items()` for nesting; `to_float`/`to_int`/`to_bool`/`to_str` for single values (list items, XML text).
+- Rule: missing/`None`/`""` is absent; present but wrong type raises `DataError`. `DataError` messages name the field, never the value.
+
+`FritzCapability.get_metrics` handles failures centrally: connection errors mark the device unavailable; `FritzWebUiError` and data errors drop that device's samples of that capability for the scrape and warn once per failure streak. **Do not add `try/except` in a capability just to log and return** — only where it can do better than skipping (e.g. a fallback).
+
 ### Adding a new metric/capability
 
 1. Add a new subclass of `FritzCapability` in `fritzcapabilities.py`.
 2. Set `self.requirements` in `__init__` with the required TR-064 `(service, action)` pairs.
-3. Implement `create_metrics()`, `_generate_metric_values()`, and `_get_metric_values()`.
+3. Implement `create_metrics()`, `_generate_metric_values()` (reading data as described above), and `_get_metric_values()`.
 4. The subclass is automatically discovered — no registration needed.
 5. Add corresponding tests in `tests/test_fritzcapabilities.py`, using the mock infrastructure in `tests/fc_services_mock.py`.
 
