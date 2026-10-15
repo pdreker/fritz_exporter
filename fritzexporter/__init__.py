@@ -1,7 +1,8 @@
 from importlib import metadata
 
 try:
-    __version__ = metadata.version(__package__ or "")
+    # The distribution name, not the import name: they differ.
+    __version__ = metadata.version("fritz-exporter")
 except metadata.PackageNotFoundError:
     __version__ = "develop"
 finally:

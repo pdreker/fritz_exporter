@@ -1,4 +1,5 @@
 import logging
+from importlib.metadata import version
 from http.client import RemoteDisconnected
 from unittest.mock import MagicMock, call, patch
 
@@ -67,7 +68,10 @@ class Test_Main:
             main()
 
         captured = capsys.readouterr()
-        assert captured.out == "develop\n"
+        # The installed version, not the "develop" fallback (regression: the
+        # lookup used the import name instead of the distribution name).
+        assert captured.out == f"{version('fritz-exporter')}\n"
+        assert captured.out != "develop\n"
         assert captured.err == ""
         assert pytest_wrapped_exit.type == SystemExit
         assert pytest_wrapped_exit.value.code == 0
