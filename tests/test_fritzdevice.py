@@ -1355,6 +1355,98 @@ class TestFritzCollector:
 
 
 
+def _mesh_link(**overrides):
+    link = {
+        "uid": "l1", "node_1_uid": "n1", "node_2_uid": "n2", "state": "CONNECTED",
+        "cur_data_rate_rx": 1000, "cur_data_rate_tx": 2000,
+        "max_data_rate_rx": 3000, "max_data_rate_tx": 4000,
+    }
+    link.update(overrides)
+    return link
+
+
+def _mesh_topology(link=None, **node_overrides):
+    master = {
+        "uid": "n1", "device_name": "fritzbox", "is_meshed": True,
+        "node_interfaces": [
+            {"type": "WLAN", "name": "AP:5G:0", "node_links": [link or _mesh_link()]}
+        ],
+    }
+    master.update(node_overrides)
+    repeater = {"uid": "n2", "device_name": "repeater", "is_meshed": True, "node_interfaces": []}
+    return {"nodes": [master, repeater]}
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+@patch("fritzexporter.fritzcapabilities.FritzHosts")
+class TestMeshTopologyParsing:
+    """Bad mesh data must skip the mesh metrics, not fail the scrape."""
+
+    def _scrape(self, mock_fritzhosts, mock_fritzconnection, topology):
+        def call_with_mesh(service, action, **kwargs):
+            if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
+                return {"NewX_AVM-DE_MeshListPath": "/meshlist.lua"}
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_with_mesh
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+        mock_fritzhosts.return_value.get_mesh_topology.return_value = topology
+
+        collector = FritzCollector()
+        collector.register(
+            FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+        )
+        registry = CollectorRegistry()
+        registry.register(collector)
+        # Renders the scrape the way Prometheus gets it; a bad sample value only
+        # fails here, not in collect().
+        return generate_latest(registry).decode()
+
+    @pytest.mark.parametrize(
+        "topology",
+        [
+            pytest.param([], id="topology-is-a-list"),
+            pytest.param({"nodes": None}, id="nodes-is-none"),
+            pytest.param({"nodes": "abc"}, id="nodes-is-a-string"),
+            pytest.param(_mesh_topology(node_interfaces=5), id="interfaces-not-a-list"),
+            pytest.param(_mesh_topology(link="l1"), id="link-not-a-dict"),
+            pytest.param(_mesh_topology(_mesh_link(uid=["x"])), id="unhashable-uid"),
+            pytest.param(_mesh_topology(_mesh_link(cur_data_rate_rx="invalid")), id="rate-text"),
+            pytest.param(_mesh_topology(_mesh_link(cur_data_rate_tx=None)), id="rate-none"),
+            pytest.param(_mesh_topology(_mesh_link(max_data_rate_rx={})), id="rate-dict"),
+        ],
+    )
+    def test_bad_topology_skips_mesh_metrics(
+        self, mock_fritzhosts, mock_fritzconnection, caplog, topology
+    ):
+        output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
+
+        assert "fritz_mesh_link_available{" not in output
+        assert "fritz_mesh_link_current_data_rate_kbps{" not in output
+        assert 'fritz_device_reachable{friendly_name="FritzMock",serial="1234567890"} 1.0' in output
+        assert "Unexpected mesh topology from somehost, skipping mesh metrics" in caplog.text
+
+    def test_numeric_strings_and_non_string_names_are_accepted(
+        self, mock_fritzhosts, mock_fritzconnection, caplog
+    ):
+        topology = _mesh_topology(
+            _mesh_link(cur_data_rate_rx="1500", max_data_rate_tx=4000.5), device_name=7590
+        )
+
+        output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
+
+        assert (
+            'fritz_mesh_link_current_data_rate_kbps{direction="rx",friendly_name="FritzMock",'
+            'interface="AP:5G:0",node="7590",peer="repeater",serial="1234567890",type="WLAN"} 1500.0'
+        ) in output
+        assert (
+            'fritz_mesh_link_max_data_rate_kbps{direction="tx",friendly_name="FritzMock",'
+            'interface="AP:5G:0",node="7590",peer="repeater",serial="1234567890",type="WLAN"} 4000.5'
+        ) in output
+        assert "Unexpected mesh topology" not in caplog.text
+
+
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestConcurrentScrapes:
     """Two Prometheus instances scraping in parallel must not deadlock.
