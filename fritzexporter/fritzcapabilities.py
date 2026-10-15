@@ -4,7 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, ItemsView, Iterator
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 from urllib.parse import urlparse
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
@@ -1175,6 +1175,59 @@ class WlanAssociatedDevices(FritzCapability):
         yield self.metrics["speed"]
 
 
+class _MeshLink(NamedTuple):
+    labels: list[str]  # node, peer, type, interface
+    available: float
+    cur_rx: float
+    cur_tx: float
+    max_rx: float
+    max_tx: float
+
+
+def _parse_mesh_backhaul_links(topology: dict[str, Any]) -> list[_MeshLink]:
+    """Extract the backhaul links (mesh node <-> mesh node) from the mesh topology.
+
+    Raises AttributeError, KeyError, TypeError or ValueError on data of the wrong
+    shape. Labels are converted to str and rates to float here, because a bad value
+    would otherwise only fail later, while Prometheus renders the scrape.
+    """
+    nodes = topology.get("nodes", [])
+    uid_name = {n["uid"]: str(n.get("device_name") or "n/a") for n in nodes if "uid" in n}
+    meshed = {n["uid"] for n in nodes if n.get("uid") and n.get("is_meshed")}
+    seen: set[str] = set()
+    links: list[_MeshLink] = []
+    for node in nodes:
+        if not node.get("is_meshed"):
+            continue
+        for interface in node.get("node_interfaces", []):
+            link_type = str(interface.get("type", ""))
+            interface_name = str(interface.get("name", ""))
+            for link in interface.get("node_links", []):
+                link_uid = link.get("uid")
+                n1 = link.get("node_1_uid")
+                n2 = link.get("node_2_uid")
+                # Only backhaul (mesh-node <-> mesh-node). Each physical link is
+                # listed once under each endpoint's own node record with identical
+                # uid and data both times, so dedup by uid to avoid double-counting
+                # that one fact - a node pair can still have multiple concurrent
+                # links of the same type (e.g. 2.4GHz + 5GHz backhaul), which are
+                # distinct uids and stay separate, disambiguated by `interface`.
+                if link_uid in seen or n1 not in meshed or n2 not in meshed:
+                    continue
+                seen.add(link_uid)
+                links.append(
+                    _MeshLink(
+                        labels=[uid_name[n1], uid_name[n2], link_type, interface_name],
+                        available=1.0 if link.get("state") == "CONNECTED" else 0.0,
+                        cur_rx=float(link.get("cur_data_rate_rx", 0)),
+                        cur_tx=float(link.get("cur_data_rate_tx", 0)),
+                        max_rx=float(link.get("max_data_rate_rx", 0)),
+                        max_tx=float(link.get("max_data_rate_tx", 0)),
+                    )
+                )
+    return links
+
+
 class MeshTopology(FritzCapability):
     """Mesh backhaul link quality, read from the mesh master.
 
@@ -1240,52 +1293,25 @@ class MeshTopology(FritzCapability):
             logger.warning("Failed to retrieve mesh topology from %s", device.host)
             return
 
-        nodes = topology.get("nodes", [])
-        uid_name = {n["uid"]: (n.get("device_name") or "n/a") for n in nodes if "uid" in n}
-        meshed = {n["uid"] for n in nodes if n.get("uid") and n.get("is_meshed")}
-        seen: set[str] = set()
-        for node in nodes:
-            if not node.get("is_meshed"):
-                continue
-            for interface in node.get("node_interfaces", []):
-                link_type = interface.get("type", "")
-                interface_name = interface.get("name", "")
-                for link in interface.get("node_links", []):
-                    link_uid = link.get("uid")
-                    n1 = link.get("node_1_uid")
-                    n2 = link.get("node_2_uid")
-                    # Only backhaul (mesh-node <-> mesh-node). Each physical link is
-                    # listed once under each endpoint's own node record with identical
-                    # uid and data both times, so dedup by uid to avoid double-counting
-                    # that one fact - a node pair can still have multiple concurrent
-                    # links of the same type (e.g. 2.4GHz + 5GHz backhaul), which are
-                    # distinct uids and stay separate, disambiguated by `interface`.
-                    if link_uid in seen or n1 not in meshed or n2 not in meshed:
-                        continue
-                    seen.add(link_uid)
-                    base = [
-                        device.serial,
-                        device.friendly_name,
-                        uid_name[n1],
-                        uid_name[n2],
-                        link_type,
-                        interface_name,
-                    ]
-                    self.metrics["available"].add_metric(
-                        base, 1.0 if link.get("state") == "CONNECTED" else 0.0
-                    )
-                    self.metrics["datarate"].add_metric(
-                        [*base, "rx"], link.get("cur_data_rate_rx", 0)
-                    )
-                    self.metrics["datarate"].add_metric(
-                        [*base, "tx"], link.get("cur_data_rate_tx", 0)
-                    )
-                    self.metrics["maxdatarate"].add_metric(
-                        [*base, "rx"], link.get("max_data_rate_rx", 0)
-                    )
-                    self.metrics["maxdatarate"].add_metric(
-                        [*base, "tx"], link.get("max_data_rate_tx", 0)
-                    )
+        try:
+            links = _parse_mesh_backhaul_links(topology)
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
+            # Parse everything before adding any sample, so bad data skips the
+            # mesh metrics instead of failing the scrape or leaving half a set.
+            logger.warning(
+                "Unexpected mesh topology from %s, skipping mesh metrics: %s",
+                device.host,
+                type(e).__name__,
+            )
+            return
+
+        for link in links:
+            base = [device.serial, device.friendly_name, *link.labels]
+            self.metrics["available"].add_metric(base, link.available)
+            self.metrics["datarate"].add_metric([*base, "rx"], link.cur_rx)
+            self.metrics["datarate"].add_metric([*base, "tx"], link.cur_tx)
+            self.metrics["maxdatarate"].add_metric([*base, "rx"], link.max_rx)
+            self.metrics["maxdatarate"].add_metric([*base, "tx"], link.max_tx)
 
     def _get_metric_values(
         self,
