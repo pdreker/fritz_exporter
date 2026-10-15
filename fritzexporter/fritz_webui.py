@@ -17,10 +17,12 @@ neobiker.de / dc8wan.de shell scripts.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import logging
 import re
 import time
+from http import HTTPStatus
 from typing import Any
 
 import requests
@@ -77,6 +79,50 @@ class FritzWebUiMd5DisabledError(Exception):
             "or, to accept the risk, enable allow_unsafe_md5_password "
             "(env: FRITZ_ALLOW_UNSAFE_MD5_PASSWORD) for this device."
         )
+
+
+_MAX_CAUSE_DEPTH = 5
+
+
+def _http_error_text(resp: requests.Response) -> str:
+    """Describe an error status by its code and standard phrase.
+
+    ``resp.reason`` is not used: the server or a proxy sets it and can put any
+    text there, the request URL included.
+    """
+    try:
+        reason = f" {HTTPStatus(resp.status_code).phrase}"
+    except ValueError:
+        reason = ""
+    return f"HTTP {resp.status_code}{reason}"
+
+
+def _cause_names(exc: BaseException) -> list[str]:
+    """Class names (and errno name) along the cause chain of ``exc``, never any message text."""
+    names: list[str] = []
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen and len(names) < _MAX_CAUSE_DEPTH:
+        seen.add(id(current))
+        name = type(current).__name__
+        if type(current) is OSError and current.errno is not None:
+            name = errno.errorcode.get(current.errno, name)
+        # requests and urllib3 wrap the underlying error in ``reason`` or in ``args``
+        wrapped = [getattr(current, "reason", None), *current.args]
+        nested = next((a for a in wrapped if isinstance(a, BaseException)), None)
+        if name != "MaxRetryError":
+            names.append(name)
+        current = nested or current.__cause__ or current.__context__
+    return names
+
+
+def _failure_text(exc: requests.RequestException) -> str:
+    """Describe a failed request by class names only.
+
+    ``requests`` puts the full request URL into its exception messages, and
+    that URL carries the SID (AHA) or the user name (login).
+    """
+    return f"request failed ({': '.join(_cause_names(exc))})"
 
 
 class FritzWebUiClient:
@@ -168,10 +214,13 @@ class FritzWebUiClient:
             resp = self.session.get(
                 f"{self.base_url}/login_sid.lua", params=params, timeout=self.timeout
             )
-            resp.raise_for_status()
         except requests.RequestException as e:
-            msg = f"login_sid.lua request failed: {e}"
-            raise FritzWebUiError(msg) from e
+            msg = f"login_sid.lua request failed: {_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+        if not resp.ok:
+            msg = f"login_sid.lua request failed: {_http_error_text(resp)}"
+            raise FritzWebUiError(msg)
 
         try:
             root = ElementTree.fromstring(resp.text)
@@ -189,6 +238,18 @@ class FritzWebUiClient:
             "block_time": _find("BlockTime"),
         }
 
+    @staticmethod
+    def _check_block_time(block_time: str) -> None:
+        """Raise if the box blocks logins after too many failed attempts."""
+        if not block_time:
+            return
+        if not _BLOCK_TIME_RE.fullmatch(block_time):
+            msg = "login blocked (too many failed attempts)"
+            raise FritzWebUiError(msg)
+        if int(block_time) > 0:
+            msg = f"login blocked for {int(block_time)} seconds (too many failed attempts)"
+            raise FritzWebUiError(msg)
+
     def _login(self) -> str:
         """Perform the challenge-response login and return a valid SID."""
         info = self._get_session_info()
@@ -197,14 +258,7 @@ class FritzWebUiClient:
         if info["sid"] and info["sid"] != "0000000000000000":
             return info["sid"]
 
-        block_time = info["block_time"]
-        if block_time:
-            if not _BLOCK_TIME_RE.fullmatch(block_time):
-                msg = "login blocked (too many failed attempts)"
-                raise FritzWebUiError(msg)
-            if int(block_time) > 0:
-                msg = f"login blocked for {int(block_time)} seconds (too many failed attempts)"
-                raise FritzWebUiError(msg)
+        self._check_block_time(info["block_time"])
 
         challenge = info["challenge"]
         if not challenge:
@@ -227,10 +281,13 @@ class FritzWebUiClient:
                 data={"username": self.username, "response": response},
                 timeout=self.timeout,
             )
-            resp.raise_for_status()
         except requests.RequestException as e:
-            msg = f"login POST failed: {e}"
-            raise FritzWebUiError(msg) from e
+            msg = f"login POST failed: {_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+        if not resp.ok:
+            msg = f"login POST failed: {_http_error_text(resp)}"
+            raise FritzWebUiError(msg)
 
         try:
             root = ElementTree.fromstring(resp.text)
@@ -271,10 +328,13 @@ class FritzWebUiClient:
             resp = self.session.post(
                 f"{self.base_url}/data.lua", data=payload, timeout=self.timeout
             )
-            resp.raise_for_status()
         except requests.RequestException as e:
-            msg = f"data.lua request failed: {e}"
-            raise FritzWebUiError(msg) from e
+            msg = f"data.lua request failed: {_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+        if not resp.ok:
+            msg = f"data.lua request failed: {_http_error_text(resp)}"
+            raise FritzWebUiError(msg)
 
         text = resp.text
         content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
@@ -318,10 +378,13 @@ class FritzWebUiClient:
                 params=payload,
                 timeout=self.timeout,
             )
-            resp.raise_for_status()
         except requests.RequestException as e:
-            msg = f"AHA request failed for {command}: {e}"
-            raise FritzWebUiError(msg) from e
+            msg = f"AHA request failed for {command}: {_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+        if not resp.ok:
+            msg = f"AHA request failed for {command}: {_http_error_text(resp)}"
+            raise FritzWebUiError(msg)
 
         if not resp.text:
             msg = f"Fritz!Box returned an empty AHA response for {command}"
@@ -356,10 +419,13 @@ class FritzWebUiClient:
         headers = {"Authorization": f"AVM-SID {sid}"}
         try:
             resp = self.session.get(f"{self.base_url}{path}", headers=headers, timeout=self.timeout)
-            resp.raise_for_status()
         except requests.RequestException as e:
-            msg = f"REST API request failed for {path}: {e}"
-            raise FritzWebUiError(msg) from e
+            msg = f"REST API request failed for {path}: {_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+        if not resp.ok:
+            msg = f"REST API request failed for {path}: {_http_error_text(resp)}"
+            raise FritzWebUiError(msg)
 
         text = resp.text
         content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
