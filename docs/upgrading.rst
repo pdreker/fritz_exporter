@@ -1,6 +1,19 @@
 Upgrade Notes (potentially breaking changes)
 ============================================
 
+v4.0.0
+------
+
+Legacy MD5 web login disabled by default
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Devices on Fritz!OS before 7.24 only offer an MD5 login to the web interface,
+which the smart home, DOCSIS and REST API metrics use. The exporter now refuses
+that login by default and exits with a critical log message at the first scrape.
+To keep scraping such a device, upgrade Fritz!OS or set
+``allow_unsafe_md5_password: true`` (env: ``FRITZ_ALLOW_UNSAFE_MD5_PASSWORD``) for
+it. See :ref:`md5-login`.
+
 v3.5.0
 ------
 

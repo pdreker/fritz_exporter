@@ -88,6 +88,7 @@ def _read_config_from_env() -> dict:
     use_tls = os.getenv("FRITZ_USE_TLS", "False")
     device_port = os.getenv("FRITZ_DEVICE_PORT")
     remote_access = os.getenv("FRITZ_REMOTE_ACCESS", "False")
+    allow_unsafe_md5_password = os.getenv("FRITZ_ALLOW_UNSAFE_MD5_PASSWORD", "False")
 
     config: dict[Any, Any] = {}
     if exporter_port is not None:
@@ -108,6 +109,7 @@ def _read_config_from_env() -> dict:
         "use_tls": use_tls,
         "port": device_port,
         "remote_access": remote_access,
+        "allow_unsafe_md5_password": allow_unsafe_md5_password,
     }
     if connection_timeout is not None:
         device["connection_timeout"] = connection_timeout
@@ -208,6 +210,7 @@ class DeviceConfig:
         ),
     )
     remote_access: bool = field(default=False, converter=converters.to_bool)
+    allow_unsafe_md5_password: bool = field(default=False, converter=converters.to_bool)
 
     @password.validator  # ty: ignore[unresolved-attribute]
     def check_password(self, _: attrs.Attribute, value: str | None) -> None:
@@ -243,6 +246,7 @@ class DeviceConfig:
         use_tls = device.get("use_tls", False)
         port = device.get("port")
         remote_access = device.get("remote_access", False)
+        allow_unsafe_md5_password = device.get("allow_unsafe_md5_password", False)
 
         return cls(
             hostname=hostname,
@@ -256,4 +260,5 @@ class DeviceConfig:
             use_tls=use_tls,
             port=port,
             remote_access=remote_access,
+            allow_unsafe_md5_password=allow_unsafe_md5_password,
         )

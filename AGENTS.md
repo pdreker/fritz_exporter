@@ -246,6 +246,7 @@ Both paths produce the same `ExporterConfig` / `DeviceConfig` attrs objects and 
 | Device | `use_tls` | `FRITZ_USE_TLS` | `False` |
 | Device | `port` | `FRITZ_DEVICE_PORT` | *(none — local: TR-064 on 49000 / TLS 49443, web UI on 80 / 443; remote_access: 443 for both)* |
 | Device | `remote_access` | `FRITZ_REMOTE_ACCESS` | `False` |
+| Device | `allow_unsafe_md5_password` | `FRITZ_ALLOW_UNSAFE_MD5_PASSWORD` | `False` |
 
 ### Rule: keep both paths in sync
 
