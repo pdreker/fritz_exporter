@@ -4,6 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, ItemsView, Iterator
 from contextlib import suppress
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 from urllib.parse import urlparse
 
@@ -33,11 +34,60 @@ from fritzexporter.fritz_rest_generic import (
     parse_monitor_segment,
 )
 from fritzexporter.fritz_webui import FritzWebUiError
+from fritzexporter.reply import DataError, Reply, read_action
 
 if TYPE_CHECKING:
     from fritzexporter.fritzdevice import FritzDevice
 
 logger = logging.getLogger("fritzexporter.fritzcapability")
+
+# What a malformed reply, or a mistake in reading one, raises while a capability
+# collects. DataError (a ValueError) is what the reply accessors raise; the rest
+# come from code that indexes or converts data directly.
+_DATA_ERRORS: tuple[type[Exception], ...] = (
+    KeyError,
+    IndexError,
+    TypeError,
+    ValueError,
+    AttributeError,
+    ArithmeticError,
+)
+
+
+def _origin(exc: BaseException) -> str:
+    """``file:line in function`` of the innermost frame of ``exc``."""
+    tb = exc.__traceback__
+    if tb is None:
+        return "unknown"
+    while tb.tb_next is not None:
+        tb = tb.tb_next
+    code = tb.tb_frame.f_code
+    return f"{Path(code.co_filename).name}:{tb.tb_lineno} in {code.co_name}"
+
+
+def _describe(exc: BaseException) -> str:
+    """A log-safe description: DataError texts never hold values, other texts may."""
+    if isinstance(exc, DataError | FritzWebUiError):
+        return str(exc)
+    return f"{type(exc).__name__} at {_origin(exc)}"
+
+
+def _check_samples(
+    metrics: dict[str, CounterMetricFamily | GaugeMetricFamily], counts: dict[str, int]
+) -> None:
+    """Make sure every sample added since ``counts`` can be rendered.
+
+    prometheus_client stores what ``add_metric`` gets and converts it only while
+    rendering the scrape, where a bad value fails the whole scrape.
+    """
+    for key, family in metrics.items():
+        for sample in family.samples[counts.get(key, 0) :]:
+            if not isinstance(sample.value, int | float):
+                msg = f"metric {family.name}: sample value is {type(sample.value).__name__}"
+                raise DataError(msg)
+            if not all(isinstance(label, str) for label in sample.labels.values()):
+                msg = f"metric {family.name}: label value is not text"
+                raise DataError(msg)
 
 
 def probe_action(
@@ -80,6 +130,9 @@ class FritzCapability(ABC):
         self.present: bool = False
         self.requirements: list[tuple[str, str]] = []
         self.metrics: dict[str, CounterMetricFamily | GaugeMetricFamily] = {}
+        # Per device (on the device's own instance): whether the last scrape of
+        # this capability failed, so a lasting failure warns once, not every scrape.
+        self.failing: bool = False
 
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
@@ -119,16 +172,47 @@ class FritzCapability(ABC):
                 device.capabilities[name].present,
             )
             if device.capabilities[name].present and device.available:
-                try:
-                    self._generate_metric_values(device)
-                except FritzConnectionException, RequestException:
-                    logger.exception(
-                        "Device %s is unreachable, skipping %s metrics for this collection cycle",
-                        device.host,
-                        name,
-                    )
-                    device.available = False
+                self._collect_device(device, name)
         yield from self._get_metric_values()
+
+    def _collect_device(self, device: FritzDevice, name: str) -> None:
+        """Collect one device, keeping a failure to that device and capability.
+
+        * The device does not answer: it is marked unavailable for this cycle.
+        * The web interface fails, or a reply cannot be read: the samples this
+          device added to this capability are dropped, so no partial set is
+          exported; other capabilities and devices are unaffected.
+
+        Anything else, such as the refused MD5 login, is meant to reach the
+        collector.
+        """
+        counts = {key: len(family.samples) for key, family in self.metrics.items()}
+        state = device.capabilities[name]
+        try:
+            self._generate_metric_values(device)
+            _check_samples(self.metrics, counts)
+        except FritzConnectionException, RequestException:
+            logger.exception(
+                "Device %s is unreachable, skipping %s metrics for this collection cycle",
+                device.host,
+                name,
+            )
+            device.available = False
+        except (FritzWebUiError, *_DATA_ERRORS) as e:
+            for key, count in counts.items():
+                del self.metrics[key].samples[count:]
+            log = logger.debug if state.failing else logger.warning
+            log(
+                "Could not read %s data from %s, skipping it for this cycle: %s",
+                name,
+                device.host,
+                _describe(e),
+            )
+            state.failing = True
+        else:
+            if state.failing:
+                logger.info("Reading %s data from %s works again", name, device.host)
+            state.failing = False
 
     @abstractmethod
     def create_metrics(self) -> None:
@@ -187,15 +271,15 @@ class DeviceInfo(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        info_result = device.fc.call_action("DeviceInfo1", "GetInfo")
+        info = read_action(device, "DeviceInfo1", "GetInfo")
         self.metrics["uptime"].add_metric(
             [
-                info_result["NewModelName"],
-                info_result["NewSoftwareVersion"],
-                info_result["NewSerialNumber"],
+                info.text("NewModelName"),
+                info.text("NewSoftwareVersion"),
+                info.text("NewSerialNumber"),
                 device.friendly_name,
             ],
-            info_result["NewUpTime"],
+            info.num("NewUpTime"),
         )
 
     def _get_metric_values(self) -> Generator[CounterMetricFamily | GaugeMetricFamily]:
@@ -216,10 +300,9 @@ class HostNumberOfEntries(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        num_hosts_result = device.fc.call_action("Hosts1", "GetHostNumberOfEntries")
+        result = read_action(device, "Hosts1", "GetHostNumberOfEntries")
         self.metrics["numhosts"].add_metric(
-            [device.serial, device.friendly_name],
-            num_hosts_result["NewHostNumberOfEntries"],
+            [device.serial, device.friendly_name], result.num("NewHostNumberOfEntries")
         )
 
     def _get_metric_values(
@@ -241,15 +324,11 @@ class UserInterface(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        update_result = device.fc.call_action("UserInterface1", "GetInfo")
-        upd_available = 1 if update_result["NewUpgradeAvailable"] else 0
-        new_software_version = (
-            update_result["NewX_AVM-DE_Version"]
-            if (update_result["NewUpgradeAvailable"])
-            else "n/a"
-        )
+        result = read_action(device, "UserInterface1", "GetInfo")
+        available = result.flag("NewUpgradeAvailable")
+        new_software_version = result.text("NewX_AVM-DE_Version", "n/a") if available else "n/a"
         self.metrics["update"].add_metric(
-            [device.serial, device.friendly_name, new_software_version], upd_available
+            [device.serial, device.friendly_name, new_software_version], int(available)
         )
 
     def _get_metric_values(
@@ -276,13 +355,10 @@ class LanInterfaceConfig(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        lanstatus_result = device.fc.call_action("LANEthernetInterfaceConfig1", "GetInfo")
-        self.metrics["lanenable"].add_metric(
-            [device.serial, device.friendly_name], lanstatus_result["NewEnable"]
-        )
-
-        lanstatus = 1 if lanstatus_result["NewStatus"] == "Up" else 0
-        self.metrics["lanstatus"].add_metric([device.serial, device.friendly_name], lanstatus)
+        result = read_action(device, "LANEthernetInterfaceConfig1", "GetInfo")
+        labels = [device.serial, device.friendly_name]
+        self.metrics["lanenable"].add_metric(labels, int(result.flag("NewEnable")))
+        self.metrics["lanstatus"].add_metric(labels, int(result.opt_text("NewStatus") == "Up"))
 
     def _get_metric_values(
         self,
@@ -311,22 +387,12 @@ class LanInterfaceConfigStatistics(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        lanstats_result = device.fc.call_action("LANEthernetInterfaceConfig1", "GetStatistics")
-        self.metrics["lanbytes"].add_metric(
-            [device.serial, device.friendly_name, "rx"],
-            lanstats_result["NewBytesReceived"],
-        )
-        self.metrics["lanbytes"].add_metric(
-            [device.serial, device.friendly_name, "tx"], lanstats_result["NewBytesSent"]
-        )
-        self.metrics["lanpackets"].add_metric(
-            [device.serial, device.friendly_name, "rx"],
-            lanstats_result["NewPacketsReceived"],
-        )
-        self.metrics["lanpackets"].add_metric(
-            [device.serial, device.friendly_name, "tx"],
-            lanstats_result["NewPacketsSent"],
-        )
+        result = read_action(device, "LANEthernetInterfaceConfig1", "GetStatistics")
+        labels = [device.serial, device.friendly_name]
+        self.metrics["lanbytes"].add_metric([*labels, "rx"], result.num("NewBytesReceived"))
+        self.metrics["lanbytes"].add_metric([*labels, "tx"], result.num("NewBytesSent"))
+        self.metrics["lanpackets"].add_metric([*labels, "rx"], result.num("NewPacketsReceived"))
+        self.metrics["lanpackets"].add_metric([*labels, "tx"], result.num("NewPacketsSent"))
 
     def _get_metric_values(
         self,
@@ -369,45 +435,25 @@ class WanDSLInterfaceConfig(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        fritz_dslinfo_result = device.fc.call_action("WANDSLInterfaceConfig1", "GetInfo")
-        self.metrics["enable"].add_metric(
-            [device.serial, device.friendly_name], fritz_dslinfo_result["NewEnable"]
-        )
-
-        dslstatus = 1 if fritz_dslinfo_result["NewStatus"] == "Up" else 0
-        self.metrics["status"].add_metric([device.serial, device.friendly_name], dslstatus)
-        self.metrics["datarate"].add_metric(
-            [device.serial, device.friendly_name, "tx", "curr"],
-            fritz_dslinfo_result["NewUpstreamCurrRate"],
-        )
-        self.metrics["datarate"].add_metric(
-            [device.serial, device.friendly_name, "rx", "curr"],
-            fritz_dslinfo_result["NewDownstreamCurrRate"],
-        )
-        self.metrics["datarate"].add_metric(
-            [device.serial, device.friendly_name, "tx", "max"],
-            fritz_dslinfo_result["NewUpstreamMaxRate"],
-        )
-        self.metrics["datarate"].add_metric(
-            [device.serial, device.friendly_name, "rx", "max"],
-            fritz_dslinfo_result["NewDownstreamMaxRate"],
-        )
-        self.metrics["noisemargin"].add_metric(
-            [device.serial, device.friendly_name, "tx"],
-            fritz_dslinfo_result["NewUpstreamNoiseMargin"] / 10,
-        )
-        self.metrics["noisemargin"].add_metric(
-            [device.serial, device.friendly_name, "rx"],
-            fritz_dslinfo_result["NewDownstreamNoiseMargin"] / 10,
-        )
-        self.metrics["attenuation"].add_metric(
-            [device.serial, device.friendly_name, "tx"],
-            fritz_dslinfo_result["NewUpstreamAttenuation"] / 10,
-        )
-        self.metrics["attenuation"].add_metric(
-            [device.serial, device.friendly_name, "rx"],
-            fritz_dslinfo_result["NewDownstreamAttenuation"] / 10,
-        )
+        result = read_action(device, "WANDSLInterfaceConfig1", "GetInfo")
+        labels = [device.serial, device.friendly_name]
+        self.metrics["enable"].add_metric(labels, int(result.flag("NewEnable")))
+        self.metrics["status"].add_metric(labels, int(result.opt_text("NewStatus") == "Up"))
+        for direction, kind, key in (
+            ("tx", "curr", "NewUpstreamCurrRate"),
+            ("rx", "curr", "NewDownstreamCurrRate"),
+            ("tx", "max", "NewUpstreamMaxRate"),
+            ("rx", "max", "NewDownstreamMaxRate"),
+        ):
+            self.metrics["datarate"].add_metric([*labels, direction, kind], result.num(key))
+        # Noise margin and attenuation come in tenths of a dB.
+        for direction, prefix in (("tx", "NewUpstream"), ("rx", "NewDownstream")):
+            self.metrics["noisemargin"].add_metric(
+                [*labels, direction], result.num(f"{prefix}NoiseMargin") / 10
+            )
+            self.metrics["attenuation"].add_metric(
+                [*labels, direction], result.num(f"{prefix}Attenuation") / 10
+            )
 
     def _get_metric_values(
         self,
@@ -437,15 +483,10 @@ class WanDSLInterfaceConfigAVM(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        fritz_avm_dsl_result = device.fc.call_action(
-            "WANDSLInterfaceConfig1", "X_AVM-DE_GetDSLInfo"
-        )
-        self.metrics["fec"].add_metric(
-            [device.serial, device.friendly_name], fritz_avm_dsl_result["NewFECErrors"]
-        )
-        self.metrics["crc"].add_metric(
-            [device.serial, device.friendly_name], fritz_avm_dsl_result["NewCRCErrors"]
-        )
+        result = read_action(device, "WANDSLInterfaceConfig1", "X_AVM-DE_GetDSLInfo")
+        labels = [device.serial, device.friendly_name]
+        self.metrics["fec"].add_metric(labels, result.num("NewFECErrors"))
+        self.metrics["crc"].add_metric(labels, result.num("NewCRCErrors"))
 
     def _get_metric_values(
         self,
@@ -507,39 +548,35 @@ class WanFiberInterfaceConfig(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        result = device.fc.call_action("X_AVM-DE_WANFiber1", "GetInfo")
+        result = read_action(device, "X_AVM-DE_WANFiber1", "GetInfo")
         labels = [device.serial, device.friendly_name]
 
-        receive = result["NewOpticalSignalLevel"] / 1000
-        transmit = result["NewTransmitOpticalLevel"] / 1000
+        # Levels and thresholds come in thousandths of a dBm.
+        receive = result.num("NewOpticalSignalLevel") / 1000
+        transmit = result.num("NewTransmitOpticalLevel") / 1000
         if receive == 0 and transmit == 0:
             # Some boxes answer 0 for both levels over TR-064 although the web
             # UI shows real values; fall back to the page the web UI reads.
             receive, transmit = self._webui_levels(device, receive, transmit)
 
         self.metrics["optical_signal"].add_metric(labels, receive)
-        self.metrics["optical_threshold"].add_metric(
-            [*labels, "lower"], result["NewLowerOpticalThreshold"] / 1000
-        )
-        self.metrics["optical_threshold"].add_metric(
-            [*labels, "upper"], result["NewUpperOpticalThreshold"] / 1000
-        )
         self.metrics["transmit_optical"].add_metric(labels, transmit)
-        self.metrics["transmit_threshold"].add_metric(
-            [*labels, "lower"], result["NewLowerTransmitPowerThreshold"] / 1000
-        )
-        self.metrics["transmit_threshold"].add_metric(
-            [*labels, "upper"], result["NewUpperTransmitPowerThreshold"] / 1000
-        )
-        self.metrics["tx_wavelength"].add_metric(labels, result["NewTXWaveLength"])
+        for bound in ("Lower", "Upper"):
+            self.metrics["optical_threshold"].add_metric(
+                [*labels, bound.lower()], result.num(f"New{bound}OpticalThreshold") / 1000
+            )
+            self.metrics["transmit_threshold"].add_metric(
+                [*labels, bound.lower()], result.num(f"New{bound}TransmitPowerThreshold") / 1000
+            )
+        self.metrics["tx_wavelength"].add_metric(labels, result.num("NewTXWaveLength"))
         self.metrics["info"].add_metric(
             [
                 *labels,
-                str(result.get("NewFiberMode") or ""),
-                str(result.get("NewSFPVendor") or ""),
-                str(result.get("NewSFPPartNumber") or ""),
-                str(result.get("NewSFPSerialNumber") or ""),
-                str(result.get("NewSFPType") or ""),
+                result.text("NewFiberMode", ""),
+                result.text("NewSFPVendor", ""),
+                result.text("NewSFPPartNumber", ""),
+                result.text("NewSFPSerialNumber", ""),
+                result.text("NewSFPType", ""),
             ],
             1,
         )
@@ -549,12 +586,12 @@ class WanFiberInterfaceConfig(FritzCapability):
         if not device.webui_client:
             return receive, transmit
         try:
-            raw = device.webui_client.fetch_page(FIBER_STATS_PAGE)
-        except FritzWebUiError as e:
-            # A transient web-UI failure must not abort the whole scrape.
-            logger.warning("Failed to fetch fibre levels from %s: %s", device.host, e)
+            levels = parse_fiber_stats_response(device.webui_client.fetch_page(FIBER_STATS_PAGE))
+        except (FritzWebUiError, DataError) as e:
+            # The fallback is optional: keep the TR-064 values and the other fibre
+            # metrics instead of skipping the capability.
+            logger.warning("Could not read fibre levels from the web UI of %s: %s", device.host, e)
             return receive, transmit
-        levels = parse_fiber_stats_response(raw)
         if levels["receive_dbm"] is not None:
             receive = levels["receive_dbm"]
         if levels["transmit_dbm"] is not None:
@@ -597,19 +634,19 @@ class WanFiberGPONInfo(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        result = device.fc.call_action("X_AVM-DE_WANFiber1", "GetInfoGPON")
+        result = read_action(device, "X_AVM-DE_WANFiber1", "GetInfoGPON")
         labels = [device.serial, device.friendly_name]
         self.metrics["gpon_info"].add_metric(
             [
                 *labels,
-                str(result.get("NewGPONSerial") or ""),
-                str(result.get("NewPONId") or ""),
-                str(result.get("NewUNIType") or ""),
+                result.text("NewGPONSerial", ""),
+                result.text("NewPONId", ""),
+                result.text("NewUNIType", ""),
             ],
             1,
         )
-        self.metrics["onu_id"].add_metric(labels, result["NewONUId"])
-        self.metrics["gem_ports"].add_metric(labels, result["NewGEMPortCount"])
+        self.metrics["onu_id"].add_metric(labels, result.num("NewONUId"))
+        self.metrics["gem_ports"].add_metric(labels, result.num("NewGEMPortCount"))
 
     def _get_metric_values(
         self,
@@ -655,18 +692,24 @@ class WanFiberStatistics(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        result = device.fc.call_action("X_AVM-DE_WANFiber1", "GetStatistics")
+        result = read_action(device, "X_AVM-DE_WANFiber1", "GetStatistics")
         labels = [device.serial, device.friendly_name]
 
-        self.metrics["data"].add_metric([*labels, "tx"], result["NewBytesSent"])
-        self.metrics["data"].add_metric([*labels, "rx"], result["NewBytesReceived"])
-        self.metrics["packets"].add_metric([*labels, "tx"], result["NewPacketsSent"])
-        self.metrics["packets"].add_metric([*labels, "rx"], result["NewPacketsReceived"])
-        self.metrics["packet_errors"].add_metric([*labels, "tx"], result["NewPacketErrorsSent"])
-        self.metrics["packet_errors"].add_metric([*labels, "rx"], result["NewPacketErrorsReceived"])
-        self.metrics["multicast"].add_metric(labels, result["NewPacketsMulticast"])
-        self.metrics["connection_rate"].add_metric([*labels, "rx"], result["NewConnectionRateDown"])
-        self.metrics["connection_rate"].add_metric([*labels, "tx"], result["NewConnectionRateUp"])
+        self.metrics["data"].add_metric([*labels, "tx"], result.num("NewBytesSent"))
+        self.metrics["data"].add_metric([*labels, "rx"], result.num("NewBytesReceived"))
+        self.metrics["packets"].add_metric([*labels, "tx"], result.num("NewPacketsSent"))
+        self.metrics["packets"].add_metric([*labels, "rx"], result.num("NewPacketsReceived"))
+        self.metrics["packet_errors"].add_metric([*labels, "tx"], result.num("NewPacketErrorsSent"))
+        self.metrics["packet_errors"].add_metric(
+            [*labels, "rx"], result.num("NewPacketErrorsReceived")
+        )
+        self.metrics["multicast"].add_metric(labels, result.num("NewPacketsMulticast"))
+        self.metrics["connection_rate"].add_metric(
+            [*labels, "rx"], result.num("NewConnectionRateDown")
+        )
+        self.metrics["connection_rate"].add_metric(
+            [*labels, "tx"], result.num("NewConnectionRateUp")
+        )
 
     def _get_metric_values(
         self,
@@ -697,18 +740,12 @@ class WanPPPConnectionStatus(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        fritz_pppstatus_result = device.fc.call_action("WANPPPConnection1", "GetStatusInfo")
-        pppconnected = 1 if fritz_pppstatus_result["NewConnectionStatus"] == "Connected" else 0
-        self.metrics["uptime"].add_metric(
-            [device.serial, device.friendly_name], fritz_pppstatus_result["NewUptime"]
-        )
+        result = read_action(device, "WANPPPConnection1", "GetStatusInfo")
+        labels = [device.serial, device.friendly_name]
+        connected = result.opt_text("NewConnectionStatus") == "Connected"
+        self.metrics["uptime"].add_metric(labels, result.num("NewUptime"))
         self.metrics["connected"].add_metric(
-            [
-                device.serial,
-                device.friendly_name,
-                fritz_pppstatus_result["NewLastConnectionError"],
-            ],
-            pppconnected,
+            [*labels, result.text("NewLastConnectionError", "")], int(connected)
         )
 
     def _get_metric_values(
@@ -737,32 +774,16 @@ class WanCommonInterfaceConfig(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        wanstatus_result = device.fc.call_action(
-            "WANCommonInterfaceConfig1", "GetCommonLinkProperties"
+        result = read_action(device, "WANCommonInterfaceConfig1", "GetCommonLinkProperties")
+        labels = [device.serial, device.friendly_name, result.text("NewWANAccessType")]
+        self.metrics["wanconfig"].add_metric(
+            [*labels, "tx"], result.num("NewLayer1UpstreamMaxBitRate")
         )
         self.metrics["wanconfig"].add_metric(
-            [
-                device.serial,
-                device.friendly_name,
-                wanstatus_result["NewWANAccessType"],
-                "tx",
-            ],
-            wanstatus_result["NewLayer1UpstreamMaxBitRate"],
+            [*labels, "rx"], result.num("NewLayer1DownstreamMaxBitRate")
         )
-        self.metrics["wanconfig"].add_metric(
-            [
-                device.serial,
-                device.friendly_name,
-                wanstatus_result["NewWANAccessType"],
-                "rx",
-            ],
-            wanstatus_result["NewLayer1DownstreamMaxBitRate"],
-        )
-        l1_status = wanstatus_result["NewPhysicalLinkStatus"]
-        wanstatus = 1 if l1_status == "Up" else 0
         self.metrics["wanlinkstatus"].add_metric(
-            [device.serial, device.friendly_name, wanstatus_result["NewWANAccessType"]],
-            wanstatus,
+            labels, int(result.opt_text("NewPhysicalLinkStatus") == "Up")
         )
 
     def _get_metric_values(
@@ -789,20 +810,11 @@ class WanCommonInterfaceDataBytes(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        fritz_wan_result = device.fc.call_action(
-            self.WAN_COMMON_INTERFACE_SERVICE, "GetTotalBytesReceived"
-        )
-        wan_bytes_rx = fritz_wan_result["NewTotalBytesReceived"]
-        fritz_wan_result = device.fc.call_action(
-            self.WAN_COMMON_INTERFACE_SERVICE, "GetTotalBytesSent"
-        )
-        wan_bytes_tx = fritz_wan_result["NewTotalBytesSent"]
-        self.metrics["wanbytes"].add_metric(
-            [device.serial, device.friendly_name, "tx"], wan_bytes_tx
-        )
-        self.metrics["wanbytes"].add_metric(
-            [device.serial, device.friendly_name, "rx"], wan_bytes_rx
-        )
+        service = self.WAN_COMMON_INTERFACE_SERVICE
+        rx = read_action(device, service, "GetTotalBytesReceived").num("NewTotalBytesReceived")
+        tx = read_action(device, service, "GetTotalBytesSent").num("NewTotalBytesSent")
+        self.metrics["wanbytes"].add_metric([device.serial, device.friendly_name, "tx"], tx)
+        self.metrics["wanbytes"].add_metric([device.serial, device.friendly_name, "rx"], rx)
 
     def _get_metric_values(
         self,
@@ -830,33 +842,22 @@ class WanCommonInterfaceByteRate(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        fritz_wan_result = device.fc.call_action("WANCommonIFC1", "GetAddonInfos")
-        wan_byterate_rx = fritz_wan_result["NewByteReceiveRate"]
-        wan_byterate_tx = fritz_wan_result["NewByteSendRate"]
-        self.metrics["wanbyterate"].add_metric(
-            [device.serial, device.friendly_name, "rx"], wan_byterate_rx
-        )
-        self.metrics["wanbyterate"].add_metric(
-            [device.serial, device.friendly_name, "tx"], wan_byterate_tx
-        )
+        result = read_action(device, "WANCommonIFC1", "GetAddonInfos")
+        labels = [device.serial, device.friendly_name]
+        self.metrics["wanbyterate"].add_metric([*labels, "rx"], result.num("NewByteReceiveRate"))
+        self.metrics["wanbyterate"].add_metric([*labels, "tx"], result.num("NewByteSendRate"))
 
         # Classic Layer1*MaxBitRate is ui4 and saturates/misreports on multi-gig links.
         # Prefer the AVM 64-bit fields when the firmware provides them. On WAN
         # types that don't support them (observed on cable), FRITZ!OS reports
-        # the field as an empty string rather than omitting it or returning
-        # None, which crashes exposition when Prometheus scrapes (the client
-        # library does float("") to format the sample) -- treat both as "not
-        # provided".
-        layer1_rx = fritz_wan_result.get("NewX_AVM_DE_Layer1DownstreamMaxBitRate64")
-        layer1_tx = fritz_wan_result.get("NewX_AVM_DE_Layer1UpstreamMaxBitRate64")
-        if layer1_rx not in (None, ""):
-            self.metrics["layer1max"].add_metric(
-                [device.serial, device.friendly_name, "rx"], layer1_rx
-            )
-        if layer1_tx not in (None, ""):
-            self.metrics["layer1max"].add_metric(
-                [device.serial, device.friendly_name, "tx"], layer1_tx
-            )
+        # them as an empty string, which reads as absent.
+        for direction, key in (
+            ("rx", "NewX_AVM_DE_Layer1DownstreamMaxBitRate64"),
+            ("tx", "NewX_AVM_DE_Layer1UpstreamMaxBitRate64"),
+        ):
+            layer1 = result.opt_num(key)
+            if layer1 is not None:
+                self.metrics["layer1max"].add_metric([*labels, direction], layer1)
 
     def _get_metric_values(
         self,
@@ -882,20 +883,11 @@ class WanCommonInterfaceDataPackets(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        fritz_wan_result = device.fc.call_action(
-            self.WAN_COMMON_INTERFACE_SERVICE, "GetTotalPacketsReceived"
-        )
-        wan_packets_rx = fritz_wan_result["NewTotalPacketsReceived"]
-        fritz_wan_result = device.fc.call_action(
-            self.WAN_COMMON_INTERFACE_SERVICE, "GetTotalPacketsSent"
-        )
-        wan_packets_tx = fritz_wan_result["NewTotalPacketsSent"]
-        self.metrics["wanpackets"].add_metric(
-            [device.serial, device.friendly_name, "tx"], wan_packets_tx
-        )
-        self.metrics["wanpackets"].add_metric(
-            [device.serial, device.friendly_name, "rx"], wan_packets_rx
-        )
+        service = self.WAN_COMMON_INTERFACE_SERVICE
+        rx = read_action(device, service, "GetTotalPacketsReceived").num("NewTotalPacketsReceived")
+        tx = read_action(device, service, "GetTotalPacketsSent").num("NewTotalPacketsSent")
+        self.metrics["wanpackets"].add_metric([device.serial, device.friendly_name, "tx"], tx)
+        self.metrics["wanpackets"].add_metric([device.serial, device.friendly_name, "rx"], rx)
 
     def _get_metric_values(
         self,
@@ -1010,84 +1002,39 @@ class WlanConfigurationInfo(FritzCapability):
                 device.host,
             )
             if wlan_present:
-                logger.debug(
-                    "WLANCapability._generateMetricValues fetching metrics for %s: %s",
-                    device.host,
-                    index,
-                )
-                wlan_result = device.fc.call_action(f"WLANConfiguration{index + 1}", "GetInfo")
-                wlan_status = 1 if wlan_result["NewStatus"] == "Up" else 0
-                wlan_enabled = "1" if wlan_result["NewEnable"] else "0"
-                self.metrics["wlanstatus"].add_metric(
-                    [
-                        device.serial,
-                        device.friendly_name,
-                        wlan_enabled,
-                        wlan_result["NewStandard"],
-                        wlan_result["NewSSID"],
-                        str(index + 1),
-                        self.WIFI_NAMES[index],
-                    ],
-                    wlan_status,
-                )
-                self.metrics["wlanchannel"].add_metric(
-                    [
-                        device.serial,
-                        device.friendly_name,
-                        wlan_enabled,
-                        wlan_result["NewStandard"],
-                        wlan_result["NewSSID"],
-                        str(index + 1),
-                        self.WIFI_NAMES[index],
-                    ],
-                    wlan_result["NewChannel"],
-                )
+                self._collect_wlan(device, index)
 
-                assoc_results = device.fc.call_action(
-                    f"WLANConfiguration{index + 1}", "GetTotalAssociations"
-                )
-                self.metrics["wlanassocs"].add_metric(
-                    [
-                        device.serial,
-                        device.friendly_name,
-                        wlan_enabled,
-                        wlan_result["NewStandard"],
-                        wlan_result["NewSSID"],
-                        str(index + 1),
-                        self.WIFI_NAMES[index],
-                    ],
-                    assoc_results["NewTotalAssociations"],
-                )
+    def _collect_wlan(self, device: FritzDevice, index: int) -> None:
+        service = f"WLANConfiguration{index + 1}"
+        info = read_action(device, service, "GetInfo")
+        enabled = "1" if info.flag("NewEnable") else "0"
+        # The labels shared by every WLAN metric, in label order; "direction"
+        # of the packet counter goes in before the last two.
+        head = [
+            device.serial,
+            device.friendly_name,
+            enabled,
+            info.text("NewStandard", ""),
+            info.text("NewSSID", ""),
+        ]
+        tail = [str(index + 1), self.WIFI_NAMES[index]]
+        self.metrics["wlanstatus"].add_metric(
+            [*head, *tail], int(info.opt_text("NewStatus") == "Up")
+        )
+        self.metrics["wlanchannel"].add_metric([*head, *tail], info.num("NewChannel"))
 
-                packet_stats_result = device.fc.call_action(
-                    f"WLANConfiguration{index + 1}", "GetPacketStatistics"
-                )
-                self.metrics["wlanpackets"].add_metric(
-                    [
-                        device.serial,
-                        device.friendly_name,
-                        wlan_enabled,
-                        wlan_result["NewStandard"],
-                        wlan_result["NewSSID"],
-                        "rx",
-                        str(index + 1),
-                        self.WIFI_NAMES[index],
-                    ],
-                    packet_stats_result["NewTotalPacketsReceived"],
-                )
-                self.metrics["wlanpackets"].add_metric(
-                    [
-                        device.serial,
-                        device.friendly_name,
-                        wlan_enabled,
-                        wlan_result["NewStandard"],
-                        wlan_result["NewSSID"],
-                        "tx",
-                        str(index + 1),
-                        self.WIFI_NAMES[index],
-                    ],
-                    packet_stats_result["NewTotalPacketsSent"],
-                )
+        associations = read_action(device, service, "GetTotalAssociations")
+        self.metrics["wlanassocs"].add_metric(
+            [*head, *tail], associations.num("NewTotalAssociations")
+        )
+
+        packets = read_action(device, service, "GetPacketStatistics")
+        self.metrics["wlanpackets"].add_metric(
+            [*head, "rx", *tail], packets.num("NewTotalPacketsReceived")
+        )
+        self.metrics["wlanpackets"].add_metric(
+            [*head, "tx", *tail], packets.num("NewTotalPacketsSent")
+        )
 
     def _get_metric_values(
         self,
@@ -1150,8 +1097,8 @@ class WlanAssociatedDevices(FritzCapability):
                 continue
             service = f"WLANConfiguration{index + 1}"
             try:
-                assoc = device.fc.call_action(service, "GetTotalAssociations")
-                total = int(assoc.get("NewTotalAssociations", 0))
+                assoc = read_action(device, service, "GetTotalAssociations")
+                total = assoc.opt_integer("NewTotalAssociations") or 0
             except (FritzServiceError, FritzActionError, FritzInternalError) as e:
                 logger.warning(
                     "failed to read WiFi associations from %s on %s: %s",
@@ -1162,7 +1109,8 @@ class WlanAssociatedDevices(FritzCapability):
                 continue
             for client_index in range(total):
                 try:
-                    info = device.fc.call_action(
+                    info = read_action(
+                        device,
                         service,
                         "GetGenericAssociatedDeviceInfo",
                         NewAssociatedDeviceIndex=client_index,
@@ -1185,11 +1133,12 @@ class WlanAssociatedDevices(FritzCapability):
                     device.serial,
                     device.friendly_name,
                     self.WIFI_NAMES[index],
-                    info["NewAssociatedDeviceMACAddress"],
-                    info["NewAssociatedDeviceIPAddress"],
+                    info.text("NewAssociatedDeviceMACAddress"),
+                    # A client may not have an address yet.
+                    info.text("NewAssociatedDeviceIPAddress", ""),
                 ]
-                self.metrics["signal"].add_metric(labels, info["NewX_AVM-DE_SignalStrength"])
-                self.metrics["speed"].add_metric(labels, info["NewX_AVM-DE_Speed"])
+                self.metrics["signal"].add_metric(labels, info.num("NewX_AVM-DE_SignalStrength"))
+                self.metrics["speed"].add_metric(labels, info.num("NewX_AVM-DE_Speed"))
 
     def _get_metric_values(
         self,
@@ -1207,45 +1156,50 @@ class _MeshLink(NamedTuple):
     max_tx: float
 
 
-def _parse_mesh_backhaul_links(topology: dict[str, Any]) -> list[_MeshLink]:
+def _parse_mesh_backhaul_links(topology: object) -> list[_MeshLink]:
     """Extract the backhaul links (mesh node <-> mesh node) from the mesh topology.
 
-    Raises AttributeError, KeyError, TypeError or ValueError on data of the wrong
-    shape. Labels are converted to str and rates to float here, because a bad value
-    would otherwise only fail later, while Prometheus renders the scrape.
+    Malformed data raises :class:`~fritzexporter.reply.DataError`.
     """
-    nodes = topology.get("nodes", [])
-    uid_name = {n["uid"]: str(n.get("device_name") or "n/a") for n in nodes if "uid" in n}
-    meshed = {n["uid"] for n in nodes if n.get("uid") and n.get("is_meshed")}
+    nodes = Reply(topology, "mesh topology").objects("nodes")
+    uid_name: dict[str, str] = {}
+    meshed: set[str] = set()
+    for node in nodes:
+        uid = node.opt_text("uid")
+        if uid is None:
+            continue
+        uid_name[uid] = node.text("device_name", "n/a")
+        if node.opt_flag("is_meshed"):
+            meshed.add(uid)
     seen: set[str] = set()
     links: list[_MeshLink] = []
     for node in nodes:
-        if not node.get("is_meshed"):
+        if not node.opt_flag("is_meshed"):
             continue
-        for interface in node.get("node_interfaces", []):
-            link_type = str(interface.get("type", ""))
-            interface_name = str(interface.get("name", ""))
-            for link in interface.get("node_links", []):
-                link_uid = link.get("uid")
-                n1 = link.get("node_1_uid")
-                n2 = link.get("node_2_uid")
+        for interface in node.objects("node_interfaces"):
+            link_type = interface.text("type", "")
+            interface_name = interface.text("name", "")
+            for link in interface.objects("node_links"):
+                link_uid = link.opt_text("uid")
+                n1 = link.opt_text("node_1_uid")
+                n2 = link.opt_text("node_2_uid")
                 # Only backhaul (mesh-node <-> mesh-node). Each physical link is
                 # listed once under each endpoint's own node record with identical
                 # uid and data both times, so dedup by uid to avoid double-counting
                 # that one fact - a node pair can still have multiple concurrent
                 # links of the same type (e.g. 2.4GHz + 5GHz backhaul), which are
                 # distinct uids and stay separate, disambiguated by `interface`.
-                if link_uid in seen or n1 not in meshed or n2 not in meshed:
+                if link_uid is None or link_uid in seen or n1 not in meshed or n2 not in meshed:
                     continue
                 seen.add(link_uid)
                 links.append(
                     _MeshLink(
                         labels=[uid_name[n1], uid_name[n2], link_type, interface_name],
-                        available=1.0 if link.get("state") == "CONNECTED" else 0.0,
-                        cur_rx=float(link.get("cur_data_rate_rx", 0)),
-                        cur_tx=float(link.get("cur_data_rate_tx", 0)),
-                        max_rx=float(link.get("max_data_rate_rx", 0)),
-                        max_tx=float(link.get("max_data_rate_tx", 0)),
+                        available=1.0 if link.opt_text("state") == "CONNECTED" else 0.0,
+                        cur_rx=link.opt_num("cur_data_rate_rx") or 0.0,
+                        cur_tx=link.opt_num("cur_data_rate_tx") or 0.0,
+                        max_rx=link.opt_num("max_data_rate_rx") or 0.0,
+                        max_tx=link.opt_num("max_data_rate_tx") or 0.0,
                     )
                 )
     return links
@@ -1300,9 +1254,7 @@ class MeshTopology(FritzCapability):
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         try:
-            # get_mesh_topology is annotated dict | str (str only when raw=True);
-            # with the default raw=False it always returns the parsed dict.
-            topology = cast("dict[str, Any]", FritzHosts(fc=device.fc).get_mesh_topology())
+            topology = FritzHosts(fc=device.fc).get_mesh_topology()
         except FritzActionError:
             # Only the mesh master can serve the topology; every other node answers
             # "Device has no access to topology information" (404). That is the normal
@@ -1316,19 +1268,7 @@ class MeshTopology(FritzCapability):
             logger.warning("Failed to retrieve mesh topology from %s", device.host)
             return
 
-        try:
-            links = _parse_mesh_backhaul_links(topology)
-        except (AttributeError, KeyError, TypeError, ValueError) as e:
-            # Parse everything before adding any sample, so bad data skips the
-            # mesh metrics instead of failing the scrape or leaving half a set.
-            logger.warning(
-                "Unexpected mesh topology from %s, skipping mesh metrics: %s",
-                device.host,
-                type(e).__name__,
-            )
-            return
-
-        for link in links:
+        for link in _parse_mesh_backhaul_links(topology):
             base = [device.serial, device.friendly_name, *link.labels]
             self.metrics["available"].add_metric(base, link.available)
             self.metrics["datarate"].add_metric([*base, "rx"], link.cur_rx)
@@ -1424,17 +1364,19 @@ class HostInfo(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        num_hosts_result = device.fc.call_action("Hosts1", "GetHostNumberOfEntries")
-        logger.debug(
-            "Fetching host information for device serial %s (hosts found: %s",
-            device.serial,
-            num_hosts_result["NewHostNumberOfEntries"],
+        num_hosts = read_action(device, "Hosts1", "GetHostNumberOfEntries").integer(
+            "NewHostNumberOfEntries"
         )
-        for host_index in range(num_hosts_result["NewHostNumberOfEntries"]):
+        logger.debug(
+            "Fetching host information for device serial %s (hosts found: %s)",
+            device.serial,
+            num_hosts,
+        )
+        for host_index in range(num_hosts):
             logger.debug("Fetching generic host information for host number %s", host_index)
             try:
-                host_result = device.fc.call_action(
-                    "Hosts1", "GetGenericHostEntry", NewIndex=host_index
+                host_result = read_action(
+                    device, "Hosts1", "GetGenericHostEntry", NewIndex=host_index
                 )
             except FritzArrayIndexError:
                 # The host table shrank between GetHostNumberOfEntries and this read
@@ -1450,9 +1392,10 @@ class HostInfo(FritzCapability):
                     host_index,
                 )
                 break
-            host_ip = host_result["NewIPAddress"]
-            host_mac = host_result["NewMACAddress"]
-            host_name = host_result["NewHostName"]
+            # A host may have no address or name; "" is passed on as the label.
+            host_ip = host_result.text("NewIPAddress", "")
+            host_mac = host_result.text("NewMACAddress", "")
+            host_name = host_result.text("NewHostName", "")
             if host_ip != "":
                 logger.debug(
                     "Fetching extended AVM host information for host number %s by IP %s",
@@ -1460,8 +1403,8 @@ class HostInfo(FritzCapability):
                     host_ip,
                 )
                 try:
-                    avm_host_result = device.fc.call_action(
-                        "Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP", NewIPAddress=host_ip
+                    avm_host_result = read_action(
+                        device, "Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP", NewIPAddress=host_ip
                     )
                 except FritzLookUpError:
                     # The host's IP left the host table between GetGenericHostEntry
@@ -1481,12 +1424,12 @@ class HostInfo(FritzCapability):
                     host_interface = "n/a"
                     host_port = "n/a"
                     host_model = "n/a"
-                    host_speed = 0
+                    host_speed = 0.0
                 else:
-                    host_interface = avm_host_result["NewInterfaceType"]
-                    host_port = str(avm_host_result["NewX_AVM-DE_Port"])
-                    host_model = avm_host_result["NewX_AVM-DE_Model"]
-                    host_speed = avm_host_result["NewX_AVM-DE_Speed"]
+                    host_interface = avm_host_result.text("NewInterfaceType", "")
+                    host_port = avm_host_result.text("NewX_AVM-DE_Port", "")
+                    host_model = avm_host_result.text("NewX_AVM-DE_Model", "")
+                    host_speed = avm_host_result.opt_num("NewX_AVM-DE_Speed") or 0.0
             else:
                 logger.debug(
                     "Unable to fetch extended AVM host information for host number %s: no IP found",
@@ -1495,8 +1438,8 @@ class HostInfo(FritzCapability):
                 host_interface = "n/a"
                 host_port = "n/a"
                 host_model = "n/a"
-                host_speed = 0
-            host_active = 1.0 if host_result["NewActive"] else 0.0
+                host_speed = 0.0
+            host_active = 1.0 if host_result.flag("NewActive") else 0.0
             self.metrics["hostactive"].add_metric(
                 [
                     device.serial,
@@ -1669,25 +1612,27 @@ class HomeAutomation(FritzCapability):
         # getdevicelistinfos response, so they still require one TR-064 call
         # per thermostat (identified by AIN, not by enumeration index).
         try:
-            ha_result = device.fc.call_action(
-                "X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos", NewAIN=ain
+            ha_result = read_action(
+                device, "X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos", NewAIN=ain
             )
         except FritzArgumentError, FritzActionError, FritzArrayIndexError:
             logger.debug("Could not fetch HKR valve state for ain %s, skipping", ain)
             return
 
-        if "NewHkrSetVentilStatus" in ha_result:
-            self.metrics["heater_valve_set_state"].add_metric(
-                labels, self._HKR_VALVE_MAP[ha_result["NewHkrSetVentilStatus"]]
-            )
-        if "NewHkrReduceVentilStatus" in ha_result:
-            self.metrics["heater_reduced_valve_state"].add_metric(
-                labels, self._HKR_VALVE_MAP[ha_result["NewHkrReduceVentilStatus"]]
-            )
-        if "NewHkrComfortVentilStatus" in ha_result:
-            self.metrics["heater_comfort_valve_state"].add_metric(
-                labels, self._HKR_VALVE_MAP[ha_result["NewHkrComfortVentilStatus"]]
-            )
+        for metric, key in (
+            ("heater_valve_set_state", "NewHkrSetVentilStatus"),
+            ("heater_reduced_valve_state", "NewHkrReduceVentilStatus"),
+            ("heater_comfort_valve_state", "NewHkrComfortVentilStatus"),
+        ):
+            status = ha_result.opt_text(key)
+            if status is None:
+                continue
+            # An unknown status is a value new firmware may add, not malformed
+            # data: skip just this sample, as for the switch state and mode.
+            if status not in self._HKR_VALVE_MAP:
+                logger.debug("Unknown valve status %s for ain %s, skipping", key, ain)
+                continue
+            self.metrics[metric].add_metric(labels, self._HKR_VALVE_MAP[status])
 
     def _collect_battery(self, ha_device: dict[str, Any], labels: list[str]) -> None:
         if ha_device["battery_level"] is not None:
@@ -1704,12 +1649,7 @@ class HomeAutomation(FritzCapability):
             logger.debug("No web UI client on device %s, skipping", device.host)
             return
 
-        try:
-            devicelist_xml = device.webui_client.fetch_aha("getdevicelistinfos")
-        except FritzWebUiError as e:
-            logger.warning("Failed to fetch home automation data from %s: %s", device.host, e)
-            return
-
+        devicelist_xml = device.webui_client.fetch_aha("getdevicelistinfos")
         for ha_device in parse_aha_devicelist_xml(devicelist_xml):
             labels = self._build_ha_labels(device, ha_device)
 
@@ -1767,21 +1707,22 @@ class WanDocsisCable(FritzCapability):
         # boxes report NewWANAccessType == "Cable" (WANCommonIFC1) or
         # "X_AVM-DE_Cable" (WANCommonInterfaceConfig1).
         try:
-            wan_status = device.fc.call_action(
-                "WANCommonInterfaceConfig1", "GetCommonLinkProperties"
-            )
+            access_type = read_action(
+                device, "WANCommonInterfaceConfig1", "GetCommonLinkProperties"
+            ).opt_text("NewWANAccessType")
         except (
             FritzServiceError,
             FritzActionError,
             FritzInternalError,
             FritzArgumentError,
             FritzConnectionException,
+            DataError,
         ):
             logger.debug("No WAN access type info on %s, DOCSIS capability disabled", device.host)
             self.present = False
             return
 
-        self.present = wan_status.get("NewWANAccessType") in ("Cable", "X_AVM-DE_Cable")
+        self.present = access_type in ("Cable", "X_AVM-DE_Cable")
         logger.debug(
             "Capability %s set to %s on device %s",
             type(self).__name__,
@@ -1892,16 +1833,7 @@ class WanDocsisCable(FritzCapability):
             logger.debug("No web UI client on device %s, skipping", device.host)
             return
 
-        try:
-            raw = device.webui_client.fetch_page(DOC_INFO_PAGE)
-        except FritzWebUiError as e:
-            # A transient web-UI failure (e.g. session expiry) should not break
-            # the whole scrape; log at warning and leave the metric families
-            # empty for this cycle.
-            logger.warning("Failed to fetch DOCSIS data from %s: %s", device.host, e)
-            return
-
-        data = parse_docsis_response(raw)
+        data = parse_docsis_response(device.webui_client.fetch_page(DOC_INFO_PAGE))
         labels = [device.serial, device.friendly_name]
 
         for ch in data["downstream"]:
@@ -1967,14 +1899,7 @@ class WanSegmentUtilization(FritzCapability):
             logger.debug("No web UI client on device %s, skipping", device.host)
             return
 
-        try:
-            raw = device.webui_client.fetch_api("/api/v0/monitor/segment/0")
-        except FritzWebUiError as e:
-            # Transient web/REST failure must not abort the whole scrape.
-            logger.warning("Failed to fetch segment utilization data from %s: %s", device.host, e)
-            return
-
-        data = parse_monitor_segment(raw)
+        data = parse_monitor_segment(device.webui_client.fetch_api("/api/v0/monitor/segment/0"))
         labels = [device.serial, device.friendly_name]
 
         if data["last_sample_time"] is not None:
@@ -2065,15 +1990,9 @@ class WanConnectionStatus(FritzCapability):
             logger.debug("No web UI client on device %s, skipping", device.host)
             return
 
-        try:
-            raw = device.webui_client.fetch_api("/api/v0/generic/connections")
-        except FritzWebUiError as e:
-            # Transient web/REST failure must not abort the whole scrape.
-            logger.warning("Failed to fetch connection status data from %s: %s", device.host, e)
-            return
-
+        raw = device.webui_client.fetch_api("/api/v0/generic/connections")
         labels = [device.serial, device.friendly_name]
-        for conn in parse_connections_response(raw.get("connection", [])):
+        for conn in parse_connections_response(raw):
             base_labels = [*labels, conn["uid"], conn["name"], conn["media_type"]]
             for stack, uptime_key, status_key, ip_key in (
                 ("ipv4", "ip4_uptime", "ip4_connstatus", "ip4_addr"),
@@ -2133,16 +2052,16 @@ class ManagementServerInfo(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        result = device.fc.call_action("ManagementServer1", "GetInfo")
+        result = read_action(device, "ManagementServer1", "GetInfo")
         labels = [device.serial, device.friendly_name]
-        acs_host = urlparse(result["NewURL"]).hostname
+        acs_host = urlparse(result.text("NewURL", "")).hostname
         if acs_host:
             self.metrics["acs_info"].add_metric([*labels, acs_host], 1)
         self.metrics["inform_enabled"].add_metric(
-            labels, int(bool(result["NewPeriodicInformEnable"]))
+            labels, int(result.flag("NewPeriodicInformEnable"))
         )
-        self.metrics["inform_interval"].add_metric(labels, int(result["NewPeriodicInformInterval"]))
-        self.metrics["upgrades_managed"].add_metric(labels, int(bool(result["NewUpgradesManaged"])))
+        self.metrics["inform_interval"].add_metric(labels, result.num("NewPeriodicInformInterval"))
+        self.metrics["upgrades_managed"].add_metric(labels, int(result.flag("NewUpgradesManaged")))
 
     def _get_metric_values(
         self,
@@ -2179,24 +2098,21 @@ class UspControllers(FritzCapability):
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         labels = [device.serial, device.friendly_name]
-        count = int(
-            device.fc.call_action("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries")[
-                "NewUSPControllerNumberOfEntries"
-            ]
+        service = "X_AVM-DE_USPController1"
+        count = read_action(device, service, "GetUSPControllerNumberOfEntries").integer(
+            "NewUSPControllerNumberOfEntries"
         )
         for index in range(count):
             try:
-                controller = device.fc.call_action(
-                    "X_AVM-DE_USPController1", "GetUSPControllerByIndex", NewIndex=index
-                )
+                controller = read_action(device, service, "GetUSPControllerByIndex", NewIndex=index)
             except FritzArrayIndexError:
                 continue
             self.metrics["controller_enabled"].add_metric(
-                [*labels, str(index)], int(bool(controller["NewEnable"]))
+                [*labels, str(index)], int(controller.flag("NewEnable"))
             )
-        myfritz = device.fc.call_action("X_AVM-DE_USPController1", "GetUSPMyFRITZEnable")
+        myfritz = read_action(device, service, "GetUSPMyFRITZEnable")
         self.metrics["myfritz_enabled"].add_metric(
-            labels, int(bool(myfritz["NewUSPMyFRITZEnabled"]))
+            labels, int(myfritz.flag("NewUSPMyFRITZEnabled"))
         )
 
     def _get_metric_values(
@@ -2219,9 +2135,9 @@ class TelephonyNumbers(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        result = device.fc.call_action("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers")
+        result = read_action(device, "X_VoIP1", "X_AVM-DE_GetNumberOfNumbers")
         self.metrics["numbers"].add_metric(
-            [device.serial, device.friendly_name], int(result["NewNumberOfNumbers"])
+            [device.serial, device.friendly_name], result.num("NewNumberOfNumbers")
         )
 
     def _get_metric_values(
@@ -2243,12 +2159,12 @@ class WanIPv6Prefix(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        result = device.fc.call_action("WANIPConn1", "X_AVM_DE_GetIPv6Prefix")
-        prefix = result["NewIPv6Prefix"]
-        if not prefix:
+        result = read_action(device, "WANIPConn1", "X_AVM_DE_GetIPv6Prefix")
+        prefix = result.opt_text("NewIPv6Prefix")
+        if prefix is None:
             return
         self.metrics["prefix"].add_metric(
-            [device.serial, device.friendly_name, prefix, str(result["NewPrefixLength"])], 1
+            [device.serial, device.friendly_name, prefix, result.text("NewPrefixLength")], 1
         )
 
     def _get_metric_values(

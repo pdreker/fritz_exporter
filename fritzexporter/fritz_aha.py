@@ -1,22 +1,27 @@
+"""Smart home (AHA) device list parsing.
+
+Values are read with the helpers of :mod:`fritzexporter.reply`: an empty or
+missing element is absent (``None``), a malformed one raises
+:class:`~fritzexporter.reply.DataError`.
+"""
+
 from typing import Any
 from xml.etree.ElementTree import Element
 
 from defusedxml import ElementTree
 
+from fritzexporter.reply import DataError, to_int
+
 
 def _findtext(elem: Element, tag: str) -> str | None:
     text = elem.findtext(tag)
-    return text.strip() if text is not None else None
+    if text is None:
+        return None
+    return text.strip() or None
 
 
 def _find_int(elem: Element, tag: str) -> int | None:
-    text = _findtext(elem, tag)
-    if text is None:
-        return None
-    try:
-        return int(text)
-    except ValueError:
-        return None
+    return to_int(_findtext(elem, tag), f"AHA {elem.tag} {tag}")
 
 
 def _parse_switch(device: Element) -> dict[str, Any] | None:
@@ -68,7 +73,8 @@ def parse_aha_devicelist_xml(content: str) -> list[dict[str, Any]]:
     try:
         devicelist: Element = ElementTree.fromstring(content)
     except ElementTree.ParseError:
-        return []
+        msg = "AHA device list: not valid XML"
+        raise DataError(msg) from None
 
     devices = []
     for device in devicelist.findall("device"):

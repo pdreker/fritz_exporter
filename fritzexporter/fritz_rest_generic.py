@@ -12,7 +12,9 @@ This module holds the domain types and parsers for those endpoint responses.
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import TypedDict
+
+from fritzexporter.reply import Reply, to_float
 
 __all__ = [
     "ConnectionInfo",
@@ -61,27 +63,7 @@ class ConnectionInfo(TypedDict):
     ip6_addr: str
 
 
-def _to_float(value: Any) -> float | None:  # noqa: ANN401
-    """Safely convert a value (string or number) to float, None on failure."""
-    if value is None or value == "":
-        return None
-    try:
-        return float(value)
-    except TypeError, ValueError:
-        return None
-
-
-def _to_int(value: Any) -> int | None:  # noqa: ANN401
-    """Convert a value to int, None on failure (unknown)."""
-    if value is None or value == "":
-        return None
-    try:
-        return int(value)
-    except TypeError, ValueError:
-        return None
-
-
-def parse_monitor_segment(raw: dict[str, Any]) -> MonitorSegmentData:
+def parse_monitor_segment(raw: object) -> MonitorSegmentData:
     """Parse a ``/api/v0/monitor/segment/<n>`` response into normalized data.
 
     The response has a top-level ``lastSampleTime`` (Unix epoch seconds of the
@@ -89,44 +71,48 @@ def parse_monitor_segment(raw: dict[str, Any]) -> MonitorSegmentData:
     (traffic this box generates) and ``total`` (traffic of every subscriber in
     the shared segment). Each series carries ``downstream`` and ``upstream``
     utilization series in percent; the newest sample is the last element of
-    each list. Unknown/non-numeric samples become ``None``.
+    each list. Empty samples become ``None``; malformed data raises
+    :class:`~fritzexporter.reply.DataError`.
     """
+    reply = Reply(raw, "monitor segment")
     series: list[SegmentSeries] = [
         {
-            "media_type": str(entry.get("mediaType") or ""),
-            "type": str(entry.get("type") or ""),
-            "downstream": [_to_float(v) for v in entry.get("downstream", [])],
-            "upstream": [_to_float(v) for v in entry.get("upstream", [])],
+            "media_type": entry.text("mediaType", ""),
+            "type": entry.text("type", ""),
+            "downstream": [
+                to_float(v, "monitor segment downstream") for v in entry.items("downstream")
+            ],
+            "upstream": [to_float(v, "monitor segment upstream") for v in entry.items("upstream")],
         }
-        for entry in raw.get("data", [])
+        for entry in reply.objects("data")
     ]
     result: MonitorSegmentData = {
-        "last_sample_time": _to_int(raw.get("lastSampleTime")),
+        "last_sample_time": reply.opt_integer("lastSampleTime"),
         "series": series,
     }
     return result
 
 
-def parse_connections_response(raw: list[dict[str, Any]]) -> list[ConnectionInfo]:
-    """Parse the ``connection`` list from ``/api/v0/generic/connections``.
+def parse_connections_response(raw: object) -> list[ConnectionInfo]:
+    """Parse the ``connection`` list of an ``/api/v0/generic/connections`` response.
 
-    ``raw`` is the list of connection entries. Uptime fields are numeric
-    strings in seconds; empty or missing values (reported for disabled
-    connections) become ``None`` so callers can skip them.
+    Uptime fields are numeric strings in seconds; empty or missing values
+    (reported for disabled connections) become ``None`` so callers can skip them.
+    Malformed data raises :class:`~fritzexporter.reply.DataError`.
     """
     connections: list[ConnectionInfo] = [
         {
-            "uid": str(entry.get("UID") or ""),
-            "name": str(entry.get("name") or ""),
-            "media_type": str(entry.get("media_type") or ""),
-            "ip4_connstatus": str(entry.get("ip4_connstatus") or ""),
-            "ip6_connstatus": str(entry.get("ip6_connstatus") or ""),
-            "ip4_uptime": _to_int(entry.get("ip4_uptime")),
-            "ip6_uptime": _to_int(entry.get("ip6_uptime")),
-            "ip4_addr": str(entry.get("ip4_masqaddr") or ""),
-            "ip6_addr": str(entry.get("ip6_addr") or ""),
+            "uid": entry.text("UID", ""),
+            "name": entry.text("name", ""),
+            "media_type": entry.text("media_type", ""),
+            "ip4_connstatus": entry.text("ip4_connstatus", ""),
+            "ip6_connstatus": entry.text("ip6_connstatus", ""),
+            "ip4_uptime": entry.opt_integer("ip4_uptime"),
+            "ip6_uptime": entry.opt_integer("ip6_uptime"),
+            "ip4_addr": entry.text("ip4_masqaddr", ""),
+            "ip6_addr": entry.text("ip6_addr", ""),
         }
-        for entry in raw
+        for entry in Reply(raw, "connections").objects("connection")
     ]
     return connections
 

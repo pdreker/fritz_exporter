@@ -541,7 +541,8 @@ class TestHomeAutomationCapability:
 
         # Warning should be logged
         assert any(
-            "Failed to fetch home automation data" in record.message
+            "Could not read HomeAutomation data from somehost, skipping it for this cycle: "
+            "AHA request failed" in record.message
             for record in caplog.records
         )
 

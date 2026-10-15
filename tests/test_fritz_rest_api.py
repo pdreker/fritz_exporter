@@ -17,6 +17,7 @@ from fritzexporter.fritz_rest_generic import (
     parse_monitor_segment,
 )
 from fritzexporter.fritz_webui import FritzWebUiError
+from fritzexporter.reply import DataError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
 from .fc_services_mock import call_action_mock, create_fc_services, fc_services_capabilities
@@ -324,7 +325,7 @@ CONNECTIONS_RAW: dict[str, Any] = {
 
 class TestParseConnectionsResponse:
     def test_parses_entries(self):
-        connections = parse_connections_response(CONNECTIONS_RAW["connection"])
+        connections = parse_connections_response(CONNECTIONS_RAW)
 
         assert len(connections) == 2
         active, disabled = connections
@@ -345,7 +346,21 @@ class TestParseConnectionsResponse:
         assert disabled["ip6_addr"] == ""
 
     def test_handles_empty_list(self):
-        assert parse_connections_response([]) == []
+        assert parse_connections_response({"connection": []}) == []
+        assert parse_connections_response({}) == []
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            [],
+            {"connection": "not a list"},
+            {"connection": ["not an object"]},
+            {"connection": [{"UID": "c1", "ip4_uptime": "soon"}]},
+        ],
+    )
+    def test_malformed_data_raises(self, raw):
+        with pytest.raises(DataError):
+            parse_connections_response(raw)
 
 
 # ---------------------------------------------------------------------------

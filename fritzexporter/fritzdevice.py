@@ -17,6 +17,7 @@ from requests.exceptions import RequestException
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiMd5DisabledError
 from fritzexporter.fritzcapabilities import FritzCapabilities
+from fritzexporter.reply import DataError, read_action
 from fritzexporter.tr064_remote import ConnectionOptions, create_fritz_connection
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
@@ -135,10 +136,16 @@ class FritzDevice:
 
     def get_device_info(self) -> None:
         try:
-            device_info: dict[str, str] = self.fc.call_action("DeviceInfo1", "GetInfo")
-            self.serial = device_info["NewSerialNumber"]
-            self.model = device_info["NewModelName"]
-
+            device_info = read_action(self, "DeviceInfo1", "GetInfo")
+            self.serial = device_info.text("NewSerialNumber", "n/a")
+            self.model = device_info.text("NewModelName", "n/a")
+        except DataError as e:
+            logger.warning(
+                "Could not read the device info of %s, serial number and model name will be "
+                "unavailable: %s",
+                self.host,
+                e,
+            )
         except FritzServiceError, FritzActionError:
             logger.exception(
                 "Fritz Device %s does not provide basic device "
@@ -157,9 +164,9 @@ class FritzDevice:
         Returns a metric to detect whether device is in DSL, fibre, mobile fallback or offline mode.
         """
         try:
-            resp = self.fc.call_action("WANCommonInterfaceConfig", "GetCommonLinkProperties")
-            link_status = resp.get("NewPhysicalLinkStatus")
-            access_type = resp.get("NewWANAccessType") or ""
+            resp = read_action(self, "WANCommonInterfaceConfig", "GetCommonLinkProperties")
+            link_status = resp.opt_text("NewPhysicalLinkStatus")
+            access_type = resp.text("NewWANAccessType", "")
         except FritzServiceError, FritzActionError:
             # Device simply has no WAN interface (e.g. a mesh repeater). That does
             # NOT make it unavailable — skip the connection-mode metric but keep
@@ -172,6 +179,9 @@ class FritzDevice:
         except FritzConnectionException, RequestException:
             logger.exception("Failed to retrieve connection mode info from %s", self.host)
             self.available = False
+            return None
+        except DataError as e:
+            logger.warning("Could not read the connection mode of %s: %s", self.host, e)
             return None
 
         if link_status == "Up" and access_type == "DSL":

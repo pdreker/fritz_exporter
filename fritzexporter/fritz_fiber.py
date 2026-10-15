@@ -11,7 +11,9 @@ this module holds only the page name and the response parser.
 
 from __future__ import annotations
 
-from typing import Any, Final, TypedDict
+from typing import Final, TypedDict
+
+from fritzexporter.reply import DataError, Reply, to_float
 
 __all__ = [
     "FIBER_STATS_PAGE",
@@ -30,26 +32,28 @@ class FiberLevels(TypedDict):
     transmit_dbm: float | None
 
 
-def _newest(series: Any) -> float | None:  # noqa: ANN401
+def _newest(data: Reply, key: str) -> float | None:
     """Return the newest entry of a ``[[weekday, hour, value], ...]`` series in dBm."""
+    rows = data.items(key)
+    if not rows:
+        return None
+    row = rows[0]
     row_len = 3
-    if not isinstance(series, list) or not series:
-        return None
-    row = series[0]
     if not isinstance(row, list) or len(row) < row_len:
-        return None
-    value = row[2]
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
-    return value / 10
+        msg = f"fiberStats {key}[0]: expected [weekday, hour, value]"
+        raise DataError(msg)
+    value = to_float(row[2], f"fiberStats {key}[0] value")
+    return None if value is None else value / 10
 
 
-def parse_fiber_stats_response(raw: dict[str, Any]) -> FiberLevels:
-    """Extract the newest receive (``opt_ds``) and transmit (``opt_us``) level."""
-    data = raw.get("data") if isinstance(raw, dict) else None
-    if not isinstance(data, dict):
-        data = {}
+def parse_fiber_stats_response(raw: object) -> FiberLevels:
+    """Extract the newest receive (``opt_ds``) and transmit (``opt_us``) level.
+
+    A missing series gives ``None``; malformed data raises
+    :class:`~fritzexporter.reply.DataError`.
+    """
+    data = Reply(raw, "fiberStats").opt_obj("data") or Reply({}, "fiberStats data")
     return {
-        "receive_dbm": _newest(data.get("opt_ds")),
-        "transmit_dbm": _newest(data.get("opt_us")),
+        "receive_dbm": _newest(data, "opt_ds"),
+        "transmit_dbm": _newest(data, "opt_us"),
     }

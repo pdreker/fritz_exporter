@@ -18,6 +18,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
 from fritzexporter.fritz_webui import FritzWebUiMd5DisabledError
+from fritzexporter.reply import DataError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
 from fritzexporter.tr064_remote import ConnectionOptions
@@ -1262,9 +1263,8 @@ class TestFritzCollector:
         assert len(device_reachable_metrics) == 1
         assert device_reachable_metrics[0].samples[0].value == 1.0
 
-        assert "Failed to fetch home automation data" in caplog.text
-        assert "Failed to fetch segment utilization data" in caplog.text
-        assert "Failed to fetch connection status data" in caplog.text
+        for capability in ("HomeAutomation", "WanSegmentUtilization", "WanConnectionStatus"):
+            assert f"Could not read {capability} data from somehost" in caplog.text
 
     def test_should_survive_transport_error_on_connection_mode(
         self, mock_fritzconnection: MagicMock, caplog
@@ -1407,13 +1407,11 @@ class TestMeshTopologyParsing:
         "topology",
         [
             pytest.param([], id="topology-is-a-list"),
-            pytest.param({"nodes": None}, id="nodes-is-none"),
             pytest.param({"nodes": "abc"}, id="nodes-is-a-string"),
             pytest.param(_mesh_topology(node_interfaces=5), id="interfaces-not-a-list"),
             pytest.param(_mesh_topology(link="l1"), id="link-not-a-dict"),
             pytest.param(_mesh_topology(_mesh_link(uid=["x"])), id="unhashable-uid"),
             pytest.param(_mesh_topology(_mesh_link(cur_data_rate_rx="invalid")), id="rate-text"),
-            pytest.param(_mesh_topology(_mesh_link(cur_data_rate_tx=None)), id="rate-none"),
             pytest.param(_mesh_topology(_mesh_link(max_data_rate_rx={})), id="rate-dict"),
         ],
     )
@@ -1425,7 +1423,7 @@ class TestMeshTopologyParsing:
         assert "fritz_mesh_link_available{" not in output
         assert "fritz_mesh_link_current_data_rate_kbps{" not in output
         assert 'fritz_device_reachable{friendly_name="FritzMock",serial="1234567890"} 1.0' in output
-        assert "Unexpected mesh topology from somehost, skipping mesh metrics" in caplog.text
+        assert "Could not read MeshTopology data from somehost" in caplog.text
 
     def test_numeric_strings_and_non_string_names_are_accepted(
         self, mock_fritzhosts, mock_fritzconnection, caplog
@@ -1444,7 +1442,7 @@ class TestMeshTopologyParsing:
             'fritz_mesh_link_max_data_rate_kbps{direction="tx",friendly_name="FritzMock",'
             'interface="AP:5G:0",node="7590",peer="repeater",serial="1234567890",type="WLAN"} 4000.5'
         ) in output
-        assert "Unexpected mesh topology" not in caplog.text
+        assert "Could not read MeshTopology data" not in caplog.text
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
@@ -1753,17 +1751,11 @@ class TestFritzDeviceAuthError:
 
 
 class TestParseAhaDevicelistXml:
-    def test_should_return_empty_list_on_parse_error(self):
-        # Prepare
-        invalid_xml = "this is not valid xml <<<"
+    def test_should_raise_data_error_on_parse_error(self):
+        with pytest.raises(DataError, match="not valid XML"):
+            parse_aha_devicelist_xml("this is not valid xml <<<")
 
-        # Act
-        result = parse_aha_devicelist_xml(invalid_xml)
-
-        # Check
-        assert result == []
-
-    def test_should_ignore_non_numeric_int_fields(self):
+    def test_should_raise_data_error_on_non_numeric_int_fields(self):
         # Prepare
         deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
         <devicelist version="1">
@@ -1775,11 +1767,16 @@ class TestParseAhaDevicelistXml:
         </device>
         </devicelist>
         """
-        # Act
-        devices = parse_aha_devicelist_xml(deviceinfo)
+        with pytest.raises(DataError, match="AHA device battery: expected a whole number"):
+            parse_aha_devicelist_xml(deviceinfo)
 
-        # Check
-        assert devices[0]["battery_level"] is None
+    def test_should_treat_empty_int_fields_as_absent(self):
+        deviceinfo = """<devicelist version="1">
+        <device identifier="1" id="1" manufacturer="AVM" productname="Fritz!DECT 200">
+            <present>1</present><name>x</name><battery></battery>
+        </device></devicelist>"""
+
+        assert parse_aha_devicelist_xml(deviceinfo)[0]["battery_level"] is None
 
     def test_should_fall_back_to_hkr_battery_when_missing_on_device(self):
         # Prepare - some firmware versions only report battery data nested
