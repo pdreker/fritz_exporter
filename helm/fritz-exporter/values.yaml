@@ -16,6 +16,7 @@ config: {}
 #     use_tls: true # optional; HTTPS for TR-064 and the web interface
 #     port: 11243 # optional; TR-064 port locally, shared remote port with remote_access
 #     remote_access: true # optional; WAN remote access (requires use_tls)
+#     allow_unsafe_md5_password: false # optional; allow MD5 web login (Fritz!OS < 7.24)
 #   - name: Repeater Wohnzimmer # optional
 #     hostname: repeater-Wohnzimmer
 #     username: prometheus
