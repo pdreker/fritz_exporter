@@ -13,49 +13,53 @@ Environment variable
 
 If you only need a single device this is the easiest way to configure the exporter.
 
-+------------------------------+----------------------------------------------------+-----------+
-| Env variable                 | Description                                        | Default   |
-+==============================+====================================================+===========+
-| ``FRITZ_NAME``               | User-friendly name for the device                  | Fritz!Box |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_HOSTNAME``           | Hostname of the device                             | fritz.box |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_USERNAME``           | Username to authenticate on the device             | none      |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_PASSWORD``           | Password to use for authentication                 | none      |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_PASSWORD_FILE``      | File to read the password from                     |           |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_LISTEN_ADDRESS``     | Address to listen on. Can be IPv4 or IPv6.         | 127.0.0.1 |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_PORT``               | Listening port for the exporter                    | 9787      |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_LOG_LEVEL``          | Application log level: ``DEBUG``, ``INFO``,        | INFO      |
-|                              | ``WARNING``, ``ERROR``, ``CRITICAL``               |           |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_HOST_INFO``          | Enable extended information about all WiFi         | False     |
-|                              | hosts. Only "true" or "1" will enable this feature |           |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_WIFI_CLIENT_INFO``   | Enable per-client WiFi metrics (signal/speed).     | False     |
-|                              | Only "true" or "1" will enable this feature.       |           |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_CONNECTION_TIMEOUT`` | Per-device connect/read timeout in seconds for     | 10        |
-|                              | TR-064 and the web interface. ``0`` disables the   |           |
-|                              | timeout.                                           |           |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_USE_TLS``            | Use HTTPS for TR-064 and the web interface.        | False     |
-|                              | Only ``true`` or ``1`` enable this. The exporter   |           |
-|                              | does not verify the certificate (Fritz!Box certs   |           |
-|                              | are self-signed).                                  |           |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_DEVICE_PORT``        | Optional device port, see :ref:`ports`. Distinct   |           |
-|                              | from ``FRITZ_PORT`` (exporter listen port).        |           |
-|                              | ``0`` or unset = default.                          |           |
-+------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_REMOTE_ACCESS``      | Scrape over AVM WAN remote access, see             | False     |
-|                              | :ref:`ports`. Requires ``FRITZ_USE_TLS=true``.     |           |
-|                              | Only ``true`` or ``1`` enable this.                |           |
-+------------------------------+----------------------------------------------------+-----------+
++-------------------------------------+----------------------------------------------------+-----------+
+| Env variable                        | Description                                        | Default   |
++=====================================+====================================================+===========+
+| ``FRITZ_NAME``                      | User-friendly name for the device                  | Fritz!Box |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_HOSTNAME``                  | Hostname of the device                             | fritz.box |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_USERNAME``                  | Username to authenticate on the device             | none      |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_PASSWORD``                  | Password to use for authentication                 | none      |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_PASSWORD_FILE``             | File to read the password from                     |           |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_LISTEN_ADDRESS``            | Address to listen on. Can be IPv4 or IPv6.         | 127.0.0.1 |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_PORT``                      | Listening port for the exporter                    | 9787      |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_LOG_LEVEL``                 | Application log level: ``DEBUG``, ``INFO``,        | INFO      |
+|                                     | ``WARNING``, ``ERROR``, ``CRITICAL``               |           |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_HOST_INFO``                 | Enable extended information about all WiFi         | False     |
+|                                     | hosts. Only "true" or "1" will enable this feature |           |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_WIFI_CLIENT_INFO``          | Enable per-client WiFi metrics (signal/speed).     | False     |
+|                                     | Only "true" or "1" will enable this feature.       |           |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_CONNECTION_TIMEOUT``        | Per-device connect/read timeout in seconds for     | 10        |
+|                                     | TR-064 and the web interface. ``0`` disables the   |           |
+|                                     | timeout.                                           |           |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_USE_TLS``                   | Use HTTPS for TR-064 and the web interface.        | False     |
+|                                     | Only ``true`` or ``1`` enable this. The exporter   |           |
+|                                     | does not verify the certificate (Fritz!Box certs   |           |
+|                                     | are self-signed).                                  |           |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_DEVICE_PORT``               | Optional device port, see :ref:`ports`. Distinct   |           |
+|                                     | from ``FRITZ_PORT`` (exporter listen port).        |           |
+|                                     | ``0`` or unset = default.                          |           |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_REMOTE_ACCESS``             | Scrape over AVM WAN remote access, see             | False     |
+|                                     | :ref:`ports`. Requires ``FRITZ_USE_TLS=true``.     |           |
+|                                     | Only ``true`` or ``1`` enable this.                |           |
++-------------------------------------+----------------------------------------------------+-----------+
+| ``FRITZ_ALLOW_UNSAFE_MD5_PASSWORD`` | Allow the legacy MD5 web login of Fritz!OS before  | False     |
+|                                     | 7.24, see :ref:`md5-login`. Only ``true`` or ``1`` |           |
+|                                     | enable this.                                       |           |
++-------------------------------------+----------------------------------------------------+-----------+
 
 .. note::
 
@@ -89,6 +93,22 @@ HTTPS port set for internet access to the device ("Internet > Permit Access >
 FRITZ!Box Services"). Set ``hostname`` to the device's public name (often a MyFRITZ or
 DynDNS name) and ``port`` to that port. LAN scrapes should leave remote access
 disabled (default).
+
+.. _md5-login:
+
+Legacy MD5 web login
+^^^^^^^^^^^^^^^^^^^^
+
+Fritz!OS 7.24 and later log in to the web interface with PBKDF2. Older firmware
+only offers an MD5 login. Anyone who can read the traffic between exporter and
+device can recover the password from an MD5 login, and on a hostile network can
+make a newer device ask for one. The exporter therefore refuses the MD5 login by
+default: when a device asks for it, the exporter logs a critical message and exits.
+
+Upgrade Fritz!OS if you can. If you cannot, set ``allow_unsafe_md5_password: true``
+(env: ``FRITZ_ALLOW_UNSAFE_MD5_PASSWORD``) for that device to accept the risk. The
+exporter then logs a warning on every MD5 login. The TR-064 metrics do not use this
+login and are not affected.
 
 When using the environment vars you can only specify a single device. If you need multiple devices please use the config file.
 
@@ -124,6 +144,7 @@ To use the config file you have to specify the the location of the config and mo
       use_tls: false # optional; true = HTTPS for TR-064 and the web interface
       port: 49000 # optional; TR-064 port locally, shared remote port with remote_access
       remote_access: false # optional; true = WAN remote access (requires use_tls)
+      allow_unsafe_md5_password: false # optional; true = allow MD5 web login (Fritz!OS < 7.24)
     - name: Repeater Wohnzimmer # optional
       hostname: repeater-Wohnzimmer
       username: prometheus
