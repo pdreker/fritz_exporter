@@ -98,3 +98,36 @@ class TestWanFiberWebUiFallback:
             levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
         assert levels == {"receive": 0, "transmit": 0}
         assert "Failed to fetch fibre levels" in caplog.text
+
+    @patch("fritzexporter.fritzdevice.FritzWebUiClient")
+    def test_fiber_alone_creates_web_ui_client(
+        self, mock_webui_client: MagicMock, mock_fritzconnection: MagicMock
+    ):
+        # No other web-UI capability is present here, so the device must
+        # create the client for the fibre fallback during normal initialisation.
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(
+            {
+                **fc_services_capabilities["DeviceInfo"],
+                "X_AVM-DE_WANFiber1": ["GetInfo"],
+            }
+        )
+
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzFiber",
+            host_info=False,
+        )
+
+        assert device.capabilities["WanFiberInterfaceConfig"].present
+        assert not any(
+            device.capabilities[name].present
+            for name in (
+                "HomeAutomation",
+                "WanDocsisCable",
+                "WanSegmentUtilization",
+                "WanConnectionStatus",
+            )
+        )
+        assert device.webui_client is mock_webui_client.return_value

@@ -105,12 +105,13 @@ class FritzDevice:
             )
         # The web UI client is shared by every capability that reads data from
         # the Fritz!Box web interface (AHA smart home data, DOCSIS channel data,
-        # REST API endpoints).
+        # fibre optical levels, REST API endpoints).
         # Create it if any of them is present, so a DSL/fiber box can still use
         # the technology-agnostic REST capabilities.
         webui_capabilities = (
             "HomeAutomation",
             "WanDocsisCable",
+            "WanFiberInterfaceConfig",
             "WanSegmentUtilization",
             "WanConnectionStatus",
         )
