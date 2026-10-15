@@ -27,6 +27,7 @@ from fritzexporter.fritz_docsis import (
     UpstreamChannel,
     parse_docsis_response,
 )
+from fritzexporter.fritz_fiber import FIBER_STATS_PAGE, parse_fiber_stats_response
 from fritzexporter.fritz_rest_generic import (
     parse_connections_response,
     parse_monitor_segment,
@@ -509,16 +510,21 @@ class WanFiberInterfaceConfig(FritzCapability):
         result = device.fc.call_action("X_AVM-DE_WANFiber1", "GetInfo")
         labels = [device.serial, device.friendly_name]
 
-        self.metrics["optical_signal"].add_metric(labels, result["NewOpticalSignalLevel"] / 1000)
+        receive = result["NewOpticalSignalLevel"] / 1000
+        transmit = result["NewTransmitOpticalLevel"] / 1000
+        if receive == 0 and transmit == 0:
+            # Some boxes answer 0 for both levels over TR-064 although the web
+            # UI shows real values; fall back to the page the web UI reads.
+            receive, transmit = self._webui_levels(device, receive, transmit)
+
+        self.metrics["optical_signal"].add_metric(labels, receive)
         self.metrics["optical_threshold"].add_metric(
             [*labels, "lower"], result["NewLowerOpticalThreshold"] / 1000
         )
         self.metrics["optical_threshold"].add_metric(
             [*labels, "upper"], result["NewUpperOpticalThreshold"] / 1000
         )
-        self.metrics["transmit_optical"].add_metric(
-            labels, result["NewTransmitOpticalLevel"] / 1000
-        )
+        self.metrics["transmit_optical"].add_metric(labels, transmit)
         self.metrics["transmit_threshold"].add_metric(
             [*labels, "lower"], result["NewLowerTransmitPowerThreshold"] / 1000
         )
@@ -537,6 +543,23 @@ class WanFiberInterfaceConfig(FritzCapability):
             ],
             1,
         )
+
+    @staticmethod
+    def _webui_levels(device: FritzDevice, receive: float, transmit: float) -> tuple[float, float]:
+        if not device.webui_client:
+            return receive, transmit
+        try:
+            raw = device.webui_client.fetch_page(FIBER_STATS_PAGE)
+        except FritzWebUiError as e:
+            # A transient web-UI failure must not abort the whole scrape.
+            logger.warning("Failed to fetch fibre levels from %s: %s", device.host, e)
+            return receive, transmit
+        levels = parse_fiber_stats_response(raw)
+        if levels["receive_dbm"] is not None:
+            receive = levels["receive_dbm"]
+        if levels["transmit_dbm"] is not None:
+            transmit = levels["transmit_dbm"]
+        return receive, transmit
 
     def _get_metric_values(
         self,
