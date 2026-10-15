@@ -27,7 +27,7 @@ This is a prometheus exporter for AVM Fritz! home network devices commonly found
 
 The exporter should work with Fritz!Box and Fritz!Repeater Devices (and maybe others). It actively checks for supported metrics and queries the metrics for all devices configured (Yes, it has multi-device support for all you Mesh users out there.)
 
-It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Box 5690 (fibre), a Fritz!Box 6660 Cable (DOCSIS, FRITZ!OS 8.25), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
+It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Box 5690 (fibre), a Fritz!Box 5530 Fiber, a Fritz!Box 6660 Cable (DOCSIS, FRITZ!OS 8.25), a Fritz!Repeater 2400 and a Fritz!WLAN Repeater 1750E. If you have another box and data is missing, please file an issue or PR on GitHub.
 
 
 .. note::
@@ -115,7 +115,7 @@ Known Problems
 * On WAN types that don't support the 64-bit Layer1 max bitrate fields (observed on cable), FRITZ!OS reports ``NewX_AVM_DE_Layer1DownstreamMaxBitRate64`` / ``NewX_AVM_DE_Layer1UpstreamMaxBitRate64`` as an empty string rather than omitting them or returning ``None``. The exporter treats this the same as "not provided" and simply omits ``fritz_wan_layer1_max_bitrate_bps`` for that direction/device — it does not indicate a fault, only that this WAN type doesn't expose the field.
 * Fibre / ``X_AVM-DE_WANFiber`` gaps observed on FRITZ!Box 5690 (Fritz!OS 8.25): the web UI shows real optical readings, but several TR-064 ``GetInfo`` / ``GetStatistics`` fields are empty or zero. The exporter still exposes the TR-064 values when present. The Fritz! team has been contacted about these issues:
 
-  * ``NewOpticalSignalLevel`` / ``NewTransmitOpticalLevel`` stay at ``0`` while the UI shows real RX/TX power (e.g. about ``-19.5 dBm`` / ``2.4 dBm``)
+  * ``NewOpticalSignalLevel`` / ``NewTransmitOpticalLevel`` stay at ``0`` while the UI shows real RX/TX power (e.g. about ``-19.5 dBm`` / ``2.4 dBm``). Also seen on a FRITZ!Box 5530 Fiber. When TR-064 reports ``0`` for both, the exporter reads ``fritz_fiber_optical_signal_level`` and ``fritz_fiber_transmit_optical_level`` from the web UI page the UI itself uses (``data.lua?page=fiberStats``). That page holds one value per hour, so these two metrics then change only once an hour and can lag up to an hour behind the link: after a fibre outage they may still show the last good level for that long.
   * ``NewFiberMode`` stays at ``Unknown`` while the UI reports ``GPON (ITU G.984)``
   * SFP metadata (``NewSFPVendor``, ``NewSFPPartNumber``, ``NewSFPSerialNumber``, ``NewSFPType``) is empty
   * no TR-064 field for RX wavelength (UI shows ``1490 nm``; only ``NewTXWaveLength`` exists)
