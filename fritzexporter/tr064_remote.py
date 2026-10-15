@@ -121,6 +121,7 @@ class ConnectionOptions:
     use_tls: bool = False
     port: int | None = None
     remote_access: bool = False
+    allow_unsafe_md5_password: bool = False
 
     @property
     def tr064_port(self) -> int | None:

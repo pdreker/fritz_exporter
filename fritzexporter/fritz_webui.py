@@ -31,6 +31,7 @@ logger = logging.getLogger("fritzexporter.fritz_webui")
 __all__ = [
     "FritzWebUiClient",
     "FritzWebUiError",
+    "FritzWebUiMd5DisabledError",
 ]
 
 # The login_sid.lua challenge-response scheme changed in Fritz!OS 7.24.
@@ -57,6 +58,23 @@ class FritzWebUiError(Exception):
     """Raised when data cannot be retrieved from the Fritz!Box web interface."""
 
 
+class FritzWebUiMd5DisabledError(Exception):
+    """Raised when a device offers only the legacy MD5 login and MD5 is not allowed.
+
+    Not a ``FritzWebUiError`` on purpose: capabilities log and skip those, but this
+    one must stop the exporter.
+    """
+
+    def __init__(self, host: str) -> None:
+        super().__init__(
+            f"{host} offers only the legacy MD5 web login (Fritz!OS before 7.24). "
+            "Anyone who can read the traffic to the device can recover the password "
+            "from an MD5 login, so the exporter refuses it by default. Upgrade Fritz!OS "
+            "or, to accept the risk, enable allow_unsafe_md5_password "
+            "(env: FRITZ_ALLOW_UNSAFE_MD5_PASSWORD) for this device."
+        )
+
+
 class FritzWebUiClient:
     """Fetches data from a Fritz!Box via its web interface (web login)."""
 
@@ -69,11 +87,13 @@ class FritzWebUiClient:
         use_tls: bool = False,
         port: int | None = None,
         timeout: float | None = None,
+        allow_unsafe_md5_password: bool = False,
     ) -> None:
         self.host = host
         self.username = username
         self.password = password
         self.timeout = timeout
+        self.allow_unsafe_md5_password = allow_unsafe_md5_password
 
         scheme = "https" if use_tls else "http"
         host_port = f"{host}:{port}" if port else host
@@ -166,6 +186,11 @@ class FritzWebUiClient:
         if challenge.startswith("2$"):
             response = self._pbkdf2_response(challenge, self.password)
         else:
+            # A forged reply can push any box onto MD5, so refuse it unless allowed.
+            if _LEGACY_CHALLENGE_RE.fullmatch(challenge):
+                if not self.allow_unsafe_md5_password:
+                    raise FritzWebUiMd5DisabledError(self.host)
+                logger.warning("Using the unsafe legacy MD5 web login for %s", self.host)
             response = self._md5_response(challenge, self.password)
 
         try:

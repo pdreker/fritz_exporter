@@ -16,7 +16,7 @@ from prometheus_client.registry import Collector
 from requests.exceptions import RequestException
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
-from fritzexporter.fritz_webui import FritzWebUiClient
+from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiMd5DisabledError
 from fritzexporter.fritzcapabilities import FritzCapabilities
 from fritzexporter.tr064_remote import ConnectionOptions, create_fritz_connection
 
@@ -46,6 +46,7 @@ class OfflineDevice(NamedTuple):
     use_tls: bool = False
     port: int | None = None
     remote_access: bool = False
+    allow_unsafe_md5_password: bool = False
 
 
 class FritzDevice:
@@ -126,6 +127,7 @@ class FritzDevice:
                 use_tls=connection.use_tls,
                 port=connection.web_port,
                 timeout=connection.connection_timeout,
+                allow_unsafe_md5_password=connection.allow_unsafe_md5_password,
             )
         if self.capabilities.empty():
             logger.critical("Device %s has no detected capabilities. Exiting.", creds.host)
@@ -211,6 +213,10 @@ class FritzCollector(Collector):
         self._scrapes_per_device: dict[tuple[str, str], int] = {}
         self._scrape_timeouts: int = 0
         self._scrape_failures: int = 0
+        # Set when an error must stop the exporter. Scrapes run in the HTTP
+        # server's threads, where sys.exit() would end only that thread, so the
+        # main thread waits on this event and exits instead.
+        self.fatal_error = threading.Event()
 
     def register(self, fritzdev: FritzDevice) -> None:
         self.devices.append(fritzdev)
@@ -236,6 +242,7 @@ class FritzCollector(Collector):
                 connection.use_tls,
                 connection.port,
                 connection.remote_access,
+                connection.allow_unsafe_md5_password,
             )
         )
         logger.debug("registered offline device %s (%s) to collector", creds.host, friendly_name)
@@ -254,6 +261,7 @@ class FritzCollector(Collector):
                         use_tls=offline.use_tls,
                         port=offline.port,
                         remote_access=offline.remote_access,
+                        allow_unsafe_md5_password=offline.allow_unsafe_md5_password,
                     ),
                 )
                 logger.info(
@@ -304,6 +312,30 @@ class FritzCollector(Collector):
             failures_total.add_metric([], float(self._scrape_failures))
         return scrapes_total, timeouts_total, failures_total
 
+    def _collect_devices(self) -> list[CounterMetricFamily | GaugeMetricFamily]:
+        """Collect all device metrics eagerly, so device availability is known first."""
+        # Attempt to bring offline devices back online before collecting
+        self._retry_offline_devices()
+
+        if not self.devices and not self.offline_devices:
+            logger.critical("No devices registered in collector! Exiting.")
+            sys.exit(1)
+
+        # Reset availability for this collection cycle
+        for dev in self.devices:
+            dev.available = True
+
+        collected: list[CounterMetricFamily | GaugeMetricFamily] = []
+
+        for dev in self.devices:
+            mode_metric = dev.get_connection_mode()
+            if mode_metric:
+                collected.append(mode_metric)
+
+        for name, capa in self._capability_instances.items():
+            collected.extend(list(capa.get_metrics(self.devices, name)))
+        return collected
+
     def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
         # The lock is held for the whole scrape (blocking TR-064 calls included),
         # so acquiring it must be bounded: a slow or wedged first scrape would
@@ -321,27 +353,12 @@ class FritzCollector(Collector):
             )
             return
         try:
-            # Attempt to bring offline devices back online before collecting
-            self._retry_offline_devices()
-
-            if not self.devices and not self.offline_devices:
-                logger.critical("No devices registered in collector! Exiting.")
-                sys.exit(1)
-
-            # Reset availability for this collection cycle
-            for dev in self.devices:
-                dev.available = True
-
-            # Eagerly collect all metrics so we know device availability before yielding
-            collected: list[CounterMetricFamily | GaugeMetricFamily] = []
-
-            for dev in self.devices:
-                mode_metric = dev.get_connection_mode()
-                if mode_metric:
-                    collected.append(mode_metric)
-
-            for name, capa in self._capability_instances.items():
-                collected.extend(list(capa.get_metrics(self.devices, name)))
+            try:
+                collected = self._collect_devices()
+            except FritzWebUiMd5DisabledError as e:
+                logger.critical("%s Exiting.", e)
+                self.fatal_error.set()
+                return
 
             # Built under the stats lock, yielded outside it, so the counters in
             # one output agree with the fritz_device_reachable gauge of the same cycle.

@@ -17,6 +17,7 @@ from prometheus_client.core import Metric
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
+from fritzexporter.fritz_webui import FritzWebUiMd5DisabledError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
 from fritzexporter.tr064_remote import ConnectionOptions
@@ -333,7 +334,68 @@ class TestFritzDevice:
             use_tls=False,
             port=None,
             timeout=expected,
+            allow_unsafe_md5_password=False,
         )
+
+    @patch("fritzexporter.fritzdevice.FritzWebUiClient")
+    def test_allow_unsafe_md5_password_passed_to_webui_client(
+        self, mock_webui_client: MagicMock, mock_fritzconnection: MagicMock
+    ):
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        _ = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            connection=ConnectionOptions(allow_unsafe_md5_password=True),
+        )
+
+        assert mock_webui_client.call_args.kwargs["allow_unsafe_md5_password"] is True
+
+    def test_md5_login_refused_stops_exporter(self, mock_fritzconnection: MagicMock, caplog):
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action_mock
+        fc.services = create_fc_services(fc_services_capabilities["HomeAutomation"])
+
+        with patch("fritzexporter.fritz_webui.requests.Session") as mock_session_cls:
+            session = mock_session_cls.return_value
+            session.get.return_value = MagicMock(
+                status_code=200,
+                text="<SessionInfo><SID>0000000000000000</SID>"
+                "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>",
+            )
+
+            collector = FritzCollector()
+            collector.register(
+                FritzDevice(FritzCredentials("fritz.box", "someuser", "password"), "FritzMock")
+            )
+            metrics = list(collector.collect())
+
+        assert metrics == []
+        assert collector.fatal_error.is_set()
+        session.post.assert_not_called()
+        critical = [r for r in caplog.records if r.levelno == logging.CRITICAL]
+        assert len(critical) == 1
+        assert "legacy MD5 web login" in critical[0].getMessage()
+        assert critical[0].getMessage().endswith("Exiting.")
+        # The lock is released, so later scrapes are not blocked.
+        assert collector._collect_lock.acquire(blocking=False)
+        collector._collect_lock.release()
+
+    def test_md5_refused_while_promoting_offline_device_stops_exporter(
+        self, mock_fritzconnection: MagicMock
+    ):
+        collector = FritzCollector()
+        collector.register_offline(FritzCredentials("somehost", "user", "pass"), "OfflineDevice")
+
+        with patch.object(
+            FritzCollector, "_retry_offline_devices", side_effect=FritzWebUiMd5DisabledError("somehost")
+        ):
+            metrics = list(collector.collect())
+
+        assert metrics == []
+        assert collector.fatal_error.is_set()
 
     @patch("fritzexporter.fritzdevice.FritzWebUiClient")
     @pytest.mark.parametrize(
@@ -869,6 +931,29 @@ class TestFritzCollector:
         assert offline.use_tls is True
         assert offline.port == 49443
         assert offline.remote_access is True
+        assert offline.allow_unsafe_md5_password is False
+
+    @patch("fritzexporter.fritzdevice.FritzWebUiClient")
+    def test_retry_offline_devices_keeps_allow_unsafe_md5_password(
+        self, mock_webui_client: MagicMock, mock_fritzconnection: MagicMock
+    ):
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = FritzConnectionException("not reachable")
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        collector = FritzCollector()
+        collector.register_offline(
+            FritzCredentials("somehost", "someuser", "password"),
+            "FritzMock",
+            connection=ConnectionOptions(allow_unsafe_md5_password=True),
+        )
+        assert collector.offline_devices[0].allow_unsafe_md5_password is True
+
+        fc.call_action.side_effect = call_action_mock
+        collector._retry_offline_devices()
+
+        assert len(collector.devices) == 1
+        assert mock_webui_client.call_args.kwargs["allow_unsafe_md5_password"] is True
 
     def test_retry_offline_devices_uses_tls_and_port(self, mock_fritzconnection: MagicMock):
         fc = mock_fritzconnection.return_value

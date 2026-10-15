@@ -6,7 +6,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiError
+from fritzexporter.fritz_webui import (
+    FritzWebUiClient,
+    FritzWebUiError,
+    FritzWebUiMd5DisabledError,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +162,7 @@ class TestFritzWebUiClientAuth:
             client._login()
         session.post.assert_not_called()
 
-    @pytest.mark.parametrize("challenge", ["x" * 10000, "abc\ndef", "1234 5678", "a" * 33])
+    @pytest.mark.parametrize("challenge", ["", "x" * 10000, "abc\ndef", "1234 5678", "a" * 33])
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_rejects_hostile_legacy_challenge_without_posting(
         self, mock_session_cls: MagicMock, challenge: str
@@ -224,7 +228,28 @@ class TestFritzWebUiClientAuth:
         assert posted_data["response"].startswith("2$")
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_login_uses_md5_for_legacy_firmware(self, mock_session_cls: MagicMock):
+    def test_login_refuses_md5_by_default(self, mock_session_cls: MagicMock):
+        session = mock_session_cls.return_value
+        get_resp = MagicMock()
+        get_resp.text = (
+            "<SessionInfo><SID>0000000000000000</SID>"
+            "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>"
+        )
+        session.get.return_value = get_resp
+
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+        with pytest.raises(FritzWebUiMd5DisabledError) as exc:
+            client._login()
+
+        # Not a FritzWebUiError: capabilities would swallow that and carry on.
+        assert not isinstance(exc.value, FritzWebUiError)
+        assert "fritz.box" in str(exc.value)
+        assert "allow_unsafe_md5_password" in str(exc.value)
+        assert "FRITZ_ALLOW_UNSAFE_MD5_PASSWORD" in str(exc.value)
+        session.post.assert_not_called()
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_login_uses_md5_for_legacy_firmware(self, mock_session_cls: MagicMock, caplog):
         session = mock_session_cls.return_value
 
         get_resp = MagicMock()
@@ -238,12 +263,13 @@ class TestFritzWebUiClientAuth:
         post_resp.text = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
         session.post.return_value = post_resp
 
-        client = FritzWebUiClient("fritz.box", "user", "pass")
+        client = FritzWebUiClient("fritz.box", "user", "pass", allow_unsafe_md5_password=True)
         sid = client._login()
 
         assert sid == "0123456789abcdef"
         posted_data = session.post.call_args.kwargs["data"]
         assert posted_data["response"].startswith("12345678-")
+        assert "unsafe legacy MD5 web login for fritz.box" in caplog.text
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_raises_on_wrong_password(self, mock_session_cls: MagicMock):
@@ -260,7 +286,7 @@ class TestFritzWebUiClientAuth:
         post_resp.text = "<SessionInfo><SID>0000000000000000</SID></SessionInfo>"
         session.post.return_value = post_resp
 
-        client = FritzWebUiClient("fritz.box", "user", "wrong")
+        client = FritzWebUiClient("fritz.box", "user", "wrong", allow_unsafe_md5_password=True)
         with pytest.raises(FritzWebUiError):
             client._login()
 
