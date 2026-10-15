@@ -209,6 +209,8 @@ class TestDataDonation:
         # Check
         assert output == expected
 
+    # Pin the version, so the expected JSON does not depend on the installed release.
+    @patch("fritzexporter.data_donation.__version__", "1.2.3")
     @patch("fritzexporter.data_donation.requests.post")
     def test_should_produce_sensible_json_data_and_upload(
         self, mock_requests_post: MagicMock, mock_fritzconnection: MagicMock, caplog
@@ -228,7 +230,7 @@ class TestDataDonation:
         assert mock_requests_post.call_count == 1
         assert mock_requests_post.call_args == call(
             "https://fritz.dreker.de/data/donate",
-            data='{"exporter_version": "develop", "fritzdevice": {"model": "Fritz!MockBox 9790", '
+            data='{"exporter_version": "1.2.3", "fritzdevice": {"model": "Fritz!MockBox 9790", '
             '"os_version": "1.2", "services": {"Hosts1": ["GetHostNumberOfEntries"]}, '
             '"detected_capabilities": ["DeviceInfo", "HostNumberOfEntries", "UserInterface", '
             '"LanInterfaceConfig", "LanInterfaceConfigStatistics", "WanDSLInterfaceConfig", '
