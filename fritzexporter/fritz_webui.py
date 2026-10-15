@@ -22,6 +22,7 @@ import hashlib
 import logging
 import re
 import time
+from http import HTTPStatus
 from typing import Any
 
 import requests
@@ -84,7 +85,15 @@ _MAX_CAUSE_DEPTH = 5
 
 
 def _http_error_text(resp: requests.Response) -> str:
-    reason = f" {resp.reason}" if resp.reason else ""
+    """Describe an error status by its code and standard phrase.
+
+    ``resp.reason`` is not used: the server or a proxy sets it and can put any
+    text there, the request URL included.
+    """
+    try:
+        reason = f" {HTTPStatus(resp.status_code).phrase}"
+    except ValueError:
+        reason = ""
     return f"HTTP {resp.status_code}{reason}"
 
 

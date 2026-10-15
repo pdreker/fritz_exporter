@@ -1,5 +1,6 @@
 """Tests for the generic Fritz!Box web interface client (fritz_webui.py)."""
 
+import errno
 import hashlib
 import logging
 import socket
@@ -742,7 +743,8 @@ def _reset() -> requests.ConnectionError:
 
 def _unreachable() -> requests.ConnectionError:
     new = urllib3.exceptions.NewConnectionError(_CONN, f"cannot connect {_URL_TEXT}")
-    new.__cause__ = OSError(101, f"unreachable {_URL_TEXT}")
+    # errno values differ between platforms (101 on Linux, 51 on macOS)
+    new.__cause__ = OSError(errno.ENETUNREACH, f"unreachable {_URL_TEXT}")
     return _max_retry(new)
 
 
@@ -804,13 +806,22 @@ class TestHttpErrorText:
         ("code", "reason", "expected"),
         [
             (500, "Internal Server Error", "HTTP 500 Internal Server Error"),
-            (500, "", "HTTP 500"),
-            (403, None, "HTTP 403"),
-            (404, "Gone", "HTTP 404 Gone"),
+            (500, "", "HTTP 500 Internal Server Error"),
+            (403, None, "HTTP 403 Forbidden"),
+            (404, "Gone", "HTTP 404 Not Found"),
+            (599, "Whatever", "HTTP 599"),
         ],
     )
-    def test_reason_is_omitted_cleanly(self, code, reason, expected):
+    def test_standard_phrase_replaces_server_reason(self, code, reason, expected):
         resp = requests.Response()
         resp.status_code = code
         resp.reason = reason
         assert _http_error_text(resp) == expected
+
+    def test_secret_in_server_reason_is_not_used(self):
+        resp = requests.Response()
+        resp.status_code = 500
+        resp.reason = f"Failed /webservices/homeautoswitch.lua?sid={_SID}"
+        text = _http_error_text(resp)
+        assert _SID not in text
+        assert text == "HTTP 500 Internal Server Error"
