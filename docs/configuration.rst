@@ -107,8 +107,23 @@ default: when a device asks for it, the exporter logs a critical message and exi
 
 Upgrade Fritz!OS if you can. If you cannot, set ``allow_unsafe_md5_password: true``
 (env: ``FRITZ_ALLOW_UNSAFE_MD5_PASSWORD``) for that device to accept the risk. The
-exporter then logs a warning on every MD5 login. The TR-064 metrics do not use this
-login and are not affected.
+exporter then logs a warning on every MD5 login. TR-064 uses its own login, see
+:ref:`exporter-password`.
+
+.. _exporter-password:
+
+Exporter user and password
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+TR-064 logs in with HTTP digest authentication, and Fritz!Box devices only offer it
+with MD5. Without TLS, anyone who can read one request between exporter and device
+can try passwords against it offline, fast. Most devices do not offer HTTPS, so the
+password is what protects the account.
+
+Create a separate user for the exporter, give it only the rights it needs, and set a
+random password of at least 20 characters (the device allows at most 32). That puts
+offline guessing out of reach. On a trusted LAN this is little more than good habit;
+it matters when the traffic crosses networks you do not control.
 
 When using the environment vars you can only specify a single device. If you need multiple devices please use the config file.
 
