@@ -38,15 +38,19 @@ __all__ = [
 # Newer firmware uses PBKDF2-SHA256 ("2$iter1$salt1$iter2$salt2"), older
 # firmware uses a simple MD5 over the UTF-16LE encoded challenge-password.
 _PBKDF2_CHALLENGE_RE = re.compile(
-    r"2\$([0-9]{1,7})\$((?:[0-9a-fA-F]{2}){1,32})\$([0-9]{1,7})\$((?:[0-9a-fA-F]{2}){1,32})"
+    r"2\$([0-9]{1,7})\$((?:[0-9a-fA-F]{2}){1,64})\$([0-9]{1,7})\$((?:[0-9a-fA-F]{2}){1,64})"
 )
 _LEGACY_CHALLENGE_RE = re.compile(r"[0-9A-Za-z]{1,32}")
 _BLOCK_TIME_RE = re.compile(r"[0-9]{1,6}")
 # The challenge is attacker-controlled on a hostile network: the floor keeps the
 # response from being a cheap hash of the password, the ceiling keeps the
-# PBKDF2 run (which holds the collect lock) short. Firmware sends 60000/6000.
-_PBKDF2_MIN_ITERATIONS = 1000
-_PBKDF2_MAX_ITERATIONS = 1_000_000
+# PBKDF2 run (which holds the collect lock) short. Both apply to the sum of the
+# two counts, which is what a response costs. Firmware sends 60000 + 6000; the
+# floor still admits AVM's documented example of 10000 + 2000.
+_PBKDF2_MIN_TOTAL_ITERATIONS = 10_000
+_PBKDF2_MAX_TOTAL_ITERATIONS = 1_000_000
+# Longest challenge echoed to the debug log; the reply may be hostile.
+_CHALLENGE_LOG_LIMIT = 200
 
 # data.lua (and the REST API) return HTML (the login page) instead of JSON
 # when the SID is invalid or the session has expired.
@@ -129,7 +133,11 @@ class FritzWebUiClient:
             raise FritzWebUiError(msg)
         iter1, salt1_hex, iter2, salt2_hex = match.groups()
         iter1, iter2 = int(iter1), int(iter2)
-        if not all(_PBKDF2_MIN_ITERATIONS <= n <= _PBKDF2_MAX_ITERATIONS for n in (iter1, iter2)):
+        total = iter1 + iter2
+        if not (
+            min(iter1, iter2) >= 1
+            and _PBKDF2_MIN_TOTAL_ITERATIONS <= total <= _PBKDF2_MAX_TOTAL_ITERATIONS
+        ):
             msg = "PBKDF2 login challenge iteration count out of range"
             raise FritzWebUiError(msg)
         salt1 = bytes.fromhex(salt1_hex)
@@ -138,6 +146,20 @@ class FritzWebUiClient:
         hash1 = hashlib.pbkdf2_hmac("sha256", password.encode(), salt1, iter1, 32)
         hash2 = hashlib.pbkdf2_hmac("sha256", hash1, salt2, iter2, 32)
         return f"{challenge}${hash2.hex()}"
+
+    def _challenge_response(self, challenge: str) -> str:
+        """Pick the login scheme from the challenge and compute the response."""
+        if challenge.startswith("2$"):
+            return self._pbkdf2_response(challenge, self.password)
+        if "$" in challenge:
+            msg = "unsupported login challenge version"
+            raise FritzWebUiError(msg)
+        # A forged reply can push any box onto MD5, so refuse it unless allowed.
+        if _LEGACY_CHALLENGE_RE.fullmatch(challenge):
+            if not self.allow_unsafe_md5_password:
+                raise FritzWebUiMd5DisabledError(self.host)
+            logger.warning("Using the unsafe legacy MD5 web login for %s", self.host)
+        return self._md5_response(challenge, self.password)
 
     def _get_session_info(self) -> dict[str, str]:
         """Fetch the login challenge / SID from login_sid.lua."""
@@ -175,23 +197,29 @@ class FritzWebUiClient:
         if info["sid"] and info["sid"] != "0000000000000000":
             return info["sid"]
 
-        if info["block_time"] and info["block_time"] != "0":
-            if _BLOCK_TIME_RE.fullmatch(info["block_time"]):
-                msg = f"login blocked for {info['block_time']} seconds (too many failed attempts)"
-            else:
+        block_time = info["block_time"]
+        if block_time:
+            if not _BLOCK_TIME_RE.fullmatch(block_time):
                 msg = "login blocked (too many failed attempts)"
-            raise FritzWebUiError(msg)
+                raise FritzWebUiError(msg)
+            if int(block_time) > 0:
+                msg = f"login blocked for {int(block_time)} seconds (too many failed attempts)"
+                raise FritzWebUiError(msg)
 
         challenge = info["challenge"]
-        if challenge.startswith("2$"):
-            response = self._pbkdf2_response(challenge, self.password)
-        else:
-            # A forged reply can push any box onto MD5, so refuse it unless allowed.
-            if _LEGACY_CHALLENGE_RE.fullmatch(challenge):
-                if not self.allow_unsafe_md5_password:
-                    raise FritzWebUiMd5DisabledError(self.host)
-                logger.warning("Using the unsafe legacy MD5 web login for %s", self.host)
-            response = self._md5_response(challenge, self.password)
+        if not challenge:
+            msg = "no login challenge in login_sid.lua response"
+            raise FritzWebUiError(msg)
+        try:
+            response = self._challenge_response(challenge)
+        except FritzWebUiError:
+            # Users can report this so the bounds can follow real firmware.
+            logger.debug(
+                "Rejected login challenge from %s: %r",
+                self.host,
+                challenge[:_CHALLENGE_LOG_LIMIT],
+            )
+            raise
 
         try:
             resp = self.session.post(
