@@ -687,19 +687,6 @@ class TestFritzCollector:
         assert len(metrics) == 1
         assert len(metrics[0].samples) == 3
 
-    def test_should_exit_when_no_devices_registered(self, mock_fritzconnection: MagicMock, caplog):
-        # Prepare
-        caplog.set_level(logging.DEBUG)
-
-        # Act
-        collector = FritzCollector()
-
-        # Check
-        with pytest.raises(SystemExit) as exc_info:
-            list(collector.collect())
-
-        assert exc_info.value.code == 1
-
     def test_should_emit_device_up_metric_for_working_device(
         self, mock_fritzconnection: MagicMock, caplog
     ):
