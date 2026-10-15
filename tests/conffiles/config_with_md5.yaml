@@ -1,0 +1,12 @@
+# Config allowing the legacy MD5 web login on one device
+exporter_port: 9787
+devices:
+  - name: Old Fritz!Box
+    hostname: old.box
+    username: prometheus1
+    password: prometheus2
+    allow_unsafe_md5_password: true
+  - name: Fritz!Box
+    hostname: fritz.box
+    username: prometheus3
+    password: prometheus4

@@ -221,6 +221,23 @@ class TestEnvConfig:
         assert config.devices[0].use_tls is True
         assert config.devices[0].port == 11243
 
+    def test_allow_unsafe_md5_password_env_defaults_false(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
+        monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
+
+        config = get_config(None)
+
+        assert config.devices[0].allow_unsafe_md5_password is False
+
+    def test_allow_unsafe_md5_password_env_config(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
+        monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
+        monkeypatch.setenv("FRITZ_ALLOW_UNSAFE_MD5_PASSWORD", "true")
+
+        config = get_config(None)
+
+        assert config.devices[0].allow_unsafe_md5_password is True
+
     def test_remote_access_env_without_tls_raises(self, monkeypatch):
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
@@ -499,6 +516,12 @@ class TestConfigEdgeCases:
 
         for dev in config.devices:
             assert dev.remote_access is False
+
+    def test_allow_unsafe_md5_password_parsed_from_config(self):
+        config = get_config("tests/conffiles/config_with_md5.yaml")
+
+        assert config.devices[0].allow_unsafe_md5_password is True
+        assert config.devices[1].allow_unsafe_md5_password is False
 
     def test_remote_access_requires_tls(self):
         with pytest.raises(FritzRemoteAccessRequiresTlsError):

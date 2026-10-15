@@ -2,7 +2,6 @@ import argparse
 import logging
 import os
 import sys
-import threading
 from pathlib import Path
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
@@ -90,6 +89,7 @@ def _register_device(
         use_tls=dev.use_tls,
         port=dev.port,
         remote_access=dev.remote_access,
+        allow_unsafe_md5_password=dev.allow_unsafe_md5_password,
     )
     try:
         fritz_device = FritzDevice(
@@ -164,7 +164,8 @@ def main() -> None:
 
     # Avoid blocking forever when running tests
     if not os.getenv("FRITZ_EXPORTER_UNDER_TEST"):
-        threading.Event().wait()
+        fritzcollector.fatal_error.wait()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
