@@ -1,6 +1,5 @@
 import collections
 import logging
-import sys
 import threading
 from typing import NamedTuple
 
@@ -316,10 +315,6 @@ class FritzCollector(Collector):
         """Collect all device metrics eagerly, so device availability is known first."""
         # Attempt to bring offline devices back online before collecting
         self._retry_offline_devices()
-
-        if not self.devices and not self.offline_devices:
-            logger.critical("No devices registered in collector! Exiting.")
-            sys.exit(1)
 
         # Reset availability for this collection cycle
         for dev in self.devices:
