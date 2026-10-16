@@ -219,8 +219,9 @@ class TestIssues:
         def broken():
             raise KeyError("x")
 
+        issues = Issues()
         with pytest.raises(KeyError):
-            Issues().value(broken)
+            issues.value(broken)
 
     def test_objects_skips_and_records_elements_that_are_no_objects(self):
         issues = Issues()
@@ -232,8 +233,10 @@ class TestIssues:
         assert issues.messages == ["S.A rows[1] skipped: S.A rows[1]: expected an object, got str"]
 
     def test_objects_raises_when_the_list_itself_is_wrong(self):
+        issues, reply = Issues(), Reply({"rows": "x"}, "S.A")
+        objects = issues.objects(reply, "rows")
         with pytest.raises(DataError, match="S.A rows: expected a list"):
-            list(Issues().objects(Reply({"rows": "x"}, "S.A"), "rows"))
+            next(objects)
 
     def test_item_skips_the_rest_of_the_block_and_undoes_it(self):
         issues = Issues()
@@ -262,5 +265,6 @@ class TestRequireKey:
         from fritzexporter.reply import Reply
 
         assert Reply({"data": []}, "x").require_key("data").items("data") == []
+        reply = Reply({}, "x")
         with pytest.raises(DataError, match=r"^x data: missing$"):
-            Reply({}, "x").require_key("data")
+            reply.require_key("data")

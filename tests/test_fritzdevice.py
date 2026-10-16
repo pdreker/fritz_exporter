@@ -116,8 +116,9 @@ class TestFritzDevice:
         mock_fritzconnection.side_effect = FritzConnectionException("somehost: connection refused")
 
         # Act
+        creds = FritzCredentials("somehost", "someuser", "password")
         with pytest.raises(FritzConnectionException):
-            _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+            FritzDevice(creds, "FritzMock", host_info=False)
         collector = FritzCollector()
         spec = DeviceSpec(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
         assert collector.add_device(spec) is None
@@ -150,8 +151,9 @@ class TestFritzDevice:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         # Act
+        creds = FritzCredentials("somehost", "someuser", "password")
         with pytest.raises(FritzDeviceHasNoCapabilitiesError):
-            _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True)
+            FritzDevice(creds, "FritzMock", host_info=True)
 
     def test_should_create_fritz_device_with_correct_capabilities(
         self, mock_fritzconnection: MagicMock, caplog
@@ -210,8 +212,9 @@ class TestFritzDevice:
         fc.services = create_fc_services({})
 
         # Act
+        creds = FritzCredentials("somehost", "someuser", password)
         with pytest.raises(FritzDeviceHasNoCapabilitiesError) as exc:
-            _ = FritzDevice(FritzCredentials("somehost", "someuser", password), "FritzMock", host_info=False)
+            FritzDevice(creds, "FritzMock", host_info=False)
 
         # Check
         assert str(exc.value) == "FritzMock (somehost) has no detected capabilities"
@@ -224,8 +227,9 @@ class TestFritzDevice:
         fc.call_action.side_effect = call_action_no_basic_mock
         fc.services = create_fc_services(fc_services_no_basic_info)
 
+        creds = FritzCredentials("somehost", "someuser", "password")
         with pytest.raises(FritzDeviceSerialUnknownError, match=r"could not read the serial number of FritzMock \(somehost\)"):
-            FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+            FritzDevice(creds, "FritzMock")
 
     @pytest.mark.parametrize(
         "info",
@@ -246,8 +250,9 @@ class TestFritzDevice:
         fc.call_action.side_effect = call_action
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
+        creds = FritzCredentials("somehost", "someuser", "password")
         with pytest.raises(FritzDeviceSerialUnknownError):
-            FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+            FritzDevice(creds, "FritzMock")
 
     def test_missing_model_name_is_not_fatal(self, mock_fritzconnection: MagicMock):
         def call_action(service, action, **kwargs):
@@ -1089,10 +1094,12 @@ class TestFritzCollector:
         # Check: device stays reachable ...
         reachable = next((m for m in metrics if m.name == "fritz_device_reachable"), None)
         assert reachable is not None
-        assert reachable.samples and reachable.samples[0].value == 1.0
+        assert reachable.samples
+        assert reachable.samples[0].value == 1.0
         # ... and its capability metrics are still collected (empty before the fix)
         uptime = next((m for m in metrics if m.name == "fritz_uptime_seconds"), None)
-        assert uptime is not None and len(uptime.samples) == 1
+        assert uptime is not None
+        assert len(uptime.samples) == 1
 
     def test_should_collect_wifi_client_info_when_enabled(
         self, mock_fritzconnection: MagicMock, caplog
@@ -1694,7 +1701,8 @@ class TestConcurrentScrapes:
         assert len(results) == 2
         for metrics in results:
             reachable = [m for m in metrics if m.name == "fritz_device_reachable"]
-            assert reachable and reachable[0].samples[0].value == 0.0
+            assert reachable
+            assert reachable[0].samples[0].value == 0.0
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
@@ -1886,8 +1894,9 @@ class TestFritzDeviceAuthError:
         fc.services = create_fc_services({})
 
         # Act
+        creds = FritzCredentials("somehost", "someuser", "password")
         with pytest.raises(FritzAuthorizationError):
-            _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+            FritzDevice(creds, "FritzMock", host_info=False)
 
         collector = FritzCollector()
         collector.add_device(DeviceSpec(FritzCredentials("somehost", "someuser", "password"), "FritzMock"))
@@ -1901,17 +1910,20 @@ class TestFritzDeviceAuthError:
 
 class TestParseAhaDevicelistXml:
     def test_should_raise_data_error_on_parse_error(self):
+        issues = Issues()
         with pytest.raises(DataError, match="not valid XML"):
-            parse_aha_devicelist_xml("this is not valid xml <<<", Issues())
+            parse_aha_devicelist_xml("this is not valid xml <<<", issues)
 
     def test_should_raise_data_error_without_a_devicelist(self):
+        issues = Issues()
         with pytest.raises(DataError, match="no <devicelist> element"):
-            parse_aha_devicelist_xml("<html><body>login</body></html>", Issues())
+            parse_aha_devicelist_xml("<html><body>login</body></html>", issues)
 
     def test_should_raise_data_error_on_forbidden_xml(self):
         # defusedxml refuses entities; that is bad device data, not a bug.
+        issues = Issues()
         with pytest.raises(DataError, match="not valid XML"):
-            parse_aha_devicelist_xml('<!DOCTYPE x [<!ENTITY a "b">]><devicelist>&a;</devicelist>', Issues())
+            parse_aha_devicelist_xml('<!DOCTYPE x [<!ENTITY a "b">]><devicelist>&a;</devicelist>', issues)
 
     def test_should_record_non_numeric_int_fields_and_skip_the_value(self):
         # Prepare

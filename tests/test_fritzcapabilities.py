@@ -1046,8 +1046,9 @@ class TestProbing:
         fc.call_action.side_effect = timing_out
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
+        creds = FritzCredentials("somehost", "u", "p")
         with pytest.raises(FritzUnreachableError):
-            FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock")
+            FritzDevice(creds, "FritzMock")
 
     def test_error_reply_to_an_item_skips_only_that_item(self, mock_fritzconnection: MagicMock):
         def one_bad_host(service, action, **kwargs):
