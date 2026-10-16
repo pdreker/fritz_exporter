@@ -4,6 +4,7 @@ from pprint import pprint
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+from prometheus_client.core import GaugeMetricFamily
 from fritzconnection.core.exceptions import (
     FritzActionError,
     FritzAuthorizationError,
@@ -21,9 +22,15 @@ from fritzexporter.exceptions import (
     FritzDeviceSerialUnknownError,
 )
 from fritzexporter.reply import DataError, Issues
-from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
+from fritzexporter.fritzdevice import (
+    DeviceSpec,
+    FritzCollector,
+    FritzCredentials,
+    FritzDevice,
+    OfflineDevice,
+)
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
-from fritzexporter.tr064_remote import ConnectionOptions
+from fritzexporter.tr064_remote import ConnectionOptions, FritzUnreachableError
 
 from .web_replies import web_reply
 from .fc_services_mock import (
@@ -35,6 +42,17 @@ from .fc_services_mock import (
     fc_services_devices,
     fc_services_no_basic_info,
 )
+
+def _register_offline(
+    collector: FritzCollector,
+    creds: FritzCredentials,
+    name: str,
+    connection: ConnectionOptions | None = None,
+) -> None:
+    """Register a device as offline without trying to set it up first."""
+    spec = DeviceSpec(creds, name, connection=connection or ConnectionOptions())
+    collector.offline_devices.append(OfflineDevice(spec))
+
 
 FRITZDEVICE_LOG_SOURCE = "fritzexporter.fritzdevice"
 
@@ -100,13 +118,18 @@ class TestFritzDevice:
         # Act
         with pytest.raises(FritzConnectionException):
             _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        collector = FritzCollector()
+        spec = DeviceSpec(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+        assert collector.add_device(spec) is None
 
-        # Check
-        assert (
-            FRITZDEVICE_LOG_SOURCE,
-            logging.ERROR,
-            "unable to connect to FritzMock (somehost).",
-        ) in caplog.record_tuples
+        # Check: logged once, by the collector, without a traceback
+        errors = [r for r in caplog.records if r.levelno >= logging.ERROR]
+        assert [r.getMessage() for r in errors] == [
+            "Failed to initialize device FritzMock (somehost), it will be reported as down: "
+            "FritzConnectionException: somehost: connection refused"
+        ]
+        assert errors[0].exc_info is None
+        assert [o.spec for o in collector.offline_devices] == [spec]
 
     def test_should_invalidate_presented_service(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
@@ -187,15 +210,11 @@ class TestFritzDevice:
         fc.services = create_fc_services({})
 
         # Act
-        with pytest.raises(FritzDeviceHasNoCapabilitiesError):
+        with pytest.raises(FritzDeviceHasNoCapabilitiesError) as exc:
             _ = FritzDevice(FritzCredentials("somehost", "someuser", password), "FritzMock", host_info=False)
 
         # Check
-        assert (
-            FRITZDEVICE_LOG_SOURCE,
-            logging.CRITICAL,
-            "Device FritzMock (somehost) has no detected capabilities.",
-        ) in caplog.record_tuples
+        assert str(exc.value) == "FritzMock (somehost) has no detected capabilities"
 
     def test_should_not_collect_a_device_without_serial(self, mock_fritzconnection: MagicMock, caplog):
         # The serial tells devices apart in Prometheus; without it the device is skipped.
@@ -528,7 +547,7 @@ class TestFritzDevice:
         reachable = [m for m in metrics if m.name == "fritz_device_reachable"]
         assert reachable[0].samples[0].value == 1.0
 
-    def test_should_log_and_reraise_transport_error_on_connect(
+    def test_transport_error_on_connect_is_logged_without_url(
         self, mock_fritzconnection: MagicMock, caplog
     ):
         # Prepare: the connection fails at transport level, not at protocol level
@@ -538,15 +557,14 @@ class TestFritzDevice:
             RemoteDisconnected("Remote end closed connection without response"),
         )
 
-        # Act / Check: the failure is reported before it propagates to the caller
-        with pytest.raises(RequestsConnectionError):
-            FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+        # Act / Check: the reason names the kind of failure, not the request URL
+        collector = FritzCollector()
+        collector.add_device(DeviceSpec(FritzCredentials("somehost", "someuser", "password"), "FritzMock"))
 
-        assert any(
-            "unable to connect to FritzMock (somehost)" in record.message
-            for record in caplog.records
-            if record.levelno == logging.ERROR
-        )
+        assert [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR] == [
+            "Failed to initialize device FritzMock (somehost), it will be reported as down: "
+            "Fritz device did not answer (ConnectionError)"
+        ]
 
 
 
@@ -760,7 +778,7 @@ class TestFritzCollector:
         collector.register(device)
 
         # Simulate device becoming unreachable after registration
-        fc.call_action.side_effect = FritzConnectionException("device unreachable")
+        fc.call_action.side_effect = FritzUnreachableError("device unreachable")
 
         # Act: collect() should not raise, but return status 0
         metrics: list[Metric] = list(collector.collect())
@@ -788,7 +806,7 @@ class TestFritzCollector:
         # Simulate connection failure during metric collection (only after setup)
         def fail_on_device_info(service, action, **kwargs):
             if service == "DeviceInfo1" and action == "GetInfo":
-                raise FritzConnectionException("device unreachable")
+                raise FritzUnreachableError("device unreachable")
             return call_action_mock(service, action, **kwargs)
 
         fc.call_action.side_effect = fail_on_device_info
@@ -827,7 +845,7 @@ class TestFritzCollector:
         assert device_reachable_round1[0].samples[0].value == 1.0
 
         # Second collection: device is unreachable
-        fc.call_action.side_effect = FritzConnectionException("device unreachable")
+        fc.call_action.side_effect = FritzUnreachableError("device unreachable")
         metrics_round2: list[Metric] = list(collector.collect())
         device_reachable_round2 = [m for m in metrics_round2 if m.name == "fritz_device_reachable"]
         assert device_reachable_round2[0].samples[0].value == 0.0
@@ -846,7 +864,7 @@ class TestFritzCollector:
         caplog.set_level(logging.DEBUG)
 
         collector = FritzCollector()
-        collector.register_offline(
+        _register_offline(collector, 
             FritzCredentials("offlinehost", "user", "pass"), "OfflineDevice"
         )
 
@@ -867,12 +885,12 @@ class TestFritzCollector:
         caplog.set_level(logging.DEBUG)
 
         fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = FritzConnectionException("not reachable")
+        fc.call_action.side_effect = FritzUnreachableError("not reachable")
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
         creds = FritzCredentials("somehost", "someuser", "password")
-        collector.register_offline(creds, "FritzMock")
+        _register_offline(collector, creds, "FritzMock")
 
         # First collect: device still offline → reachable=0, stays in offline_devices
         metrics_round1: list[Metric] = list(collector.collect())
@@ -898,25 +916,25 @@ class TestFritzCollector:
         creds = FritzCredentials("offlinehost", "user", "pass")
 
         # Act
-        collector.register_offline(
+        _register_offline(collector, 
             creds, "OfflineDevice", connection=ConnectionOptions(connection_timeout=15)
         )
 
         # Check: timeout stored so that retry uses the same bound
         assert len(collector.offline_devices) == 1
-        assert collector.offline_devices[0].connection_timeout == 15
+        assert collector.offline_devices[0].spec.connection.connection_timeout == 15
 
     def test_retry_offline_devices_uses_connection_timeout(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare: register device offline with a specific timeout
         caplog.set_level(logging.DEBUG)
 
         fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = FritzConnectionException("not reachable")
+        fc.call_action.side_effect = FritzUnreachableError("not reachable")
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
         creds = FritzCredentials("somehost", "someuser", "password")
-        collector.register_offline(
+        _register_offline(collector, 
             creds, "FritzMock", connection=ConnectionOptions(connection_timeout=7)
         )
 
@@ -941,49 +959,49 @@ class TestFritzCollector:
         collector = FritzCollector()
         creds = FritzCredentials("offlinehost", "user", "pass")
 
-        collector.register_offline(
+        _register_offline(collector, 
             creds,
             "OfflineDevice",
             connection=ConnectionOptions(use_tls=True, port=49443, remote_access=True),
         )
 
         assert len(collector.offline_devices) == 1
-        offline = collector.offline_devices[0]
-        assert offline.use_tls is True
-        assert offline.port == 49443
-        assert offline.remote_access is True
-        assert offline.allow_unsafe_md5_password is False
+        connection = collector.offline_devices[0].spec.connection
+        assert connection.use_tls is True
+        assert connection.port == 49443
+        assert connection.remote_access is True
+        assert connection.allow_unsafe_md5_password is False
 
     @patch("fritzexporter.fritzdevice.FritzWebUiClient")
     def test_retry_offline_devices_keeps_allow_unsafe_md5_password(
         self, mock_webui_client: MagicMock, mock_fritzconnection: MagicMock
     ):
         fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = FritzConnectionException("not reachable")
+        fc.call_action.side_effect = FritzUnreachableError("not reachable")
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        collector.register_offline(
+        _register_offline(collector, 
             FritzCredentials("somehost", "someuser", "password"),
             "FritzMock",
             connection=ConnectionOptions(allow_unsafe_md5_password=True),
         )
-        assert collector.offline_devices[0].allow_unsafe_md5_password is True
+        assert collector.offline_devices[0].spec.connection.allow_unsafe_md5_password is True
 
         fc.call_action.side_effect = call_action_mock
-        collector._retry_offline_devices()
+        list(collector.collect())
 
         assert len(collector.devices) == 1
         assert mock_webui_client.call_args.kwargs["allow_unsafe_md5_password"] is True
 
     def test_retry_offline_devices_uses_tls_and_port(self, mock_fritzconnection: MagicMock):
         fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = FritzConnectionException("not reachable")
+        fc.call_action.side_effect = FritzUnreachableError("not reachable")
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
         creds = FritzCredentials("somehost", "someuser", "password")
-        collector.register_offline(
+        _register_offline(collector, 
             creds,
             "FritzMock",
             connection=ConnectionOptions(use_tls=True, port=49443, remote_access=True),
@@ -1003,7 +1021,7 @@ class TestFritzCollector:
         assert len(collector.devices) == 1
         assert len(collector.offline_devices) == 0
 
-    def test_should_not_yield_connection_mode_when_none(self, mock_fritzconnection: MagicMock, caplog):
+    def test_connection_mode_error_is_a_read_problem(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
         caplog.set_level(logging.DEBUG)
 
@@ -1017,7 +1035,7 @@ class TestFritzCollector:
         device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         collector.register(device)
 
-        # Make get_connection_mode raise FritzConnectionException so it returns None
+        # The device answers the connection mode request with an error
         original_side_effect = fc.call_action.side_effect
 
         def connection_mode_error(service, action, **kwargs):
@@ -1029,9 +1047,12 @@ class TestFritzCollector:
 
         metrics: list[Metric] = list(collector.collect())
 
-        # Check: no fritz_connection_mode metric should be in results
-        metric_names = [m.name for m in metrics]
-        assert "fritz_connection_mode" not in metric_names
+        # Check: no connection mode sample, reported as a read problem, device reachable
+        by_name = {m.name: m for m in metrics}
+        assert by_name["fritz_connection_mode"].samples == []
+        problems = {(s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples}
+        assert ("ConnectionMode", "skipped") in problems
+        assert by_name["fritz_device_reachable"].samples[0].value == 1.0
 
     def test_should_collect_capabilities_from_wanless_repeater(
         self, mock_fritzconnection: MagicMock, caplog
@@ -1337,7 +1358,7 @@ class TestFritzCollector:
         )
 
         collector = FritzCollector()
-        collector.register_offline(FritzCredentials("offlinehost", "user", "pass"), "OfflineDevice")
+        _register_offline(collector, FritzCredentials("offlinehost", "user", "pass"), "OfflineDevice")
 
         # Act: the failed retry must not abort the whole collection cycle
         metrics: list[Metric] = list(collector.collect())
@@ -1354,8 +1375,8 @@ class TestFritzCollector:
         self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, caplog
     ):
         # Prepare: the mesh list is a plain HTTP fetch; a transport error there is
-        # transient and must be treated like the existing FritzConnectionException
-        # case - skip the mesh metrics, but do NOT mark the device unavailable.
+        # transient - skip the mesh metrics and report it, but do NOT mark the
+        # device unavailable.
         caplog.set_level(logging.DEBUG)
 
         def call_with_mesh(service, action, **kwargs):
@@ -1383,6 +1404,9 @@ class TestFritzCollector:
         mesh = [m for m in metrics if m.name == "fritz_mesh_link_available"]
         assert len(mesh) == 1
         assert len(mesh[0].samples) == 0
+        problems = [m for m in metrics if m.name == "fritz_read_problem"][0].samples
+        assert ("MeshTopology", "skipped") in {(s.labels["capability"], s.labels["level"]) for s in problems}
+        assert "mesh list request failed: Fritz device did not answer (ConnectionError)" in caplog.text
         device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
         assert device_reachable_metrics[0].samples[0].value == 1.0
 
@@ -1650,7 +1674,7 @@ class TestConcurrentScrapes:
 
         def timeout_call_action(service, action, **kwargs):
             if (service, action) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
-                raise FritzConnectionException("device unreachable (timed out)")
+                raise FritzUnreachableError("device unreachable (timed out)")
             return call_action_mock(service, action, **kwargs)
 
         mock_fritzconnection.return_value.call_action.side_effect = timeout_call_action
@@ -1675,7 +1699,15 @@ class TestConcurrentScrapes:
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestGetConnectionMode:
-    """Tests for FritzDevice.get_connection_mode()"""
+    """Tests for FritzDevice.add_connection_mode()"""
+
+    @staticmethod
+    def _mode(device: FritzDevice) -> GaugeMetricFamily | None:
+        family = GaugeMetricFamily(
+            "fritz_connection_mode", "", labels=["serial", "friendly_name", "access_type"]
+        )
+        device.add_connection_mode(family)
+        return family if family.samples else None
 
     def _create_device(self, mock_fc: MagicMock) -> tuple:
         fc = mock_fc.return_value
@@ -1694,7 +1726,7 @@ class TestGetConnectionMode:
         )
 
         # Act
-        metric = device.get_connection_mode()
+        metric = self._mode(device)
 
         # Check
         assert metric is not None
@@ -1714,7 +1746,7 @@ class TestGetConnectionMode:
         )
 
         # Act
-        metric = device.get_connection_mode()
+        metric = self._mode(device)
 
         # Check
         assert metric is not None
@@ -1732,7 +1764,7 @@ class TestGetConnectionMode:
         )
 
         # Act
-        metric = device.get_connection_mode()
+        metric = self._mode(device)
 
         # Check
         assert metric is not None
@@ -1748,7 +1780,7 @@ class TestGetConnectionMode:
         )
 
         # Act
-        metric = device.get_connection_mode()
+        metric = self._mode(device)
 
         # Check
         assert metric is not None
@@ -1765,7 +1797,7 @@ class TestGetConnectionMode:
         )
 
         # Act
-        metric = device.get_connection_mode()
+        metric = self._mode(device)
 
         # Check
         assert metric is not None
@@ -1782,7 +1814,7 @@ class TestGetConnectionMode:
         )
 
         # Act
-        metric = device.get_connection_mode()
+        metric = self._mode(device)
 
         # Check
         assert metric is not None
@@ -1804,7 +1836,7 @@ class TestGetConnectionMode:
         fc.call_action.side_effect = raise_missing_service
 
         # Act
-        metric = device.get_connection_mode()
+        metric = self._mode(device)
 
         # Check: no metric, but the device stays available
         assert metric is None
@@ -1817,20 +1849,21 @@ class TestGetConnectionMode:
 
         def raise_connection_exception(s, a, **kw):
             if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
-                raise FritzConnectionException("Connection failed")
+                raise FritzUnreachableError("Connection failed")
             return call_action_mock(s, a, **kw)
 
         fc.call_action.side_effect = raise_connection_exception
 
         # Act
-        metric = device.get_connection_mode()
+        metric = self._mode(device)
 
         # Check
         assert metric is None
+        assert device.available is False
         assert (
             FRITZDEVICE_LOG_SOURCE,
-            logging.ERROR,
-            "Failed to retrieve connection mode info from FritzMock (somehost)",
+            logging.WARNING,
+            "Device FritzMock (somehost) is unreachable: Connection failed",
         ) in caplog.record_tuples
 
 
@@ -1856,12 +1889,14 @@ class TestFritzDeviceAuthError:
         with pytest.raises(FritzAuthorizationError):
             _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
 
-        # Check
-        assert (
-            FRITZDEVICE_LOG_SOURCE,
-            logging.ERROR,
-            "Not authorized to get device info from FritzMock (somehost). Check username/password.",
-        ) in caplog.record_tuples
+        collector = FritzCollector()
+        collector.add_device(DeviceSpec(FritzCredentials("somehost", "someuser", "password"), "FritzMock"))
+
+        # Check: one error, with the hint
+        assert [r.getMessage() for r in caplog.records if r.levelno >= logging.ERROR] == [
+            "Failed to initialize device FritzMock (somehost), it will be reported as down: "
+            "FritzAuthorizationError: Not authorized (check username and password)"
+        ]
 
 
 class TestParseAhaDevicelistXml:
@@ -1943,3 +1978,18 @@ class TestParseAhaDevicelistXml:
         # Check
         assert devices[0]["battery_level"] == 80
         assert devices[0]["battery_low"] == "1"
+
+
+class TestNoPasswordInRepr:
+    def test_device_objects(self):
+        creds = FritzCredentials("fritz.box", "user", "s3cret-pw")
+        spec = DeviceSpec(creds, "Box")
+        for obj in (creds, spec, OfflineDevice(spec)):
+            assert "s3cret-pw" not in repr(obj)
+
+    def test_device_config(self):
+        from fritzexporter.config import DeviceConfig
+
+        config = DeviceConfig(hostname="fritz.box", username="user", password="s3cret-pw", name="Box")
+        assert "s3cret-pw" not in repr(config)
+

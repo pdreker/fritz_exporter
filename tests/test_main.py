@@ -150,7 +150,7 @@ class Test_Main:
     @patch("prometheus_client.core.REGISTRY.register")
     @patch("fritzexporter.__main__.start_http_server")
     @patch("fritzexporter.__main__.FritzCollector")
-    def test_startup_connection_failure_registers_device_as_offline(
+    def test_every_configured_device_is_added_to_the_collector(
         self, mock_collector_cls: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
         monkeypatch, caplog
     ):
@@ -169,55 +169,12 @@ class Test_Main:
         mock_collector = MagicMock()
         mock_collector_cls.return_value = mock_collector
 
-        # Simulate device being unreachable at startup
-        with patch("fritzexporter.__main__.FritzDevice") as mock_device_cls:
-            mock_device_cls.side_effect = FritzConnectionException("connection refused")
-            main()
+        main()
 
-        # Check that the error was logged
-        assert any(
-            "Failed to initialize device" in record.message
-            for record in caplog.records
-            if record.levelno == logging.ERROR
-        )
-
-        # Check that register_offline was called for both devices from validconfig.yaml
-        assert mock_collector.register_offline.call_count == 2
-        hostnames = [c.args[0].host for c in mock_collector.register_offline.call_args_list]
-        assert "fritz.box" in hostnames
-        assert "repeater-wohnzimmer" in hostnames  # hostnames are lowercased by DeviceConfig
-
-    @patch("prometheus_client.core.REGISTRY.register")
-    @patch("fritzexporter.__main__.start_http_server")
-    @patch("fritzexporter.__main__.FritzCollector")
-    def test_startup_transport_error_registers_device_as_offline(
-        self, mock_collector_cls: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
-        monkeypatch, caplog
-    ):
-        monkeypatch.setattr(
-            "sys.argv",
-            [
-                "fritzexporter",
-                "--config",
-                "tests/conffiles/validconfig.yaml",
-            ],
-        )
-        monkeypatch.setenv("FRITZ_EXPORTER_UNDER_TEST", "true")
-
-        caplog.set_level(logging.DEBUG)
-
-        mock_collector = MagicMock()
-        mock_collector_cls.return_value = mock_collector
-
-        # A transport-level failure at startup must not be fatal either
-        with patch("fritzexporter.__main__.FritzDevice") as mock_device_cls:
-            mock_device_cls.side_effect = RequestsConnectionError(
-            "Connection aborted.",
-            RemoteDisconnected("Remote end closed connection without response"),
-        )
-            main()
-
-        assert mock_collector.register_offline.call_count == 2
+        # Every configured device goes to the collector, which sets it up or
+        # reports it as down.
+        specs = [c.args[0] for c in mock_collector.add_device.call_args_list]
+        assert [spec.creds.host for spec in specs] == ["fritz.box", "repeater-wohnzimmer"]
 
     @patch("prometheus_client.core.REGISTRY.register")
     @patch("fritzexporter.__main__.start_http_server")

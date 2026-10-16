@@ -39,6 +39,16 @@ unreachable (``fritz_device_reachable 0``) instead of being collected with
 in the log until it is restarted. A missing serial in the device's reply used to stop
 the exporter at startup.
 
+Only a device that does not answer is reported as unreachable
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Any TR-064 error used to report the device as unreachable
+(``fritz_device_reachable 0``) for the scrape and drop the metrics collected after
+it, even when the device answered, e.g. with "action not supported". Now only a
+device that does not answer (refused, timed out, reset) is unreachable; an error
+reply skips the metric group that got it, shown in ``fritz_read_problem``. A failure
+to fetch the mesh list only skips the mesh metrics.
+
 Unreadable data is skipped and reported
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -77,8 +87,14 @@ which do not depend on wording.
   after <n> attempts: …" at ``ERROR``.
 * **Web login:** "login not retried for <n> seconds after: <reason>" while the
   exporter waits after a refused login.
-* "Device <device> has no detected capabilities." no longer ends in "Exiting.": the
-  exporter keeps running and reports the device as unreachable.
+* **Devices that cannot be set up:** one error, "Failed to initialize device
+  <device>, it will be reported as down: <reason>", without a traceback. It replaces
+  "unable to connect to …", "Not authorized to get device info from …" (the reason
+  now ends in "(check username and password)") and "Device <device> has no detected
+  capabilities." (now a reason, and the exporter keeps running).
+* **Unreachable during a scrape:** "Device <device> is unreachable, skipping
+  <Capability> metrics for this collection cycle: <reason>" at ``WARNING``, without
+  a traceback.
 
 Smart home values that are unknown are no longer reported as 0
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

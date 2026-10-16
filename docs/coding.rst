@@ -15,7 +15,7 @@ A quick orientation before diving in:
 
     fritzexporter/
       __main__.py           – CLI entry point and main loop (parse_cmdline, main)
-      fritzdevice.py        – FritzDevice, FritzCollector, FritzCredentials
+      fritzdevice.py        – FritzDevice, FritzCollector, DeviceSpec, FritzCredentials
       fritzcapabilities.py  – FritzCapability (ABC) + all concrete capability classes
                               + FritzCapabilities container
       reply.py              – Typed reading of device replies (Reply, read_action,
@@ -44,15 +44,17 @@ The entry point is ``fritzexporter/__main__.py`` → ``main()``.
 1. A ``FritzCollector`` is created (empty, no devices yet).
 2. Configuration is loaded via ``get_config()``, which reads either a YAML file or
    environment variables and returns an ``ExporterConfig`` instance.
-3. For each ``DeviceConfig`` in the config, ``_register_device()`` instantiates a
-   ``FritzDevice``.  During construction ``FritzDevice`` connects to the physical
-   device via ``fritzconnection``, reads its serial number and model, and probes which
+3. For each ``DeviceConfig`` in the config, ``_register_device()`` builds a
+   ``DeviceSpec`` (credentials, name, options) and hands it to
+   ``fritzcollector.add_device()``, the one place where devices are set up.  It
+   instantiates a ``FritzDevice``, which connects to the physical device via
+   ``fritzconnection``, reads its serial number and model, and probes which
    capabilities it supports (see below).
-4. A device that was set up is registered with ``fritzcollector.register()``.  A device
-   that could not be set up — unreachable, wrong credentials, no capabilities, or no
-   readable serial number — is registered with ``register_offline()`` instead: it is
-   reported as ``fritz_device_reachable 0`` and set up again on every scrape until it
-   works.  A device that answers but gives no readable serial number is given up after
+4. A device that was set up is registered.  A device that could not be set up —
+   unreachable, wrong credentials, no capabilities, or no readable serial number — is
+   kept as an ``OfflineDevice`` with its ``DeviceSpec`` instead, logged once without a
+   traceback: it is reported as ``fritz_device_reachable 0`` and set up again on every
+   scrape until it works.  A device that answers but gives no readable serial number is given up after
    ``SERIAL_RETRIES`` (3) retries, with an error in the log; it stays reported as
    unreachable until the exporter is restarted.  A warning is logged whenever the
    reason an offline device fails changes.
@@ -63,7 +65,9 @@ The entry point is ``fritzexporter/__main__.py`` → ``main()``.
 When Prometheus scrapes ``/metrics``, ``FritzCollector.collect()`` is called.  It holds
 a re-entrant lock (``threading.RLock``) for the whole scrape, so concurrent scrapes do
 not interfere.  A scrape that cannot get the lock within ``SCRAPE_LOCK_TIMEOUT``
-(30 s) returns no data and is counted in ``fritz_scrapes_timeouts_total``.
+(30 s) returns no data and is counted in ``fritz_scrapes_timeouts_total``.  Offline
+devices are set up again before the lock is taken, by one scrape at a time, so a
+device that takes its connection timeout to fail does not hold up other scrapes.
 
 
 Configuration System
@@ -142,9 +146,10 @@ device supports *that* capability.
 
 When ``FritzCollector.collect()`` runs:
 
-1. Offline devices are set up again; those that work now are registered.
-2. ``FritzDevice.get_connection_mode()`` emits the ``fritz_connection_mode`` gauge per
-   device (DSL/fibre/mobile/cable/offline).
+1. Offline devices are set up again, outside the scrape lock; those that work now are
+   registered once the lock is held.
+2. ``FritzDevice.add_connection_mode()`` adds each device's sample to one
+   ``fritz_connection_mode`` gauge (DSL/fibre/mobile/cable/offline).
 3. The collector holds its own ``FritzCapabilities`` instance, built without a device:
    one instance of every capability class, used only to drive the loop and to hold the
    metric families.  For each capability ``capa`` in it, ``capa.get_metrics(devices,
@@ -233,7 +238,12 @@ in a graph can be matched to a log line.
 |            | number cannot be read                  | after ``SERIAL_RETRIES`` (3)      |
 |            |                                        | retries                           |
 +------------+----------------------------------------+-----------------------------------+
+| Capability | the device answers a TR-064 request    | that capability of that device in |
+|            | with an error (``FritzActionError``,   | this scrape                       |
+|            | ...)                                   |                                   |
++------------+----------------------------------------+-----------------------------------+
 | Device     | the device does not answer             | unreachable for this scrape       |
+|            | (``tr064_remote.TRANSPORT_ERRORS``)    |                                   |
 +------------+----------------------------------------+-----------------------------------+
 
 How the levels are built:

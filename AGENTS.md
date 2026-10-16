@@ -175,7 +175,7 @@ Breaking changes: add `BREAKING CHANGE:` in the commit body or append `!` after 
 fritzexporter/
   __init__.py           # Package version
   __main__.py           # CLI entrypoint and main loop
-  fritzdevice.py        # FritzDevice, FritzCollector, FritzCredentials
+  fritzdevice.py        # FritzDevice, FritzCollector, DeviceSpec, FritzCredentials
   fritzcapabilities.py  # FritzCapability (ABC) + all concrete capability classes
   fritz_aha.py          # AHA (smart home) XML parsing
   fritz_webui.py        # Generic Fritz!Box web login + data.lua/REST API/AHA client

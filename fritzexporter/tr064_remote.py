@@ -45,6 +45,8 @@ class Tr064RemoteAccessSession(requests.Session):
     ``request`` keeps the ``/tr064`` prefix regardless of later mounts.
     """
 
+    rewrite_paths: bool = True
+
     def request(
         self,
         method: str | bytes,
@@ -54,8 +56,27 @@ class Tr064RemoteAccessSession(requests.Session):
     ) -> requests.Response:
         if isinstance(url, bytes):
             url = url.decode()
-        url = rewrite_tr064_remote_url(url)
+        if self.rewrite_paths:
+            url = rewrite_tr064_remote_url(url)
         return super().request(method, url, *args, **kwargs)
+
+
+class FritzUnreachableError(FritzConnectionException):
+    """A TR-064 request got no answer: connection refused or reset, timeout, DNS."""
+
+
+# Errors that mean the device did not answer, as opposed to an answer the
+# exporter cannot use. Requests outside fritzconnection's session raise
+# RequestException directly.
+TRANSPORT_ERRORS: tuple[type[Exception], ...] = (FritzUnreachableError, requests.RequestException)
+
+
+def transport_failure_text(error: Exception) -> str:
+    """Describe a transport error without its text: requests puts the URL there,
+    and some URLs (the mesh list) carry the session id."""
+    if isinstance(error, FritzUnreachableError):
+        return str(error)
+    return f"Fritz device did not answer ({type(error).__name__})"
 
 
 @contextmanager
@@ -65,46 +86,29 @@ def fritz_connection_session(*, remote_access: bool, timeout: int | None) -> Ite
     FritzConnection creates its Session inside ``__init__`` before loading the
     router API, so the subclass must be installed before FritzConnection runs.
     Its AHA HTTP calls omit a timeout, unlike its TR-064 SOAP calls; add the
-    configured timeout to every request and normalize request timeouts to the
-    exception type used by the exporter.
+    configured timeout to every request. A request that gets no answer raises
+    ``FritzUnreachableError``, so callers can tell it from an error the device
+    answered with.
     """
     original_session = requests.Session
 
-    if remote_access:
+    class FritzConnectionSession(Tr064RemoteAccessSession):
+        rewrite_paths = remote_access
 
-        class FritzConnectionSession(Tr064RemoteAccessSession):
-            def request(
-                self,
-                method: str | bytes,
-                url: str | bytes,
-                *args: Any,  # noqa: ANN401
-                **kwargs: Any,  # noqa: ANN401
-            ) -> requests.Response:
-                if timeout is not None and kwargs.get("timeout") is None:
-                    kwargs["timeout"] = timeout
-                try:
-                    return super().request(method, url, *args, **kwargs)
-                except requests.Timeout as err:
-                    msg = "Request to Fritz device timed out"
-                    raise FritzConnectionException(msg) from err
-
-    else:
-
-        class FritzConnectionSession(requests.Session):
-            def request(
-                self,
-                method: str | bytes,
-                url: str | bytes,
-                *args: Any,  # noqa: ANN401
-                **kwargs: Any,  # noqa: ANN401
-            ) -> requests.Response:
-                if timeout is not None and kwargs.get("timeout") is None:
-                    kwargs["timeout"] = timeout
-                try:
-                    return super().request(method, url, *args, **kwargs)
-                except requests.Timeout as err:
-                    msg = "Request to Fritz device timed out"
-                    raise FritzConnectionException(msg) from err
+        def request(
+            self,
+            method: str | bytes,
+            url: str | bytes,
+            *args: Any,  # noqa: ANN401
+            **kwargs: Any,  # noqa: ANN401
+        ) -> requests.Response:
+            if timeout is not None and kwargs.get("timeout") is None:
+                kwargs["timeout"] = timeout
+            try:
+                return super().request(method, url, *args, **kwargs)
+            except requests.RequestException as err:
+                msg = f"Fritz device did not answer ({type(err).__name__})"
+                raise FritzUnreachableError(msg) from err
 
     requests.Session = FritzConnectionSession  # ty: ignore[invalid-assignment]
     try:

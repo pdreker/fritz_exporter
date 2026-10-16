@@ -191,7 +191,7 @@ class ExporterConfig:
 class DeviceConfig:
     hostname: str = field(validator=validators.min_len(1), converter=str.lower)
     username: str = field(validator=validators.min_len(1))
-    password: str | None = field(default=None)
+    password: str | None = field(default=None, repr=False)
     password_file: str | None = field(default=None)
     name: str = ""
     host_info: bool = field(default=False, converter=converters.to_bool)

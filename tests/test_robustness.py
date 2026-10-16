@@ -6,10 +6,11 @@ Prometheus gets it, so a failure that would only show while rendering is caught.
 
 import argparse
 import logging
+import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fritzconnection.core.exceptions import FritzConnectionException
+from fritzconnection.core.exceptions import FritzActionError, FritzConnectionException
 from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import GaugeMetricFamily
 
@@ -18,6 +19,7 @@ from fritzexporter.config import DeviceConfig
 from fritzexporter.fritzcapabilities import LanInterfaceConfigStatistics, _check_samples
 from fritzexporter.fritzdevice import SERIAL_RETRIES, FritzCollector, device_log_name
 from fritzexporter.reply import DataError
+from fritzexporter.tr064_remote import FritzUnreachableError
 
 from .fc_services_mock import call_action_mock, create_fc_services, fc_services_devices
 
@@ -261,7 +263,7 @@ class TestCapabilityLevel:
         def failing(service, action, **kwargs):
             # WLAN 1 and 2 are read, then the device stops answering.
             if (service, action) == ("WLANConfiguration3", "GetInfo"):
-                raise FritzConnectionException("down")
+                raise FritzUnreachableError("down")
             return original(service, action, **kwargs)
 
         scenario.fcs["bad"].call_action.side_effect = failing
@@ -288,7 +290,7 @@ class TestDeviceLevel:
             return [r for r in caplog.records if r.levelno >= logging.ERROR]
 
         assert len(errors()) == 1
-        assert "could not read the serial number of BAD (bad)" in str(errors()[0].exc_info[1])
+        assert "could not read the serial number of BAD (bad)" in errors()[0].getMessage()
         scenario.scrape()
         assert len(errors()) == 1
 
@@ -324,7 +326,7 @@ class TestDeviceLevel:
         assert [d.friendly_name for d in scenario.collector.devices] == ["GOOD"]
 
     def test_connection_failures_are_retried_without_limit(self):
-        scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzConnectionException("down")})
+        scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
 
         for _ in range(SERIAL_RETRIES + 3):
             scenario.scrape()
@@ -340,7 +342,7 @@ class TestDeviceLevel:
     def test_new_reason_for_staying_offline_is_logged(self, caplog):
         caplog.set_level(logging.DEBUG)
         # Unreachable at startup ...
-        scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzConnectionException("down")})
+        scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
         caplog.clear()
 
         # ... reachable later, but without a serial: that must show at warning level.
@@ -359,7 +361,7 @@ class TestDeviceLevel:
 
         def failing(service, action, **kwargs):
             if (service, action) == LAN_STATS:
-                raise FritzConnectionException("down")
+                raise FritzUnreachableError("down")
             return original(service, action, **kwargs)
 
         scenario.fcs["bad"].call_action.side_effect = failing
@@ -367,6 +369,56 @@ class TestDeviceLevel:
 
         assert reachable(output, "BAD", "BAD") == 0.0
         assert reachable(output, "GOOD", "GOOD") == 1.0
+
+    @pytest.mark.parametrize("error", [FritzActionError("820"), FritzConnectionException("HTML reply")])
+    def test_an_error_the_device_answers_with_skips_only_the_capability(self, error):
+        scenario = Scenario()
+        scenario.overrides["bad"][LAN_STATS] = error
+
+        output = scenario.scrape()
+
+        assert reachable(output, "BAD", "BAD") == 1.0
+        assert ("LanInterfaceConfigStatistics", "skipped") in problems(output, "BAD")
+        assert not samples(output, "fritz_lan_data_bytes_total", "BAD")
+        assert samples(output, "fritz_lan_status", "BAD")
+
+    def test_connection_mode_is_one_family(self):
+        output = Scenario().scrape()
+
+        assert output.count("# TYPE fritz_connection_mode gauge") == 1
+        assert len(samples(output, "fritz_connection_mode", "GOOD")) == 1
+        assert len(samples(output, "fritz_connection_mode", "BAD")) == 1
+
+
+class TestOfflineRetries:
+    """Setting up offline devices again must not hold up other scrapes."""
+
+    def test_retry_runs_outside_the_scrape_lock(self, monkeypatch):
+        monkeypatch.setattr("fritzexporter.fritzdevice.SCRAPE_LOCK_TIMEOUT", 0.01)
+        scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
+        del scenario.overrides["bad"][("DeviceInfo1", "GetInfo")]
+        holder = threading.Thread(target=scenario.collector._collect_lock.acquire)
+        holder.start()
+        holder.join()
+
+        # This scrape cannot collect, but it brings the device back.
+        assert scenario.scrape() == ""
+        assert scenario.collector.offline_devices == []
+        scenario.collector._collect_lock = threading.RLock()
+        output = scenario.scrape()
+
+        assert reachable(output, "BAD", "BAD") == 1.0
+        assert samples(output, "fritz_lan_status", "BAD")
+
+    def test_only_one_scrape_retries_at_a_time(self):
+        scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
+        del scenario.overrides["bad"][("DeviceInfo1", "GetInfo")]
+
+        with scenario.collector._retry_lock:
+            output = scenario.scrape()
+
+        assert reachable(output, "BAD", "n/a") == 0.0
+        assert [o.friendly_name for o in scenario.collector.offline_devices] == ["BAD"]
 
 
 def lan_records(caplog, level):
@@ -412,7 +464,7 @@ class TestProblemMetricMore:
 
         def down(service, action, **kwargs):
             if (service, action) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
-                raise FritzConnectionException("down")
+                raise FritzUnreachableError("down")
             return original(service, action, **kwargs)
 
         scenario.fcs["bad"].call_action.side_effect = down
