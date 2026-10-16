@@ -20,6 +20,8 @@ from attrs import define
 from fritzconnection import FritzConnection  # type: ignore[import]
 from fritzconnection.core.exceptions import FritzConnectionException  # type: ignore[import]
 
+from fritzexporter.config.config import DEFAULT_CONNECTION_TIMEOUT
+
 REMOTE_TR064_PREFIX = "/tr064"
 REMOTE_ACCESS_DEFAULT_PORT = 443
 
@@ -121,7 +123,8 @@ def fritz_connection_session(*, remote_access: bool, timeout: int | None) -> Gen
 class ConnectionOptions:
     """TR-064 connection options shared by ``FritzDevice`` and ``create_fritz_connection``."""
 
-    connection_timeout: int | None = None
+    # The config's defaults: only tests and the demo exporter leave these out.
+    connection_timeout: int | None = DEFAULT_CONNECTION_TIMEOUT
     use_tls: bool = False
     port: int | None = None
     remote_access: bool = False

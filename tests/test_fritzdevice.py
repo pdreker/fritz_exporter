@@ -177,7 +177,7 @@ class TestFritzDevice:
             address="somehost",
             user="someuser",
             password="password",
-            timeout=None,
+            timeout=10,
             use_tls=False,
             port=None,
         )
@@ -272,7 +272,7 @@ class TestFritzDevice:
             port=None,
         )
 
-    def test_connection_timeout_none_by_default(self, mock_fritzconnection: MagicMock, caplog):
+    def test_connection_timeout_defaults_to_the_config_default(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
@@ -281,12 +281,12 @@ class TestFritzDevice:
         # Act
         _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
 
-        # Check: no explicit timeout → None is passed (fritzconnection's own default)
+        # Check: no explicit timeout → the config's default (10 s) is passed
         assert mock_fritzconnection.call_args == call(
             address="somehost",
             user="someuser",
             password="password",
-            timeout=None,
+            timeout=10,
             use_tls=False,
             port=None,
         )
@@ -306,7 +306,7 @@ class TestFritzDevice:
             address="somehost",
             user="someuser",
             password="password",
-            timeout=None,
+            timeout=10,
             use_tls=True,
             port=49443,
         )
@@ -1000,7 +1000,7 @@ class TestFritzCollector:
             address="somehost",
             user="someuser",
             password="password",
-            timeout=None,
+            timeout=10,
             use_tls=True,
             port=49443,
         )

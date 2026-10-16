@@ -596,6 +596,22 @@ class TestConfigChecks:
         with pytest.raises(ConfigError, match=r"^device 1 \(fritz.box\): password or password_file is required$"):
             self._load(tmp_path, "devices:\n  - hostname: fritz.box\n    username: u\n")
 
+    def test_invalid_choice_is_one_line_without_attrs_details(self, tmp_path):
+        with pytest.raises(ConfigError, match=r"^config 'log_level' must be in \(.*\) \(got 'LOUD'\)$"):
+            self._load(tmp_path, "log_level: LOUD\n" + self.DEVICE)
+
+    @pytest.mark.parametrize(
+        ("line", "value"),
+        [("    connection_timeout: 2.7\n", "2.7"), ("    port: true\n", "True")],
+    )
+    def test_numbers_are_not_cut_or_taken_from_booleans(self, tmp_path, line, value):
+        key = line.split(":")[0].strip()
+        with pytest.raises(ConfigError, match=rf"^device 1 \(fritz.box\): {key}: expected a whole number, got {value}$"):
+            self._load(tmp_path, self.DEVICE + line)
+
+    def test_whole_float_is_taken(self, tmp_path):
+        assert self._load(tmp_path, "exporter_port: 9000.0\n" + self.DEVICE).exporter_port == 9000
+
     def test_invalid_value_names_the_device_and_the_key(self, tmp_path):
         with pytest.raises(ValueError, match=r"^device 1 \(fritz.box\): connection_timeout: invalid literal"):
             self._load(tmp_path, self.DEVICE + "    connection_timeout: soon\n")

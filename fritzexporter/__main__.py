@@ -80,6 +80,7 @@ def main() -> None:
     # Only the exporter's own loggers have a handler (see above); others log
     # warnings and worse through Python's fallback.
     logger.setLevel(args.log_level or config.log_level)
+    logger.info("Configuration read from %s", args.config or "the environment")
 
     for dev in config.devices:
         _register_device(dev, fritzcollector)

@@ -92,6 +92,7 @@ class Test_Main:
         for log in loggers:
             if log.name.startswith("fritzexporter"):
                 assert log.getEffectiveLevel() == logging.DEBUG
+        assert "Configuration read from tests/conffiles/validconfig.yaml" in caplog.text
 
     @patch("prometheus_client.core.REGISTRY.register")
     @patch("fritzexporter.__main__.start_http_server")

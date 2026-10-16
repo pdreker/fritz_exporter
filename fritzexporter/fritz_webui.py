@@ -152,12 +152,13 @@ def _cause_names(exc: BaseException) -> list[str]:
 
 
 def _failure_text(exc: requests.RequestException) -> str:
-    """Describe a failed request by class names only.
+    """Describe a failed request by class names only, worded like TR-064's
+    ``transport_failure_text``.
 
     ``requests`` puts the full request URL into its exception messages, and
     that URL carries the SID (AHA) or the user name (login).
     """
-    return f"request failed ({': '.join(_cause_names(exc))})"
+    return f"Fritz device did not answer ({': '.join(_cause_names(exc))})"
 
 
 class FritzWebUiClient:
@@ -265,8 +266,8 @@ class FritzWebUiClient:
             raise FritzWebUiError(msg) from None
 
     @staticmethod
-    def _json(reply: _Reply, what: str) -> dict[str, Any]:
-        """Parse a JSON reply; the HTML login page means the SID was not accepted."""
+    def _json(reply: _Reply, what: str) -> object:
+        """Parse a JSON reply, of any shape; the HTML login page means the SID was not accepted."""
         start = reply.body[:_HTML_SNIFF_BYTES].decode("utf-8", "replace").lstrip()
         is_html = "text/html" in reply.content_type or start.startswith(_HTML_RESPONSE_PREFIXES)
         if not reply.body or is_html:
@@ -358,15 +359,7 @@ class FritzWebUiClient:
         # A forged reply can push any box onto MD5, so refuse it unless allowed.
         if _LEGACY_CHALLENGE_RE.fullmatch(challenge):
             if not self.allow_unsafe_md5_password:
-                self._md5_refused = FritzWebUiMd5DisabledError(self.name)
-                logger.error(
-                    "%s. Upgrade Fritz!OS to 7.24 or later, or, to accept that anyone who "
-                    "can read the traffic to the device can recover the password, set "
-                    "allow_unsafe_md5_password (env: FRITZ_ALLOW_UNSAFE_MD5_PASSWORD) "
-                    "for this device.",
-                    self._md5_refused,
-                )
-                raise self._md5_refused
+                raise FritzWebUiMd5DisabledError(self.name)
             logger.warning("Using the unsafe legacy MD5 web login for %s", self.name)
         return self._md5_response(challenge, self.password)
 
@@ -465,6 +458,17 @@ class FritzWebUiClient:
             raise FritzWebUiError(msg)
         try:
             self._sid = self._login()
+        except FritzWebUiMd5DisabledError as e:
+            self._md5_refused = e
+            # No traceback: the message says all there is.
+            logger.error(  # noqa: TRY400
+                "%s. Upgrade Fritz!OS to 7.24 or later, or, to accept that anyone who "
+                "can read the traffic to the device can recover the password, set "
+                "allow_unsafe_md5_password (env: FRITZ_ALLOW_UNSAFE_MD5_PASSWORD) "
+                "for this device.",
+                e,
+            )
+            raise
         except FritzWebUiLoginError as e:
             self._login_refused = str(e)
             self._login_retry_at = time.monotonic() + max(LOGIN_RETRY_DELAY, e.block_time)
@@ -479,13 +483,13 @@ class FritzWebUiClient:
     # Endpoints
     # ------------------------------------------------------------------
 
-    def fetch_page(self, page: str) -> dict[str, Any]:
+    def fetch_page(self, page: str) -> object:
         """Fetch a ``data.lua`` page as JSON.
 
         The device answers an invalid or expired SID with its HTML login page.
         """
 
-        def fetch(sid: str) -> dict[str, Any]:
+        def fetch(sid: str) -> object:
             payload = {"sid": sid, "page": page, "xhrId": "all", "xhr": "1"}
             reply = self._request("POST", "/data.lua", "data.lua request failed", data=payload)
             return self._json(reply, "data.lua")
@@ -509,7 +513,7 @@ class FritzWebUiClient:
 
         return self._with_session(f"AHA {command}", fetch)
 
-    def fetch_api(self, path: str) -> dict[str, Any]:
+    def fetch_api(self, path: str) -> object:
         """Fetch a Fritz!OS REST API path as JSON.
 
         ``path`` is the API path below the host, e.g. ``/api/v0/generic/box``. The
@@ -517,7 +521,7 @@ class FritzWebUiClient:
         as a query parameter it is rejected with HTTP 400.
         """
 
-        def fetch(sid: str) -> dict[str, Any]:
+        def fetch(sid: str) -> object:
             headers = {"Authorization": f"AVM-SID {sid}"}
             reply = self._request(
                 "GET", path, f"REST API request failed for {path}", headers=headers

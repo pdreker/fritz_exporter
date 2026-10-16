@@ -63,8 +63,10 @@ def _findtext(elem: Element, tag: str) -> str | None:
     return text.strip() or None
 
 
-def _find_int(elem: Element, tag: str, issues: Issues) -> int | None:
-    return issues.convert(_findtext(elem, tag), to_int, f"AHA {elem.tag} {tag}")
+def _find_int(elem: Element, tag: str, issues: Issues, where: str) -> int | None:
+    """``tag`` of ``elem`` as an int; ``where`` names the device in the issue text."""
+    part = "" if elem.tag == "device" else f"{elem.tag} "
+    return issues.convert(_findtext(elem, tag), to_int, f"{where} {part}{tag}")
 
 
 def _parse_switch(device: Element) -> AhaSwitch | None:
@@ -78,36 +80,36 @@ def _parse_switch(device: Element) -> AhaSwitch | None:
     }
 
 
-def _parse_powermeter(device: Element, issues: Issues) -> AhaPowermeter | None:
+def _parse_powermeter(device: Element, issues: Issues, where: str) -> AhaPowermeter | None:
     powermeter = device.find("powermeter")
     if powermeter is None:
         return None
     return {
-        "power": _find_int(powermeter, "power", issues),
-        "energy": _find_int(powermeter, "energy", issues),
+        "power": _find_int(powermeter, "power", issues, where),
+        "energy": _find_int(powermeter, "energy", issues, where),
     }
 
 
-def _parse_temperature(device: Element, issues: Issues) -> AhaTemperature | None:
+def _parse_temperature(device: Element, issues: Issues, where: str) -> AhaTemperature | None:
     temperature = device.find("temperature")
     if temperature is None:
         return None
     return {
-        "celsius": _find_int(temperature, "celsius", issues),
-        "offset": _find_int(temperature, "offset", issues),
+        "celsius": _find_int(temperature, "celsius", issues, where),
+        "offset": _find_int(temperature, "offset", issues, where),
     }
 
 
-def _parse_hkr(device: Element, issues: Issues) -> AhaHeater | None:
+def _parse_hkr(device: Element, issues: Issues, where: str) -> AhaHeater | None:
     hkr = device.find("hkr")
     if hkr is None:
         return None
     return {
-        "tist": _find_int(hkr, "tist", issues),
-        "tsoll": _find_int(hkr, "tsoll", issues),
-        "absenk": _find_int(hkr, "absenk", issues),
-        "komfort": _find_int(hkr, "komfort", issues),
-        "battery_level": _find_int(hkr, "battery", issues),
+        "tist": _find_int(hkr, "tist", issues, where),
+        "tsoll": _find_int(hkr, "tsoll", issues, where),
+        "absenk": _find_int(hkr, "absenk", issues, where),
+        "komfort": _find_int(hkr, "komfort", issues, where),
+        "battery_level": _find_int(hkr, "battery", issues, where),
         "battery_low": _findtext(hkr, "batterylow"),
     }
 
@@ -124,18 +126,22 @@ def parse_aha_devicelist_xml(content: str, issues: Issues) -> list[AhaDevice]:
 
     devices: list[AhaDevice] = []
     for device in devicelist.findall("device"):
-        hkr = _parse_hkr(device, issues)
+        ain = device.attrib.get("identifier", "")
+        where = f"AHA device {ain}"
+        hkr = _parse_hkr(device, issues, where)
         # On some firmware versions battery data is only reported nested
         # inside <hkr> instead of as a direct child of <device>.
-        battery_level = _find_int(device, "battery", issues)
+        battery_level = _find_int(device, "battery", issues, where)
         battery_low = _findtext(device, "batterylow")
-        if battery_level is None and hkr is not None:
-            battery_level = hkr["battery_level"]
-            battery_low = hkr["battery_low"]
+        if hkr is not None:
+            if battery_level is None:
+                battery_level = hkr["battery_level"]
+            if battery_low is None:
+                battery_low = hkr["battery_low"]
 
         devices.append(
             {
-                "ain": device.attrib.get("identifier", ""),
+                "ain": ain,
                 "device_id": device.attrib.get("id", ""),
                 "manufacturer": device.attrib.get("manufacturer", ""),
                 "productname": device.attrib.get("productname", ""),
@@ -144,8 +150,8 @@ def parse_aha_devicelist_xml(content: str, issues: Issues) -> list[AhaDevice]:
                 "battery_level": battery_level,
                 "battery_low": battery_low,
                 "switch": _parse_switch(device),
-                "powermeter": _parse_powermeter(device, issues),
-                "temperature": _parse_temperature(device, issues),
+                "powermeter": _parse_powermeter(device, issues, where),
+                "temperature": _parse_temperature(device, issues, where),
                 "hkr": hkr,
             }
         )

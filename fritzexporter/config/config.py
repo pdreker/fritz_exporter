@@ -50,11 +50,19 @@ def _optional_text(value: object) -> str | None:
     return None if value is None else _text(value)
 
 
-def _zero_is_none(value: int | str | None) -> int | None:
+def _int(value: object) -> int:
+    """A whole number, also from text; ``9787.9`` or ``true`` are refused, not cut."""
+    if isinstance(value, bool) or (isinstance(value, float) and not value.is_integer()):
+        msg = f"expected a whole number, got {value!r}"
+        raise ValueError(msg)
+    return int(value)  # ty: ignore[invalid-argument-type]
+
+
+def _zero_is_none(value: object) -> int | None:
     """An int, where ``0`` (or ``None``) means "not set"."""
     if value is None:
         return None
-    number = int(value)
+    number = _int(value)
     return None if number == 0 else number
 
 
@@ -72,6 +80,11 @@ def _named(convert: Callable[[Any], Any]) -> Any:  # noqa: ANN401
             raise InvalidConfigValueError(msg) from None
 
     return Converter(wrapped, takes_self=True, takes_field=True)
+
+
+def _reason(error: Exception) -> str:
+    """The message of a validation error; attrs adds the field, options and value as args."""
+    return str(error.args[0]) if error.args else str(error)
 
 
 def _read_password_file(path: str) -> str:
@@ -104,7 +117,6 @@ def _read_config_file(config_file_path: str) -> dict:
         where = f" at line {mark.line + 1}, column {mark.column + 1}" if mark else ""
         msg = f"config file {config_file_path} is not valid YAML{where}"
         raise ConfigFileUnreadableError(msg) from None
-    logger.info("Read configuration from %s.", config_file_path)
     return config
 
 
@@ -143,7 +155,6 @@ def _read_config_from_env() -> dict:
     def present(names: dict[str, str]) -> dict[str, str]:
         return {key: os.environ[env] for key, env in names.items() if env in os.environ}
 
-    logger.info("No configuration file specified: configuration read from environment")
     return {**present(_EXPORTER_ENV), "devices": [present(_DEVICE_ENV)]}
 
 
@@ -168,7 +179,7 @@ class ExporterConfig:
     exporter_port: int = field(
         default=9787,
         validator=[validators.ge(1024), validators.le(65535)],
-        converter=_named(int),
+        converter=_named(_int),
     )
     log_level: str = field(default="INFO", validator=validators.in_(LOG_LEVELS))
     devices: list[DeviceConfig] = field(factory=list)
@@ -212,7 +223,7 @@ class ExporterConfig:
         try:
             return cls(devices=device_configs, **settings)
         except (ValueError, TypeError) as e:
-            msg = f"config {e}"
+            msg = f"config {_reason(e)}"
             raise InvalidConfigValueError(msg) from None
 
 
@@ -291,5 +302,5 @@ class DeviceConfig:
             msg = f"{where}: {e}"
             raise type(e)(msg) from None
         except (ValueError, TypeError) as e:
-            msg = f"{where}: {e}"
+            msg = f"{where}: {_reason(e)}"
             raise InvalidConfigValueError(msg) from None
