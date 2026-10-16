@@ -184,7 +184,9 @@
           },
           "expr": "fritz_uptime_seconds_total{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "__auto"
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -361,8 +363,8 @@
     },
     {
       "type": "stat",
-      "title": "Update available",
-      "description": "The new version is in the newsoftwareversion label.",
+      "title": "New Fritz!OS",
+      "description": "The version of an available update; n/a when there is none.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -392,23 +394,7 @@
               }
             ]
           },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "1": {
-                  "text": "Yes",
-                  "color": "orange",
-                  "index": 0
-                },
-                "0": {
-                  "text": "No",
-                  "color": "green",
-                  "index": 1
-                }
-              }
-            }
-          ],
+          "mappings": [],
           "color": {
             "mode": "thresholds"
           },
@@ -424,9 +410,9 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "none",
-        "textMode": "auto",
+        "textMode": "name",
         "justifyMode": "center",
         "orientation": "auto",
         "wideLayout": true
@@ -455,7 +441,9 @@
           },
           "expr": "fritz_connection_mode{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "__auto"
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -653,7 +641,7 @@
             },
             "renameByName": {
               "capability": "Metric group",
-              "level": "Skipped"
+              "level": "Level"
             },
             "indexByName": {
               "capability": 0,
@@ -1348,7 +1336,9 @@
           },
           "expr": "fritz_ppp_connection_state{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "last error: {{last_error}}"
+          "legendFormat": "last error: {{last_error}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -5053,7 +5043,9 @@
               },
               "expr": "increase(fritz_ha_multimeter_energy_Wh{friendly_name=\"$device\"}[$__range])",
               "refId": "A",
-              "legendFormat": "{{device_name}}"
+              "legendFormat": "{{device_name}}",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -5406,12 +5398,12 @@
                         "type": "value",
                         "options": {
                           "0": {
-                            "text": "auto",
+                            "text": "manual",
                             "color": "text",
                             "index": 0
                           },
                           "1": {
-                            "text": "manual",
+                            "text": "auto",
                             "color": "text",
                             "index": 1
                           }
