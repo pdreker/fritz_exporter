@@ -299,7 +299,10 @@ Adding a New Metric / Capability
    These are TR-064 service/action pairs as exposed by ``fritzconnection``.
 4. Implement ``create_metrics(self)`` — create the Prometheus metric family objects and
    store them in ``self.metrics[key]``.  Use ``GaugeMetricFamily`` for current values
-   and ``CounterMetricFamily`` for monotonically increasing counters.
+   and ``CounterMetricFamily`` for monotonically increasing counters.  Name new metrics
+   by the `Prometheus naming rules <https://prometheus.io/docs/practices/naming/>`_
+   (base units as a suffix via ``unit=``, ``_total`` for counters, ratios 0–1); existing
+   names are kept as they are for compatibility, even where they predate these rules.
 5. Implement ``_generate_metric_values(self, device)`` — call the TR-064 actions via
    ``read_action(device, service, action)`` and add samples with
    ``self._add(key, labels, self.issues.num(reply, field))``, keeping failures at
