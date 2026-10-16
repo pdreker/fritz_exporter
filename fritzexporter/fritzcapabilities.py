@@ -944,17 +944,44 @@ class _WanTotals(FritzCapability):
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         labels = [device.serial, device.friendly_name]
+        wide = self._wide_totals(device)
         for direction, action in (("rx", "Received"), ("tx", "Sent")):
-            name = f"Total{self.what}{action}"
-            result = read_action(device, "WANCommonInterfaceConfig1", f"Get{name}")
-            self._add("totals", [*labels, direction], self.issues.num(result, f"New{name}"))
+            value = wide.get(action)
+            if value is None:
+                name = f"Total{self.what}{action}"
+                result = read_action(device, "WANCommonInterfaceConfig1", f"Get{name}")
+                value = self.issues.num(result, f"New{name}")
+            self._add("totals", [*labels, direction], value)
+
+    def _wide_totals(self, device: FritzDevice) -> dict[str, float | None]:  # noqa: ARG002
+        """64-bit totals by action (``Received``, ``Sent``), where the device has them."""
+        return {}
 
 
 class WanCommonInterfaceDataBytes(_WanTotals):
     what = "Bytes"
+    has_addon_infos: bool = False
+
+    def check_capability(self, device: FritzDevice) -> None:
+        super().check_capability(device)
+        if self.present:
+            self.has_addon_infos = self._supported(device, [("WANCommonIFC1", "GetAddonInfos")])
 
     def create_metrics(self) -> None:
         self._counter("totals", "fritz_wan_data", "WAN data in bytes", "direction", unit="bytes")
+
+    def _wide_totals(self, device: FritzDevice) -> dict[str, float | None]:
+        # The totals of WANCommonInterfaceConfig1 are 32-bit on Fritz!OS 7 and
+        # wrap every 4 GiB, which looks like a counter reset. GetAddonInfos has
+        # 64-bit ones on every WAN box seen; an empty value means "not there".
+        device_cap = cast(WanCommonInterfaceDataBytes, device.capabilities[type(self).__name__])
+        if not device_cap.has_addon_infos:
+            return {}
+        result = read_action(device, "WANCommonIFC1", "GetAddonInfos")
+        return {
+            action: self.issues.opt_num(result, f"NewX_AVM_DE_TotalBytes{action}64")
+            for action in ("Received", "Sent")
+        }
 
 
 class WanCommonInterfaceByteRate(FritzCapability):

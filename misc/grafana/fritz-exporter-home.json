@@ -786,7 +786,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_dsl_noise_margin_dB{friendly_name=\"$device\",direction=\"rx\"}",
+          "expr": "fritz_dsl_noise_margin_dB{friendly_name=\"$device\",direction=\"rx\"} and on (serial) fritz_dsl_status_enabled{friendly_name=\"$device\"} == 1",
           "refId": "A",
           "legendFormat": "DSL noise margin"
         },

@@ -1120,3 +1120,36 @@ def test_a_lasting_bug_adds_no_log_lines_of_its_own():
     assert log.mock_calls == []
     assert state.problem is not None
     assert state.problem.scrapes == 3
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestWanDataBytes:
+    """fritz_wan_data_bytes_total prefers the 64-bit totals: the others wrap at 4 GiB."""
+
+    ADDON = ("WANCommonIFC1", "GetAddonInfos")
+
+    def _totals(self, mock_fritzconnection, capabilities, overrides=None):
+        by_name = collect_device(mock_fritzconnection, services(*capabilities), overrides=overrides)
+        return {s.labels["direction"]: s.value for s in by_name["fritz_wan_data_bytes"].samples}
+
+    def test_64_bit_totals_from_addon_infos(self, mock_fritzconnection: MagicMock):
+        wide = {"NewX_AVM_DE_TotalBytesReceived64": 540473814524, "NewX_AVM_DE_TotalBytesSent64": "6000000000"}
+        totals = self._totals(
+            mock_fritzconnection,
+            ("DeviceInfo", "WanCommonInterfaceDataBytes", "WanCommonInterfaceByteRate"),
+            {self.ADDON: wide},
+        )
+        assert totals == {"rx": 540473814524, "tx": 6000000000}
+
+    def test_empty_64_bit_value_falls_back_to_the_classic_total(self, mock_fritzconnection: MagicMock):
+        wide = {"NewX_AVM_DE_TotalBytesReceived64": "", "NewX_AVM_DE_TotalBytesSent64": 6000000000}
+        totals = self._totals(
+            mock_fritzconnection,
+            ("DeviceInfo", "WanCommonInterfaceDataBytes", "WanCommonInterfaceByteRate"),
+            {self.ADDON: wide},
+        )
+        assert totals == {"rx": 1234567, "tx": 6000000000}
+
+    def test_without_addon_infos_the_classic_totals(self, mock_fritzconnection: MagicMock):
+        totals = self._totals(mock_fritzconnection, ("DeviceInfo", "WanCommonInterfaceDataBytes"))
+        assert totals == {"rx": 1234567, "tx": 234567}
