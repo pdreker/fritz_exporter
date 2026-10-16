@@ -57,7 +57,7 @@ The following groups of metrics are currently available:
 * Base Information (Model, Serial, Software Version, Uptime)
 * Software Information (Update available)
 * Connection mode (DSL, fibre, cable, mobile fallback or offline)
-* Host table (number of known devices; with ``host_info`` enabled, activity and speed of each host)
+* Host table (number of known devices; with ``host_info`` enabled, activity and speed of each host by MAC address, and its address, name and connection in ``fritz_host_info``)
 * LAN statistics (Ethernet only)
 * WAN statistics (including the delegated IPv6 prefix)
 * DSL statistics
@@ -69,7 +69,7 @@ The following groups of metrics are currently available:
 * Telephony (number of configured telephone numbers; the numbers themselves are not exported)
 * WAN Layer1 (physical link) statistics, including 64-bit max bitrate for multi-gig links
 * DOCSIS cable channel statistics (auto-detected on cable boxes; power, MER/MSE, corrected/uncorrected errors, latency). On the Fritz!Box 6660 Cable, DOCSIS 3.1 channels report an uncorrected-error counter but no corrected one, so ``fritz_docsis_corrected_errors_total`` has no series for them.
-* WAN segment utilization and per-connection IPv4/IPv6 status and uptime via the Fritz!OS REST API
+* Shared segment utilization (``fritz_cable_segment_*``, cable boxes; other boxes report no samples) and per-connection IPv4/IPv6 status, uptime and address (``fritz_wan_connection_info``) via the Fritz!OS REST API
 * Home Automation Devices (switches, heating valves, temperatures, power meters, and battery status; window/door sensors (open/closed) are not yet reported)
 
 USP controllers

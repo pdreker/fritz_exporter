@@ -442,7 +442,8 @@ class TestWanConnectionStatus:
         assert sample.labels["friendly_name"] == "FritzCable"
         assert sample.labels["connection_name"] == "internet"
         assert sample.labels["media_type"] == "Cable"
-        assert sample.labels["ip_address"] == "217.11.144.246"
+        # The address is in fritz_wan_connection_info only: it changes on reconnect.
+        assert "ip_address" not in sample.labels
 
     def test_status_samples_carry_state_label(self, mock_fritzconnection: MagicMock):
         metrics = self._collect(mock_fritzconnection)
@@ -469,16 +470,23 @@ class TestWanConnectionStatus:
             ("connection0001", "Cable"),
             ("connection0002", "LTE"),
         }
-        ip_addresses = {
-            (s.labels["connection"], s.labels["stack"], s.labels["ip_address"])
-            for s in by_name["fritz_wan_connection_status"].samples
+        assert all("ip_address" not in s.labels for s in by_name["fritz_wan_connection_status"].samples)
+
+    def test_address_is_in_the_info_metric(self, mock_fritzconnection: MagicMock):
+        by_name = {m.name: m for m in self._collect(mock_fritzconnection)}
+
+        info = {
+            (s.labels["connection"], s.labels["stack"], s.labels["ip_address"]): s.value
+            for s in by_name["fritz_wan_connection_info"].samples
         }
-        assert ip_addresses == {
-            ("connection0001", "ipv4", "217.11.144.246"),
-            ("connection0001", "ipv6", "2a02:590:24::5d76:9fd9:2847:3632/64"),
-            ("connection0002", "ipv4", "0.0.0.0"),
-            ("connection0002", "ipv6", ""),
+        # A stack without an address has no info series.
+        assert info == {
+            ("connection0001", "ipv4", "217.11.144.246"): 1,
+            ("connection0001", "ipv6", "2a02:590:24::5d76:9fd9:2847:3632/64"): 1,
+            ("connection0002", "ipv4", "0.0.0.0"): 1,
         }
+        sample = by_name["fritz_wan_connection_info"].samples[0]
+        assert (sample.labels["connection_name"], sample.labels["media_type"]) == ("internet", "Cable")
 
     def test_no_client_no_samples(self, mock_fritzconnection: MagicMock):
         """Disabled capability (no web UI client) yields empty metric families."""

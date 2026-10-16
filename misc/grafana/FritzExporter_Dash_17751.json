@@ -291,7 +291,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "count(fritz_uptime_seconds_total{friendly_name=\"$box\"} * on (serial) group_right() (fritz_host_active{interface!=\"\"}==1))",
+          "expr": "count(fritz_uptime_seconds_total{friendly_name=\"$box\"} * on (serial) group_right() ((fritz_host_active == 1) * on (serial, mac_address) group_left () fritz_host_info{interface!=\"\"}))",
           "interval": "",
           "legendFormat": "#",
           "range": true,
@@ -1872,7 +1872,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "(fritz_host_active{serial=\"${serial}\",interface!=\"\"}) * on(instance,hostname,mac_address) group_right() fritz_host_active",
+          "expr": "fritz_host_active{serial=\"${serial}\"} * on (serial, mac_address) group_left (ip_address, hostname, interface, port, model) fritz_host_info{interface!=\"\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",

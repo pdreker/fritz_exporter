@@ -29,6 +29,26 @@ The exporter now logs in again only when the device rejects the session, not aft
 every failed request, and it stops sending web interface requests for the rest of a
 scrape once the device does not answer one. Replies larger than 4 MiB are refused.
 
+Addresses and names moved to ``_info`` metrics
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Labels that change while the thing they describe stays the same made a new series
+each time: a reconnect, a new DHCP lease, a renamed host. They moved to a separate
+metric with the value ``1``, which you can join on its key labels.
+
+* **WAN connections:** ``fritz_wan_connection_uptime_seconds_total`` and
+  ``fritz_wan_connection_status`` lose ``ip_address``. The address is in the new
+  ``fritz_wan_connection_info{connection, connection_name, media_type, stack,
+  ip_address}``, for every stack that has one.
+* **Hosts** (``host_info: true``): ``fritz_host_active`` and ``fritz_host_speed`` are
+  keyed by ``mac_address`` only; ``ip_address``, ``hostname``, ``interface``,
+  ``port`` and ``model`` are in the new ``fritz_host_info``. Hosts without a MAC
+  address (e.g. some VPN clients) are left out, since nothing tells them apart.
+
+To keep a host's name in a query, join on the MAC address, e.g.::
+
+  fritz_host_active * on (serial, mac_address) group_left (hostname) fritz_host_info
+
 Devices without a readable serial number are not collected
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

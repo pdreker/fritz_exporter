@@ -4,6 +4,7 @@
 > - **Legacy MD5 web login refused by default.** Devices on Fritz!OS before 7.24 only offer an MD5 login to the web interface, which the smart home, DOCSIS and REST API metrics use. For such a device the exporter now logs an error and reads no web interface metrics from it until restarted; its TR-064 metrics keep working. Upgrade Fritz!OS, or set `allow_unsafe_md5_password: true` (env: `FRITZ_ALLOW_UNSAFE_MD5_PASSWORD=true`) for that device to accept the risk.
 > - **Devices without a readable serial number are not collected.** They are reported as unreachable and, after three retries, given up until restart, instead of being collected with `serial="n/a"`.
 > - Unreadable data is now skipped and reported in the new `fritz_read_problem` metric.
+> - **Addresses and names moved to `_info` metrics.** `fritz_wan_connection_uptime_seconds_total` and `fritz_wan_connection_status` lose `ip_address` (now in `fritz_wan_connection_info`); `fritz_host_active` and `fritz_host_speed` are keyed by `mac_address` only (address, name, interface, port and model are in `fritz_host_info`). Update dashboards and alerts that use these labels.
 > - **Log messages reworked.** Many messages changed wording, level or frequency, and every message about a device now names it as `<name> (<host>)`. If you match log messages, e.g. for alerts, check your patterns.
 >
 > See the [upgrade notes](https://fritz-exporter.readthedocs.io/en/latest/upgrading.html) for details.

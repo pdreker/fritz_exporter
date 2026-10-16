@@ -1369,23 +1369,26 @@ class HostInfo(FritzCapability):
         return super()._probe(device, service, action)
 
     def create_metrics(self) -> None:
+        # Keyed by MAC address only: IP address, name and port change, and as
+        # labels they made a new series each time. They are in fritz_host_info.
         self._gauge(
             "hostactive",
             "fritz_host_active",
             "Indicates that the device is curently active",
-            "ip_address",
             "mac_address",
-            "hostname",
-            "interface",
-            "port",
-            "model",
         )
         self._gauge(
             "hostspeed",
             "fritz_host_speed",
             "Connection speed of the device",
-            "ip_address",
             "mac_address",
+        )
+        self._gauge(
+            "hostinfo",
+            "fritz_host_info",
+            "Address, name and connection of a host (always 1)",
+            "mac_address",
+            "ip_address",
             "hostname",
             "interface",
             "port",
@@ -1402,14 +1405,26 @@ class HostInfo(FritzCapability):
             num_hosts,
         )
         hosts = self._enumerate(device, "Hosts1", "GetGenericHostEntry", num_hosts, "NewIndex")
+        seen: set[str] = set()
         for host_index, host_result in hosts:
             with self._item(f"host {host_index}"):
-                self._collect_host(device, host_index, host_result)
+                self._collect_host(device, host_index, host_result, seen)
 
-    def _collect_host(self, device: FritzDevice, host_index: int, host_result: Reply) -> None:
+    def _collect_host(
+        self, device: FritzDevice, host_index: int, host_result: Reply, seen: set[str]
+    ) -> None:
+        host_mac = host_result.text("NewMACAddress", "")
+        if not host_mac:
+            # The MAC address tells hosts apart. Host tables have entries without
+            # one (e.g. VPN clients); that is no defect, so they are left out quietly.
+            logger.debug("Host %s on %s has no MAC address, skipping", host_index, device.log_name)
+            return
+        if host_mac in seen:
+            msg = f"Hosts1.GetGenericHostEntry NewMACAddress of host {host_index}: listed twice"
+            raise DataError(msg)
+        seen.add(host_mac)
         # A host may have no address or name; "" is passed on as the label.
         host_ip = host_result.text("NewIPAddress", "")
-        host_mac = host_result.text("NewMACAddress", "")
         host_name = host_result.text("NewHostName", "")
         host_interface = host_port = host_model = "n/a"
         host_speed: float | None = 0.0
@@ -1451,18 +1466,14 @@ class HostInfo(FritzCapability):
                 host_index,
                 device.log_name,
             )
-        labels = [
-            device.serial,
-            device.friendly_name,
-            host_ip,
-            host_mac,
-            host_name,
-            host_interface,
-            host_port,
-            host_model,
-        ]
+        labels = [device.serial, device.friendly_name, host_mac]
         self._add("hostactive", labels, self.issues.flag(host_result, "NewActive"))
         self._add("hostspeed", labels, host_speed)
+        self._add(
+            "hostinfo",
+            [*labels, host_ip, host_name, host_interface, host_port, host_model],
+            1,
+        )
 
 
 class HomeAutomation(FritzCapability):
@@ -1804,28 +1815,26 @@ class WanSegmentUtilization(FritzCapability):
     """Shared network-segment utilization from the Fritz!Box REST API.
 
     The Fritz!OS REST endpoint ``/api/v0/monitor/segment/<n>`` exposes
-    per-sample utilization of the shared medium, split into the traffic this
+    per-sample utilization of a shared medium, split into the traffic this
     box generates (``own``) and the total on the segment (``total``, including
-    all other subscribers), for downstream and upstream. On cable boxes this
-    is the shared coax segment; the endpoint itself is not cable-specific and
-    is available on any Fritz!OS 7+ box.
+    all other subscribers), for downstream and upstream. Only shared media have
+    such data: on a cable box it is the coax segment, hence the metric names.
+    Other boxes answer the endpoint too, with an empty ``data`` list (seen on
+    DSL), and these metrics then have no samples.
 
     Segment ``0`` covers the last hour at minute granularity (60 one-minute
     averages). We expose only the *newest* sample of each series — the last
     element of each list — aligned by the shared ``lastSampleTime``.
 
-    Auto-detected on any box exposing the common WAN interface service (the
-    REST API requires Fritz!OS 7+); the data is fetched through the shared
-    web UI client.
+    Asked for on every box with the REST API (detected by the common WAN
+    interface service), since whether a medium is shared does not show in
+    TR-064; the data is fetched through the shared web UI client.
     """
 
     uses_webui = True
 
     def __init__(self) -> None:
         super().__init__()
-        # The REST API is available on any Fritz!OS 7+ box, independent of
-        # the WAN access type (cable/DSL/fiber). Presence is determined by the
-        # common WAN interface service, which all modern boxes expose.
         self.requirements.append(("WANCommonInterfaceConfig1", "GetCommonLinkProperties"))
 
     def create_metrics(self) -> None:
@@ -1899,7 +1908,6 @@ class WanConnectionStatus(FritzCapability):
             "connection",
             "connection_name",
             "media_type",
-            "ip_address",
             "stack",
             unit="seconds",
         )
@@ -1911,9 +1919,20 @@ class WanConnectionStatus(FritzCapability):
             "connection",
             "connection_name",
             "media_type",
-            "ip_address",
             "stack",
             "state",
+        )
+        # The address changes on reconnect; as a label of the metrics above it
+        # made new series each time.
+        self._gauge(
+            "info",
+            "fritz_wan_connection_info",
+            "Current address of a WAN connection stack (always 1 while it has one)",
+            "connection",
+            "connection_name",
+            "media_type",
+            "stack",
+            "ip_address",
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
@@ -1925,14 +1944,12 @@ class WanConnectionStatus(FritzCapability):
                 ("ipv4", "ip4_uptime", "ip4_connstatus", "ip4_addr"),
                 ("ipv6", "ip6_uptime", "ip6_connstatus", "ip6_addr"),
             ):
-                self._add("uptime", [*base_labels, conn[ip_key], stack], conn[uptime_key])
+                self._add("uptime", [*base_labels, stack], conn[uptime_key])
                 state = conn[status_key]
                 if state:
-                    self._add(
-                        "status",
-                        [*base_labels, conn[ip_key], stack, state],
-                        int(state == "connected"),
-                    )
+                    self._add("status", [*base_labels, stack, state], int(state == "connected"))
+                if conn[ip_key]:
+                    self._add("info", [*base_labels, stack, conn[ip_key]], 1)
 
 
 class ManagementServerInfo(FritzCapability):
