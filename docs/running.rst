@@ -44,7 +44,7 @@ To run the exporter from docker-compose create an empty directory ``fritz-export
   # Example file for running the exporter from the published image at hub.docker.com
   services:
     fritz-exporter:
-      image: pdreker/fritz_exporter:3
+      image: pdreker/fritz_exporter:4
       container_name: fritz-exporter
       restart: always
       environment:
@@ -65,7 +65,7 @@ Create an empty directory ``fritz-exporter`` and put a file ``docker-compose.yml
 
   services:
     fritz-exporter:
-      image: pdreker/fritz_exporter:3
+      image: pdreker/fritz_exporter:4
       command: --config /fritz-exporter.yml
       container_name: fritz-exporter
       restart: always
@@ -75,6 +75,7 @@ Create an empty directory ``fritz-exporter`` and put a file ``docker-compose.yml
         - "/path/to/fritz-exporter.yml:/fritz-exporter.yml"
 
 Create a config file for the exporter in this directory named ``fritz-exporter.yml``. See the example config file provided at :ref:`config-file`.
+It must set ``listen_address: 0.0.0.0`` and be readable by user ``nobody`` (65534), see above.
 
 Bare Metal (no container)
 -------------------------
