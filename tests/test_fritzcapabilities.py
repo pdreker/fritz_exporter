@@ -145,11 +145,13 @@ class TestUserInterfaceCapability:
         # Act
         metrics: list[Metric] = list(collector.collect())
 
-        # Check - fritz_update_available should have newsoftwareversion = "n/a"
+        # Check - no update: 0, and no version info
         update_metrics = [m for m in metrics if m.name == "fritz_update_available"]
         assert len(update_metrics) == 1
         assert update_metrics[0].samples[0].value == 0
-        assert update_metrics[0].samples[0].labels["newsoftwareversion"] == "n/a"
+        assert "newsoftwareversion" not in update_metrics[0].samples[0].labels
+        [info] = [m for m in metrics if m.name == "fritz_update_info"]
+        assert info.samples == []
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")

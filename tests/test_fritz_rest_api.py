@@ -446,20 +446,20 @@ class TestWanConnectionStatus:
         # The address is in fritz_wan_connection_info only: it changes on reconnect.
         assert "ip_address" not in sample.labels
 
-    def test_status_samples_carry_state_label(self, mock_fritzconnection: MagicMock):
+    def test_status_samples_per_stack(self, mock_fritzconnection: MagicMock):
         metrics = self._collect(mock_fritzconnection)
         by_name = {m.name: m for m in metrics}
 
         assert "fritz_wan_connection_status" in by_name
         keyed = {
-            (s.labels["connection"], s.labels["stack"], s.labels["state"]): s.value
+            (s.labels["connection"], s.labels["stack"]): s.value
             for s in by_name["fritz_wan_connection_status"].samples
         }
         assert keyed == {
-            ("connection0001", "ipv4", "connected"): 1,
-            ("connection0001", "ipv6", "connected"): 1,
-            ("connection0002", "ipv4", "disabled"): 0,
-            ("connection0002", "ipv6", "disabled"): 0,
+            ("connection0001", "ipv4"): 1,
+            ("connection0001", "ipv6"): 1,
+            ("connection0002", "ipv4"): 0,
+            ("connection0002", "ipv6"): 0,
         }
         # media_type and per-stack ip_address labels are carried through
         # from the REST response
@@ -473,18 +473,19 @@ class TestWanConnectionStatus:
         }
         assert all("ip_address" not in s.labels for s in by_name["fritz_wan_connection_status"].samples)
 
-    def test_address_is_in_the_info_metric(self, mock_fritzconnection: MagicMock):
+    def test_state_and_address_are_in_the_info_metric(self, mock_fritzconnection: MagicMock):
         by_name = {m.name: m for m in self._collect(mock_fritzconnection)}
 
         info = {
-            (s.labels["connection"], s.labels["stack"], s.labels["ip_address"]): s.value
+            (s.labels["connection"], s.labels["stack"], s.labels["state"], s.labels["ip_address"])
             for s in by_name["fritz_wan_connection_info"].samples
         }
-        # A stack without an address has no info series.
+        # State and address change on reconnect, so they are here, not on the status.
         assert info == {
-            ("connection0001", "ipv4", "217.11.144.246"): 1,
-            ("connection0001", "ipv6", "2a02:590:24::5d76:9fd9:2847:3632/64"): 1,
-            ("connection0002", "ipv4", "0.0.0.0"): 1,
+            ("connection0001", "ipv4", "connected", "217.11.144.246"),
+            ("connection0001", "ipv6", "connected", "2a02:590:24::5d76:9fd9:2847:3632/64"),
+            ("connection0002", "ipv4", "disabled", "0.0.0.0"),
+            ("connection0002", "ipv6", "disabled", ""),
         }
         sample = by_name["fritz_wan_connection_info"].samples[0]
         assert (sample.labels["connection_name"], sample.labels["media_type"]) == ("internet", "Cable")
@@ -568,14 +569,14 @@ class TestWanConnectionStatus:
 
         # Connection status was fetched and emitted on the non-cable box.
         keyed = {
-            (s.labels["connection"], s.labels["stack"], s.labels["state"]): s.value
+            (s.labels["connection"], s.labels["stack"]): s.value
             for s in by_name["fritz_wan_connection_status"].samples
         }
         assert keyed == {
-            ("connection0001", "ipv4", "connected"): 1,
-            ("connection0001", "ipv6", "connected"): 1,
-            ("connection0002", "ipv4", "disabled"): 0,
-            ("connection0002", "ipv6", "disabled"): 0,
+            ("connection0001", "ipv4"): 1,
+            ("connection0001", "ipv6"): 1,
+            ("connection0002", "ipv4"): 0,
+            ("connection0002", "ipv6"): 0,
         }
         # WanSegmentUtilization shares the same web UI client, so fetch_api is
         # also called for the segment endpoint; assert the connections endpoint

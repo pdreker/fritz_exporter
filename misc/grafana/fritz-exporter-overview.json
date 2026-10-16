@@ -247,7 +247,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_uptime_seconds_total{friendly_name=\"$device\"}",
+          "expr": "fritz_device_info{friendly_name=\"$device\"}",
           "refId": "A",
           "legendFormat": "{{modelname}}",
           "instant": true,
@@ -311,7 +311,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_uptime_seconds_total{friendly_name=\"$device\"}",
+          "expr": "fritz_device_info{friendly_name=\"$device\"}",
           "refId": "A",
           "legendFormat": "{{softwareversion}}",
           "instant": true,
@@ -364,7 +364,7 @@
     {
       "type": "stat",
       "title": "New Fritz!OS",
-      "description": "The version of an available update; n/a when there is none.",
+      "description": "The version of an available update; empty when there is none.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -375,7 +375,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_update_available{friendly_name=\"$device\"}",
+          "expr": "fritz_update_available{friendly_name=\"$device\"} * on (serial) group_left (newsoftwareversion) fritz_update_info{friendly_name=\"$device\"}",
           "refId": "A",
           "legendFormat": "{{newsoftwareversion}}",
           "instant": true,
@@ -1188,7 +1188,9 @@
           },
           "expr": "fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "layer 1 {{direction}}"
+          "legendFormat": "layer 1 {{direction}}",
+          "instant": true,
+          "range": false
         },
         {
           "datasource": {
@@ -1197,7 +1199,9 @@
           },
           "expr": "fritz_wan_max_bitrate_bps{friendly_name=\"$device\"}",
           "refId": "B",
-          "legendFormat": "{{wantype}} {{direction}}"
+          "legendFormat": "line {{direction}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -1256,9 +1260,9 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_wan_phys_link_status{friendly_name=\"$device\"}",
+          "expr": "fritz_wan_phys_link_status{friendly_name=\"$device\"} * on (serial) group_left (access_type) fritz_wan_access_type_info{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "{{wantype}}"
+          "legendFormat": "{{access_type}}"
         }
       ],
       "fieldConfig": {
@@ -1334,7 +1338,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_ppp_connection_state{friendly_name=\"$device\"}",
+          "expr": "fritz_ppp_connection_state{friendly_name=\"$device\"} * on (serial) group_left (last_error) fritz_ppp_connection_info{friendly_name=\"$device\"}",
           "refId": "A",
           "legendFormat": "last error: {{last_error}}",
           "instant": true,
@@ -3898,6 +3902,28 @@
               "format": "table",
               "instant": true,
               "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_wifi_enabled{friendly_name=\"$device\"} + 0",
+              "refId": "D",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_wifi_info{friendly_name=\"$device\"} + 0",
+              "refId": "E",
+              "format": "table",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -3945,6 +3971,34 @@
               {
                 "matcher": {
                   "id": "byName",
+                  "options": "Enabled"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "1": {
+                            "text": "On",
+                            "color": "green",
+                            "index": 0
+                          },
+                          "0": {
+                            "text": "Off",
+                            "color": "text",
+                            "index": 1
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
                   "options": "Clients"
                 },
                 "properties": [
@@ -3983,8 +4037,8 @@
                   "source": true,
                   "serial": true,
                   "friendly_name": true,
-                  "enabled": true,
-                  "wifi_index": true
+                  "wifi_index": true,
+                  "Value #E": true
                 },
                 "renameByName": {
                   "wifi_name": "Band",
@@ -3992,6 +4046,7 @@
                   "standard": "Standard",
                   "Value #B": "Channel",
                   "Value #C": "Clients",
+                  "Value #D": "Enabled",
                   "Value #A": "Status"
                 },
                 "indexByName": {
@@ -4000,7 +4055,8 @@
                   "standard": 2,
                   "Value #B": 3,
                   "Value #C": 4,
-                  "Value #A": 5
+                  "Value #D": 5,
+                  "Value #A": 6
                 }
               }
             }
@@ -4027,7 +4083,7 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "fritz_wifi_associations_count{friendly_name=\"$device\"}",
+              "expr": "fritz_wifi_associations_count{friendly_name=\"$device\"} * on (serial, wifi_index) group_left (ssid) fritz_wifi_info{friendly_name=\"$device\"}",
               "refId": "A",
               "legendFormat": "{{wifi_name}} {{ssid}}"
             }
@@ -4179,6 +4235,17 @@
               "format": "table",
               "instant": true,
               "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_wifi_client_info{friendly_name=\"$device\"} + 0",
+              "refId": "C",
+              "format": "table",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -4275,7 +4342,8 @@
                   "instance": true,
                   "source": true,
                   "serial": true,
-                  "friendly_name": true
+                  "friendly_name": true,
+                  "Value #C": true
                 },
                 "renameByName": {
                   "wifi_name": "Band",
@@ -5106,7 +5174,9 @@
               },
               "expr": "fritz_ha_battery_level_percent{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "{{device_name}}"
+              "legendFormat": "{{device_name}}",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {

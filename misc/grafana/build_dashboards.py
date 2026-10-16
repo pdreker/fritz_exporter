@@ -59,6 +59,11 @@ def targets(*queries: tuple[str, str] | str, table: bool = False) -> list[dict]:
     return result
 
 
+def now_only(queries: list[dict]) -> list[dict]:
+    """The queries as instant queries: the current values only."""
+    return [{**query, "instant": True, "range": False} for query in queries]
+
+
 def thresholds(*steps: tuple[float | None, str]) -> dict:
     return {
         "mode": "absolute",
@@ -288,10 +293,12 @@ def bars(  # noqa: PLR0913
         defaults["min"] = minimum
     if maximum is not None:
         defaults["max"] = maximum
+    # A bar gauge shows one value per series: the current one. Instant queries
+    # also keep series out that stopped, e.g. after a label changed.
     return panel(
         "bargauge",
         title,
-        queries,
+        now_only(queries),
         description=description,
         unit=unit,
         defaults=defaults,
@@ -542,6 +549,14 @@ def q(metric: str, **labels: str) -> str:
     return f"{metric}{{{','.join(matchers)}}}"
 
 
+def joined(expr: str, info: str, on: str, *labels: str) -> str:
+    """``expr`` with ``labels`` from the ``info`` metric (value 1), joined ``on`` its keys."""
+    return f"{expr} * on ({on}) group_left ({', '.join(labels)}) {q(info)}"
+
+
+WIFI_SSID = ("fritz_wifi_info", "serial, wifi_index", "ssid")
+
+
 def rate(metric: str, **labels: str) -> str:
     return f"rate({q(metric, **labels)}[$__rate_interval])"
 
@@ -567,14 +582,16 @@ def overview() -> dict:  # noqa: PLR0915
         3,
         4,
     )
-    lay.add(label_stat("Model", q("fritz_uptime_seconds_total"), "{{modelname}}"), 4, 4)
-    lay.add(label_stat("Fritz!OS", q("fritz_uptime_seconds_total"), "{{softwareversion}}"), 3, 4)
+    lay.add(label_stat("Model", q("fritz_device_info"), "{{modelname}}"), 4, 4)
+    lay.add(label_stat("Fritz!OS", q("fritz_device_info"), "{{softwareversion}}"), 3, 4)
     lay.add(
         label_stat(
             "New Fritz!OS",
-            q("fritz_update_available"),
+            joined(
+                q("fritz_update_available"), "fritz_update_info", "serial", "newsoftwareversion"
+            ),
             "{{newsoftwareversion}}",
-            description="The version of an available update; n/a when there is none.",
+            description="The version of an available update; empty when there is none.",
         ),
         4,
         4,
@@ -697,7 +714,7 @@ def overview() -> dict:  # noqa: PLR0915
             "Maximum bit rate",
             targets(
                 (q("fritz_wan_layer1_max_bitrate_bps"), "layer 1 {{direction}}"),
-                (q("fritz_wan_max_bitrate_bps"), "{{wantype}} {{direction}}"),
+                (q("fritz_wan_max_bitrate_bps"), "line {{direction}}"),
             ),
             unit="bps",
             scheme="continuous-BlPu",
@@ -708,7 +725,17 @@ def overview() -> dict:  # noqa: PLR0915
     lay.add(
         stat(
             "Physical link",
-            [target(q("fritz_wan_phys_link_status"), "{{wantype}}")],
+            [
+                target(
+                    joined(
+                        q("fritz_wan_phys_link_status"),
+                        "fritz_wan_access_type_info",
+                        "serial",
+                        "access_type",
+                    ),
+                    "{{access_type}}",
+                )
+            ],
             mappings=UP_DOWN,
             color="background",
             text="value_and_name",
@@ -719,7 +746,18 @@ def overview() -> dict:  # noqa: PLR0915
     lay.add(
         stat(
             "PPP",
-            [target(q("fritz_ppp_connection_state"), "last error: {{last_error}}", now=True)],
+            [
+                target(
+                    joined(
+                        q("fritz_ppp_connection_state"),
+                        "fritz_ppp_connection_info",
+                        "serial",
+                        "last_error",
+                    ),
+                    "last error: {{last_error}}",
+                    now=True,
+                )
+            ],
             mappings=mapping({"1": ("Connected", "green"), "0": ("Disconnected", "red")}),
             color="background",
             text="value_and_name",
@@ -1081,6 +1119,8 @@ def overview() -> dict:  # noqa: PLR0915
                 q("fritz_wifi_status"),
                 q("fritz_wifi_channel"),
                 q("fritz_wifi_associations_count"),
+                q("fritz_wifi_enabled"),
+                q("fritz_wifi_info"),
                 table=True,
             ),
             rename={
@@ -1089,13 +1129,15 @@ def overview() -> dict:  # noqa: PLR0915
                 "standard": "Standard",
                 "Value #B": "Channel",
                 "Value #C": "Clients",
+                "Value #D": "Enabled",
                 "Value #A": "Status",
             },
-            hide=["enabled", "wifi_index"],
+            hide=["wifi_index", "Value #E"],
             overrides=[
                 column(
                     "Status", mappings=UP_DOWN, **{"custom.cellOptions": cell("color-background")}
                 ),
+                column("Enabled", mappings=ON_OFF),
                 column("Clients", **{"custom.cellOptions": cell("gauge", mode="basic"), "max": 30}),
             ],
         ),
@@ -1105,7 +1147,9 @@ def overview() -> dict:  # noqa: PLR0915
     lay.add(
         timeseries(
             "Clients per network",
-            targets((q("fritz_wifi_associations_count"), "{{wifi_name}} {{ssid}}")),
+            targets(
+                (joined(q("fritz_wifi_associations_count"), *WIFI_SSID), "{{wifi_name}} {{ssid}}")
+            ),
             stack=True,
             fill=40,
             decimals=0,
@@ -1127,7 +1171,10 @@ def overview() -> dict:  # noqa: PLR0915
         table(
             "Clients (wifi_client_info)",
             targets(
-                q("fritz_wifi_client_signal_strength"), q("fritz_wifi_client_speed"), table=True
+                q("fritz_wifi_client_signal_strength"),
+                q("fritz_wifi_client_speed"),
+                q("fritz_wifi_client_info"),
+                table=True,
             ),
             rename={
                 "wifi_name": "Band",
@@ -1136,6 +1183,7 @@ def overview() -> dict:  # noqa: PLR0915
                 "Value #A": "Signal",
                 "Value #B": "Speed",
             },
+            hide=["Value #C"],
             sort="Signal",
             overrides=[
                 column(
@@ -1450,7 +1498,7 @@ def home() -> dict:
                 target(
                     f"max(({q('fritz_wan_connection_uptime_seconds_total')} "
                     "and on (serial, connection, stack) "
-                    f"{q('fritz_wan_connection_status', state='connected')}) "
+                    f"({q('fritz_wan_connection_status')} == 1)) "
                     f"or {q('fritz_ppp_connection_uptime_seconds_total')})"
                 )
             ],
@@ -1579,7 +1627,9 @@ def home() -> dict:
     lay.add(
         bars(
             "WiFi networks",
-            targets((q("fritz_wifi_associations_count"), "{{ssid}} ({{wifi_name}})")),
+            targets(
+                (joined(q("fritz_wifi_associations_count"), *WIFI_SSID), "{{ssid}} ({{wifi_name}})")
+            ),
             unit="short",
             scheme="continuous-YlBl",
         ),
