@@ -7,38 +7,56 @@ class ConfigError(ExporterError):
     pass
 
 
-class EmptyConfigError(ExporterError):
+class EmptyConfigError(ConfigError):
     pass
 
 
-class ConfigFileUnreadableError(ExporterError):
+class ConfigFileUnreadableError(ConfigError):
     pass
 
 
-class DeviceNamesNotUniqueError(ExporterError):
+class DeviceNamesNotUniqueError(ConfigError):
     pass
 
 
-class NoDevicesFoundError(ExporterError):
+class NoDevicesFoundError(ConfigError):
     pass
 
 
-class FritzPasswordTooLongError(ExporterError):
-    def __init__(self) -> None:
+class InvalidConfigValueError(ConfigError, ValueError):
+    """A config value of the wrong type or out of range; the message names the key."""
+
+
+class FritzPasswordMissingError(ConfigError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*(args or ("password or password_file is required",)))
+
+
+class FritzPasswordTooLongError(ConfigError):
+    def __init__(self, *args: object) -> None:
         super().__init__(
-            "Password is longer than 32 characters! "
-            "Login may not succeed, please see documentation!"
+            *(
+                args
+                or (
+                    (
+                        "Password is longer than 32 characters! "
+                        "Login may not succeed, please see documentation!"
+                    ),
+                )
+            )
         )
 
 
-class FritzPasswordFileDoesNotExistError(ExporterError):
-    def __init__(self) -> None:
-        super().__init__("Password file does not exist!")
+class FritzPasswordFileDoesNotExistError(ConfigError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*(args or ("Password file does not exist!",)))
 
 
-class FritzRemoteAccessRequiresTlsError(ExporterError):
-    def __init__(self) -> None:
-        super().__init__("remote_access=true requires use_tls=true (AVM WAN TR-064 is HTTPS-only).")
+class FritzRemoteAccessRequiresTlsError(ConfigError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(
+            *(args or ("remote_access=true requires use_tls=true (AVM WAN TR-064 is HTTPS-only).",))
+        )
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>

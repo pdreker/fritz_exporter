@@ -84,7 +84,9 @@ class Test_Main:
 
         assert pytest_wrapped_exit.type == SystemExit
         assert pytest_wrapped_exit.value.code == 1
-        assert "fritzexporter.config.exceptions.ConfigFileUnreadableError" in caplog.text
+        assert "Invalid configuration: config file" in caplog.text
+        assert "could not be read" in caplog.text
+        assert "Traceback" not in caplog.text
 
     @patch("fritzexporter.__main__.start_http_server")
     @patch("fritzexporter.tr064_remote.FritzConnection")
@@ -113,7 +115,7 @@ class Test_Main:
         loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
         for log in loggers:
             if log.name.startswith("fritzexporter"):
-                assert log.level == logging.DEBUG
+                assert log.getEffectiveLevel() == logging.DEBUG
 
     @patch("prometheus_client.core.REGISTRY.register")
     @patch("fritzexporter.tr064_remote.FritzConnection")

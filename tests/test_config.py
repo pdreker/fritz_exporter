@@ -140,7 +140,7 @@ class TestEnvConfig:
         config = get_config(None)
         devices: list[DeviceConfig] = [
             DeviceConfig(
-                "fritz.box", "SomeUserName", "AnInterestingPassword", None, "Fritz!Box"
+                "fritz.box", "SomeUserName", "AnInterestingPassword", None, "fritz.box"
             )
         ]
         expected: ExporterConfig = ExporterConfig(9787, "INFO", devices)
@@ -154,7 +154,7 @@ class TestEnvConfig:
         config = get_config(None)
         devices: list[DeviceConfig] = [
             DeviceConfig(
-                "fritz.box", "SomeUserName", None, "tests/conffiles/password.txt", "Fritz!Box"
+                "fritz.box", "SomeUserName", None, "tests/conffiles/password.txt", "fritz.box"
             )
         ]
         expected: ExporterConfig = ExporterConfig(9787, "INFO", devices)
@@ -364,15 +364,11 @@ class TestConfigEdgeCases:
 
         assert "Binding to all interfaces" in caplog.text
 
-    def test_duplicate_device_names_logs_warning(self, caplog):
-        testfile = "tests/conffiles/namesnotunique.yaml"
-        caplog.set_level(logging.WARNING)
+    def test_duplicate_device_names_are_an_error(self):
+        from fritzexporter.config import DeviceNamesNotUniqueError
 
-        # Should succeed but log a warning
-        config = get_config(testfile)
-
-        assert config is not None
-        assert "Device names are not unique" in caplog.text
+        with pytest.raises(DeviceNamesNotUniqueError, match="used more than once: Bla"):
+            get_config("tests/conffiles/namesnotunique.yaml")
 
     def test_password_too_long_raises_error(self):
         from fritzexporter.config.exceptions import FritzPasswordTooLongError
@@ -560,3 +556,69 @@ class TestWifiClientInfoConfig:
         monkeypatch.setenv("FRITZ_WIFI_CLIENT_INFO", "true")
         config = get_config(None)
         assert config.devices[0].wifi_client_info is True
+
+
+class TestConfigChecks:
+    """Mistakes in the config file are refused with a message that says where."""
+
+    @staticmethod
+    def _load(tmp_path, text: str):
+        path = tmp_path / "config.yaml"
+        path.write_text(text)
+        return get_config(str(path))
+
+    DEVICE = "devices:\n  - hostname: fritz.box\n    username: u\n    password: p\n"
+
+    def test_unknown_device_key_is_an_error_with_a_suggestion(self, tmp_path):
+        with pytest.raises(ConfigError, match=r"^device 1 \(fritz.box\): unknown key 'pasword', did you mean 'password'\?$"):
+            self._load(tmp_path, "devices:\n  - hostname: fritz.box\n    username: u\n    pasword: p\n")
+
+    def test_unknown_top_level_key_is_an_error(self, tmp_path):
+        with pytest.raises(ConfigError, match=r"^config: unknown key 'exporterport', did you mean 'exporter_port'\?$"):
+            self._load(tmp_path, "exporterport: 9000\n" + self.DEVICE)
+
+    def test_invalid_yaml_names_the_position_but_not_the_line(self, tmp_path):
+        with pytest.raises(ConfigFileUnreadableError) as exc:
+            self._load(tmp_path, "devices:\n  - hostname: fritz.box\n    password: \"s3cret\n  - x: [\n")
+        assert "line" in str(exc.value)
+        assert "s3cret" not in str(exc.value)
+
+    @pytest.mark.parametrize(
+        ("text", "message"),
+        [
+            ("- a\n- b\n", "config: expected keys and values at the top level"),
+            ("devices: fritz.box\n", "config devices: expected a list of devices"),
+            ("devices:\n  - fritz.box\n", "device 1: expected keys and values"),
+        ],
+    )
+    def test_wrong_shape_is_an_error(self, tmp_path, text, message):
+        with pytest.raises(ConfigError, match=f"^{message}$"):
+            self._load(tmp_path, text)
+
+    def test_missing_password_is_an_error(self, tmp_path):
+        with pytest.raises(ConfigError, match=r"^device 1 \(fritz.box\): password or password_file is required$"):
+            self._load(tmp_path, "devices:\n  - hostname: fritz.box\n    username: u\n")
+
+    def test_invalid_value_names_the_device_and_the_key(self, tmp_path):
+        with pytest.raises(ValueError, match=r"^device 1 \(fritz.box\): connection_timeout: invalid literal"):
+            self._load(tmp_path, self.DEVICE + "    connection_timeout: soon\n")
+
+    def test_invalid_exporter_value_names_the_key(self, tmp_path):
+        with pytest.raises(ConfigError, match=r"^config listen_address: "):
+            self._load(tmp_path, "listen_address: everywhere\n" + self.DEVICE)
+
+    def test_name_defaults_to_the_hostname(self, tmp_path):
+        config = self._load(tmp_path, self.DEVICE.replace("fritz.box", "Fritz.Box"))
+        assert config.devices[0].name == "fritz.box"
+
+    def test_name_defaults_to_the_hostname_in_env(self, monkeypatch):
+        monkeypatch.setenv("FRITZ_USERNAME", "u")
+        monkeypatch.setenv("FRITZ_PASSWORD", "p")
+        monkeypatch.setenv("FRITZ_HOSTNAME", "box.lan")
+        assert get_config(None).devices[0].name == "box.lan"
+
+    def test_two_devices_without_name_on_one_host_are_an_error(self, tmp_path):
+        from fritzexporter.config import DeviceNamesNotUniqueError
+
+        with pytest.raises(DeviceNamesNotUniqueError, match="fritz.box"):
+            self._load(tmp_path, self.DEVICE + "  - hostname: fritz.box\n    username: v\n    password: q\n")

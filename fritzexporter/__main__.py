@@ -111,19 +111,14 @@ def main() -> None:
 
     try:
         config = get_config(args.config)
-    except ExporterError:
-        logger.exception("Error while reading config:")
+    except ExporterError as e:
+        # The message says what and where; a traceback would only hide it.
+        logger.critical("Invalid configuration: %s", e)
         sys.exit(1)
 
-    log_level = (
-        getattr(logging, args.log_level) if args.log_level else getattr(logging, config.log_level)
-    )
-    if not log_level:
-        log_level = "INFO"
-
-    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-    for log in loggers:
-        log.setLevel(log_level)
+    # Only the exporter's own loggers have a handler (see above); others log
+    # warnings and worse through Python's fallback.
+    logger.setLevel(args.log_level or config.log_level)
 
     for dev in config.devices:
         _register_device(dev, args, fritzcollector)

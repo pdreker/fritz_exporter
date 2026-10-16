@@ -268,7 +268,7 @@ Both paths produce the same `ExporterConfig` / `DeviceConfig` attrs objects and 
 | Exporter | `log_level` | `FRITZ_LOG_LEVEL` | `INFO` |
 | Exporter | `listen_address` | `FRITZ_LISTEN_ADDRESS` | `127.0.0.1` |
 | Device | `hostname` | `FRITZ_HOSTNAME` | `fritz.box` |
-| Device | `name` | `FRITZ_NAME` | `Fritz!Box` |
+| Device | `name` | `FRITZ_NAME` | *(the hostname; names must be unique)* |
 | Device | `username` | `FRITZ_USERNAME` | *(required)* |
 | Device | `password` | `FRITZ_PASSWORD` | *(required unless password_file set)* |
 | Device | `password_file` | `FRITZ_PASSWORD_FILE` | *(required unless password set)* |
