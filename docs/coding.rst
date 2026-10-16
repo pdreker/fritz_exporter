@@ -188,19 +188,60 @@ One rule applies everywhere: a value that is missing, ``None`` or ``""`` is *abs
 not of the requested type raises ``DataError``.  Numbers come back as ``int``/``float``
 and labels as ``str``.  A ``DataError`` names the source and field, never the value.
 
+Failures stay at the level they affect
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A failure should cost only what depends on it, and must move up a level when that
+level depends on it.  Prometheus handles gaps; the exporter logs each one, so a gap
+in a graph can be matched to a log line.
+
++------------+----------------------------------------+-----------------------------------+
+| Level      | Example                                | Effect                            |
++============+========================================+===================================+
+| Value      | the MER of one DOCSIS channel is "abc" | only the samples built from it    |
++------------+----------------------------------------+-----------------------------------+
+| Item       | a host, channel or WLAN band has an    | only that item                    |
+|            | unreadable label                       |                                   |
++------------+----------------------------------------+-----------------------------------+
+| Capability | the reply is not an object, a list is  | that capability of that device in |
+|            | not a list, or a value the whole       | this scrape (no partial set)      |
+|            | capability depends on                  |                                   |
++------------+----------------------------------------+-----------------------------------+
+| Device     | the serial number cannot be read       | the device is registered offline  |
+|            |                                        | and retried                       |
++------------+----------------------------------------+-----------------------------------+
+| Device     | the device does not answer             | unreachable for this scrape       |
++------------+----------------------------------------+-----------------------------------+
+
+How the levels are built:
+
+* **Value**: read through the ``Issues`` collector of the capability, ``self.issues``:
+  ``self.issues.num(reply, key)``, ``opt_num``, ``num_or``, ``opt_integer``, ``flag``,
+  ``equals``, ``text``, ``convert``.  They behave like the ``Reply`` methods but record a
+  ``DataError`` and return ``None``; ``self._add(metric, labels, value)`` adds no
+  sample for ``None``.
+* **Item**: wrap the item in ``with self._item("host 3"):`` (in a capability) or
+  ``with issues.item(...)`` (in a parser).  A ``DataError`` inside skips the rest of
+  the block and drops the samples it already added.  ``issues.objects(reply, key)``
+  skips list elements that are no objects.
+* **Capability**: anything read strictly (``reply.num()``, ``reply.text()`` without
+  ``self.issues``) outside an item.  Read a value strictly when the capability depends
+  on it, e.g. a label shared by all its samples or a count that drives a loop.
+* **Device**: ``FritzDevice.get_device_info`` raises ``FritzDeviceSerialUnknownError``;
+  the device is not collected, because the serial is the label that tells devices
+  apart (names may repeat).
+
 ``FritzCapability.get_metrics`` guards each device's ``_generate_metric_values`` call:
+a connection error marks the device unavailable; a ``FritzWebUiError``, a
+``DataError`` or any other data error (``KeyError``, ``TypeError``, ...) drops the
+samples that device added to the capability.  Before samples are kept, they are
+checked to be renderable (numeric value, ``str`` labels), because ``prometheus_client``
+converts values only while rendering the scrape.  Each problem is logged as a warning
+when it first appears or changes, at debug level while it lasts, and with an info line
+when it is gone.
 
-* a connection error marks the device unavailable for this scrape (as before);
-* a ``FritzWebUiError``, a ``DataError`` or any other data error (``KeyError``,
-  ``TypeError``, ...) drops the samples that device added to that capability, so no
-  partial set is exported, and logs a warning — once per failure streak, with a note
-  when reading works again.  Other capabilities and devices are not affected;
-* before samples are kept, they are checked to be renderable (numeric value, ``str``
-  labels), because ``prometheus_client`` converts values only while rendering the
-  scrape, where a bad one would fail the whole response.
-
-So a capability does not catch errors itself, except where it can do something
-better than skip, e.g. the fibre levels fall back to the TR-064 values.
+A capability does not catch errors itself, except where it can do better than skip,
+e.g. the fibre levels fall back to the TR-064 values.
 
 
 Adding a New Metric / Capability
@@ -216,9 +257,9 @@ Adding a New Metric / Capability
    store them in ``self.metrics[key]``.  Use ``GaugeMetricFamily`` for current values
    and ``CounterMetricFamily`` for monotonically increasing counters.
 5. Implement ``_generate_metric_values(self, device)`` — call the TR-064 actions via
-   ``read_action(device, service, action)``, read the values with the ``Reply``
-   accessors (see *Reading device data*) and populate the metric families using
-   ``self.metrics[key].add_metric(labels, value)``.
+   ``read_action(device, service, action)`` and add samples with
+   ``self._add(key, labels, self.issues.num(reply, field))``, keeping failures at
+   their level (see *Reading Device Data*).
 6. Implement ``_get_metric_values(self)`` — ``yield`` each metric family from
    ``self.metrics``.
 7. Add tests in ``tests/test_fritzcapabilities.py`` using the mock infrastructure in

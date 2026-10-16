@@ -213,10 +213,17 @@ fritzexporter/
 **Never index raw device data** (`result["NewFoo"]`, `raw.get("data", {})`). Read every value through `fritzexporter/reply.py`:
 
 - `read_action(device, service, action, **arguments)` returns a `Reply`; `Reply(raw, "source")` wraps JSON objects.
-- `num()`, `integer()`, `flag()`, `text(key, default)` for required values; `opt_*` for optional ones; `obj()`, `objects()`, `items()` for nesting; `to_float`/`to_int`/`to_bool`/`to_str` for single values (list items, XML text).
+- `num()`, `integer()`, `flag()`, `text(key, default)` for strict reads; `opt_*` for optional ones; `obj()`, `objects()`, `items()` for nesting; `to_float`/`to_int`/`to_bool`/`to_str` for single values.
 - Rule: missing/`None`/`""` is absent; present but wrong type raises `DataError`. `DataError` messages name the field, never the value.
 
-`FritzCapability.get_metrics` handles failures centrally: connection errors mark the device unavailable; `FritzWebUiError` and data errors drop that device's samples of that capability for the scrape and warn once per failure streak. **Do not add `try/except` in a capability just to log and return** — only where it can do better than skipping (e.g. a fallback).
+**Keep failures at the level they affect** (see "Reading Device Data" in `docs/coding.rst`):
+
+- Value: `self._add(key, labels, self.issues.num(reply, field))` — a defective value costs only its sample.
+- Item (host, channel, WLAN band, ...): `with self._item("host 3"):` — a defective label costs only that item.
+- Capability: strict reads outside an item — use them only for what the whole capability depends on (shared labels, loop counts, reply structure).
+- Device: an unreadable serial raises `FritzDeviceSerialUnknownError`; the device is registered offline and retried.
+
+`FritzCapability.get_metrics` handles the rest centrally and logs each problem once while it lasts. **Do not add `try/except` in a capability just to log and return** — only where it can do better than skipping (e.g. a fallback).
 
 ### Adding a new metric/capability
 
