@@ -31,7 +31,7 @@ can carry addresses, names or tokens.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
@@ -282,7 +282,7 @@ class Issues:
             yield index, obj
 
     @contextmanager
-    def item(self, what: str, on_skip: Callable[[], None] | None = None) -> Iterator[None]:
+    def item(self, what: str, on_skip: Callable[[], None] | None = None) -> Generator[None]:
         """Skip the rest of the block on a :class:`DataError` and record it.
 
         ``on_skip`` undoes what the block did before it failed.

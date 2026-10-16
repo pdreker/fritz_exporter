@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from abc import ABC, abstractmethod
-from collections.abc import ItemsView, Iterator
+from collections.abc import Generator, ItemsView, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -409,7 +409,7 @@ class FritzCapability(ABC):
             self.metrics[key].add_metric(labels, value)
 
     @contextmanager
-    def _item(self, what: str) -> Iterator[None]:
+    def _item(self, what: str) -> Generator[None]:
         """Collect one item (a host, a channel, ...); if it cannot be read, skip it.
 
         An error reply to a TR-064 request for the item skips it as well; a
