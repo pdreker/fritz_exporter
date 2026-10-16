@@ -8,8 +8,8 @@ spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: metrics
+      targetPort: {{ .Values.service.portName }}
       protocol: TCP
-      name: metrics
+      name: {{ .Values.service.portName }}
   selector:
     {{- include "fritz-exporter.selectorLabels" . | nindent 4 }}

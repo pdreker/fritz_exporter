@@ -86,6 +86,10 @@ Docker image and Helm chart
   (``createConfigSecret: false``) must set it.
 * The image installs the dependency versions from ``uv.lock``, checked against their
   hashes.
+* The Helm chart takes the container port from ``config.exporter_port`` (default
+  9787) and uses ``service.portName`` for the container, the service and the
+  ServiceMonitor; both used to be fixed to ``9787`` and ``metrics``. A secret of your
+  own that sets ``exporter_port`` needs ``config.exporter_port`` set to the same value.
 
 New Grafana dashboards
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -155,6 +159,15 @@ different names.
 
 ``host_info: true`` now also works on a device with fewer than two hosts in its host
 table; such a device used to fail its setup and was never collected.
+
+Offline devices are set up again in the background
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A scrape used to wait while the exporter tried to set up the devices that were
+offline, up to their connection timeout each. A background thread now does that,
+and the scrape returns at once; a device that comes back is collected from the
+next scrape on. The exporter also no longer runs a whole scrape at startup before
+it serves ``/metrics``.
 
 Unreadable data is skipped and reported
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

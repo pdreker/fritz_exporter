@@ -51,12 +51,14 @@ The entry point is ``fritzexporter/__main__.py`` → ``main()``.
 4. A device that was set up is registered.  A device that could not be set up —
    unreachable, wrong credentials, no capabilities, or no readable serial number — is
    kept as an ``OfflineDevice`` with its ``DeviceSpec`` instead, logged once without a
-   traceback: it is reported as ``fritz_device_reachable 0`` and set up again on every
-   scrape until it works.  A device that answers but gives no readable serial number is given up after
+   traceback: it is reported as ``fritz_device_reachable 0`` and set up again in the
+   background, started by each scrape, until it works.  A device that answers but gives no readable serial number is given up after
    ``SERIAL_RETRIES`` (3) retries, with an error in the log; it stays reported as
    unreachable until the exporter is restarted.  A warning is logged whenever the
    reason an offline device fails changes.
-5. The ``FritzCollector`` is registered with the Prometheus ``REGISTRY``.
+5. The ``FritzCollector`` is registered with the Prometheus ``REGISTRY``.  Its
+   ``describe()`` returns nothing, so registering does not run a scrape to learn the
+   metric names.
 6. An HTTP server is started (``prometheus_client.start_http_server``), and the main
    thread waits forever; scrapes run in the HTTP server's threads.
 
@@ -64,8 +66,9 @@ When Prometheus scrapes ``/metrics``, ``FritzCollector.collect()`` is called.  I
 a re-entrant lock (``threading.RLock``) for the whole scrape, so concurrent scrapes do
 not interfere.  A scrape that cannot get the lock within ``SCRAPE_LOCK_TIMEOUT``
 (30 s) returns no data and is counted in ``fritz_scrapes_timeouts_total``.  Offline
-devices are set up again before the lock is taken, by one scrape at a time, so a
-device that takes its connection timeout to fail does not hold up other scrapes.
+devices are set up again in one background thread (``fritz-offline-retry``), which a
+scrape starts unless it is still running; the scrape does not wait for it, so a device
+that takes its connection timeout to fail holds up no scrape.
 
 
 Configuration System
@@ -148,8 +151,9 @@ device supports *that* capability.
 
 When ``FritzCollector.collect()`` runs:
 
-1. Offline devices are set up again, outside the scrape lock; those that work now are
-   registered once the lock is held.
+1. The background retry of offline devices is started, unless it is still running or
+   every offline device was given up.  Devices that the previous retry set up are
+   registered now, so they are collected one scrape after they come back.
 2. ``FritzDevice.add_connection_mode()`` adds each device's sample to one
    ``fritz_connection_mode`` gauge (DSL/fibre/mobile/cable/offline).
 3. The collector holds its own ``FritzCapabilities`` instance, built without a device:
