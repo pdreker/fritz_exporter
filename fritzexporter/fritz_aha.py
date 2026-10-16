@@ -9,7 +9,7 @@ is not XML raises :class:`~fritzexporter.reply.DataError`.
 from typing import Any
 from xml.etree.ElementTree import Element
 
-from defusedxml import ElementTree
+from defusedxml import DefusedXmlException, ElementTree
 
 from fritzexporter.reply import DataError, Issues, to_int
 
@@ -74,7 +74,7 @@ def parse_aha_devicelist_xml(content: str, issues: Issues | None = None) -> list
     issues = issues if issues is not None else Issues()
     try:
         devicelist: Element = ElementTree.fromstring(content)
-    except ElementTree.ParseError:
+    except ElementTree.ParseError, DefusedXmlException:
         msg = "AHA device list: not valid XML"
         raise DataError(msg) from None
 

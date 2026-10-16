@@ -20,12 +20,12 @@ from fritzexporter.exceptions import (
     FritzDeviceHasNoCapabilitiesError,
     FritzDeviceSerialUnknownError,
 )
-from fritzexporter.fritz_webui import FritzWebUiMd5DisabledError
 from fritzexporter.reply import DataError, Issues
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
 from fritzexporter.tr064_remote import ConnectionOptions
 
+from .web_replies import web_reply
 from .fc_services_mock import (
     call_action_mock,
     call_action_no_basic_mock,
@@ -397,49 +397,39 @@ class TestFritzDevice:
 
         assert mock_webui_client.call_args.kwargs["allow_unsafe_md5_password"] is True
 
-    def test_md5_login_refused_stops_exporter(self, mock_fritzconnection: MagicMock, caplog):
+    def test_md5_refusal_disables_only_the_web_interface(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
         fc.services = create_fc_services(fc_services_capabilities["HomeAutomation"])
 
         with patch("fritzexporter.fritz_webui.requests.Session") as mock_session_cls:
             session = mock_session_cls.return_value
-            session.get.return_value = MagicMock(
-                status_code=200,
-                text="<SessionInfo><SID>0000000000000000</SID>"
-                "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>",
+            session.get.return_value = web_reply(
+                "<SessionInfo><SID>0000000000000000</SID>"
+                "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>"
             )
-
             collector = FritzCollector()
             collector.register(
                 FritzDevice(FritzCredentials("fritz.box", "someuser", "password"), "FritzMock")
             )
-            metrics = list(collector.collect())
+            list(collector.collect())
+            metrics = {m.name: m for m in collector.collect()}
 
-        assert metrics == []
-        assert collector.fatal_error.is_set()
+        # Asked once, then never again until restart.
+        assert session.get.call_count == 1
         session.post.assert_not_called()
-        critical = [r for r in caplog.records if r.levelno == logging.CRITICAL]
-        assert len(critical) == 1
-        assert "legacy MD5 web login" in critical[0].getMessage()
-        assert critical[0].getMessage().endswith("Exiting.")
-        # The lock is released, so later scrapes are not blocked.
-        assert collector._collect_lock.acquire(blocking=False)
-        collector._collect_lock.release()
-
-    def test_md5_refused_while_promoting_offline_device_stops_exporter(
-        self, mock_fritzconnection: MagicMock
-    ):
-        collector = FritzCollector()
-        collector.register_offline(FritzCredentials("somehost", "user", "pass"), "OfflineDevice")
-
-        with patch.object(
-            FritzCollector, "_retry_offline_devices", side_effect=FritzWebUiMd5DisabledError("somehost")
-        ):
-            metrics = list(collector.collect())
-
-        assert metrics == []
-        assert collector.fatal_error.is_set()
+        errors = [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR]
+        assert len(errors) == 1
+        assert "offers only the MD5 web login" in errors[0]
+        assert "disabled until restart" in errors[0]
+        reachable = metrics["fritz_device_reachable"].samples
+        assert [s.value for s in reachable] == [1.0]
+        problems = {
+            (s.labels["capability"], s.labels["level"]) for s in metrics["fritz_read_problem"].samples
+        }
+        assert problems == {("HomeAutomation", "skipped")}
 
     @patch("fritzexporter.fritzdevice.FritzWebUiClient")
     @pytest.mark.parametrize(
@@ -514,8 +504,8 @@ class TestFritzDevice:
 
         with patch("fritzexporter.fritz_webui.requests.Session") as mock_session_cls:
             session = mock_session_cls.return_value
-            login = MagicMock(status_code=200, text="<SessionInfo><SID>1234567890abcdef</SID></SessionInfo>")
-            aha = MagicMock(status_code=200, text='<devicelist version="1"></devicelist>')
+            login = web_reply("<SessionInfo><SID>1234567890abcdef</SID></SessionInfo>")
+            aha = web_reply('<devicelist version="1"></devicelist>')
             session.get.side_effect = [login, aha]
 
             collector = FritzCollector()
@@ -1878,6 +1868,11 @@ class TestParseAhaDevicelistXml:
     def test_should_raise_data_error_on_parse_error(self):
         with pytest.raises(DataError, match="not valid XML"):
             parse_aha_devicelist_xml("this is not valid xml <<<")
+
+    def test_should_raise_data_error_on_forbidden_xml(self):
+        # defusedxml refuses entities; that is bad device data, not a bug.
+        with pytest.raises(DataError, match="not valid XML"):
+            parse_aha_devicelist_xml('<!DOCTYPE x [<!ENTITY a "b">]><devicelist>&a;</devicelist>')
 
     def test_should_record_non_numeric_int_fields_and_skip_the_value(self):
         # Prepare

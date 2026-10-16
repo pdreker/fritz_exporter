@@ -150,27 +150,6 @@ class Test_Main:
     @patch("prometheus_client.core.REGISTRY.register")
     @patch("fritzexporter.__main__.start_http_server")
     @patch("fritzexporter.__main__.FritzCollector")
-    def test_fatal_error_during_first_collection_exits_before_listening(
-        self, mock_collector_cls: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
-        monkeypatch
-    ):
-        # Registering the collector runs a first collection; a refused MD5 login
-        # there sets fatal_error, and the exporter must not start listening.
-        monkeypatch.setattr("sys.argv", ["fritzexporter", "--config", "tests/conffiles/validconfig.yaml"])
-        mock_collector = MagicMock()
-        mock_collector.fatal_error.is_set.return_value = True
-        mock_collector_cls.return_value = mock_collector
-
-        with patch("fritzexporter.__main__.FritzDevice"), pytest.raises(SystemExit) as exc:
-            main()
-
-        assert exc.value.code == 1
-        mock_registry.assert_called_once_with(mock_collector)
-        mock_http.assert_not_called()
-
-    @patch("prometheus_client.core.REGISTRY.register")
-    @patch("fritzexporter.__main__.start_http_server")
-    @patch("fritzexporter.__main__.FritzCollector")
     def test_startup_connection_failure_registers_device_as_offline(
         self, mock_collector_cls: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
         monkeypatch, caplog
@@ -188,7 +167,6 @@ class Test_Main:
         caplog.set_level(logging.DEBUG)
 
         mock_collector = MagicMock()
-        mock_collector.fatal_error.is_set.return_value = False
         mock_collector_cls.return_value = mock_collector
 
         # Simulate device being unreachable at startup
@@ -229,7 +207,6 @@ class Test_Main:
         caplog.set_level(logging.DEBUG)
 
         mock_collector = MagicMock()
-        mock_collector.fatal_error.is_set.return_value = False
         mock_collector_cls.return_value = mock_collector
 
         # A transport-level failure at startup must not be fatal either

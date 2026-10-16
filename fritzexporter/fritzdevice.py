@@ -18,7 +18,7 @@ from fritzexporter.exceptions import (
     FritzDeviceHasNoCapabilitiesError,
     FritzDeviceSerialUnknownError,
 )
-from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiMd5DisabledError
+from fritzexporter.fritz_webui import FritzWebUiClient
 from fritzexporter.fritzcapabilities import (
     FritzCapabilities,
     ProblemLevel,
@@ -265,10 +265,6 @@ class FritzCollector(Collector):
         self._scrapes_per_device: dict[tuple[str, str], int] = {}
         self._scrape_timeouts: int = 0
         self._scrape_failures: int = 0
-        # Set when an error must stop the exporter. Scrapes run in the HTTP
-        # server's threads, where sys.exit() would end only that thread, so the
-        # main thread waits on this event and exits instead.
-        self.fatal_error = threading.Event()
 
     def register(self, fritzdev: FritzDevice) -> None:
         self.devices.append(fritzdev)
@@ -401,6 +397,8 @@ class FritzCollector(Collector):
         # Reset availability for this collection cycle
         for dev in self.devices:
             dev.available = True
+            if dev.webui_client is not None:
+                dev.webui_client.start_scrape()
 
         collected: list[CounterMetricFamily | GaugeMetricFamily] = []
 
@@ -452,12 +450,7 @@ class FritzCollector(Collector):
             )
             return
         try:
-            try:
-                collected = self._collect_devices()
-            except FritzWebUiMd5DisabledError as e:
-                logger.critical("%s Exiting.", e)
-                self.fatal_error.set()
-                return
+            collected = self._collect_devices()
 
             # Built under the stats lock, yielded outside it, so the counters in
             # one output agree with the fritz_device_reachable gauge of the same cycle.
