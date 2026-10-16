@@ -270,7 +270,8 @@ How the levels are built:
   the device is not collected, because the serial is the label that tells devices
   apart (names are unique only among the configured devices).
 
-``FritzCapability.get_metrics`` guards each device's ``_generate_metric_values`` call.
+``FritzCapability._collect_device``, called by ``get_metrics`` for each device, guards
+its ``_generate_metric_values`` call.
 In every case below, the samples that device added to the capability are dropped, so
 no partial set is exported:
 
@@ -298,7 +299,8 @@ scrape.
   level, not the text, keeps changing item indexes from causing new warnings.
 
 A capability does not catch errors itself, except where it can do better than skip,
-e.g. the fibre levels fall back to the TR-064 values.
+e.g. when TR-064 answers 0 for both fibre levels, they come from the web interface
+instead, and a failure there leaves them out but keeps the rest of the fibre data.
 
 
 Adding a New Metric / Capability

@@ -33,8 +33,8 @@ If you only need a single device this is the easiest way to configure the export
 | ``FRITZ_LOG_LEVEL``                 | Application log level: ``DEBUG``, ``INFO``,        | INFO      |
 |                                     | ``WARNING``, ``ERROR``, ``CRITICAL``               |           |
 +-------------------------------------+----------------------------------------------------+-----------+
-| ``FRITZ_HOST_INFO``                 | Enable extended information about all WiFi         | False     |
-|                                     | hosts. Only "true" or "1" will enable this feature |           |
+| ``FRITZ_HOST_INFO``                 | Enable extended information about all hosts (slow, | False     |
+|                                     | see the note below). Only "true" or "1" enable it. |           |
 +-------------------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_WIFI_CLIENT_INFO``          | Enable per-client WiFi metrics (signal/speed).     | False     |
 |                                     | Only "true" or "1" will enable this feature.       |           |
@@ -61,17 +61,66 @@ If you only need a single device this is the easiest way to configure the export
 |                                     | enable this.                                       |           |
 +-------------------------------------+----------------------------------------------------+-----------+
 
+When using the environment vars you can only specify a single device. If you need multiple devices please use the config file.
+
+Example for a device (at 192.168.178.1 username "monitoring" and the password "mysupersecretpassword"):
+
+.. code-block:: bash
+
+  export FRITZ_NAME='My Fritz!Box'
+  export FRITZ_HOSTNAME='192.168.178.1'
+  export FRITZ_USERNAME='monitoring'
+  export FRITZ_PASSWORD='mysupersecretpassword'
+
+.. _config-file:
+
+Config file
+-----------
+
+To use the config file you have to specify the location of the config and mount the appropriate file into the container. The location can be specified by using the ``--config`` parameter.
+
+.. code-block:: yaml
+
+    # Full example config file for Fritz-Exporter
+    exporter_port: 9787 # optional
+    listen_address: 0.0.0.0 # optional; default 127.0.0.1, set 0.0.0.0 in a container
+    log_level: DEBUG # optional
+    devices:
+    - name: Fritz!Box 7590 Router # optional; default: the hostname. Must be unique
+      hostname: fritz.box
+      username: prometheus
+      password: prometheus
+      host_info: True # optional, see below
+      wifi_client_info: True # optional, per-client WiFi signal/speed (higher cardinality)
+      connection_timeout: 10 # optional, seconds; 0 disables timeout (default 10)
+      use_tls: false # optional; true = HTTPS for TR-064 and the web interface
+      port: 49000 # optional; TR-064 port locally, shared remote port with remote_access
+      remote_access: false # optional; true = WAN remote access (requires use_tls)
+      allow_unsafe_md5_password: false # optional; true = allow MD5 web login (Fritz!OS < 7.24)
+    - name: Repeater Wohnzimmer # optional
+      hostname: repeater-Wohnzimmer
+      username: prometheus
+      password_file: /path/to/password.txt
+
+Every device needs ``password`` or ``password_file``. The exporter refuses to start
+on a key it does not know (e.g. ``pasword:``) and on two devices with the same name;
+the error message names the device and the key.
+
 .. note::
 
-  enabling ``FRITZ_HOST_INFO`` by setting it to ``true`` or ``1`` will collect extended information about every device known your fritz device which can take a long time (20+ seconds). If you really want or need the extended stats please make sure that your Prometheus scraping interval and timeouts are set accordingly.
+  ``host_info: true`` (env: ``FRITZ_HOST_INFO``) collects extended information about every device known to your Fritz device, which can take a long time (20+ seconds). If you want it, set your Prometheus scrape interval and timeout to match.
+
+.. note::
+
+  ``wifi_client_info: true`` (env: ``FRITZ_WIFI_CLIENT_INFO``) exposes per-station WiFi metrics (signal strength and negotiated speed) for every associated client, on the box and on mesh repeaters alike. This adds one time series per connected client, so it is disabled by default — enable it only if you want per-client visibility and are aware of the extra cardinality.
 
 .. _ports:
 
 Ports, TLS and remote access
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------
 
 The exporter talks to two interfaces on the device: TR-064 for most metrics, and
-the web interface for smart home (AHA), DOCSIS and REST API metrics. Which ports
+the web interface for smart home (AHA), DOCSIS, fibre and REST API metrics. Which ports
 it uses depends on ``use_tls``, ``port`` and ``remote_access``:
 
 +----------------------------------+---------------------------+---------------------------+
@@ -97,7 +146,7 @@ disabled (default).
 .. _md5-login:
 
 Legacy MD5 web login
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 
 Fritz!OS 7.24 and later log in to the web interface with PBKDF2. Older firmware
 only offers an MD5 login. Anyone who can read the traffic between exporter and
@@ -116,7 +165,7 @@ exporter then logs a warning on every MD5 login. TR-064 uses its own login, see
 .. _exporter-password:
 
 Exporter user and password
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 
 TR-064 logs in with HTTP digest authentication, and Fritz!Box devices only offer it
 with MD5. Without TLS, anyone who can read one request between exporter and device
@@ -127,55 +176,3 @@ Create a separate user for the exporter, give it only the rights it needs, and s
 random password of at least 20 characters (the device allows at most 32). That puts
 offline guessing out of reach. On a trusted LAN this is little more than good habit;
 it matters when the traffic crosses networks you do not control.
-
-When using the environment vars you can only specify a single device. If you need multiple devices please use the config file.
-
-Example for a device (at 192.168.178.1 username "monitoring" and the password "mysupersecretpassword"):
-
-.. code-block:: bash
-
-  export FRITZ_NAME='My Fritz!Box'
-  export FRITZ_HOSTNAME='192.168.178.1'
-  export FRITZ_USERNAME='monitoring'
-  export FRITZ_PASSWORD='mysupersecretpassword'
-
-.. _config-file:
-
-Config file
------------
-
-To use the config file you have to specify the the location of the config and mount the appropriate file into the container. The location can be specified by using the ``--config`` parameter.
-
-.. code-block:: yaml
-
-    # Full example config file for Fritz-Exporter
-    exporter_port: 9787 # optional
-    log_level: DEBUG # optional
-    devices:
-    - name: Fritz!Box 7590 Router # optional; default: the hostname. Must be unique
-      hostname: fritz.box
-      username: prometheus
-      password: prometheus
-      host_info: True
-      wifi_client_info: True # optional, per-client WiFi signal/speed (higher cardinality)
-      connection_timeout: 10 # optional, seconds; 0 disables timeout (default 10)
-      use_tls: false # optional; true = HTTPS for TR-064 and the web interface
-      port: 49000 # optional; TR-064 port locally, shared remote port with remote_access
-      remote_access: false # optional; true = WAN remote access (requires use_tls)
-      allow_unsafe_md5_password: false # optional; true = allow MD5 web login (Fritz!OS < 7.24)
-    - name: Repeater Wohnzimmer # optional
-      hostname: repeater-Wohnzimmer
-      username: prometheus
-      password_file: /path/to/password.txt
-
-Every device needs ``password`` or ``password_file``. The exporter refuses to start
-on a key it does not know (e.g. ``pasword:``) and on two devices with the same name;
-the error message names the device and the key.
-
-.. note::
-
-  Enabling ``FRITZ_HOST_INFO`` by setting it to ``true`` or ``1`` will collect extended information about every device known to your Fritz device, which can take a long time (20+ seconds). If you really want or need the extended stats, please make sure that your Prometheus scraping interval and timeouts are set accordingly.
-
-.. note::
-
-  Enabling ``FRITZ_WIFI_CLIENT_INFO`` (``true`` or ``1``) exposes per-station WiFi metrics (signal strength and negotiated speed) for every associated client, on the box and on mesh repeaters alike. This adds one time series per connected client, so it is disabled by default — enable it only if you want per-client visibility and are aware of the extra cardinality.

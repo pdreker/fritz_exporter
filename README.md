@@ -1,7 +1,7 @@
 # Fritz! exporter for prometheus
 
 > **⚠️ v4.0.0 breaking changes — action may be required**
-> - **Legacy MD5 web login refused by default.** Devices on Fritz!OS before 7.24 only offer an MD5 login to the web interface, which the smart home, DOCSIS and REST API metrics use. For such a device the exporter now logs an error and reads no web interface metrics from it until restarted; its TR-064 metrics keep working. Upgrade Fritz!OS, or set `allow_unsafe_md5_password: true` (env: `FRITZ_ALLOW_UNSAFE_MD5_PASSWORD=true`) for that device to accept the risk.
+> - **Legacy MD5 web login refused by default.** Devices on Fritz!OS before 7.24 only offer an MD5 login to the web interface, which the smart home, DOCSIS, fibre and REST API metrics use. For such a device the exporter now logs an error and reads no web interface metrics from it until restarted; its TR-064 metrics keep working. Upgrade Fritz!OS, or set `allow_unsafe_md5_password: true` (env: `FRITZ_ALLOW_UNSAFE_MD5_PASSWORD=true`) for that device to accept the risk.
 > - **Devices without a readable serial number are not collected.** They are reported as unreachable and, after three retries, given up until restart, instead of being collected with `serial="n/a"`.
 > - Unreadable data is now skipped and reported in the new `fritz_read_problem` metric.
 > - **Docker image runs as `nobody` (65534).** Mounted config and password files must be readable by that user. The image and the Helm chart now listen on `0.0.0.0` by default; a config file used with plain Docker must set `listen_address: 0.0.0.0`.

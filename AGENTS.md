@@ -57,25 +57,26 @@ attrs validators and converters are the **primary defence against bad config inp
 ```python
 DEFAULT_CONNECTION_TIMEOUT: int = 10
 
-def _convert_optional_int(value: int | str | None) -> int | None:
+def _zero_is_none(value: int | str | None) -> int | None:
+    """An int, where ``0`` (or ``None``) means "not set"."""
     if value is None:
         return None
-    timeout = int(value)       # coerce str from env vars
-    if timeout == 0:
-        return None            # treat 0 as "no value" when appropriate
-    return timeout
+    number = int(value)        # coerce str from env vars
+    return None if number == 0 else number
 
 @define
 class DeviceConfig:
     connection_timeout: int | None = field(
         default=DEFAULT_CONNECTION_TIMEOUT,
-        converter=_convert_optional_int,
+        converter=_named(_zero_is_none),
         validator=validators.optional(validators.ge(1)),
     )
 ```
 
-An omitted YAML value uses the 10-second default. This converter handles explicit `None` or `0`
-(no timeout), `"15"` (string from env var), and rejects negatives — all in one place.
+An omitted value uses the 10-second default. The converter handles `0` (no timeout) and
+`"15"` (text from an env var); the validator rejects negatives. Wrap converters in
+`_named()`, so a conversion error names the key; text fields use `_text` /
+`_optional_text`, which refuse YAML lists, maps and booleans.
 
 **Custom validator method pattern** (for logic that can't use built-ins):
 ```python
@@ -89,15 +90,16 @@ class DeviceConfig:
             raise FritzPasswordTooLongError
 ```
 
-**Key rule:** if you add a new config field, always add a converter and/or validator on the attrs field itself. Do not validate the raw dict in `from_config()` or in `_read_config_from_env()` — that duplicates logic and is easy to miss in one of the two config paths.
+**Key rule:** if you add a new config field, always add a converter and/or validator on the attrs field itself. Do not validate the raw dict in `from_config()` or in `_read_config_from_env()` — that duplicates logic and is easy to miss in one of the two config paths. `from_config()` passes every key to the class and refuses unknown ones (`_check_keys`), so a new field needs no change there.
 
 ---
 
 ## Linting: ruff
 
-**ruff** is the linter. Run it with:
+**ruff** is the linter. Run it, and the formatter check, as CI does:
 ```bash
-uv run ruff check fritzexporter/
+uv run ruff check .
+uv run ruff format --check .
 ```
 
 Key configuration (see `pyproject.toml` `[tool.ruff]`):
@@ -223,7 +225,7 @@ fritzexporter/
 - Capability: strict reads outside an item — use them only for what the whole capability depends on (shared labels, loop counts, reply structure).
 - Device: an unreadable serial raises `FritzDeviceSerialUnknownError`; the device is registered offline and given up after `SERIAL_RETRIES` (3) retries.
 
-`FritzCapability.get_metrics` handles the rest centrally: it exports `fritz_read_problem{capability, level}` while a problem lasts and logs it when it appears, hourly while it lasts and when it is gone (`report_problem()`; also used for the connection mode). An error reply to a TR-064 request skips the item (inside `_item`) or the capability; only a device that does not answer (`TRANSPORT_ERRORS`) is unreachable. Other errors are treated as bugs (traceback on every scrape). **Do not add `try/except` in a capability just to log and return** — only where it can do better than skipping (e.g. a fallback).
+`FritzCapability._collect_device` handles the rest centrally: it exports `fritz_read_problem{capability, level}` while a problem lasts and logs it when it appears, hourly while it lasts and when it is gone (`report_problem()`; also used for the connection mode). An error reply to a TR-064 request skips the item (inside `_item`) or the capability; only a device that does not answer (`TRANSPORT_ERRORS`) is unreachable. Other errors are treated as bugs (traceback on every scrape). **Do not add `try/except` in a capability just to log and return** — only where it can do better than skipping (e.g. a fallback).
 
 ### Adding a new metric/capability
 
@@ -283,17 +285,16 @@ Both paths produce the same `ExporterConfig` / `DeviceConfig` attrs objects and 
 
 **Whenever you add or change a device or exporter config option, you must update both paths:**
 
-1. Add the field to `DeviceConfig` or `ExporterConfig` (with converter + validator as appropriate).
-2. Add the YAML key read in `DeviceConfig.from_config()` / `ExporterConfig.from_config()`.
-3. Add the corresponding `os.getenv(...)` read in `_read_config_from_env()` and include it in the device/config dict.
-4. Add tests for both paths in `tests/test_config.py` (see `TestFileConfigs` and `TestEnvConfig`).
-5. Update `docs/configuration.rst`: the env var table and the YAML example block.
+1. Add the field to `DeviceConfig` or `ExporterConfig` (with converter + validator as appropriate). The YAML key is the field name; `from_config()` needs no change.
+2. Add the key and its environment variable to `_DEVICE_ENV` or `_EXPORTER_ENV` in `config.py`.
+3. Add tests for both paths in `tests/test_config.py` (see `TestFileConfigs` and `TestEnvConfig`).
+4. Update `docs/configuration.rst` (the env var table and the YAML example block) and the mapping table above.
 
 Failure to keep the two paths in sync silently degrades the env-based deployment path, which is the primary path for Docker/container users.
 
 ---
 
-
+## Dependencies
 
 - Dependencies are managed with **uv** (`pyproject.toml`, `uv.lock`).
 - Install all dependencies: `uv sync`
@@ -309,13 +310,13 @@ Failure to keep the two paths in sync silently degrades the env-based deployment
 - All changes must go through a feature branch and a pull request, regardless of how small.
 - Branch naming convention: `<type>/<short-description>` (e.g. `fix/logging-cleanup`, `feat/new-capability`, `docs/update-readme`).
 - Use conventional commit messages (see below) on every commit.
-- Run `uv run pytest` and `uv run ruff check fritzexporter/` before pushing — CI will reject failures.
+- Run the CI steps before pushing — CI will reject failures: `uv run ruff check .`, `uv run ruff format --check .`, `uv run ty check` (covers `tests/` too) and `uv run pytest`.
 
 ---
 
 ## CI / GitHub Actions
 
-- **`run-tests.yaml`**: runs on PRs and pushes to `main`; executes linting (ruff check + ruff format) and pytest, uploads to SonarCloud.
+- **`run-tests.yaml`**: runs on PRs and pushes to `main`; executes linting (ruff check + ruff format), type checking (ty) and pytest, uploads to SonarCloud.
 - **`build-trunk.yaml`**: builds and publishes Docker images on pushes to `main`.
 - **`release.yaml`**: triggered by `release-please`; handles versioning and releases.
 - **`release-please`**: automatically opens release PRs based on conventional commit history. Do not manually bump version numbers.
