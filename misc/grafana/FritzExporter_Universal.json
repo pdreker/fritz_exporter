@@ -739,7 +739,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "count(fritz_uptime_seconds_total{friendly_name=\"$box\"} * on (serial) group_right() (fritz_host_active{interface!=\"\"}==1))",
+                        "expr": "count(fritz_uptime_seconds_total{friendly_name=\"$box\"} * on (serial) group_right() ((fritz_host_active == 1) * on (serial, mac_address) group_left () fritz_host_info{interface!=\"\"}))",
                         "interval": "",
                         "legendFormat": "#",
                         "range": true
@@ -1433,7 +1433,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "(fritz_host_active{friendly_name=\"${box}\",interface!=\"\"}) * on(instance,hostname,mac_address) group_right() fritz_host_active",
+                        "expr": "fritz_host_active{friendly_name=\"${box}\"} * on (serial, mac_address) group_left (ip_address, hostname, interface, port, model) fritz_host_info{interface!=\"\"}",
                         "format": "time_series",
                         "instant": true,
                         "interval": "",
@@ -3125,7 +3125,7 @@
                       "spec": {
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "fritz_wan_connection_status{friendly_name=\"${box}\",state=\"connected\"}",
+                        "expr": "fritz_wan_connection_status{friendly_name=\"${box}\",state=\"connected\"} * on (serial, connection, stack) group_left (ip_address) fritz_wan_connection_info",
                         "instant": true,
                         "legendFormat": "__auto",
                         "range": false

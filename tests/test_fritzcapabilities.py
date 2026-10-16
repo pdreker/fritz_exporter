@@ -185,12 +185,13 @@ class TestHostInfoCapability:
         # Check - fritz_host_active and fritz_host_speed should be present
         host_active_metrics = [m for m in metrics if m.name == "fritz_host_active"]
         assert len(host_active_metrics) == 1
+        assert host_active_metrics[0].samples[0].value == 0.0
         # With empty IP, interface/port/model should be "n/a"
-        sample = host_active_metrics[0].samples[0]
+        [info] = [m for m in metrics if m.name == "fritz_host_info"]
+        sample = info.samples[0]
         assert sample.labels["interface"] == "n/a"
         assert sample.labels["port"] == "n/a"
         assert sample.labels["model"] == "n/a"
-        assert sample.value == 0.0
 
     def test_host_table_shrinking_mid_scan_keeps_device_reachable(
         self, mock_fritzconnection: MagicMock, caplog
@@ -322,14 +323,18 @@ class TestHostInfoCapability:
         host_active_metrics = [m for m in metrics if m.name == "fritz_host_active"]
         assert len(host_active_metrics) == 1
         assert len(host_active_metrics[0].samples) == 2
-        vanished = [
-            s for s in host_active_metrics[0].samples if s.labels["ip_address"] == "192.168.178.10"
+        [info] = [
+            m for m in metrics if m.name == "fritz_host_info"
         ]
-        assert len(vanished) == 1
-        assert vanished[0].labels["interface"] == "n/a"
-        assert vanished[0].labels["port"] == "n/a"
-        assert vanished[0].labels["model"] == "n/a"
-        assert vanished[0].value == 1.0
+        [vanished] = [s for s in info.samples if s.labels["ip_address"] == "192.168.178.10"]
+        assert vanished.labels["interface"] == "n/a"
+        assert vanished.labels["port"] == "n/a"
+        assert vanished.labels["model"] == "n/a"
+        [active] = [
+            s for s in host_active_metrics[0].samples
+            if s.labels["mac_address"] == vanished.labels["mac_address"]
+        ]
+        assert active.value == 1.0
 
         # Check - benign lookup-miss path is logged and no unreachable error is emitted
         assert any(
@@ -1070,3 +1075,63 @@ class TestProbing:
         problems = {(s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples}
         assert ("HostInfo", "partial") in problems
         assert by_name["fritz_device_reachable"].samples[0].value == 1.0
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestHostInfoKeyedByMac:
+    @staticmethod
+    def _collect(mock_fritzconnection: MagicMock, hosts: list[dict]) -> tuple[dict, list]:
+        def host_table(service, action, **kwargs):
+            if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
+                return {"NewHostNumberOfEntries": len(hosts)}
+            if (service, action) == ("Hosts1", "GetGenericHostEntry"):
+                index = _argument(kwargs, "NewIndex")
+                if index >= len(hosts):
+                    raise FritzArrayIndexError
+                return {"NewIPAddress": "", "NewHostName": "h", "NewActive": 1, **hosts[index]}
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = host_table
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+        collector = FritzCollector()
+        collector.register(FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock", host_info=True))
+        by_name = {m.name: m for m in collector.collect()}
+        problems = [
+            (s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples
+        ]
+        return by_name, problems
+
+    def test_active_and_speed_carry_only_the_mac(self, mock_fritzconnection: MagicMock):
+        by_name, _ = self._collect(mock_fritzconnection, [{"NewMACAddress": "AA:BB:CC:DD:EE:01"}])
+
+        for name in ("fritz_host_active", "fritz_host_speed"):
+            [sample] = by_name[name].samples
+            assert set(sample.labels) == {"serial", "friendly_name", "mac_address"}
+        [info] = by_name["fritz_host_info"].samples
+        assert info.labels["hostname"] == "h"
+        assert info.value == 1
+
+    def test_host_without_mac_is_left_out_quietly(self, mock_fritzconnection: MagicMock):
+        by_name, problems = self._collect(
+            mock_fritzconnection, [{"NewMACAddress": ""}, {"NewMACAddress": "AA:BB:CC:DD:EE:01"}]
+        )
+
+        assert [s.labels["mac_address"] for s in by_name["fritz_host_active"].samples] == [
+            "AA:BB:CC:DD:EE:01"
+        ]
+        assert ("HostInfo", "partial") not in problems
+
+    def test_mac_listed_twice_keeps_the_first(self, mock_fritzconnection: MagicMock):
+        by_name, problems = self._collect(
+            mock_fritzconnection,
+            [
+                {"NewMACAddress": "AA:BB:CC:DD:EE:01", "NewHostName": "first"},
+                {"NewMACAddress": "AA:BB:CC:DD:EE:01", "NewHostName": "second"},
+            ],
+        )
+
+        assert [s.labels["hostname"] for s in by_name["fritz_host_info"].samples] == ["first"]
+        assert len(by_name["fritz_host_active"].samples) == 1
+        assert ("HostInfo", "partial") in problems
+
