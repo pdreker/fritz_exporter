@@ -4632,7 +4632,7 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum by (interface) (label_replace(fritz_host_active{friendly_name=\"$device\"} * on (serial, mac_address) group_left (interface) fritz_host_info{friendly_name=\"$device\"}, \"interface\", \"unknown\", \"interface\", \"\"))",
+              "expr": "sum by (interface) (label_replace(fritz_host_active{friendly_name=\"$device\"} * on (serial, mac_address) group_left (interface) fritz_host_info{friendly_name=\"$device\"}, \"interface\", \"unknown\", \"interface\", \"(|n/a)\"))",
               "refId": "A",
               "legendFormat": "{{interface}}"
             }
@@ -5901,7 +5901,7 @@
         {
           "type": "stat",
           "title": "USP controllers",
-          "description": "",
+          "description": "On: a remote party may manage this device.",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -5944,12 +5944,12 @@
                   "options": {
                     "1": {
                       "text": "On",
-                      "color": "green",
+                      "color": "orange",
                       "index": 0
                     },
                     "0": {
                       "text": "Off",
-                      "color": "text",
+                      "color": "green",
                       "index": 1
                     }
                   }

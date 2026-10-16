@@ -557,6 +557,14 @@ def joined(expr: str, info: str, on: str, *labels: str) -> str:
 WIFI_SSID = ("fritz_wifi_info", "serial, wifi_index", "ssid")
 
 
+def line_rate(direction: str) -> str:
+    """The line's rate: the 64-bit layer 1 value, or the 32-bit one where it is missing (cable)."""
+    return (
+        f"({q('fritz_wan_layer1_max_bitrate_bps', direction=direction)}"
+        f" or {q('fritz_wan_max_bitrate_bps', direction=direction)})"
+    )
+
+
 def rate(metric: str, **labels: str) -> str:
     return f"rate({q(metric, **labels)}[$__rate_interval])"
 
@@ -1249,7 +1257,7 @@ def overview() -> dict:  # noqa: PLR0915
                         "sum by (interface) (label_replace("
                         f"{q('fritz_host_active')} * on (serial, mac_address) "
                         f"group_left (interface) {q('fritz_host_info')}, "
-                        '"interface", "unknown", "interface", ""))'
+                        '"interface", "unknown", "interface", "(|n/a)"))'
                     ),
                     "{{interface}}",
                 )
@@ -1454,8 +1462,9 @@ def overview() -> dict:  # noqa: PLR0915
                 (q("fritz_usp_controller_enabled"), "controller {{index}}"),
                 (q("fritz_usp_myfritz_enabled"), "MyFRITZ"),
             ),
-            mappings=ON_OFF,
+            mappings=mapping({"1": ("On", "orange"), "0": ("Off", "green")}),
             text="value_and_name",
+            description="On: a remote party may manage this device.",
         ),
         4,
         4,
@@ -1581,7 +1590,7 @@ def home() -> dict:
                 [
                     target(
                         f"{q('fritz_wan_datarate_bytes', direction=direction)} * 8 / "
-                        f"{q('fritz_wan_layer1_max_bitrate_bps', direction=direction)} * 100"
+                        f"{line_rate(direction)} * 100"
                     )
                 ],
                 unit="percent",
@@ -1614,8 +1623,8 @@ def home() -> dict:
         bars(
             "Sync rate",
             targets(
-                (q("fritz_wan_layer1_max_bitrate_bps", direction="rx"), "down"),
-                (q("fritz_wan_layer1_max_bitrate_bps", direction="tx"), "up"),
+                (line_rate("rx"), "down"),
+                (line_rate("tx"), "up"),
             ),
             unit="bps",
             scheme="continuous-BlPu",

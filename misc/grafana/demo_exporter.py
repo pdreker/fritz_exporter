@@ -242,8 +242,8 @@ def _webui() -> MagicMock:
     return client
 
 
-def main() -> None:
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 9788
+def demo_collector() -> FritzCollector:
+    """The collector with both demo boxes set up."""
     services = {}
     for caps in fc_services_capabilities.values():
         for service, actions in caps.items():
@@ -280,7 +280,12 @@ def main() -> None:
                     wifi_client_info=True,
                 )
             )
-    REGISTRY.register(collector)
+    return collector
+
+
+def main() -> None:
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 9788
+    REGISTRY.register(demo_collector())
     start_http_server(port, "127.0.0.1")
     print(f"demo exporter on 127.0.0.1:{port}", flush=True)  # noqa: T201
     threading.Event().wait()

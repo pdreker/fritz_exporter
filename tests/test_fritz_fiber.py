@@ -8,9 +8,8 @@ import pytest
 from fritzexporter.fritz_fiber import parse_fiber_stats_response
 from fritzexporter.fritz_webui import FritzWebUiError
 from fritzexporter.reply import DataError, Issues
-from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
-from .fc_services_mock import call_action_mock, create_fc_services, fc_services_capabilities
+from .collect import collect_device, fake_device, services
 
 
 class TestParseFiberStats:
@@ -62,35 +61,24 @@ class TestWanFiberWebUiFallback:
         webui_client: MagicMock | None,
         scrapes: int = 1,
     ) -> dict[str, float | None]:
-        fc = mock_fritzconnection.return_value
-
-        def fiber_call_action_mock(service, action, **kwargs):
-            result = call_action_mock(service, action, **kwargs)
-            if (service, action) == ("X_AVM-DE_WANFiber1", "GetInfo"):
-                result = dict(result)
-                result["NewOpticalSignalLevel"], result["NewTransmitOpticalLevel"] = tr064_levels
-            return result
-
-        fc.call_action.side_effect = fiber_call_action_mock
-        fc.services = create_fc_services(
-            {
-                **fc_services_capabilities["DeviceInfo"],
-                **fc_services_capabilities["WanCommonInterfaceByteRate"],
-                "X_AVM-DE_WANFiber1": ["GetInfo", "GetInfoGPON", "GetStatistics"],
-            }
+        receive, transmit = tr064_levels
+        by_name = collect_device(
+            mock_fritzconnection,
+            services(
+                "DeviceInfo",
+                "WanCommonInterfaceByteRate",
+                **{"X_AVM-DE_WANFiber1": ["GetInfo", "GetInfoGPON", "GetStatistics"]},
+            ),
+            overrides={
+                ("X_AVM-DE_WANFiber1", "GetInfo"): {
+                    "NewOpticalSignalLevel": receive,
+                    "NewTransmitOpticalLevel": transmit,
+                }
+            },
+            webui_client=webui_client,
+            name="FritzFiber",
+            scrapes=scrapes,
         )
-
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzFiber",
-            host_info=False,
-        )
-        device.webui_client = webui_client
-        collector.register(device)
-        for _ in range(scrapes - 1):
-            list(collector.collect())
-        by_name = {m.name: m for m in collector.collect()}
 
         def level(name: str) -> float | None:
             samples = by_name[name].samples
@@ -164,19 +152,10 @@ class TestWanFiberWebUiFallback:
     ):
         # No other web-UI capability is present here, so the device must
         # create the client for the fibre fallback during normal initialisation.
-        fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = call_action_mock
-        fc.services = create_fc_services(
-            {
-                **fc_services_capabilities["DeviceInfo"],
-                "X_AVM-DE_WANFiber1": ["GetInfo"],
-            }
-        )
-
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzFiber",
-            host_info=False,
+        device = fake_device(
+            mock_fritzconnection,
+            services("DeviceInfo", **{"X_AVM-DE_WANFiber1": ["GetInfo"]}),
+            name="FritzFiber",
         )
 
         assert device.capabilities["WanFiberInterfaceConfig"].present

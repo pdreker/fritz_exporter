@@ -10,7 +10,6 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-from prometheus_client.core import Metric
 
 from fritzexporter.fritz_rest_generic import (
     parse_connections_response,
@@ -18,16 +17,12 @@ from fritzexporter.fritz_rest_generic import (
 )
 from fritzexporter.fritz_webui import FritzWebUiError
 from fritzexporter.reply import DataError, Issues
-from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
-from .fc_services_mock import call_action_mock, create_fc_services, fc_services_capabilities
+from fritzexporter.fritzdevice import FritzCollector
 
+from .collect import CABLE, collect_device, fake_device, sample_map, services
 
-def _sample_map(metric: Metric) -> dict[tuple[tuple[str, str], ...], float]:
-    return {
-        tuple(sorted(sample.labels.items())): sample.value
-        for sample in metric.samples
-    }
+WAN_SERVICES = services("DeviceInfo", "WanCommonInterfaceByteRate", "WanCommonInterfaceConfig")
 
 
 # ---------------------------------------------------------------------------
@@ -109,43 +104,22 @@ class TestParseMonitorSegment:
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestWanSegmentUtilization:
     def _collect(self, mock_fritzconnection: MagicMock, segment_raw: dict | None = None):
-        fc = mock_fritzconnection.return_value
-
-        def cable_call_action_mock(service, action, **kwargs):
-            result = call_action_mock(service, action, **kwargs)
-            if (service, action) == ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"):
-                result = dict(result)
-                result["NewWANAccessType"] = "X_AVM-DE_Cable"
-            return result
-
-        fc.call_action.side_effect = cable_call_action_mock
-        services = {
-            **fc_services_capabilities["DeviceInfo"],
-            **fc_services_capabilities["WanCommonInterfaceByteRate"],
-            **fc_services_capabilities["WanCommonInterfaceConfig"],
-        }
-        fc.services = create_fc_services(services)
-
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzCable",
-            host_info=False,
+        client = MagicMock()
+        client.fetch_page.return_value = {}
+        client.fetch_api.return_value = segment_raw or SEGMENT_RAW
+        return collect_device(
+            mock_fritzconnection,
+            WAN_SERVICES,
+            overrides=CABLE,
+            webui_client=client,
+            name="FritzCable",
         )
-        mock_client = MagicMock()
-        mock_client.fetch_page.return_value = {}
-        mock_client.fetch_api.return_value = segment_raw or SEGMENT_RAW
-        device.webui_client = mock_client
-
-        collector.register(device)
-        return list(collector.collect())
 
     def test_exposes_latest_sample_for_all_scopes(self, mock_fritzconnection: MagicMock):
-        metrics = self._collect(mock_fritzconnection)
-        by_name = {m.name: m for m in metrics}
+        by_name = self._collect(mock_fritzconnection)
 
         assert "fritz_cable_segment_utilization_percent" in by_name
-        util = _sample_map(by_name["fritz_cable_segment_utilization_percent"])
+        util = sample_map(by_name["fritz_cable_segment_utilization_percent"])
         assert util  # at least one sample was emitted
 
         # Newest value of each of the four (direction, scope) combinations.
@@ -165,8 +139,7 @@ class TestWanSegmentUtilization:
         }
 
     def test_sample_age_uses_last_sample_time(self, mock_fritzconnection: MagicMock):
-        metrics = self._collect(mock_fritzconnection)
-        by_name = {m.name: m for m in metrics}
+        by_name = self._collect(mock_fritzconnection)
 
         assert "fritz_cable_segment_sample_timestamp_seconds" in by_name
         age = by_name["fritz_cable_segment_sample_timestamp_seconds"]
@@ -186,99 +159,36 @@ class TestWanSegmentUtilization:
             ],
             "lastSampleTime": 1700000000,
         }
-        metrics = self._collect(mock_fritzconnection, raw)
-        util = next(m for m in metrics if m.name == "fritz_cable_segment_utilization_percent")
+        util = self._collect(mock_fritzconnection, raw)["fritz_cable_segment_utilization_percent"]
         # downstream newest is null and upstream is empty -> nothing emitted
         assert util.samples == []
 
     def test_enabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
         """The REST API is not cable-specific; present on any box with the
         common WAN interface service."""
-        fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = call_action_mock
-        services = {
-            **fc_services_capabilities["DeviceInfo"],
-            **fc_services_capabilities["WanCommonInterfaceByteRate"],
-            **fc_services_capabilities["WanCommonInterfaceConfig"],
-        }
-        fc.services = create_fc_services(services)
-
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzCable",
-            host_info=False,
-        )
+        device = fake_device(mock_fritzconnection, WAN_SERVICES, name="FritzCable")
         device.webui_client = None
+        collector = FritzCollector()
         collector.register(device)
-        metrics = list(collector.collect())
-
-        by_name = {m.name: m for m in metrics}
+        by_name = {m.name: m for m in collector.collect()}
         assert "fritz_cable_segment_utilization_percent" in by_name
         assert by_name["fritz_cable_segment_utilization_percent"].samples == []
         assert by_name["fritz_cable_segment_sample_timestamp_seconds"].samples == []
 
     def test_check_capability_enabled_on_cable(self, mock_fritzconnection: MagicMock):
-        fc = mock_fritzconnection.return_value
-
-        def cable_call_action_mock(service, action, **kwargs):
-            result = call_action_mock(service, action, **kwargs)
-            if (service, action) == ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"):
-                result = dict(result)
-                result["NewWANAccessType"] = "X_AVM-DE_Cable"
-            return result
-
-        fc.call_action.side_effect = cable_call_action_mock
-        services = {
-            **fc_services_capabilities["DeviceInfo"],
-            **fc_services_capabilities["WanCommonInterfaceByteRate"],
-            **fc_services_capabilities["WanCommonInterfaceConfig"],
-        }
-        fc.services = create_fc_services(services)
-
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzCable",
-            host_info=False,
-        )
+        device = fake_device(mock_fritzconnection, WAN_SERVICES, overrides=CABLE, name="FritzCable")
         assert device.capabilities["WanSegmentUtilization"].present is True
 
     def test_fetch_error_does_not_break_collection(
         self, mock_fritzconnection: MagicMock, caplog
     ):
-        fc = mock_fritzconnection.return_value
-
-        def cable_call_action_mock(service, action, **kwargs):
-            result = call_action_mock(service, action, **kwargs)
-            if (service, action) == ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"):
-                result = dict(result)
-                result["NewWANAccessType"] = "X_AVM-DE_Cable"
-            return result
-
-        fc.call_action.side_effect = cable_call_action_mock
-        services = {
-            **fc_services_capabilities["DeviceInfo"],
-            **fc_services_capabilities["WanCommonInterfaceByteRate"],
-            **fc_services_capabilities["WanCommonInterfaceConfig"],
-        }
-        fc.services = create_fc_services(services)
-
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzCable",
-            host_info=False,
-        )
-        mock_client = MagicMock()
-        mock_client.fetch_page.return_value = {}
-        mock_client.fetch_api.side_effect = FritzWebUiError("boom")
-        device.webui_client = mock_client
-
-        collector.register(device)
+        client = MagicMock()
+        client.fetch_page.return_value = {}
+        client.fetch_api.side_effect = FritzWebUiError("boom")
         with caplog.at_level(logging.ERROR):
-            metrics = list(collector.collect())
-
-        by_name = {m.name: m for m in metrics}
+            by_name = collect_device(
+                mock_fritzconnection, WAN_SERVICES, overrides=CABLE, webui_client=client, name="FritzCable"
+            )
         assert by_name["fritz_cable_segment_utilization_percent"].samples == []
         assert "fritz_device_reachable" in by_name
 
@@ -388,46 +298,20 @@ class TestParseConnectionsResponse:
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestWanConnectionStatus:
-    def _cable_fc(self, mock_fritzconnection: MagicMock) -> MagicMock:
-        fc = mock_fritzconnection.return_value
-
-        def cable_call_action_mock(service, action, **kwargs):
-            result = call_action_mock(service, action, **kwargs)
-            if (service, action) == ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"):
-                result = dict(result)
-                result["NewWANAccessType"] = "X_AVM-DE_Cable"
-            return result
-
-        fc.call_action.side_effect = cable_call_action_mock
-        services = {
-            **fc_services_capabilities["DeviceInfo"],
-            **fc_services_capabilities["WanCommonInterfaceByteRate"],
-            **fc_services_capabilities["WanCommonInterfaceConfig"],
-        }
-        fc.services = create_fc_services(services)
-        return fc
-
     def _collect(self, mock_fritzconnection: MagicMock, connections_raw: list | None = None):
-        self._cable_fc(mock_fritzconnection)
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzCable",
-            host_info=False,
+        client = MagicMock()
+        client.fetch_page.return_value = {}
+        client.fetch_api.return_value = connections_raw if connections_raw is not None else CONNECTIONS_RAW
+        return collect_device(
+            mock_fritzconnection,
+            WAN_SERVICES,
+            overrides=CABLE,
+            webui_client=client,
+            name="FritzCable",
         )
-        mock_client = MagicMock()
-        mock_client.fetch_page.return_value = {}
-        mock_client.fetch_api.return_value = (
-            connections_raw if connections_raw is not None else CONNECTIONS_RAW
-        )
-        device.webui_client = mock_client
-
-        collector.register(device)
-        return list(collector.collect())
 
     def test_uptime_samples_per_stack(self, mock_fritzconnection: MagicMock):
-        metrics = self._collect(mock_fritzconnection)
-        by_name = {m.name: m for m in metrics}
+        by_name = self._collect(mock_fritzconnection)
 
         assert "fritz_wan_connection_uptime_seconds" in by_name
         keyed = {
@@ -447,8 +331,7 @@ class TestWanConnectionStatus:
         assert "ip_address" not in sample.labels
 
     def test_status_samples_per_stack(self, mock_fritzconnection: MagicMock):
-        metrics = self._collect(mock_fritzconnection)
-        by_name = {m.name: m for m in metrics}
+        by_name = self._collect(mock_fritzconnection)
 
         assert "fritz_wan_connection_status" in by_name
         keyed = {
@@ -474,7 +357,7 @@ class TestWanConnectionStatus:
         assert all("ip_address" not in s.labels for s in by_name["fritz_wan_connection_status"].samples)
 
     def test_state_and_address_are_in_the_info_metric(self, mock_fritzconnection: MagicMock):
-        by_name = {m.name: m for m in self._collect(mock_fritzconnection)}
+        by_name = self._collect(mock_fritzconnection)
 
         info = {
             (s.labels["connection"], s.labels["stack"], s.labels["state"], s.labels["ip_address"])
@@ -492,45 +375,24 @@ class TestWanConnectionStatus:
 
     def test_no_client_no_samples(self, mock_fritzconnection: MagicMock):
         """Disabled capability (no web UI client) yields empty metric families."""
-        self._cable_fc(mock_fritzconnection)
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzCable",
-            host_info=False,
-        )
+        device = fake_device(mock_fritzconnection, WAN_SERVICES, overrides=CABLE, name="FritzCable")
         device.webui_client = None
+        collector = FritzCollector()
         collector.register(device)
-        metrics = list(collector.collect())
-
-        by_name = {m.name: m for m in metrics}
+        by_name = {m.name: m for m in collector.collect()}
         assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
         assert by_name["fritz_wan_connection_status"].samples == []
 
     def test_enabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
         """The REST API is not cable-specific; present on any box with the
         common WAN interface service."""
-        fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = call_action_mock
-        services = {
-            **fc_services_capabilities["DeviceInfo"],
-            **fc_services_capabilities["WanCommonInterfaceByteRate"],
-            **fc_services_capabilities["WanCommonInterfaceConfig"],
-        }
-        fc.services = create_fc_services(services)
-
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzCable",
-            host_info=False,
-        )
+        device = fake_device(mock_fritzconnection, WAN_SERVICES, name="FritzCable")
         assert device.capabilities["WanConnectionStatus"].present is True
 
         collector = FritzCollector()
         device.webui_client = None
         collector.register(device)
-        metrics = list(collector.collect())
-        by_name = {m.name: m for m in metrics}
+        by_name = {m.name: m for m in collector.collect()}
         assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
         assert by_name["fritz_wan_connection_status"].samples == []
 
@@ -539,33 +401,14 @@ class TestWanConnectionStatus:
     ):
         """The REST connection status is technology-independent: it is fetched
         and emitted regardless of the WAN access type."""
-        fc = mock_fritzconnection.return_value
         # Plain call_action_mock reports NewWANAccessType "PPPoE"; the
         # capability is enabled via the common WAN interface service alone.
-        fc.call_action.side_effect = call_action_mock
-        services = {
-            **fc_services_capabilities["DeviceInfo"],
-            **fc_services_capabilities["WanCommonInterfaceByteRate"],
-            **fc_services_capabilities["WanCommonInterfaceConfig"],
-        }
-        fc.services = create_fc_services(services)
-
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzCable",
-            host_info=False,
-        )
-        assert device.capabilities["WanConnectionStatus"].present is True
-
         mock_client = MagicMock()
         mock_client.fetch_page.return_value = {}
         mock_client.fetch_api.return_value = CONNECTIONS_RAW
-        device.webui_client = mock_client
-
-        collector.register(device)
-        metrics = list(collector.collect())
-        by_name = {m.name: m for m in metrics}
+        by_name = collect_device(
+            mock_fritzconnection, WAN_SERVICES, webui_client=mock_client, name="FritzCable"
+        )
 
         # Connection status was fetched and emitted on the non-cable box.
         keyed = {
@@ -586,23 +429,17 @@ class TestWanConnectionStatus:
     def test_fetch_error_does_not_break_collection(
         self, mock_fritzconnection: MagicMock, caplog
     ):
-        self._cable_fc(mock_fritzconnection)
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzCable",
-            host_info=False,
-        )
         mock_client = MagicMock()
         mock_client.fetch_page.return_value = {}
         mock_client.fetch_api.side_effect = FritzWebUiError("boom")
-        device.webui_client = mock_client
-
-        collector.register(device)
         with caplog.at_level(logging.ERROR):
-            metrics = list(collector.collect())
-
-        by_name = {m.name: m for m in metrics}
+            by_name = collect_device(
+                mock_fritzconnection,
+                WAN_SERVICES,
+                overrides=CABLE,
+                webui_client=mock_client,
+                name="FritzCable",
+            )
         assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
         assert by_name["fritz_wan_connection_status"].samples == []
         assert "fritz_device_reachable" in by_name

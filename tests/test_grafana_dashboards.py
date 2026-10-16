@@ -12,8 +12,8 @@ from fritzexporter.fritzdevice import FritzCollector
 GRAFANA = Path(__file__).parent.parent / "misc" / "grafana"
 
 
-def _builder():
-    spec = importlib.util.spec_from_file_location("build_dashboards", GRAFANA / "build_dashboards.py")
+def _load(name: str):
+    spec = importlib.util.spec_from_file_location(name, GRAFANA / f"{name}.py")
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -21,7 +21,7 @@ def _builder():
     return module
 
 
-BUILDER = _builder()
+BUILDER = _load("build_dashboards")
 
 
 def _panels(items: list[dict]):
@@ -32,6 +32,23 @@ def _panels(items: list[dict]):
 
 def _queries(board: dict) -> list[str]:
     return [t["expr"] for p in _panels(board["panels"]) for t in p.get("targets", [])]
+
+
+def _demo_labels() -> dict[str, dict[str, set[str]]]:
+    """Label names and the values seen, per sample name, from the demo exporter's boxes."""
+    labels: dict[str, dict[str, set[str]]] = {}
+    for family in _load("demo_exporter").demo_collector().collect():
+        if not family.samples:
+            labels[family.name] = {name: set() for name in family._labelnames}
+        for sample in family.samples:
+            sent = labels.setdefault(sample.name, {})
+            for name, value in sample.labels.items():
+                sent.setdefault(name, set()).add(value)
+    return labels
+
+
+DEMO_LABELS = _demo_labels()
+TARGET_LABELS = {"job", "instance"}
 
 
 @pytest.mark.parametrize("name", list(BUILDER.DASHBOARDS))
@@ -63,6 +80,36 @@ def test_queries_select_the_device(name):
             continue
         for selector in re.findall(r"fritz_[A-Za-z0-9_]+(\{[^}]*\})?", expr):
             assert 'friendly_name="$device"' in selector, expr
+
+
+@pytest.mark.parametrize("name", list(BUILDER.DASHBOARDS))
+def test_queries_use_labels_and_values_the_exporter_sends(name):
+    # A label moved to an _info metric, or a value spelt differently, leaves a
+    # panel empty without any error from Prometheus or Grafana.
+    board = BUILDER.DASHBOARDS[name]()
+    for panel in _panels(board["panels"]):
+        for target in panel.get("targets", []):
+            expr = target["expr"]
+            known = set(TARGET_LABELS)
+            for metric, matchers in re.findall(r"(fritz_[A-Za-z0-9_]+)(?:\{([^}]*)\})?", expr):
+                assert metric in DEMO_LABELS, f"{panel['title']}: no metric {metric}"
+                sent = DEMO_LABELS[metric]
+                known |= set(sent)
+                for label, op, value in re.findall(r'(\w+)\s*(=~|!=|!~|=)\s*"([^"]*)"', matchers):
+                    if label == "friendly_name":
+                        continue
+                    assert label in sent, f"{panel['title']}: {metric} has no label {label}"
+                    if op == "=":
+                        assert value in sent[label], f"{panel['title']}: {metric} {label}={value!r}"
+            known |= set(re.findall(r'"(\w+)",\s*"[^"]*",\s*"\w+",\s*"[^"]*"\)', expr))
+            used = [
+                label.strip()
+                for group in re.findall(r"\b(?:on|by|ignoring|group_left|without)\s*\(([^)]*)\)", expr)
+                for label in group.split(",")
+            ]
+            used += re.findall(r"\{\{\s*(\w+)\s*\}\}", target.get("legendFormat", ""))
+            unknown = sorted(set(used) - known)
+            assert unknown == [], f"{panel['title']}: labels not on its metrics: {unknown}"
 
 
 @pytest.mark.parametrize("name", list(BUILDER.DASHBOARDS))
