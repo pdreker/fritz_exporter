@@ -162,6 +162,15 @@ different names.
 ``host_info: true`` now also works on a device with fewer than two hosts in its host
 table; such a device used to fail its setup and was never collected.
 
+WAN byte counters no longer wrap at 4 GiB
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+On Fritz!OS 7, ``fritz_wan_data_bytes_total`` came from 32-bit totals that wrap
+every 4 GiB, which Prometheus takes as a counter reset: traffic graphs read too low.
+The exporter now takes the 64-bit totals where the device has them (every WAN box
+seen so far). On such a box the counter jumps once after the upgrade, which shows as
+a single spike in rates.
+
 Offline devices are set up again in the background
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

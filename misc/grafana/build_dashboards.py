@@ -1605,7 +1605,14 @@ def home() -> dict:
         stat(
             "Line quality",
             targets(
-                (q("fritz_dsl_noise_margin_dB", direction="rx"), "DSL noise margin"),
+                (
+                    # A box on fibre can have DSL switched off, with all values 0.
+                    (
+                        f"{q('fritz_dsl_noise_margin_dB', direction='rx')}"
+                        f" and on (serial) {q('fritz_dsl_status_enabled')} == 1"
+                    ),
+                    "DSL noise margin",
+                ),
                 (f"min({q('fritz_docsis_mer_dB')})", "DOCSIS MER (worst)"),
                 (q("fritz_fiber_optical_signal_level_dBm"), "Fibre receive level"),
             ),
