@@ -13,10 +13,12 @@ import sys
 import threading
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, ".")
+# The repository root, for fritzexporter and the test fixtures.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY

@@ -81,6 +81,7 @@ def mapping(values: dict[str, tuple[str, str]]) -> list[dict]:
 
 UP_DOWN = mapping({"1": ("Up", "green"), "0": ("Down", "red")})
 ON_OFF = mapping({"1": ("On", "green"), "0": ("Off", "text")})
+LINK_STATE = mapping({"1": ("connected", "green"), "0": ("down", "red")})
 YES_NO = mapping({"1": ("Yes", "orange"), "0": ("No", "green")})
 CONNECTION_MODES = mapping(
     {
@@ -190,6 +191,7 @@ def stat(  # noqa: PLR0913
     decimals: int | None = None,
     fixed: str | None = None,
     overrides: list | None = None,
+    orientation: str = "auto",
 ) -> Panel:
     defaults: dict[str, Any] = {
         # "No data" in the large stat font drowns the panels that have data.
@@ -214,7 +216,7 @@ def stat(  # noqa: PLR0913
             "graphMode": "area" if graph else "none",
             "textMode": text,
             "justifyMode": "center",
-            "orientation": "auto",
+            "orientation": orientation,
             "wideLayout": True,
         },
     )
@@ -320,8 +322,7 @@ def table(  # noqa: PLR0913
     if len(queries) > 1:
         # "merge" joins rows whose shared columns agree; the metric name differs
         # between the queries, so drop it ("+ 0").
-        for query in queries:
-            query["expr"] = f"{query['expr']} + 0"
+        queries = [{**query, "expr": f"{query['expr']} + 0"} for query in queries]
         transformations.append({"id": "merge", "options": {}})
     excluded = dict.fromkeys([*HIDDEN_COLUMNS, *(hide or [])], True)
     transformations.append(
@@ -395,6 +396,14 @@ def series_regex(pattern: str, **props: Any) -> dict:  # noqa: ANN401
         "matcher": {"id": "byRegexp", "options": pattern},
         "properties": [{"id": key, "value": value} for key, value in props.items()],
     }
+
+
+def dashed(pattern: str, dash: tuple[int, int] = (10, 10)) -> dict:
+    """Draw matching series as dashed lines without fill: limits, maxima, set points."""
+    return series_regex(
+        pattern,
+        **{"custom.lineStyle": {"fill": "dash", "dash": list(dash)}, "custom.fillOpacity": 0},
+    )
 
 
 def upload_below(pattern: str = ".*(tx|[Uu]pload|[Uu]pstream).*") -> dict:
@@ -553,15 +562,19 @@ def overview() -> dict:  # noqa: PLR0915
         3,
         4,
     )
-    lay.add(stat("Uptime", [target(q("fritz_uptime_seconds_total"))], unit="s", decimals=1), 3, 4)
+    lay.add(
+        stat("Uptime", [target(q("fritz_uptime_seconds_total"), now=True)], unit="s", decimals=1),
+        3,
+        4,
+    )
     lay.add(label_stat("Model", q("fritz_uptime_seconds_total"), "{{modelname}}"), 4, 4)
     lay.add(label_stat("Fritz!OS", q("fritz_uptime_seconds_total"), "{{softwareversion}}"), 3, 4)
     lay.add(
-        stat(
-            "Update available",
-            [target(q("fritz_update_available"), "{{newsoftwareversion}}", now=True)],
-            mappings=YES_NO,
-            description="The new version is in the newsoftwareversion label.",
+        label_stat(
+            "New Fritz!OS",
+            q("fritz_update_available"),
+            "{{newsoftwareversion}}",
+            description="The version of an available update; n/a when there is none.",
         ),
         4,
         4,
@@ -569,7 +582,7 @@ def overview() -> dict:  # noqa: PLR0915
     lay.add(
         stat(
             "Connection mode",
-            [target(q("fritz_connection_mode"))],
+            [target(q("fritz_connection_mode"), now=True)],
             mappings=CONNECTION_MODES,
             color="background",
         ),
@@ -591,7 +604,7 @@ def overview() -> dict:  # noqa: PLR0915
         table(
             "Read problems",
             [target(q("fritz_read_problem"), table=True)],
-            rename={"capability": "Metric group", "level": "Skipped"},
+            rename={"capability": "Metric group", "level": "Level"},
             hide=["Value"],
             description="partial = some values or items, skipped = the whole group, "
             "error = a bug in the exporter. The log has the details.",
@@ -706,7 +719,7 @@ def overview() -> dict:  # noqa: PLR0915
     lay.add(
         stat(
             "PPP",
-            [target(q("fritz_ppp_connection_state"), "last error: {{last_error}}")],
+            [target(q("fritz_ppp_connection_state"), "last error: {{last_error}}", now=True)],
             mappings=mapping({"1": ("Connected", "green"), "0": ("Disconnected", "red")}),
             color="background",
             text="value_and_name",
@@ -961,15 +974,7 @@ def overview() -> dict:  # noqa: PLR0915
                 (q("fritz_fiber_transmit_power_threshold_dBm"), "transmit {{bound}} limit"),
             ),
             unit="suffix: dBm",
-            overrides=[
-                series_regex(
-                    ".*limit",
-                    **{
-                        "custom.lineStyle": {"fill": "dash", "dash": [10, 10]},
-                        "custom.fillOpacity": 0,
-                    },
-                )
-            ],
+            overrides=[dashed(".*limit")],
             legend="table",
         ),
         12,
@@ -1154,7 +1159,7 @@ def overview() -> dict:  # noqa: PLR0915
         timeline(
             "Backhaul links",
             targets((q("fritz_mesh_link_available"), "{{node}} ↔ {{peer}} ({{interface}})")),
-            mappings=mapping({"1": ("connected", "green"), "0": ("down", "red")}),
+            mappings=LINK_STATE,
             description="Read from the mesh master.",
         ),
         24,
@@ -1168,15 +1173,7 @@ def overview() -> dict:  # noqa: PLR0915
                 (q("fritz_mesh_link_max_data_rate_kbps"), "max {{node}} → {{peer}} {{direction}}"),
             ),
             unit="Kbits",
-            overrides=[
-                series_regex(
-                    "max .*",
-                    **{
-                        "custom.lineStyle": {"fill": "dash", "dash": [10, 10]},
-                        "custom.fillOpacity": 0,
-                    },
-                )
-            ],
+            overrides=[dashed("max .*")],
             legend="table",
         ),
         24,
@@ -1273,15 +1270,7 @@ def overview() -> dict:  # noqa: PLR0915
                 (q("fritz_ha_heater_reduced_temperature_C"), f"{ha_name} reduced"),
             ),
             unit="celsius",
-            overrides=[
-                series_regex(
-                    ".*(comfort|reduced)",
-                    **{
-                        "custom.lineStyle": {"fill": "dash", "dash": [4, 6]},
-                        "custom.fillOpacity": 0,
-                    },
-                )
-            ],
+            overrides=[dashed(".*(comfort|reduced)", dash=(4, 6))],
         ),
         12,
         7,
@@ -1296,7 +1285,13 @@ def overview() -> dict:  # noqa: PLR0915
     lay.add(
         bars(
             "Energy in the selected time range",
-            targets((f"increase({q('fritz_ha_multimeter_energy_Wh')}[$__range])", ha_name)),
+            [
+                target(
+                    f"increase({q('fritz_ha_multimeter_energy_Wh')}[$__range])",
+                    ha_name,
+                    now=True,
+                )
+            ],
             unit="watth",
             scheme="continuous-GrYlRd",
         ),
@@ -1358,7 +1353,7 @@ def overview() -> dict:  # noqa: PLR0915
                     **{"custom.cellOptions": cell("color-text")},
                 ),
                 column("Switch", mappings=ON_OFF, **{"custom.cellOptions": cell("color-text")}),
-                column("Mode", mappings=mapping({"0": ("auto", "text"), "1": ("manual", "text")})),
+                column("Mode", mappings=mapping({"0": ("manual", "text"), "1": ("auto", "text")})),
                 column("Locked", mappings=mapping({"1": ("yes", "orange"), "0": ("no", "text")})),
                 column(
                     "Battery low", mappings=YES_NO, **{"custom.cellOptions": cell("color-text")}
@@ -1441,7 +1436,7 @@ def home() -> dict:
     lay.add(
         stat(
             "Internet",
-            [target(q("fritz_connection_mode"))],
+            [target(q("fritz_connection_mode"), now=True)],
             mappings=CONNECTION_MODES,
             color="background",
         ),
@@ -1504,9 +1499,11 @@ def home() -> dict:
     lay.add(
         stat(
             "Fritz!OS",
-            [target(q("fritz_update_available"), "{{newsoftwareversion}}", now=True)],
+            [target(q("fritz_update_available"), now=True)],
             mappings=mapping({"1": ("Update available", "orange"), "0": ("Up to date", "green")}),
             color="background",
+            # The version would shrink the text; it is on the overview.
+            description="The new version is on the Fritz!Exporter Overview dashboard.",
         ),
         4,
         5,
@@ -1593,7 +1590,7 @@ def home() -> dict:
         timeline(
             "Mesh",
             targets((q("fritz_mesh_link_available"), "{{peer}} {{interface}}")),
-            mappings=mapping({"1": ("connected", "green"), "0": ("down", "red")}),
+            mappings=LINK_STATE,
         ),
         6,
         6,
@@ -1625,14 +1622,13 @@ def home() -> dict:
     )
     lay.add(
         stat(
-            "Energy today",
-            [target(f"sum(increase({q('fritz_ha_multimeter_energy_Wh')}[24h]))")],
+            "Energy, last 24 hours",
+            [target(f"sum(increase({q('fritz_ha_multimeter_energy_Wh')}[24h]))", now=True)],
             unit="watth",
             decimals=0,
             color="background",
             fixed="yellow",
-            graph=True,
-            description="All smart plugs, last 24 hours.",
+            description="All smart plugs together.",
         ),
         6,
         7,

@@ -93,7 +93,9 @@
           },
           "expr": "fritz_connection_mode{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "__auto"
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -440,7 +442,7 @@
     {
       "type": "stat",
       "title": "Fritz!OS",
-      "description": "",
+      "description": "The new version is on the Fritz!Exporter Overview dashboard.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -453,7 +455,7 @@
           },
           "expr": "fritz_update_available{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "{{newsoftwareversion}}",
+          "legendFormat": "__auto",
           "instant": true,
           "range": false
         }
@@ -1193,8 +1195,8 @@
     },
     {
       "type": "stat",
-      "title": "Energy today",
-      "description": "All smart plugs, last 24 hours.",
+      "title": "Energy, last 24 hours",
+      "description": "All smart plugs together.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1207,7 +1209,9 @@
           },
           "expr": "sum(increase(fritz_ha_multimeter_energy_Wh{friendly_name=\"$device\"}[24h]))",
           "refId": "A",
-          "legendFormat": "__auto"
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -1241,7 +1245,7 @@
           "values": false
         },
         "colorMode": "background",
-        "graphMode": "area",
+        "graphMode": "none",
         "textMode": "auto",
         "justifyMode": "center",
         "orientation": "auto",
