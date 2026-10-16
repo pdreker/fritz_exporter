@@ -80,8 +80,9 @@ Configuration System
     ``password_file``, ``name``, ``host_info``, ``wifi_client_info``,
     ``connection_timeout``, ``use_tls``, ``port``, ``remote_access``,
     ``allow_unsafe_md5_password``.  Hostname is
-    lowercased automatically via an attrs converter.  Validators check password
-    length, that any password file actually exists, the port range, and that
+    lowercased automatically via an attrs converter, and the name defaults to it.
+    Validators check that a password or password file is given, password length,
+    that any password file actually exists, the port range, and that
     ``remote_access`` is only set together with ``use_tls``.
 
 ``ExporterConfig``
@@ -90,11 +91,14 @@ Configuration System
 
 ``get_config(path)`` delegates to either ``_read_config_file()`` (YAML) or
 ``_read_config_from_env()`` (environment variables) and then calls
-``ExporterConfig.from_config(raw_dict)``.
+``ExporterConfig.from_config(raw_dict)``.  Both paths hand on only the keys that are
+set, so the defaults live in one place, the field definitions.  ``from_config``
+refuses keys the class has no field for, and duplicate device names.
 
 Both config classes use ``attrs`` validators and converters — field values are
-validated and coerced at construction time.  Config-specific exceptions live in
-``config/exceptions.py``.
+validated and coerced at construction time.  Every config problem raises a
+``ConfigError`` (``config/exceptions.py``) whose message names the device and the
+key; ``main()`` logs it as one line and exits.
 
 
 The Capability System
@@ -262,7 +266,7 @@ How the levels are built:
   on it, e.g. a label shared by all its samples or a count that drives a loop.
 * **Device**: ``FritzDevice.get_device_info`` raises ``FritzDeviceSerialUnknownError``;
   the device is not collected, because the serial is the label that tells devices
-  apart (names may repeat).
+  apart (names are unique only among the configured devices).
 
 ``FritzCapability.get_metrics`` guards each device's ``_generate_metric_values`` call.
 In every case below, the samples that device added to the capability are dropped, so

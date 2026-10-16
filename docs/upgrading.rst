@@ -29,6 +29,24 @@ The exporter now logs in again only when the device rejects the session, not aft
 every failed request, and it stops sending web interface requests for the rest of a
 scrape once the device does not answer one. Replies larger than 4 MiB are refused.
 
+Stricter configuration
+^^^^^^^^^^^^^^^^^^^^^^
+
+The exporter now refuses to start, with one message that names the device and the
+key, on:
+
+* a key it does not know, at the top level or in a device (a typo such as
+  ``pasword:`` used to be ignored, and the device then logged in without a
+  password);
+* a device without ``password`` or ``password_file`` in the config file;
+* two devices with the same name. **The name now defaults to the hostname**, in the
+  config file and for ``FRITZ_NAME``; it used to be empty in the config file and
+  ``Fritz!Box`` from the environment. Without a ``name``, the ``friendly_name``
+  label of your series changes, so set ``name`` (or ``FRITZ_NAME``) to keep it.
+
+A config file that is not valid YAML, or of the wrong shape, gives that message
+instead of a traceback.
+
 Addresses and names moved to ``_info`` metrics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

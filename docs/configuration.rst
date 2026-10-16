@@ -16,7 +16,7 @@ If you only need a single device this is the easiest way to configure the export
 +-------------------------------------+----------------------------------------------------+-----------+
 | Env variable                        | Description                                        | Default   |
 +=====================================+====================================================+===========+
-| ``FRITZ_NAME``                      | User-friendly name for the device                  | Fritz!Box |
+| ``FRITZ_NAME``                      | User-friendly name for the device                  | hostname  |
 +-------------------------------------+----------------------------------------------------+-----------+
 | ``FRITZ_HOSTNAME``                  | Hostname of the device                             | fritz.box |
 +-------------------------------------+----------------------------------------------------+-----------+
@@ -152,7 +152,7 @@ To use the config file you have to specify the the location of the config and mo
     exporter_port: 9787 # optional
     log_level: DEBUG # optional
     devices:
-    - name: Fritz!Box 7590 Router # optional
+    - name: Fritz!Box 7590 Router # optional; default: the hostname. Must be unique
       hostname: fritz.box
       username: prometheus
       password: prometheus
@@ -167,6 +167,10 @@ To use the config file you have to specify the the location of the config and mo
       hostname: repeater-Wohnzimmer
       username: prometheus
       password_file: /path/to/password.txt
+
+Every device needs ``password`` or ``password_file``. The exporter refuses to start
+on a key it does not know (e.g. ``pasword:``) and on two devices with the same name;
+the error message names the device and the key.
 
 .. note::
 
