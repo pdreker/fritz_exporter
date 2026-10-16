@@ -1,4 +1,5 @@
 import logging
+import os
 
 import pytest
 
@@ -408,7 +409,7 @@ class TestConfigEdgeCases:
                 password_file="/this/does/not/exist/password.txt",
             )
         except FritzPasswordFileDoesNotExistError as e:
-            assert "Password file does not exist" in str(e)
+            assert "password_file /this/does/not/exist/password.txt cannot be read" in str(e)
 
     def test_connection_timeout_parsed_from_config(self):
         testfile = "tests/conffiles/config_with_timeout.yaml"
@@ -618,3 +619,42 @@ class TestConfigChecks:
 
         with pytest.raises(DeviceNamesNotUniqueError, match="fritz.box"):
             self._load(tmp_path, self.DEVICE + "  - hostname: fritz.box\n    username: v\n    password: q\n")
+
+
+class TestTextValues:
+    """Text keys take YAML numbers as written; other types and unreadable files are refused."""
+
+    def test_number_name_and_password_are_text(self):
+        dev = DeviceConfig.from_config({"hostname": "fb", "username": 1234, "password": 12345678, "name": 7590})
+        assert (dev.username, dev.password, dev.name) == ("1234", "12345678", "7590")
+
+    def test_other_types_are_refused_with_the_key(self):
+        with pytest.raises(ValueError, match=r"device \(fb\): name: expected text, got bool \(put the value in quotes\)"):
+            DeviceConfig.from_config({"hostname": "fb", "username": "u", "password": "p", "name": True})
+
+    @pytest.mark.skipif(os.geteuid() == 0, reason="root reads any file")
+    def test_unreadable_password_file_is_refused(self, tmp_path):
+        from fritzexporter.config.exceptions import FritzPasswordFileDoesNotExistError
+
+        secret = tmp_path / "pw"
+        secret.write_text("secret")
+        secret.chmod(0)
+        with pytest.raises(FritzPasswordFileDoesNotExistError, match="cannot be read"):
+            DeviceConfig(hostname="fb", username="u", password_file=str(secret))
+
+    def test_too_long_password_in_a_file_is_refused_like_in_the_config(self, tmp_path):
+        from fritzexporter.config.exceptions import FritzPasswordTooLongError
+
+        secret = tmp_path / "pw"
+        secret.write_text("x" * 33 + "\n")
+        with pytest.raises(FritzPasswordTooLongError):
+            DeviceConfig(hostname="fb", username="u", password_file=str(secret))
+
+    def test_yaml_error_does_not_quote_values(self, tmp_path):
+        path = tmp_path / "c.yaml"
+        path.write_text("devices:\n  - hostname: fb\n    username: u\n    password: !Geheim123\n")
+        with pytest.raises(ConfigFileUnreadableError) as exc:
+            get_config(str(path))
+        assert "Geheim123" not in str(exc.value)
+        assert "line 4" in str(exc.value)
+

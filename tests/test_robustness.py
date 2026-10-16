@@ -5,6 +5,7 @@ Prometheus gets it, so a failure that would only show while rendering is caught.
 """
 
 import logging
+from xml.etree.ElementTree import ParseError
 import threading
 from unittest.mock import MagicMock, patch
 
@@ -419,6 +420,38 @@ class TestOfflineRetries:
 
         assert reachable(output, "BAD", "n/a") == 0.0
         assert [o.friendly_name for o in scenario.collector.offline_devices] == ["BAD"]
+
+
+class TestUnexpectedSetupErrors:
+    """An odd reply while setting up a device keeps that device offline, nothing more."""
+
+    def test_at_startup_the_device_is_offline_with_a_traceback(self, caplog):
+        caplog.set_level(logging.DEBUG)
+        scenario = Scenario({("DeviceInfo1", "GetInfo"): ParseError("not well-formed")})
+
+        output = scenario.scrape()
+
+        assert reachable(output, "BAD", "n/a") == 0.0
+        assert reachable(output, "GOOD", "GOOD") == 1.0
+        [error] = [r for r in caplog.records if "Failed to initialize device BAD" in r.getMessage()]
+        assert "unexpected; please report this" in error.getMessage()
+        assert error.exc_info is not None
+
+    def test_on_retry_every_other_device_is_still_scraped(self, caplog):
+        scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
+        scenario.overrides["bad"][("DeviceInfo1", "GetInfo")] = ParseError("not well-formed")
+        caplog.set_level(logging.DEBUG)
+
+        first = scenario.scrape()
+        second = scenario.scrape()
+
+        for output in (first, second):
+            assert reachable(output, "GOOD", "GOOD") == 1.0
+            assert reachable(output, "BAD", "n/a") == 0.0
+        # Logged with its traceback once, when the reason changed.
+        changed = [r for r in caplog.records if "is still offline, now because" in r.getMessage()]
+        assert len(changed) == 1
+        assert changed[0].exc_info is not None
 
 
 def lan_records(caplog, level):

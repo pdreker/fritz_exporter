@@ -191,7 +191,9 @@ class FritzWebUiClient:
         # session in fritzconnection, which does not verify it either.
         self.session.verify = False
         self._sid: str | None = None
-        self._sid_expiry: float = 0.0
+        # Pages the device refused right after a fresh login: no permission, not
+        # an expired session, so a new login would not help. See _with_session().
+        self._forbidden: set[str] = set()
         # The last refused login, and when the next attempt may be made.
         self._login_refused: str | None = None
         self._login_retry_at: float = 0.0
@@ -272,19 +274,40 @@ class FritzWebUiClient:
             raise _SessionRejectedError(msg)
         try:
             return json.loads(reply.body)
-        except ValueError as e:
-            msg = f"could not parse JSON from {what}: {e}"
+        except json.JSONDecodeError as e:
+            msg = f"could not parse JSON from {what}: {e.msg} at position {e.pos}"
+            raise FritzWebUiError(msg) from None
+        except (ValueError, RecursionError) as e:
+            # UnicodeDecodeError would quote a byte of the reply; deep nesting
+            # exhausts the parser's recursion, which no caller expects.
+            msg = f"could not parse JSON from {what}: {type(e).__name__}"
             raise FritzWebUiError(msg) from None
 
-    def _with_session[T](self, fetch: Callable[[str], T]) -> T:
-        """Run ``fetch`` with a SID, logging in again once if the device rejects it."""
+    def _with_session[T](self, page: str, fetch: Callable[[str], T]) -> T:
+        """Run ``fetch`` with a SID, logging in again once if the device rejects it.
+
+        The device answers "no permission" the same way as "session expired". A
+        page it refuses right after a fresh login is taken as no permission and
+        gets no more logins until it works again: one login per page and scrape
+        would fill the device's event log.
+        """
+        cached = self._sid is not None
         sid = self._ensure_sid()
         try:
-            return fetch(sid)
+            result = fetch(sid)
         except _SessionRejectedError as e:
+            if not cached or page in self._forbidden:
+                self._forbidden.add(page)
+                raise
             logger.debug("%s rejected the web session (%s), logging in again", self.name, e)
             self._invalidate_sid()
-            return fetch(self._ensure_sid())
+            try:
+                result = fetch(self._ensure_sid())
+            except _SessionRejectedError:
+                self._forbidden.add(page)
+                raise
+        self._forbidden.discard(page)
+        return result
 
     # ------------------------------------------------------------------
     # Authentication
@@ -430,7 +453,9 @@ class FritzWebUiClient:
         """
         if self._md5_refused is not None:
             raise self._md5_refused
-        if self._sid and time.monotonic() < self._sid_expiry:
+        # The session lasts while it is used; the device says when it is not
+        # valid any more (see _with_session).
+        if self._sid:
             return self._sid
         if self._login_refused is not None and time.monotonic() < self._login_retry_at:
             msg = (
@@ -445,13 +470,10 @@ class FritzWebUiClient:
             self._login_retry_at = time.monotonic() + max(LOGIN_RETRY_DELAY, e.block_time)
             raise
         self._login_refused = None
-        # SIDs are valid for ~18 minutes on the box; refresh well before that.
-        self._sid_expiry = time.monotonic() + 15 * 60
         return self._sid
 
     def _invalidate_sid(self) -> None:
         self._sid = None
-        self._sid_expiry = 0.0
 
     # ------------------------------------------------------------------
     # Endpoints
@@ -468,7 +490,7 @@ class FritzWebUiClient:
             reply = self._request("POST", "/data.lua", "data.lua request failed", data=payload)
             return self._json(reply, "data.lua")
 
-        return self._with_session(fetch)
+        return self._with_session(f"data.lua {page}", fetch)
 
     def fetch_aha(self, command: str, **params: str) -> str:
         """Run an AHA command (e.g. ``getdevicelistinfos``) and return the reply text.
@@ -485,7 +507,7 @@ class FritzWebUiClient:
                 raise FritzWebUiError(msg)
             return reply.body.decode("utf-8", "replace")
 
-        return self._with_session(fetch)
+        return self._with_session(f"AHA {command}", fetch)
 
     def fetch_api(self, path: str) -> dict[str, Any]:
         """Fetch a Fritz!OS REST API path as JSON.
@@ -502,7 +524,7 @@ class FritzWebUiClient:
             )
             return self._json(reply, path)
 
-        return self._with_session(fetch)
+        return self._with_session(path, fetch)
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>

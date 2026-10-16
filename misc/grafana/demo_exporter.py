@@ -8,6 +8,7 @@ not have show data. Listens on 127.0.0.1 only.
 """
 
 import copy
+import json
 import math
 import sys
 import threading
@@ -31,6 +32,7 @@ from tests.fc_services_mock import (
 )
 from tests.test_fritz_docsis import DOCSIS_RAW
 from tests.test_fritz_rest_api import CONNECTIONS_RAW, SEGMENT_RAW
+from tests.web_replies import web_reply
 
 START = time.time()
 
@@ -254,19 +256,16 @@ def main() -> None:
         ("demo-fiber", "Demo Fiber", "DEMOFIBER01", "FRITZ!Box 5590 Fiber", "X_AVM-DE_Fiber"),
     ]
     services.setdefault("Hosts1", []).append("X_AVM-DE_GetMeshListPath")
-    hosts = MagicMock()
-    hosts.return_value.get_mesh_topology.side_effect = lambda *_a, **_k: _mesh_topology()
     fcs = {}
     for host, _, serial, model, access in boxes:
         fc = MagicMock()
         fc.call_action.side_effect = _actions(serial, model, access)
         fc.call_http.return_value = {"content": "", "encoding": "utf-8"}
         fc.services = create_fc_services(services)
+        fc.session.get.side_effect = lambda *_a, **_k: web_reply(json.dumps(_mesh_topology()))
         fcs[host] = fc
 
     collector = FritzCollector()
-    # The mesh list is read at every scrape, so this patch stays for the whole run.
-    patch("fritzexporter.fritzcapabilities.FritzHosts", hosts).start()
     with patch.multiple(
         "fritzexporter.fritzdevice",
         create_fritz_connection=lambda **kw: fcs[kw["address"]],

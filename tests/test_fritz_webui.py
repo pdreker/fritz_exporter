@@ -515,16 +515,19 @@ class TestFritzWebUiClientFetch:
         get_resp = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
         session.get.return_value = get_resp
 
-        # First data.lua call returns HTML (session expired), second returns JSON
+        # A first fetch works; later the session has expired (HTML), and the
+        # client logs in once and fetches again.
         html_resp = _resp("<html>login</html>")
         json_resp = _resp('{"data":{"readyState":"ready"}}')
-        session.post.side_effect = [html_resp, json_resp]
+        session.post.side_effect = [json_resp, html_resp, json_resp]
 
         client = FritzWebUiClient("fritz.box", "user", "pass")
+        client.fetch_page("docInfo")
         result = client.fetch_page("docInfo")
 
         assert result["data"]["readyState"] == "ready"
-        assert session.post.call_count == 2
+        assert session.post.call_count == 3
+        assert session.get.call_count == 2
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_fetch_aha_retries_once_on_forbidden(self, mock_session_cls: MagicMock):
@@ -538,16 +541,18 @@ class TestFritzWebUiClientFetch:
         ok = _resp('<devicelist version="1"></devicelist>')
         session.get.side_effect = [
             sid_resp("0123456789abcdef"),
+            ok,
             forbidden,
             sid_resp("fedcba9876543210"),
             ok,
         ]
 
         client = FritzWebUiClient("fritz.box", "user", "pass", use_tls=True)
+        client.fetch_aha("getdevicelistinfos")
         result = client.fetch_aha("getdevicelistinfos")
 
         assert result == '<devicelist version="1"></devicelist>'
-        aha_call = session.get.call_args_list[3]
+        aha_call = session.get.call_args_list[4]
         assert aha_call.args[0] == "https://fritz.box/webservices/homeautoswitch.lua"
         assert aha_call.kwargs["params"] == {
             "sid": "fedcba9876543210",
@@ -668,9 +673,8 @@ class TestFritzWebUiErrorTextHasNoUrl:
 
     @staticmethod
     def _tries(failure: BaseException) -> int:
-        """Only a rejected session (HTTP 403) is worth logging in again for."""
-        rejected = isinstance(failure, requests.HTTPError) and failure.response is not None
-        return 2 if rejected and failure.response.status_code == 403 else 1
+        """One request: a 403 right after a login is no permission, not an expired session."""
+        return 1
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_challenge(self, mock_session_cls, caplog, failure, expected):
@@ -1027,3 +1031,72 @@ class TestRequestHandling:
         client = FritzWebUiClient("fritz.box", "user", "pass")
         with pytest.raises(FritzWebUiError, match="could not parse login_sid.lua response"):
             client._login()
+
+
+class TestJsonReplies:
+    @pytest.mark.parametrize(
+        ("body", "expected"),
+        [
+            (b"[" * 200_000 + b"]" * 200_000, "RecursionError"),
+            (b'{"a": "\xff"}', "UnicodeDecodeError"),
+            (b"{oops", "Expecting property name enclosed in double quotes at position 1"),
+        ],
+        ids=["deep-nesting", "bad-encoding", "bad-json"],
+    )
+    def test_unreadable_json_is_a_web_interface_error(self, body, expected):
+        from fritzexporter.fritz_webui import _Reply
+
+        with pytest.raises(FritzWebUiError) as exc:
+            FritzWebUiClient._json(_Reply(body, "application/json"), "x")
+        assert str(exc.value) == f"could not parse JSON from x: {expected}"
+
+
+class TestNoPermission:
+    """A page refused right after a login gets no more logins until it works."""
+
+    LOGIN = f"<SessionInfo><SID>{_SID}</SID></SessionInfo>"
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_refused_page_costs_no_login_per_scrape(self, mock_session_cls):
+        session = mock_session_cls.return_value
+        replies = {"/login_sid.lua": _resp(self.LOGIN), "/api/v0/x": _resp(status=403)}
+        session.get.side_effect = lambda url, **_k: replies[url.removeprefix("http://fritz.box")]
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+
+        for _ in range(5):
+            client.start_scrape()
+            with pytest.raises(FritzWebUiError, match="HTTP 403"):
+                client.fetch_api("/api/v0/x")
+
+        logins = [c for c in session.get.call_args_list if c.args[0].endswith("/login_sid.lua")]
+        assert len(logins) == 1
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_page_works_again_once_permitted(self, mock_session_cls):
+        session = mock_session_cls.return_value
+        replies = {"/login_sid.lua": _resp(self.LOGIN), "/api/v0/x": _resp(status=403)}
+        session.get.side_effect = lambda url, **_k: replies[url.removeprefix("http://fritz.box")]
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+        with pytest.raises(FritzWebUiError):
+            client.fetch_api("/api/v0/x")
+
+        replies["/api/v0/x"] = _resp('{"ok": 1}')
+        assert client.fetch_api("/api/v0/x") == {"ok": 1}
+        assert client._forbidden == set()
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_session_is_kept_while_it_works(self, mock_session_cls, monkeypatch):
+        now = [1000.0]
+        monkeypatch.setattr("fritzexporter.fritz_webui.time.monotonic", lambda: now[0])
+        session = mock_session_cls.return_value
+        replies = {"/login_sid.lua": _resp(self.LOGIN), "/api/v0/x": _resp('{"ok": 1}')}
+        session.get.side_effect = lambda url, **_k: replies[url.removeprefix("http://fritz.box")]
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+
+        for _ in range(4):
+            client.fetch_api("/api/v0/x")
+            now[0] += 3600
+
+        logins = [c for c in session.get.call_args_list if c.args[0].endswith("/login_sid.lua")]
+        assert len(logins) == 1
+

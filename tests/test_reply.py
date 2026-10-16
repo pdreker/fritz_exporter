@@ -268,3 +268,20 @@ class TestRequireKey:
         reply = Reply({}, "x")
         with pytest.raises(DataError, match=r"^x data: missing$"):
             reply.require_key("data")
+
+
+class TestNumbersASampleCannotHold:
+    def test_integer_too_large_for_a_float_is_a_data_error(self):
+        huge = 10**400
+        with pytest.raises(DataError, match="x: expected a number"):
+            to_float(huge, "x")
+        with pytest.raises(DataError, match="x: expected a whole number"):
+            to_int(huge, "x")
+        with pytest.raises(DataError, match="x: expected a whole number"):
+            to_int("1" + "0" * 400, "x")
+
+    def test_issues_contain_it_at_the_value(self):
+        issues = Issues()
+        assert issues.opt_num(Reply({"v": 10**400}, "S"), "v") is None
+        assert issues.messages == ["S v: expected a number, got int"]
+

@@ -80,7 +80,8 @@ def to_float(value: object, what: str) -> float | None:
         raise _fail(what, _NUMBER, value)
     try:
         return float(value)
-    except ValueError:
+    except ValueError, OverflowError:
+        # OverflowError: a JSON integer too large for a float
         raise _fail(what, _NUMBER, value) from None
 
 
@@ -91,15 +92,24 @@ def to_int(value: object, what: str) -> int | None:
     if isinstance(value, bool) or not isinstance(value, int | float | str):
         raise _fail(what, _WHOLE_NUMBER, value)
     if isinstance(value, int):
-        return value
+        return _finite_int(value, what)
     if isinstance(value, float):
         if not (math.isfinite(value) and value.is_integer()):
             raise _fail(what, _WHOLE_NUMBER, value)
         return int(value)
     try:
-        return int(value.strip())
+        return _finite_int(int(value.strip()), what)
     except ValueError:
         raise _fail(what, _WHOLE_NUMBER, value) from None
+
+
+def _finite_int(value: int, what: str) -> int:
+    """``value``, if a sample can hold it: rendering a scrape converts it to a float."""
+    try:
+        float(value)
+    except OverflowError:
+        raise _fail(what, _WHOLE_NUMBER, value) from None
+    return value
 
 
 def to_bool(value: object, what: str) -> bool | None:

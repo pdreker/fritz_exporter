@@ -1,3 +1,4 @@
+import json
 import logging
 import threading
 from pprint import pprint
@@ -181,26 +182,6 @@ class TestFritzDevice:
             use_tls=False,
             port=None,
         )
-
-    def test_should_complain_about_password(self, mock_fritzconnection: MagicMock, caplog):
-        # Prepare
-        caplog.set_level(logging.DEBUG)
-        password: str = "123456789012345678901234567890123"
-
-        fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = call_action_mock
-        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
-
-        # Act
-        _ = FritzDevice(FritzCredentials("somehost", "someuser", password), "Fritz!Mock", host_info=False)
-
-        # Check
-        assert (
-            FRITZDEVICE_LOG_SOURCE,
-            logging.WARN,
-            "Password for Fritz!Mock (somehost) is longer than 32 characters! Login may not succeed, "
-            "please see README!",
-        ) in caplog.record_tuples
 
     def test_should_find_no_capabilities(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
@@ -1124,8 +1105,9 @@ class TestFritzCollector:
                 return {"NewTotalAssociations": 2}
             if action == "GetGenericAssociatedDeviceInfo":
                 i = kwargs["NewAssociatedDeviceIndex"]
+                radio = service.removeprefix("WLANConfiguration")
                 return {
-                    "NewAssociatedDeviceMACAddress": f"AA:BB:CC:00:00:0{i}",
+                    "NewAssociatedDeviceMACAddress": f"AA:BB:CC:00:0{radio}:0{i}",
                     "NewAssociatedDeviceIPAddress": f"192.168.178.{i}",
                     "NewX_AVM-DE_SignalStrength": 80 - i,
                     "NewX_AVM-DE_Speed": 100 + i,
@@ -1141,7 +1123,7 @@ class TestFritzCollector:
         signal = [m for m in metrics if m.name == "fritz_wifi_client_signal_strength"]
         assert len(signal) == 1
         assert len(signal[0].samples) == 4
-        assert any(s.labels["client_mac"] == "AA:BB:CC:00:00:00" for s in signal[0].samples)
+        assert any(s.labels["client_mac"] == "AA:BB:CC:00:01:00" for s in signal[0].samples)
         assert any(s.labels["wifi_name"] == "2.4GHz" for s in signal[0].samples)
 
     def test_should_not_collect_wifi_client_info_by_default(
@@ -1166,7 +1148,7 @@ class TestFritzCollector:
         assert len(signal) == 1
         assert len(signal[0].samples) == 0
 
-    @patch("fritzexporter.fritzcapabilities.FritzHosts")
+    @patch("fritzexporter.fritzcapabilities.MeshTopology._mesh_list")
     def test_should_collect_mesh_backhaul_links(
         self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, caplog
     ):
@@ -1188,7 +1170,7 @@ class TestFritzCollector:
         fc.call_action.side_effect = call_with_mesh
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
-        mock_fritzhosts.return_value.get_mesh_topology.return_value = {
+        mock_fritzhosts.return_value = {
             "nodes": [
                 {
                     "uid": "n1",
@@ -1377,47 +1359,6 @@ class TestFritzCollector:
         assert len(device_reachable_metrics) == 1
         assert device_reachable_metrics[0].samples[0].value == 0.0
 
-    @patch("fritzexporter.fritzcapabilities.FritzHosts")
-    def test_should_skip_mesh_metrics_on_transport_error_but_keep_device_available(
-        self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, caplog
-    ):
-        # Prepare: the mesh list is a plain HTTP fetch; a transport error there is
-        # transient - skip the mesh metrics and report it, but do NOT mark the
-        # device unavailable.
-        caplog.set_level(logging.DEBUG)
-
-        def call_with_mesh(service, action, **kwargs):
-            if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
-                return {"NewX_AVM-DE_MeshListPath": "/meshlist.lua"}
-            return call_action_mock(service, action, **kwargs)
-
-        fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = call_with_mesh
-        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
-
-        collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
-        collector.register(device)
-
-        mock_fritzhosts.return_value.get_mesh_topology.side_effect = RequestsConnectionError(
-            "Connection aborted.",
-            RemoteDisconnected("Remote end closed connection without response"),
-        )
-
-        # Act
-        metrics: list[Metric] = list(collector.collect())
-
-        # Check: no mesh samples, but the device is still reachable
-        mesh = [m for m in metrics if m.name == "fritz_mesh_link_available"]
-        assert len(mesh) == 1
-        assert len(mesh[0].samples) == 0
-        problems = [m for m in metrics if m.name == "fritz_read_problem"][0].samples
-        assert ("MeshTopology", "skipped") in {(s.labels["capability"], s.labels["level"]) for s in problems}
-        assert "mesh list request failed: Fritz device did not answer (ConnectionError)" in caplog.text
-        device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
-        assert device_reachable_metrics[0].samples[0].value == 1.0
-
-
 
 def _mesh_link(**overrides):
     link = {
@@ -1442,7 +1383,7 @@ def _mesh_topology(link=None, **node_overrides):
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
-@patch("fritzexporter.fritzcapabilities.FritzHosts")
+@patch("fritzexporter.fritzcapabilities.MeshTopology._mesh_list")
 class TestMeshTopologyParsing:
     """Bad mesh data costs only what it affects, and never the scrape."""
 
@@ -1455,7 +1396,7 @@ class TestMeshTopologyParsing:
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_with_mesh
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
-        mock_fritzhosts.return_value.get_mesh_topology.return_value = topology
+        mock_fritzhosts.return_value = topology
 
         collector = FritzCollector()
         collector.register(
@@ -2009,4 +1950,135 @@ class TestNoPasswordInRepr:
 
         config = DeviceConfig(hostname="fritz.box", username="user", password="s3cret-pw", name="Box")
         assert "s3cret-pw" not in repr(config)
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestMeshListFetch:
+    """The mesh list: path over TR-064, the list itself over HTTP from the mesh master."""
+
+    TOPOLOGY = '{"nodes": []}'
+
+    def _scrape(self, mock_fritzconnection, *, path_error=None, reply=None, get_error=None):
+        def call_with_mesh(service, action, **kwargs):
+            if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
+                if path_error is not None and device_ready:
+                    raise path_error
+                return {"NewX_AVM-DE_MeshListPath": "/meshlist.lua"}
+            return call_action_mock(service, action, **kwargs)
+
+        device_ready = False  # the probe during setup must succeed
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_with_mesh
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+        fc.session.get.side_effect = get_error
+        fc.session.get.return_value = reply
+        collector = FritzCollector()
+        collector.register(FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock"))
+        device_ready = True
+        by_name = {m.name: m for m in collector.collect()}
+        problems = {
+            (s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples
+        }
+        reachable = by_name["fritz_device_reachable"].samples[0].value
+        return by_name, problems, reachable
+
+    def test_topology_from_the_mesh_master(self, mock_fritzconnection):
+        topology = json.dumps(_mesh_topology())
+        by_name, problems, reachable = self._scrape(mock_fritzconnection, reply=web_reply(topology))
+        assert len(by_name["fritz_mesh_link_available"].samples) == 1
+        assert ("MeshTopology", "skipped") not in problems
+        assert reachable == 1.0
+
+    def test_other_nodes_answer_404_quietly(self, mock_fritzconnection):
+        by_name, problems, _ = self._scrape(mock_fritzconnection, reply=web_reply(status=404))
+        assert by_name["fritz_mesh_link_available"].samples == []
+        assert not any(capability == "MeshTopology" for capability, _ in problems)
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            RequestsConnectionError("aborted"),
+            FritzUnreachableError("Fritz device did not answer (ReadTimeout)"),
+        ],
+    )
+    def test_list_not_answering_skips_only_the_mesh(self, mock_fritzconnection, caplog, error):
+        _, problems, reachable = self._scrape(mock_fritzconnection, get_error=error)
+        assert ("MeshTopology", "skipped") in problems
+        assert reachable == 1.0
+        assert "mesh list request failed: Fritz device did not answer" in caplog.text
+
+    def test_bad_json_is_a_read_problem_not_a_missing_answer(self, mock_fritzconnection, caplog):
+        _, problems, reachable = self._scrape(mock_fritzconnection, reply=web_reply("{oops"))
+        assert ("MeshTopology", "skipped") in problems
+        assert reachable == 1.0
+        assert "mesh list: not valid JSON" in caplog.text
+        assert "mesh list request failed" not in caplog.text
+
+    def test_path_not_answering_makes_the_device_unreachable(self, mock_fritzconnection):
+        _, _, reachable = self._scrape(
+            mock_fritzconnection,
+            path_error=FritzUnreachableError("Fritz device did not answer (ReadTimeout)"),
+        )
+        assert reachable == 0.0
+
+
+class TestDuplicateSeries:
+    """Two samples with the same labels would make Prometheus reject the scrape."""
+
+    def test_mesh_links_to_nodes_of_the_same_name_keep_the_first(self):
+        from fritzexporter.fritzcapabilities import _MeshParser
+
+        def node(uid, name, links=()):
+            interfaces = [{"type": "WLAN", "name": "AP:5G:0", "node_links": list(links)}]
+            return {"uid": uid, "device_name": name, "is_meshed": True, "node_interfaces": interfaces}
+
+        topology = {
+            "nodes": [
+                node("box", "FRITZ!Box", [
+                    _mesh_link(uid="l1", node_1_uid="box", node_2_uid="r1"),
+                    _mesh_link(uid="l2", node_1_uid="box", node_2_uid="r2"),
+                ]),
+                node("r1", "FRITZ!Repeater"),
+                node("r2", "FRITZ!Repeater"),
+            ]
+        }
+        issues = Issues()
+
+        links = _MeshParser(topology, issues).links()
+
+        assert [link.labels for link in links] == [["FRITZ!Box", "FRITZ!Repeater", "WLAN", "AP:5G:0"]]
+        assert issues.messages == [
+            "mesh link 0/0/1 skipped: same node names and interface as another link "
+            "(give the mesh nodes different names)"
+        ]
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+def test_wifi_client_read_twice_during_a_scan_is_kept_once(mock_fritzconnection: MagicMock):
+    # A client joined at a lower index mid-scan: the next index repeats the last one.
+    def assoc(service, action, **kwargs):
+        if action == "GetTotalAssociations":
+            return {"NewTotalAssociations": 2 if service == "WLANConfiguration1" else 0}
+        if action == "GetGenericAssociatedDeviceInfo":
+            return {
+                "NewAssociatedDeviceMACAddress": "AA:BB:CC:00:00:01",
+                "NewAssociatedDeviceIPAddress": "192.168.178.9",
+                "NewX_AVM-DE_SignalStrength": 70,
+                "NewX_AVM-DE_Speed": 100,
+            }
+        return call_action_mock(service, action, **kwargs)
+
+    fc = mock_fritzconnection.return_value
+    fc.call_action.side_effect = assoc
+    fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+    collector = FritzCollector()
+    collector.register(
+        FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock", wifi_client_info=True)
+    )
+
+    by_name = {m.name: m for m in collector.collect()}
+
+    assert len(by_name["fritz_wifi_client_signal_strength"].samples) == 1
+    problems = {s.labels["capability"] for s in by_name["fritz_read_problem"].samples}
+    assert "WlanAssociatedDevices" not in problems
 

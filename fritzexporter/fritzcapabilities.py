@@ -13,14 +13,12 @@ from urllib.parse import urlparse
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
-    FritzArgumentError,
     FritzArrayIndexError,
     FritzConnectionException,
     FritzInternalError,
     FritzLookUpError,
     FritzServiceError,
 )
-from fritzconnection.lib.fritzhosts import FritzHosts  # type: ignore[import]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 
 from fritzexporter.fritz_aha import AhaDevice, parse_aha_devicelist_xml
@@ -176,6 +174,16 @@ def _div(value: float | None, by: float) -> float | None:
     return None if value is None else value / by
 
 
+# A thermostat setting of 253 means "off" (valve closed), 254 "on" (valve open):
+# states, not temperatures.
+_HKR_OFF_ON = (253, 254)
+
+
+def _hkr_setting(value: int | None) -> float | None:
+    """A thermostat set temperature in degrees; none while it is switched off or on."""
+    return None if value in _HKR_OFF_ON else _div(value, 2)
+
+
 def _since(problem: _Problem) -> str:
     return problem.since.astimezone().isoformat(timespec="seconds")
 
@@ -289,13 +297,15 @@ class FritzCapability(ABC):
     def _probe(self, device: FritzDevice, service: str, action: str) -> bool:
         return probe_action(device, service, action)
 
-    def _enumerate(  # noqa: PLR0913, PLR0917
+    def _enumerate(  # noqa: PLR0913
         self,
         device: FritzDevice,
         service: str,
         action: str,
         count: int,
+        *,
         index_argument: str,
+        item: str,
         ends: tuple[type[Exception], ...] = (FritzArrayIndexError,),
     ) -> Iterator[tuple[int, Reply]]:
         """Read entries ``0 .. count-1`` of a table, by index.
@@ -303,10 +313,14 @@ class FritzCapability(ABC):
         The table can shrink between counting and reading (a host leaves, a
         WiFi client disconnects); the device then answers with one of ``ends``
         ("invalid array index") and the scan ends with the entries read so far.
+        Another error reply skips that entry, recorded as ``"<item> <index>"``,
+        as ``_item`` would.
         """
         for index in range(count):
             try:
                 entry = read_action(device, service, action, **{index_argument: index})
+            except TRANSPORT_ERRORS:
+                raise
             except ends:
                 logger.debug(
                     "%s.%s on %s: the table shrank to %d entries during the scan",
@@ -316,6 +330,9 @@ class FritzCapability(ABC):
                     index,
                 )
                 return
+            except FritzConnectionException as e:
+                self.issues.messages.append(f"{item} {index} skipped: {type(e).__name__}")
+                continue
             yield index, entry
 
     def get_metrics(
@@ -1140,13 +1157,14 @@ class WlanAssociatedDevices(FritzCapability):
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         device_cap = cast(WlanAssociatedDevices, device.capabilities[self.__class__.__name__])
+        seen: set[str] = set()  # MAC addresses read in this scan
         for index, present in enumerate(device_cap.wifi_present):
             if not present:
                 continue
             with self._item(f"WLAN {index + 1} clients"):
-                self._collect_clients(device, index)
+                self._collect_clients(device, index, seen)
 
-    def _collect_clients(self, device: FritzDevice, index: int) -> None:
+    def _collect_clients(self, device: FritzDevice, index: int, seen: set[str]) -> None:
         service = f"WLANConfiguration{index + 1}"
         # The loop depends on the count, so a defect skips this WLAN.
         total = (
@@ -1158,17 +1176,24 @@ class WlanAssociatedDevices(FritzCapability):
             service,
             "GetGenericAssociatedDeviceInfo",
             total,
-            "NewAssociatedDeviceIndex",
+            index_argument="NewAssociatedDeviceIndex",
+            item=f"WLAN {index + 1} client",
             # Boxes also answer these for clients that left during the scan.
             ends=(FritzArrayIndexError, FritzServiceError, FritzActionError, FritzInternalError),
         )
         for client_index, info in clients:
             with self._item(f"WLAN {index + 1} client {client_index}"):
+                mac = info.text("NewAssociatedDeviceMACAddress")
+                if mac in seen:
+                    # The table changed during the scan and moved this client to
+                    # the next index; it was read already.
+                    continue
+                seen.add(mac)
                 labels = [
                     device.serial,
                     device.friendly_name,
                     self.WIFI_NAMES[index],
-                    info.text("NewAssociatedDeviceMACAddress"),
+                    mac,
                     # A client may not have an address yet.
                     info.text("NewAssociatedDeviceIPAddress", ""),
                 ]
@@ -1207,6 +1232,9 @@ class _MeshParser:
                     if node.opt_flag("is_meshed"):
                         self.meshed[uid] = (index, node)
         self.seen: set[str] = set()
+        # Label sets of the links so far: two links between nodes of the same
+        # names on one interface would be two series with identical labels.
+        self.label_sets: set[tuple[str, ...]] = set()
 
     def links(self) -> list[_MeshLink]:
         links: list[_MeshLink] = []
@@ -1231,14 +1259,17 @@ class _MeshParser:
                 if uid is None or n1 is None or n2 is None:
                     continue
                 if self._is_new_backhaul(uid, n1, n2):
+                    labels = [self.names[n1], self.names[n2], link_type, interface_name]
+                    if tuple(labels) in self.label_sets:
+                        msg = (
+                            "same node names and interface as another link "
+                            "(give the mesh nodes different names)"
+                        )
+                        raise DataError(msg)
+                    self.label_sets.add(tuple(labels))
                     links.append(
                         _MeshLink(
-                            labels=[
-                                self.names[n1],
-                                self.names[n2],
-                                link_type,
-                                interface_name,
-                            ],
+                            labels=labels,
                             available=self.issues.equals(link, "state", "CONNECTED"),
                             cur_rx=self.issues.num_or(link, "cur_data_rate_rx", 0.0),
                             cur_tx=self.issues.num_or(link, "cur_data_rate_tx", 0.0),
@@ -1314,23 +1345,41 @@ class MeshTopology(FritzCapability):
             "interface",
         )
 
-    def _generate_metric_values(self, device: FritzDevice) -> None:
+    @staticmethod
+    def _mesh_list(device: FritzDevice) -> object | None:
+        """The mesh topology; ``None`` from a node that is not the mesh master.
+
+        The path comes over TR-064, where the usual rules apply (a device that
+        does not answer is unreachable). The list itself is a web interface page:
+        if only it fails, the device's other metrics are still good.
+        """
         try:
-            topology = FritzHosts(fc=device.fc).get_mesh_topology()
+            path = read_action(device, "Hosts1", "X_AVM-DE_GetMeshListPath").text(
+                "NewX_AVM-DE_MeshListPath"
+            )
         except FritzActionError:
-            # Only the mesh master can serve the topology; every other node answers
-            # "Device has no access to topology information" (404). That is the normal
-            # case for mesh slaves/repeaters, so log it quietly and skip mesh metrics
-            # for this device — do NOT mark it unavailable.
+            return None
+        url = f"{device.fc.address}:{device.fc.port}{path}"
+        try:
+            with device.fc.session.get(url) as response:
+                # Only the mesh master serves the topology; other nodes answer
+                # 404 ("Device has no access to topology information").
+                return response.json() if response.ok else None
+        except ValueError, RecursionError:
+            # Before TRANSPORT_ERRORS: requests' JSONDecodeError is a RequestException.
+            msg = "mesh list: not valid JSON"
+            raise DataError(msg) from None
+        except TRANSPORT_ERRORS as e:
+            msg = f"mesh list request failed: {transport_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
+
+    def _generate_metric_values(self, device: FritzDevice) -> None:
+        topology = self._mesh_list(device)
+        if topology is None:
             logger.debug(
                 "No mesh topology available from %s (not the mesh master)", device.log_name
             )
             return
-        except TRANSPORT_ERRORS as e:
-            # meshlist.lua is a web interface page, fetched apart from TR-064: if
-            # only it fails, the device's other metrics are still good.
-            msg = f"mesh list request failed: {transport_failure_text(e)}"
-            raise FritzWebUiError(msg) from None
 
         for link in _MeshParser(topology, self.issues).links():
             base = [device.serial, device.friendly_name, *link.labels]
@@ -1404,7 +1453,14 @@ class HostInfo(FritzCapability):
             device.log_name,
             num_hosts,
         )
-        hosts = self._enumerate(device, "Hosts1", "GetGenericHostEntry", num_hosts, "NewIndex")
+        hosts = self._enumerate(
+            device,
+            "Hosts1",
+            "GetGenericHostEntry",
+            num_hosts,
+            index_argument="NewIndex",
+            item="host",
+        )
         seen: set[str] = set()
         for host_index, host_result in hosts:
             with self._item(f"host {host_index}"):
@@ -1593,25 +1649,18 @@ class HomeAutomation(FritzCapability):
         # HKR temperatures from the AHA HTTP API are reported in half-degree
         # steps, unlike the plain <temperature> element (tenths of a degree).
         self._add("heater_temperature", labels, _div(hkr["tist"], 2))
-        self._add("heater_set_temperature", labels, _div(hkr["tsoll"], 2))
-        self._add("heater_reduced_temperature", labels, _div(hkr["absenk"], 2))
-        self._add("heater_comfort_temperature", labels, _div(hkr["komfort"], 2))
+        self._add("heater_set_temperature", labels, _hkr_setting(hkr["tsoll"]))
+        self._add("heater_reduced_temperature", labels, _hkr_setting(hkr["absenk"]))
+        self._add("heater_comfort_temperature", labels, _hkr_setting(hkr["komfort"]))
 
     def _collect_heater_valve_state(
         self, device: FritzDevice, ain: str, what: str, labels: list[str]
     ) -> None:
         # The valve/ventil status fields are not exposed by the AHA HTTP API's
         # getdevicelistinfos response, so they still require one TR-064 call
-        # per thermostat (identified by AIN, not by enumeration index).
-        try:
-            ha_result = read_action(
-                device, "X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos", NewAIN=ain
-            )
-        except FritzArgumentError, FritzActionError, FritzArrayIndexError:
-            logger.debug(
-                "Could not fetch the valve state of %s on %s, skipping", what, device.log_name
-            )
-            return
+        # per thermostat (identified by AIN, not by enumeration index). An error
+        # reply skips this item (see _item) and shows in fritz_read_problem.
+        ha_result = read_action(device, "X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos", NewAIN=ain)
 
         for metric, key in (
             ("heater_valve_set_state", "NewHkrSetVentilStatus"),
@@ -2032,9 +2081,15 @@ class UspControllers(FritzCapability):
         count = read_action(device, service, "GetUSPControllerNumberOfEntries").integer(
             "NewUSPControllerNumberOfEntries"
         )
-        for index, controller in self._enumerate(
-            device, service, "GetUSPControllerByIndex", count, "NewIndex"
-        ):
+        controllers = self._enumerate(
+            device,
+            service,
+            "GetUSPControllerByIndex",
+            count,
+            index_argument="NewIndex",
+            item="USP controller",
+        )
+        for index, controller in controllers:
             self._add(
                 "controller_enabled",
                 [*labels, str(index)],

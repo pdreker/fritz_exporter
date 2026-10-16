@@ -3,7 +3,6 @@ import logging
 import os
 import sys
 import threading
-from pathlib import Path
 
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
@@ -45,18 +44,9 @@ def parse_cmdline() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _resolve_password(dev: DeviceConfig) -> str:
-    if dev.password_file is not None:
-        password = Path(dev.password_file).read_text().strip()
-        logger.debug("Using password from password file %s", dev.password_file)
-    else:
-        password = dev.password if dev.password is not None else ""
-    return password
-
-
 def _register_device(dev: DeviceConfig, fritzcollector: FritzCollector) -> None:
     spec = DeviceSpec(
-        FritzCredentials(dev.hostname, dev.username, _resolve_password(dev)),
+        FritzCredentials(dev.hostname, dev.username, dev.read_password()),
         dev.name,
         host_info=dev.host_info,
         wifi_client_info=dev.wifi_client_info,
