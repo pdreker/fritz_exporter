@@ -56,12 +56,15 @@ The following groups of metrics are currently available:
 
 * Base Information (Model, Serial, Software Version, Uptime)
 * Software Information (Update available)
+* Connection mode (DSL, fibre, cable, mobile fallback or offline)
+* Host table (number of known devices; with ``host_info`` enabled, activity and speed of each host)
 * LAN statistics (Ethernet only)
 * WAN statistics (including the delegated IPv6 prefix)
 * DSL statistics
 * Fibre / GPON statistics (optical levels, SFP/GPON identity, fibre counters)
 * PPP statistics
-* WiFi statistics
+* WiFi statistics (with ``wifi_client_info`` enabled, also signal strength and speed of each client)
+* Mesh backhaul links (data rate and state of the links between mesh nodes, read from the mesh master)
 * Provider management channel (TR-069 management server host, periodic inform, managed upgrades; USP controller enable flags, see below)
 * Telephony (number of configured telephone numbers; the numbers themselves are not exported)
 * WAN Layer1 (physical link) statistics, including 64-bit max bitrate for multi-gig links

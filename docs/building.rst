@@ -50,7 +50,7 @@ To verify correct operation just use curl against the running exporter. It shoul
 Building and running locally (no containers)
 --------------------------------------------
 
-You can install the latest release from PyPI using ``pip install fritzexporter`` and then run it using ``python -m fritzexporter``. It is highly recommended to use a virtual environment to do so.
+You can install the latest release from PyPI using ``pip install fritz-exporter`` and then run it using ``python -m fritzexporter``. It is highly recommended to use a virtual environment to do so.
 
 For development and debugging, see :doc:`contributing` for the local
 environment setup, verification commands, and how to run the exporter from

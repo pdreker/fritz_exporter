@@ -24,6 +24,34 @@ exporter now waits at least a minute, or as long as the device blocks logins, be
 the next attempt. It used to try again for every web interface metric group, which
 made the device block logins longer, also for the browser.
 
+Devices without a readable serial number are not collected
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The serial number is the label that tells devices apart (names may repeat). A
+device whose serial cannot be read is now reported as unreachable
+(``fritz_device_reachable 0``) and set up again on every scrape, with one error in
+the log, instead of being collected with ``serial="n/a"``. A missing serial in the
+device's reply used to stop the exporter at startup.
+
+Unreadable data is skipped and reported
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When a value, an item (a host, a channel, ...) or a whole reply cannot be read, the
+exporter skips only that part and reports it in the new ``fritz_read_problem`` metric
+and in the log. Before, such a value silently became a gap, or the whole scrape
+failed. The log messages for failing web interface requests changed from
+"Failed to fetch … data" to "Could not read <Capability> data from <host>,
+skipping it: …"; while a problem lasts it is repeated as a reminder once an hour
+instead of on every scrape.
+
+Smart home values that are unknown are no longer reported as 0
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Fritz!OS leaves an element empty when the value is unknown. An empty
+``<batterylow/>`` or ``<lock/>`` used to be exported as ``0`` ("battery fine",
+"not locked"); it now gives no sample for ``fritz_ha_battery_low`` or
+``fritz_ha_switch_lock``.
+
 v3.5.0
 ------
 
