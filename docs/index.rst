@@ -138,15 +138,28 @@ Known Problems
 * Fritz!OS does not allow passwords longer than 32 characters (as of 07.25). If you try to use a longer password, the admin ui will simply discard all characters after the 32nd. The UI will also cut your inserted password down to 32 characters. So you will be able to login in the UI with the long password. The exporter however does not alter your password and requests will result in a ``401 Unauthorized`` error. So please be aware of this limit and choose a suitable password.
 * Collecting HostInfo (disabled by default) can be extremely slow and will cause some load on the device. It works, but it is slow as this feature needs two calls to the Fritz! device for every device it knows which will simply take some time. If you enable this, make sure your Prometheusm `scrape_timeouts` are set appropriately (30s should be OK for most setups, but you may need to go even higher).
 
+.. _grafana-dashboards:
+
 Grafana Dashboards
 ------------------
-There are two Grafana dashboards available for this exporter. One (13983) is a more general one which shows the most important metrics and is available even if you do not enable the host info metrics. The other one (17751) is more detailed and requires the host info metrics to be enabled.
-Grafana dashboard ``13983`` is available at
-https://grafana.com/grafana/dashboards/13983-fritz-exporter/ and also in this repository at
-``misc/grafana/FritzExporter_13983.json``.
-If the host info metrics are enabled, dashboard ``17751`` is available at
-https://grafana.com/grafana/dashboards/17751-fritz-exporter-dash/ and also in this repository at
-``misc/grafana/FritzExporter_Dash_17751.json``.
+Two Grafana dashboards come with the exporter, in ``misc/grafana`` in the
+`repository <https://github.com/pdreker/fritz_exporter>`_. Take them from the tag of
+the exporter version you run, so they match its metrics, e.g.
+https://github.com/pdreker/fritz_exporter/tree/fritzexporter-v4.0.0/misc/grafana for
+4.0.0; ``main`` has the dashboards of the next release. Import them with
+"Dashboards" -> "New" -> "Import" -> "Upload dashboard JSON file" in Grafana 10 or
+later, and pick your Prometheus data source and the device at the top.
+
+* **Fritz!Exporter Overview** (``fritz-exporter-overview.json``) shows every metric
+  the exporter has, one row per topic (device, internet, DSL, cable, fibre, LAN, WiFi,
+  mesh, hosts, smart home, provider management), with many kinds of panels. Use it to
+  see what there is and as a starting point for your own dashboards. Rows that do not
+  apply to a device stay empty.
+* **Fritz!Exporter Home** (``fritz-exporter-home.json``) shows what is useful every
+  day on one screen: connection, traffic, line usage and quality, devices online,
+  WiFi, mesh and smart home.
+
+Hosts need ``host_info: true`` and WiFi clients ``wifi_client_info: true``.
 
 Helm Chart
 ----------

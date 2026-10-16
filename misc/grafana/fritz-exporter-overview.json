@@ -1,0 +1,5929 @@
+{
+  "uid": "fritz-exporter-overview",
+  "title": "Fritz!Exporter Overview",
+  "description": "Every metric of the Fritz! exporter, grouped by topic. Rows that do not apply to a device (cable on a DSL box, ...) stay empty.",
+  "tags": [
+    "fritz-exporter",
+    "fritzbox"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Fritz!Exporter dashboards",
+      "type": "dashboards",
+      "tags": [
+        "fritz-exporter"
+      ],
+      "asDropdown": true,
+      "includeVars": true,
+      "keepTime": true,
+      "icon": "external link",
+      "targetBlank": false
+    },
+    {
+      "title": "Metrics reference",
+      "type": "link",
+      "url": "https://fritz-exporter.readthedocs.io/en/latest/",
+      "icon": "doc",
+      "targetBlank": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Data source",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "refresh": 1,
+        "options": []
+      },
+      {
+        "name": "device",
+        "label": "Device",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(fritz_device_reachable, friendly_name)",
+        "query": {
+          "query": "label_values(fritz_device_reachable, friendly_name)",
+          "refId": "device"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "current": {},
+        "includeAll": false,
+        "multi": false,
+        "hide": 0,
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Device and exporter",
+      "collapsed": false,
+      "id": 1,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Reachable",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_device_reachable{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "__auto"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Up",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 2,
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Uptime",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_uptime_seconds_total{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "__auto"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 3,
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 3,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Model",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_uptime_seconds_total{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "{{modelname}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 4,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 6,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Fritz!OS",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_uptime_seconds_total{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "{{softwareversion}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 5,
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 10,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Update available",
+      "description": "The new version is in the newsoftwareversion label.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_update_available{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "{{newsoftwareversion}}",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Yes",
+                  "color": "orange",
+                  "index": 0
+                },
+                "0": {
+                  "text": "No",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 6,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 13,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Connection mode",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_connection_mode{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "__auto"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Offline",
+                  "color": "red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "DSL",
+                  "color": "green",
+                  "index": 1
+                },
+                "2": {
+                  "text": "Mobile fallback",
+                  "color": "orange",
+                  "index": 2
+                },
+                "3": {
+                  "text": "Mobile only",
+                  "color": "yellow",
+                  "index": 3
+                },
+                "4": {
+                  "text": "Fibre",
+                  "color": "green",
+                  "index": 4
+                },
+                "5": {
+                  "text": "Cable",
+                  "color": "green",
+                  "index": 5
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 7,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 17,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Read problems",
+      "description": "Metric groups the exporter could not read in full in the last scrape.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "count(fritz_read_problem{friendly_name=\"$device\"}) or vector(0)",
+          "refId": "A",
+          "legendFormat": "__auto"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 8,
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 1
+      }
+    },
+    {
+      "type": "table",
+      "title": "Read problems",
+      "description": "partial = some values or items, skipped = the whole group, error = a bug in the exporter. The log has the details.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_read_problem{friendly_name=\"$device\"}",
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "source": true,
+              "serial": true,
+              "friendly_name": true,
+              "Value": true
+            },
+            "renameByName": {
+              "capability": "Metric group",
+              "level": "Skipped"
+            },
+            "indexByName": {
+              "capability": 0,
+              "level": 1
+            }
+          }
+        }
+      ],
+      "id": 9,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 5
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Completed scrapes",
+      "description": "Scrapes of this device per minute.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(fritz_scrapes_total{friendly_name=\"$device\"}[$__rate_interval]) * 60",
+          "refId": "A",
+          "legendFormat": "per minute"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisSoftMin": null,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 10,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 5
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Exporter: timed out and failed scrapes",
+      "description": "For the whole exporter, not per device.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "increase(fritz_scrapes_timeouts_total[$__rate_interval])",
+          "refId": "A",
+          "legendFormat": "timed out {{instance}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "increase(fritz_scrapes_failed_total[$__rate_interval])",
+          "refId": "B",
+          "legendFormat": "failed {{instance}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 80,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisSoftMin": null,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 11,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 16,
+        "y": 5
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Known hosts",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_known_devices_count{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "__auto"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 12,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 11
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Telephone numbers",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_telephony_numbers{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "__auto"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 13,
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 11
+      }
+    },
+    {
+      "type": "row",
+      "title": "Internet",
+      "collapsed": false,
+      "id": 14,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Current data rate",
+      "description": "As reported by the device (fritz_wan_datarate_bytes); upload is drawn below.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_wan_datarate_bytes{friendly_name=\"$device\",direction=\"rx\"} * 8",
+          "refId": "A",
+          "legendFormat": "download"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_wan_datarate_bytes{friendly_name=\"$device\",direction=\"tx\"} * 8",
+          "refId": "B",
+          "legendFormat": "upload"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisSoftMin": null,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "bps"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*(tx|[Uu]pload|[Uu]pstream).*"
+            },
+            "properties": [
+              {
+                "id": "custom.transform",
+                "value": "negative-Y"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 15,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Traffic from the byte counters",
+      "description": "rate() of fritz_wan_data_bytes_total: the average over the interval.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(fritz_wan_data_bytes_total{friendly_name=\"$device\",direction=\"rx\"}[$__rate_interval]) * 8",
+          "refId": "A",
+          "legendFormat": "download"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(fritz_wan_data_bytes_total{friendly_name=\"$device\",direction=\"tx\"}[$__rate_interval]) * 8",
+          "refId": "B",
+          "legendFormat": "upload"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisSoftMin": null,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "bps"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*(tx|[Uu]pload|[Uu]pstream).*"
+            },
+            "properties": [
+              {
+                "id": "custom.transform",
+                "value": "negative-Y"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 16,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Packets",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(fritz_wan_data_packets_count_total{friendly_name=\"$device\"}[$__rate_interval])",
+          "refId": "A",
+          "legendFormat": "{{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisSoftMin": null,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "pps"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*(tx|[Uu]pload|[Uu]pstream).*"
+            },
+            "properties": [
+              {
+                "id": "custom.transform",
+                "value": "negative-Y"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 17,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 0,
+        "y": 24
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Maximum bit rate",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "layer 1 {{direction}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_wan_max_bitrate_bps{friendly_name=\"$device\"}",
+          "refId": "B",
+          "legendFormat": "{{wantype}} {{direction}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "color": {
+            "mode": "continuous-BlPu"
+          },
+          "min": 0,
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "auto",
+        "sizing": "auto"
+      },
+      "id": 18,
+      "gridPos": {
+        "h": 6,
+        "w": 8,
+        "x": 8,
+        "y": 24
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Physical link",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_wan_phys_link_status{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "{{wantype}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Up",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "Down",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 19,
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 16,
+        "y": 24
+      }
+    },
+    {
+      "type": "stat",
+      "title": "PPP",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_ppp_connection_state{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "last error: {{last_error}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Connected",
+                  "color": "green",
+                  "index": 0
+                },
+                "0": {
+                  "text": "Disconnected",
+                  "color": "red",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 20,
+      "gridPos": {
+        "h": 6,
+        "w": 4,
+        "x": 20,
+        "y": 24
+      }
+    },
+    {
+      "type": "stat",
+      "title": "PPP uptime",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_ppp_connection_uptime_seconds_total{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "__auto"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "-",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true
+      },
+      "id": 21,
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 30
+      }
+    },
+    {
+      "type": "table",
+      "title": "Connections",
+      "description": "All WAN connections from the REST API, also the disabled ones.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_wan_connection_status{friendly_name=\"$device\"} + 0",
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_wan_connection_uptime_seconds_total{friendly_name=\"$device\"} + 0",
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_wan_connection_info{friendly_name=\"$device\"} + 0",
+          "refId": "C",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Uptime"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "State"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "connected": {
+                        "text": "connected",
+                        "color": "green",
+                        "index": 0
+                      },
+                      "disabled": {
+                        "text": "disabled",
+                        "color": "text",
+                        "index": 1
+                      },
+                      "connecting": {
+                        "text": "connecting",
+                        "color": "orange",
+                        "index": 2
+                      },
+                      "disconnected": {
+                        "text": "disconnected",
+                        "color": "red",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "source": true,
+              "serial": true,
+              "friendly_name": true,
+              "connection": true,
+              "Value #A": true,
+              "Value #C": true
+            },
+            "renameByName": {
+              "connection_name": "Connection",
+              "media_type": "Medium",
+              "stack": "Stack",
+              "state": "State",
+              "Value #B": "Uptime",
+              "ip_address": "Address"
+            },
+            "indexByName": {
+              "connection_name": 0,
+              "media_type": 1,
+              "stack": 2,
+              "state": 3,
+              "Value #B": 4,
+              "ip_address": 5
+            }
+          }
+        }
+      ],
+      "id": 22,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 4,
+        "y": 30
+      }
+    },
+    {
+      "type": "table",
+      "title": "IPv6 prefix",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_wan_ipv6_prefix_info{friendly_name=\"$device\"}",
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "source": true,
+              "serial": true,
+              "friendly_name": true,
+              "Value": true
+            },
+            "renameByName": {
+              "prefix": "Prefix",
+              "prefix_length": "Length"
+            },
+            "indexByName": {
+              "prefix": 0,
+              "prefix_length": 1
+            }
+          }
+        }
+      ],
+      "id": 23,
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 30
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Connection uptime",
+      "description": "Drops to 0 on a reconnect.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "fritz_wan_connection_uptime_seconds_total{friendly_name=\"$device\"}",
+          "refId": "A",
+          "legendFormat": "{{connection_name}} {{stack}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisSoftMin": null,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 24,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      }
+    },
+    {
+      "type": "row",
+      "title": "DSL",
+      "collapsed": true,
+      "id": 25,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "DSL enabled",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_dsl_status_enabled{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "On",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "0": {
+                      "text": "Off",
+                      "color": "text",
+                      "index": 1
+                    }
+                  }
+                }
+              ],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 26,
+          "gridPos": {
+            "h": 4,
+            "w": 3,
+            "x": 0,
+            "y": 44
+          }
+        },
+        {
+          "type": "stat",
+          "title": "DSL line",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_dsl_status{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "Up",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "0": {
+                      "text": "Down",
+                      "color": "red",
+                      "index": 1
+                    }
+                  }
+                }
+              ],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 27,
+          "gridPos": {
+            "h": 4,
+            "w": 3,
+            "x": 3,
+            "y": 44
+          }
+        },
+        {
+          "type": "gauge",
+          "title": "Downstream sync / attainable",
+          "description": "How much of the attainable rate the line is synced at.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_dsl_datarate_kbps{friendly_name=\"$device\",direction=\"rx\",type=\"curr\"} / ignoring (type) fritz_dsl_datarate_kbps{friendly_name=\"$device\",direction=\"rx\",type=\"max\"} * 100",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 70
+                  },
+                  {
+                    "color": "green",
+                    "value": 85
+                  }
+                ]
+              },
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdMarkers": true,
+            "showThresholdLabels": false,
+            "orientation": "auto"
+          },
+          "id": 28,
+          "gridPos": {
+            "h": 4,
+            "w": 3,
+            "x": 6,
+            "y": 44
+          }
+        },
+        {
+          "type": "gauge",
+          "title": "Upstream sync / attainable",
+          "description": "How much of the attainable rate the line is synced at.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_dsl_datarate_kbps{friendly_name=\"$device\",direction=\"tx\",type=\"curr\"} / ignoring (type) fritz_dsl_datarate_kbps{friendly_name=\"$device\",direction=\"tx\",type=\"max\"} * 100",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 70
+                  },
+                  {
+                    "color": "green",
+                    "value": 85
+                  }
+                ]
+              },
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showThresholdMarkers": true,
+            "showThresholdLabels": false,
+            "orientation": "auto"
+          },
+          "id": 29,
+          "gridPos": {
+            "h": 4,
+            "w": 3,
+            "x": 9,
+            "y": 44
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Sync rate",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_dsl_datarate_kbps{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{direction}} {{type}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "Kbits"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 30,
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 44
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Noise margin",
+          "description": "Higher is better; below about 6 dB the line may drop.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_dsl_noise_margin_dB{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{direction}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": 0,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "dB"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 31,
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 52
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Attenuation",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_dsl_attenuation_dB{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{direction}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "dB"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 32,
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 52
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Errors",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "increase(fritz_dsl_fec_errors_count_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "refId": "A",
+              "legendFormat": "FEC (corrected)"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "increase(fritz_dsl_crc_errors_count_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "refId": "B",
+              "legendFormat": "CRC"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "bars",
+                "lineWidth": 1,
+                "fillOpacity": 80,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 33,
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 56
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Cable (DOCSIS)",
+      "collapsed": true,
+      "id": 34,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 61
+      },
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Downstream power",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_docsis_power_dBmV{friendly_name=\"$device\",direction=\"downstream\"}",
+              "refId": "A",
+              "legendFormat": "{{standard}} ch {{channel_id}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "suffix: dBmV"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 35,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 62
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Upstream power",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_docsis_power_dBmV{friendly_name=\"$device\",direction=\"upstream\"}",
+              "refId": "A",
+              "legendFormat": "{{standard}} ch {{channel_id}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "suffix: dBmV"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 36,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 62
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Shared segment utilization",
+          "description": "own = this box, total = everyone on the segment. Cable boxes only.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_cable_segment_utilization_percent{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{scope}} {{direction}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 37,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 62
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "MER (DOCSIS 3.1) and MSE (DOCSIS 3.0)",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_docsis_mer_dB{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "MER ch {{channel_id}}"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_docsis_mse_dB{friendly_name=\"$device\"}",
+              "refId": "B",
+              "legendFormat": "MSE ch {{channel_id}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "dB"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 38,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 0,
+            "y": 69
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Codeword errors",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "increase(fritz_docsis_corrected_errors_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "refId": "A",
+              "legendFormat": "corrected ch {{channel_id}}"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "increase(fritz_docsis_uncorrected_errors_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "refId": "B",
+              "legendFormat": "uncorrected ch {{channel_id}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "bars",
+                "lineWidth": 1,
+                "fillOpacity": 80,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 39,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 8,
+            "y": 69
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Latency",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_docsis_latency_ms{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "ch {{channel_id}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "ms"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 40,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 69
+          }
+        },
+        {
+          "type": "table",
+          "title": "Channels",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_docsis_channel_info{friendly_name=\"$device\"}",
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "filterable": true
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm"
+          },
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "source": true,
+                  "serial": true,
+                  "friendly_name": true,
+                  "Value": true
+                },
+                "renameByName": {
+                  "direction": "Direction",
+                  "standard": "Standard",
+                  "channel_id": "Channel",
+                  "frequency": "Frequency (MHz)",
+                  "modulation": "Modulation"
+                },
+                "indexByName": {
+                  "direction": 0,
+                  "standard": 1,
+                  "channel_id": 2,
+                  "frequency": 3,
+                  "modulation": 4
+                }
+              }
+            }
+          ],
+          "id": 41,
+          "gridPos": {
+            "h": 7,
+            "w": 16,
+            "x": 0,
+            "y": 76
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Segment sample age",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "time() - fritz_cable_segment_sample_timestamp_seconds{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 180
+                  },
+                  {
+                    "color": "red",
+                    "value": 600
+                  }
+                ]
+              },
+              "mappings": [],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 42,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 76
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Fibre",
+      "collapsed": true,
+      "id": 43,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 83
+      },
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Optical levels",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_fiber_optical_signal_level_dBm{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "receive"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_fiber_transmit_optical_level_dBm{friendly_name=\"$device\"}",
+              "refId": "B",
+              "legendFormat": "transmit"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_fiber_optical_threshold_dBm{friendly_name=\"$device\"}",
+              "refId": "C",
+              "legendFormat": "receive {{bound}} limit"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_fiber_transmit_power_threshold_dBm{friendly_name=\"$device\"}",
+              "refId": "D",
+              "legendFormat": "transmit {{bound}} limit"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "suffix: dBm"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": ".*limit"
+                },
+                "properties": [
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        10,
+                        10
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 44,
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 84
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Fibre traffic",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "rate(fritz_fiber_data_bytes_total{friendly_name=\"$device\"}[$__rate_interval]) * 8",
+              "refId": "A",
+              "legendFormat": "{{direction}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "bps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": ".*(tx|[Uu]pload|[Uu]pstream).*"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 45,
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 84
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Packets, multicast and errors",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "rate(fritz_fiber_data_packets_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "refId": "A",
+              "legendFormat": "packets {{direction}}"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "rate(fritz_fiber_packets_multicast_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "refId": "B",
+              "legendFormat": "multicast"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "rate(fritz_fiber_packet_errors_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "refId": "C",
+              "legendFormat": "errors {{direction}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "pps"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 46,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 92
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Connection rate",
+          "description": "As the device reports it; the unit differs between models.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_fiber_connection_rate{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{direction}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value_and_name",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 47,
+          "gridPos": {
+            "h": 6,
+            "w": 4,
+            "x": 12,
+            "y": 92
+          }
+        },
+        {
+          "type": "stat",
+          "title": "TX wavelength",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_fiber_tx_wavelength_nm{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "suffix: nm"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 48,
+          "gridPos": {
+            "h": 3,
+            "w": 4,
+            "x": 16,
+            "y": 92
+          }
+        },
+        {
+          "type": "stat",
+          "title": "GPON ONU ID",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_fiber_gpon_onu_id{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 49,
+          "gridPos": {
+            "h": 3,
+            "w": 2,
+            "x": 20,
+            "y": 92
+          }
+        },
+        {
+          "type": "stat",
+          "title": "GEM ports",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_fiber_gpon_gem_port_count{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 50,
+          "gridPos": {
+            "h": 3,
+            "w": 2,
+            "x": 22,
+            "y": 92
+          }
+        },
+        {
+          "type": "table",
+          "title": "SFP module",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_fiber_info{friendly_name=\"$device\"}",
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "filterable": true
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm"
+          },
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "source": true,
+                  "serial": true,
+                  "friendly_name": true,
+                  "Value": true
+                },
+                "renameByName": {
+                  "fiber_mode": "Mode",
+                  "sfp_vendor": "Vendor",
+                  "sfp_part_number": "Part",
+                  "sfp_serial_number": "Serial",
+                  "sfp_type": "Type"
+                },
+                "indexByName": {
+                  "fiber_mode": 0,
+                  "sfp_vendor": 1,
+                  "sfp_part_number": 2,
+                  "sfp_serial_number": 3,
+                  "sfp_type": 4
+                }
+              }
+            }
+          ],
+          "id": 51,
+          "gridPos": {
+            "h": 4,
+            "w": 12,
+            "x": 0,
+            "y": 98
+          }
+        },
+        {
+          "type": "table",
+          "title": "GPON",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_fiber_gpon_info{friendly_name=\"$device\"}",
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "filterable": true
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm"
+          },
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "source": true,
+                  "serial": true,
+                  "friendly_name": true,
+                  "Value": true
+                },
+                "renameByName": {
+                  "gpon_serial": "GPON serial",
+                  "pon_id": "PON ID",
+                  "uni_type": "UNI type"
+                },
+                "indexByName": {
+                  "gpon_serial": 0,
+                  "pon_id": 1,
+                  "uni_type": 2
+                }
+              }
+            }
+          ],
+          "id": 52,
+          "gridPos": {
+            "h": 4,
+            "w": 12,
+            "x": 12,
+            "y": 98
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "LAN",
+      "collapsed": true,
+      "id": 53,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 102
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "LAN enabled",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_lan_status_enabled{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "On",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "0": {
+                      "text": "Off",
+                      "color": "text",
+                      "index": 1
+                    }
+                  }
+                }
+              ],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 54,
+          "gridPos": {
+            "h": 6,
+            "w": 4,
+            "x": 0,
+            "y": 103
+          }
+        },
+        {
+          "type": "stat",
+          "title": "LAN status",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_lan_status{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "Up",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "0": {
+                      "text": "Down",
+                      "color": "red",
+                      "index": 1
+                    }
+                  }
+                }
+              ],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 55,
+          "gridPos": {
+            "h": 6,
+            "w": 4,
+            "x": 4,
+            "y": 103
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "LAN traffic",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "rate(fritz_lan_data_bytes_total{friendly_name=\"$device\"}[$__rate_interval]) * 8",
+              "refId": "A",
+              "legendFormat": "{{direction}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "bps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": ".*(tx|[Uu]pload|[Uu]pstream).*"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 56,
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 8,
+            "y": 103
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "LAN packets",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "rate(fritz_lan_packet_count_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "refId": "A",
+              "legendFormat": "{{direction}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "pps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": ".*(tx|[Uu]pload|[Uu]pstream).*"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 57,
+          "gridPos": {
+            "h": 6,
+            "w": 8,
+            "x": 16,
+            "y": 103
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "WiFi",
+      "collapsed": true,
+      "id": 58,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 109
+      },
+      "panels": [
+        {
+          "type": "table",
+          "title": "Networks",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_wifi_status{friendly_name=\"$device\"} + 0",
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_wifi_channel{friendly_name=\"$device\"} + 0",
+              "refId": "B",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_wifi_associations_count{friendly_name=\"$device\"} + 0",
+              "refId": "C",
+              "format": "table",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "filterable": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Status"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "1": {
+                            "text": "Up",
+                            "color": "green",
+                            "index": 0
+                          },
+                          "0": {
+                            "text": "Down",
+                            "color": "red",
+                            "index": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-background"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Clients"
+                },
+                "properties": [
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "basic"
+                    }
+                  },
+                  {
+                    "id": "max",
+                    "value": 30
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm"
+          },
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "source": true,
+                  "serial": true,
+                  "friendly_name": true,
+                  "enabled": true,
+                  "wifi_index": true
+                },
+                "renameByName": {
+                  "wifi_name": "Band",
+                  "ssid": "SSID",
+                  "standard": "Standard",
+                  "Value #B": "Channel",
+                  "Value #C": "Clients",
+                  "Value #A": "Status"
+                },
+                "indexByName": {
+                  "wifi_name": 0,
+                  "ssid": 1,
+                  "standard": 2,
+                  "Value #B": 3,
+                  "Value #C": 4,
+                  "Value #A": 5
+                }
+              }
+            }
+          ],
+          "id": 59,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 110
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Clients per network",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_wifi_associations_count{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{wifi_name}} {{ssid}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 40,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 0,
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 60,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 12,
+            "y": 110
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Packets per network",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "rate(fritz_wifi_packets_count_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "refId": "A",
+              "legendFormat": "{{wifi_name}} {{direction}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "pps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": ".*(tx|[Uu]pload|[Uu]pstream).*"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 61,
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 0,
+            "y": 116
+          }
+        },
+        {
+          "type": "table",
+          "title": "Clients (wifi_client_info)",
+          "description": "Needs wifi_client_info: true.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_wifi_client_signal_strength{friendly_name=\"$device\"} + 0",
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_wifi_client_speed{friendly_name=\"$device\"} + 0",
+              "refId": "B",
+              "format": "table",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "filterable": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Signal"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "min",
+                    "value": 0
+                  },
+                  {
+                    "id": "max",
+                    "value": 100
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "red",
+                          "value": null
+                        },
+                        {
+                          "color": "orange",
+                          "value": 40
+                        },
+                        {
+                          "color": "green",
+                          "value": 60
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "gauge",
+                      "mode": "basic"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Speed"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "Mbits"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "sortBy": [
+              {
+                "displayName": "Signal",
+                "desc": true
+              }
+            ]
+          },
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "source": true,
+                  "serial": true,
+                  "friendly_name": true
+                },
+                "renameByName": {
+                  "wifi_name": "Band",
+                  "client_mac": "MAC",
+                  "client_ip": "Address",
+                  "Value #A": "Signal",
+                  "Value #B": "Speed"
+                },
+                "indexByName": {
+                  "wifi_name": 0,
+                  "client_mac": 1,
+                  "client_ip": 2,
+                  "Value #A": 3,
+                  "Value #B": 4
+                }
+              }
+            }
+          ],
+          "id": 62,
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 116
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Mesh",
+      "collapsed": true,
+      "id": 63,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 123
+      },
+      "panels": [
+        {
+          "type": "state-timeline",
+          "title": "Backhaul links",
+          "description": "Read from the mesh master.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_mesh_link_available{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{node}} ↔ {{peer}} ({{interface}})"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "connected",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "0": {
+                      "text": "down",
+                      "color": "red",
+                      "index": 1
+                    }
+                  }
+                }
+              ],
+              "custom": {
+                "fillOpacity": 80
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "mergeValues": true,
+            "showValue": "auto",
+            "alignValue": "center",
+            "rowHeight": 0.85,
+            "legend": {
+              "showLegend": false
+            }
+          },
+          "id": 64,
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 124
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Link data rate (dashed: maximum)",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_mesh_link_current_data_rate_kbps{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{node}} → {{peer}} {{direction}}"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_mesh_link_max_data_rate_kbps{friendly_name=\"$device\"}",
+              "refId": "B",
+              "legendFormat": "max {{node}} → {{peer}} {{direction}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "Kbits"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "max .*"
+                },
+                "properties": [
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        10,
+                        10
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull",
+                "max"
+              ],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 65,
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 129
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Hosts (host_info)",
+      "collapsed": true,
+      "id": 66,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 137
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Active hosts",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "sum(fritz_host_active{friendly_name=\"$device\"})",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [],
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "blue"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "background",
+            "graphMode": "area",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 67,
+          "gridPos": {
+            "h": 8,
+            "w": 4,
+            "x": 0,
+            "y": 138
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Active hosts by interface",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "sum by (interface) (label_replace(fritz_host_active{friendly_name=\"$device\"} * on (serial, mac_address) group_left (interface) fritz_host_info{friendly_name=\"$device\"}, \"interface\", \"unknown\", \"interface\", \"\"))",
+              "refId": "A",
+              "legendFormat": "{{interface}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 40,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 0,
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 68,
+          "gridPos": {
+            "h": 8,
+            "w": 20,
+            "x": 4,
+            "y": 138
+          }
+        },
+        {
+          "type": "table",
+          "title": "Hosts",
+          "description": "Needs host_info: true.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_host_info{friendly_name=\"$device\"} + 0",
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_host_active{friendly_name=\"$device\"} + 0",
+              "refId": "B",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_host_speed{friendly_name=\"$device\"} + 0",
+              "refId": "C",
+              "format": "table",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "filterable": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Active"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "1": {
+                            "text": "active",
+                            "color": "green",
+                            "index": 0
+                          },
+                          "0": {
+                            "text": "inactive",
+                            "color": "text",
+                            "index": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Speed"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "Mbits"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "sortBy": [
+              {
+                "displayName": "Active",
+                "desc": true
+              }
+            ]
+          },
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "source": true,
+                  "serial": true,
+                  "friendly_name": true,
+                  "Value #A": true
+                },
+                "renameByName": {
+                  "hostname": "Name",
+                  "ip_address": "Address",
+                  "mac_address": "MAC",
+                  "interface": "Interface",
+                  "port": "Port",
+                  "model": "Model",
+                  "Value #B": "Active",
+                  "Value #C": "Speed"
+                },
+                "indexByName": {
+                  "hostname": 0,
+                  "ip_address": 1,
+                  "mac_address": 2,
+                  "interface": 3,
+                  "port": 4,
+                  "model": 5,
+                  "Value #B": 6,
+                  "Value #C": 7
+                }
+              }
+            }
+          ],
+          "id": 69,
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 146
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Smart home",
+      "collapsed": true,
+      "id": 70,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 156
+      },
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Temperature",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_temperature_C{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{device_name}}"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_temperature_offset_C{friendly_name=\"$device\"}",
+              "refId": "B",
+              "legendFormat": "{{device_name}} offset"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "decimals": 1,
+              "unit": "celsius"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 71,
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 0,
+            "y": 157
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Heating: measured and set",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_heater_temperature_C{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{device_name}} measured"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_heater_set_temperature_C{friendly_name=\"$device\"}",
+              "refId": "B",
+              "legendFormat": "{{device_name}} set"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_heater_comfort_temperature_C{friendly_name=\"$device\"}",
+              "refId": "C",
+              "legendFormat": "{{device_name}} comfort"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_heater_reduced_temperature_C{friendly_name=\"$device\"}",
+              "refId": "D",
+              "legendFormat": "{{device_name}} reduced"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "celsius"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": ".*(comfort|reduced)"
+                },
+                "properties": [
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        4,
+                        6
+                      ]
+                    }
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 0
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 72,
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 12,
+            "y": 157
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Power",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_multimeter_power_W{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{device_name}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 30,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "watt"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 73,
+          "gridPos": {
+            "h": 7,
+            "w": 12,
+            "x": 0,
+            "y": 164
+          }
+        },
+        {
+          "type": "bargauge",
+          "title": "Energy in the selected time range",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "increase(fritz_ha_multimeter_energy_Wh{friendly_name=\"$device\"}[$__range])",
+              "refId": "A",
+              "legendFormat": "{{device_name}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "color": {
+                "mode": "continuous-GrYlRd"
+              },
+              "min": 0,
+              "unit": "watth"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "displayMode": "gradient",
+            "orientation": "horizontal",
+            "showUnfilled": true,
+            "valueMode": "color",
+            "namePlacement": "auto",
+            "sizing": "auto"
+          },
+          "id": 74,
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 12,
+            "y": 164
+          }
+        },
+        {
+          "type": "bargauge",
+          "title": "Battery",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_battery_level_percent{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{device_name}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "orange",
+                    "value": 20
+                  },
+                  {
+                    "color": "green",
+                    "value": 40
+                  }
+                ]
+              },
+              "color": {
+                "mode": "thresholds"
+              },
+              "min": 0,
+              "max": 100,
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "displayMode": "lcd",
+            "orientation": "horizontal",
+            "showUnfilled": true,
+            "valueMode": "color",
+            "namePlacement": "auto",
+            "sizing": "auto"
+          },
+          "id": 75,
+          "gridPos": {
+            "h": 7,
+            "w": 6,
+            "x": 18,
+            "y": 164
+          }
+        },
+        {
+          "type": "state-timeline",
+          "title": "Valves",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_heater_valve_set_state{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "{{device_name}} set"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_heater_comfort_valve_state{friendly_name=\"$device\"}",
+              "refId": "B",
+              "legendFormat": "{{device_name}} comfort"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_heater_reduced_valve_state{friendly_name=\"$device\"}",
+              "refId": "C",
+              "legendFormat": "{{device_name}} reduced"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "closed",
+                      "color": "blue",
+                      "index": 0
+                    },
+                    "1": {
+                      "text": "open",
+                      "color": "red",
+                      "index": 1
+                    },
+                    "2": {
+                      "text": "temperature",
+                      "color": "green",
+                      "index": 2
+                    }
+                  }
+                }
+              ],
+              "custom": {
+                "fillOpacity": 80
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "mergeValues": true,
+            "showValue": "auto",
+            "alignValue": "center",
+            "rowHeight": 0.85,
+            "legend": {
+              "showLegend": false
+            }
+          },
+          "id": 76,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 0,
+            "y": 171
+          }
+        },
+        {
+          "type": "table",
+          "title": "Devices",
+          "description": "fritz_ha_device_present is 2 for present, kept for compatibility.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_device_present{friendly_name=\"$device\"} + 0",
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_switch_state{friendly_name=\"$device\"} + 0",
+              "refId": "B",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_switch_mode{friendly_name=\"$device\"} + 0",
+              "refId": "C",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_switch_lock{friendly_name=\"$device\"} + 0",
+              "refId": "D",
+              "format": "table",
+              "instant": true,
+              "range": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_ha_battery_low{friendly_name=\"$device\"} + 0",
+              "refId": "E",
+              "format": "table",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "filterable": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Present"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "2": {
+                            "text": "yes",
+                            "color": "green",
+                            "index": 0
+                          },
+                          "0": {
+                            "text": "no",
+                            "color": "red",
+                            "index": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Switch"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "1": {
+                            "text": "On",
+                            "color": "green",
+                            "index": 0
+                          },
+                          "0": {
+                            "text": "Off",
+                            "color": "text",
+                            "index": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Mode"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "0": {
+                            "text": "auto",
+                            "color": "text",
+                            "index": 0
+                          },
+                          "1": {
+                            "text": "manual",
+                            "color": "text",
+                            "index": 1
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Locked"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "1": {
+                            "text": "yes",
+                            "color": "orange",
+                            "index": 0
+                          },
+                          "0": {
+                            "text": "no",
+                            "color": "text",
+                            "index": 1
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Battery low"
+                },
+                "properties": [
+                  {
+                    "id": "mappings",
+                    "value": [
+                      {
+                        "type": "value",
+                        "options": {
+                          "1": {
+                            "text": "Yes",
+                            "color": "orange",
+                            "index": 0
+                          },
+                          "0": {
+                            "text": "No",
+                            "color": "green",
+                            "index": 1
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "custom.cellOptions",
+                    "value": {
+                      "type": "color-text"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm"
+          },
+          "transformations": [
+            {
+              "id": "merge",
+              "options": {}
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "source": true,
+                  "serial": true,
+                  "friendly_name": true,
+                  "ain": true,
+                  "device_id": true
+                },
+                "renameByName": {
+                  "device_name": "Name",
+                  "productname": "Product",
+                  "manufacturer": "Maker",
+                  "Value #A": "Present",
+                  "Value #B": "Switch",
+                  "Value #C": "Mode",
+                  "Value #D": "Locked",
+                  "Value #E": "Battery low"
+                },
+                "indexByName": {
+                  "device_name": 0,
+                  "productname": 1,
+                  "manufacturer": 2,
+                  "Value #A": 3,
+                  "Value #B": 4,
+                  "Value #C": 5,
+                  "Value #D": 6,
+                  "Value #E": 7
+                }
+              }
+            }
+          ],
+          "id": 77,
+          "gridPos": {
+            "h": 6,
+            "w": 12,
+            "x": 12,
+            "y": 171
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Provider management (TR-069, USP)",
+      "collapsed": true,
+      "id": 78,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 177
+      },
+      "panels": [
+        {
+          "type": "table",
+          "title": "TR-069 management server",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_tr069_acs_info{friendly_name=\"$device\"}",
+              "refId": "A",
+              "format": "table",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "filterable": true
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm"
+          },
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "source": true,
+                  "serial": true,
+                  "friendly_name": true,
+                  "Value": true
+                },
+                "renameByName": {
+                  "acs_host": "ACS host"
+                },
+                "indexByName": {
+                  "acs_host": 0
+                }
+              }
+            }
+          ],
+          "id": 79,
+          "gridPos": {
+            "h": 4,
+            "w": 8,
+            "x": 0,
+            "y": 178
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Periodic inform",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_tr069_periodic_inform_enabled{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "On",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "0": {
+                      "text": "Off",
+                      "color": "text",
+                      "index": 1
+                    }
+                  }
+                }
+              ],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 80,
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 178
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Inform interval",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_tr069_periodic_inform_interval_seconds{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 81,
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 12,
+            "y": 178
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Upgrades managed by provider",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_tr069_upgrades_managed{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "__auto"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "Yes",
+                      "color": "orange",
+                      "index": 0
+                    },
+                    "0": {
+                      "text": "No",
+                      "color": "green",
+                      "index": 1
+                    }
+                  }
+                }
+              ],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 82,
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 16,
+            "y": 178
+          }
+        },
+        {
+          "type": "stat",
+          "title": "USP controllers",
+          "description": "",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_usp_controller_enabled{friendly_name=\"$device\"}",
+              "refId": "A",
+              "legendFormat": "controller {{index}}"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "fritz_usp_myfritz_enabled{friendly_name=\"$device\"}",
+              "refId": "B",
+              "legendFormat": "MyFRITZ"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "noValue": "-",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "On",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "0": {
+                      "text": "Off",
+                      "color": "text",
+                      "index": 1
+                    }
+                  }
+                }
+              ],
+              "color": {
+                "mode": "thresholds"
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "value_and_name",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "wideLayout": true
+          },
+          "id": 83,
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 20,
+            "y": 178
+          }
+        }
+      ]
+    }
+  ]
+}

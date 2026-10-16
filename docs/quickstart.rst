@@ -91,10 +91,8 @@ Click "Add Data Source" and choose "Prometheus" from the list. Enter ``http://pr
 
 .. image:: _static/datasrc_ok.png
 
-Now go to "Dashboards" -> "Import" and enter "13983" into the "Import via grafana.com" input and click "Load".
+Download ``fritz-exporter-home.json`` and ``fritz-exporter-overview.json`` from ``misc/grafana`` in the repository, at the tag of your exporter version (see :ref:`grafana-dashboards`). In Grafana go to "Dashboards" -> "New" -> "Import", click "Upload dashboard JSON file" and pick one of the files.
 
-.. image:: _static/dashboard_import.png
-
-On the next page select your Prometheus datasource from the bottom dropdown and click "Import" and you should be greeted by a dashboard showing some data from your devices.
+On the next page select your Prometheus datasource and click "Import" and you should be greeted by a dashboard showing some data from your devices.
 
 .. image:: _static/dashboard.png

@@ -60,6 +60,14 @@ Docker image and Helm chart
 * The image installs the dependency versions from ``uv.lock``, checked against their
   hashes.
 
+New Grafana dashboards
+^^^^^^^^^^^^^^^^^^^^^^
+
+``misc/grafana`` now holds two dashboards built for 4.0, "Fritz!Exporter Overview" and
+"Fritz!Exporter Home" (see :ref:`grafana-dashboards`); the three earlier ones are gone
+from the repository. Dashboards of your own that use the moved labels need the
+``_info`` metrics, see above.
+
 Legacy MD5 web login disabled by default
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

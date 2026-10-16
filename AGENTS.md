@@ -232,6 +232,7 @@ fritzexporter/
 3. Implement `create_metrics()` and `_generate_metric_values()` (reading data as described above).
 4. The subclass is automatically discovered — no registration needed.
 5. Add corresponding tests in `tests/test_fritzcapabilities.py`, using the mock infrastructure in `tests/fc_services_mock.py`.
+6. Show the new metrics in the overview dashboard: edit `misc/grafana/build_dashboards.py`, then run `uv run python misc/grafana/build_dashboards.py`. Never edit the JSON. `tests/test_grafana_dashboards.py` fails while a metric is missing from the overview or the JSON is stale.
 
 ### Naming new metrics
 
