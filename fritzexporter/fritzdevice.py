@@ -14,7 +14,10 @@ from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
 from requests.exceptions import RequestException
 
-from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
+from fritzexporter.exceptions import (
+    FritzDeviceHasNoCapabilitiesError,
+    FritzDeviceSerialUnknownError,
+)
 from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiMd5DisabledError
 from fritzexporter.fritzcapabilities import FritzCapabilities
 from fritzexporter.reply import DataError, read_action
@@ -137,22 +140,19 @@ class FritzDevice:
     def get_device_info(self) -> None:
         try:
             device_info = read_action(self, "DeviceInfo1", "GetInfo")
-            self.serial = device_info.text("NewSerialNumber", "n/a")
+            self.serial = device_info.text("NewSerialNumber")
             self.model = device_info.text("NewModelName", "n/a")
-        except DataError as e:
-            logger.warning(
-                "Could not read the device info of %s, serial number and model name will be "
-                "unavailable: %s",
+        except (FritzServiceError, FritzActionError, DataError) as e:
+            # Without a serial, the device's series cannot be told apart from
+            # another device's of the same name; collecting it could make
+            # Prometheus reject the whole scrape over duplicate samples.
+            logger.error(  # noqa: TRY400 - the cause is in the message, a traceback adds nothing
+                "Could not read the serial number of %s (DeviceInfo1.GetInfo: %s), "
+                "not collecting this device; it is retried on the next scrape",
                 self.host,
                 e,
             )
-        except FritzServiceError, FritzActionError:
-            logger.exception(
-                "Fritz Device %s does not provide basic device "
-                "info (Service: DeviceInfo1, Action: GetInfo)."
-                "Serial number and model name will be unavailable.",
-                self.host,
-            )
+            raise FritzDeviceSerialUnknownError(self.host) from None
         except FritzAuthorizationError:
             logger.exception(
                 "Not authorized to get device info from %s. Check username/password.", self.host
@@ -284,6 +284,7 @@ class FritzCollector(Collector):
                 FritzConnectionException,
                 FritzAuthorizationError,
                 FritzDeviceHasNoCapabilitiesError,
+                FritzDeviceSerialUnknownError,
                 RequestException,
             ):
                 still_offline.append(offline)

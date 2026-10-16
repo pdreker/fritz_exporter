@@ -7,7 +7,7 @@ import pytest
 
 from fritzexporter.fritz_fiber import parse_fiber_stats_response
 from fritzexporter.fritz_webui import FritzWebUiError
-from fritzexporter.reply import DataError
+from fritzexporter.reply import DataError, Issues
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
 from .fc_services_mock import call_action_mock, create_fc_services, fc_services_capabilities
@@ -24,16 +24,24 @@ class TestParseFiberStats:
         assert parse_fiber_stats_response(raw) == {"receive_dbm": None, "transmit_dbm": None}
 
     @pytest.mark.parametrize(
-        "raw",
+        ("raw", "message"),
         [
-            {"data": {"opt_us": [["sa", 9, "n/a"]]}},
-            {"data": {"opt_us": [["sa", 9]]}},
-            {"data": {"opt_us": "not a list"}},
-            {"data": "not an object"},
-            [],
+            ({"data": {"opt_us": [["sa", 9, "n/a"]]}}, "fiberStats opt_us[0] value: expected a number"),
+            ({"data": {"opt_us": [["sa", 9]]}}, "fiberStats opt_us[0]: expected [weekday, hour, value]"),
+            ({"data": {"opt_us": "not a list"}}, "fiberStats data opt_us: expected a list"),
         ],
     )
-    def test_malformed_data_raises(self, raw):
+    def test_defective_series_gives_none_and_is_recorded(self, raw, message):
+        raw["data"]["opt_ds"] = [["sa", 9, -65]]
+        issues = Issues()
+
+        levels = parse_fiber_stats_response(raw, issues)
+
+        assert levels == {"receive_dbm": -6.5, "transmit_dbm": None}
+        assert [m.split(", got")[0] for m in issues.messages] == [message]
+
+    @pytest.mark.parametrize("raw", [{"data": "not an object"}, []])
+    def test_reply_of_the_wrong_shape_raises(self, raw):
         with pytest.raises(DataError):
             parse_fiber_stats_response(raw)
 
@@ -120,6 +128,7 @@ class TestWanFiberWebUiFallback:
         with caplog.at_level(logging.WARNING):
             levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
         assert levels == {"receive": 0, "transmit": 0}
+        assert "Skipped part of the WanFiberInterfaceConfig data from somehost: " in caplog.text
         assert "fiberStats opt_ds[0] value: expected a number, got str" in caplog.text
 
     @patch("fritzexporter.fritzdevice.FritzWebUiClient")

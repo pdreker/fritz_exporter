@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Final, TypedDict
 
-from fritzexporter.reply import Reply
+from fritzexporter.reply import Issues, Reply
 
 __all__ = [
     "DOC_INFO_PAGE",
@@ -35,15 +35,15 @@ class DownstreamChannel(TypedDict):
 
     channel_id: int
     standard: str
-    modulation: str
-    frequency: str
+    modulation: str | None
+    frequency: str | None
     power_dbmv: float | None
     mer_db: float | None
     mse_db: float | None
     corrected_errors: int | None
     uncorrected_errors: int | None
     latency_ms: float | None
-    fft: str
+    fft: str | None
 
 
 class UpstreamChannel(TypedDict):
@@ -51,8 +51,8 @@ class UpstreamChannel(TypedDict):
 
     channel_id: int
     standard: str
-    modulation: str
-    frequency: str
+    modulation: str | None
+    frequency: str | None
     power_dbmv: float | None
 
 
@@ -64,56 +64,70 @@ class DocsisData(TypedDict):
     upstream: list[UpstreamChannel]
 
 
-def _channels(section: Reply | None) -> list[tuple[str, Reply]]:
+def _channels(section: Reply | None, issues: Issues) -> list[tuple[str, Reply]]:
     """The channels of a ``channelDs``/``channelUs`` section with their standard."""
     if section is None:
         return []
     return [
         (standard, channel)
         for standard, key in (("DOCSIS 3.1", "docsis31"), ("DOCSIS 3.0", "docsis30"))
-        for channel in section.objects(key)
+        for _, channel in issues.objects(section, key)
     ]
 
 
-def parse_docsis_response(raw: object) -> DocsisData:
+def _downstream(ch: Reply, standard: str, issues: Issues) -> DownstreamChannel:
+    return {
+        # Every metric of a channel carries its id, so it is read strictly.
+        "channel_id": ch.opt_integer("channelID") or 0,
+        "standard": standard,
+        "modulation": issues.text(ch, "modulation", ""),
+        "frequency": issues.text(ch, "frequency", ""),
+        "power_dbmv": issues.opt_num(ch, "powerLevel"),
+        "mer_db": issues.opt_num(ch, "mer"),
+        "mse_db": issues.opt_num(ch, "mse"),
+        "corrected_errors": issues.opt_integer(ch, "corrErrors"),
+        "uncorrected_errors": issues.opt_integer(ch, "nonCorrErrors"),
+        "latency_ms": issues.opt_num(ch, "latency"),
+        "fft": issues.text(ch, "fft", ""),
+    }
+
+
+def _upstream(ch: Reply, standard: str, issues: Issues) -> UpstreamChannel:
+    return {
+        "channel_id": ch.opt_integer("channelID") or 0,
+        "standard": standard,
+        "modulation": issues.text(ch, "modulation", ""),
+        "frequency": issues.text(ch, "frequency", ""),
+        "power_dbmv": issues.opt_num(ch, "powerLevel"),
+    }
+
+
+def parse_docsis_response(raw: object, issues: Issues | None = None) -> DocsisData:
     """Parse the raw data.lua?page=docInfo JSON into a normalized structure.
 
     Returns a :class:`DocsisData` with ``ready_state``, ``downstream`` and
     ``upstream`` lists of channel dicts. Downstream channels carry the quality
     fields (MER/MSE, errors, latency); upstream channels carry
-    power/modulation/frequency. Empty values become ``None``; malformed data
-    raises :class:`~fritzexporter.reply.DataError`.
+    power/modulation/frequency.
+
+    Empty values become ``None``. A defective value also becomes ``None`` and a
+    channel with a defective id is left out, both recorded in ``issues``; data
+    of the wrong shape raises :class:`~fritzexporter.reply.DataError`.
     """
+    issues = issues if issues is not None else Issues()
     inner = Reply(raw, "docInfo").opt_obj("data") or Reply({}, "docInfo data")
-    return {
-        "ready_state": inner.text("readyState", "unknown"),
-        "downstream": [
-            {
-                "channel_id": ch.opt_integer("channelID") or 0,
-                "standard": standard,
-                "modulation": ch.text("modulation", ""),
-                "frequency": ch.text("frequency", ""),
-                "power_dbmv": ch.opt_num("powerLevel"),
-                "mer_db": ch.opt_num("mer"),
-                "mse_db": ch.opt_num("mse"),
-                "corrected_errors": ch.opt_integer("corrErrors"),
-                "uncorrected_errors": ch.opt_integer("nonCorrErrors"),
-                "latency_ms": ch.opt_num("latency"),
-                "fft": ch.text("fft", ""),
-            }
-            for standard, ch in _channels(inner.opt_obj("channelDs"))
-        ],
-        "upstream": [
-            {
-                "channel_id": ch.opt_integer("channelID") or 0,
-                "standard": standard,
-                "modulation": ch.text("modulation", ""),
-                "frequency": ch.text("frequency", ""),
-                "power_dbmv": ch.opt_num("powerLevel"),
-            }
-            for standard, ch in _channels(inner.opt_obj("channelUs"))
-        ],
+    result: DocsisData = {
+        "ready_state": issues.text(inner, "readyState", "unknown") or "unknown",
+        "downstream": [],
+        "upstream": [],
     }
+    for standard, ch in _channels(inner.opt_obj("channelDs"), issues):
+        with issues.item(f"downstream channel {ch.where('channelID')}"):
+            result["downstream"].append(_downstream(ch, standard, issues))
+    for standard, ch in _channels(inner.opt_obj("channelUs"), issues):
+        with issues.item(f"upstream channel {ch.where('channelID')}"):
+            result["upstream"].append(_upstream(ch, standard, issues))
+    return result
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>

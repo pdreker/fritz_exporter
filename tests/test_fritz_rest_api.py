@@ -17,7 +17,7 @@ from fritzexporter.fritz_rest_generic import (
     parse_monitor_segment,
 )
 from fritzexporter.fritz_webui import FritzWebUiError
-from fritzexporter.reply import DataError
+from fritzexporter.reply import DataError, Issues
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
 from .fc_services_mock import call_action_mock, create_fc_services, fc_services_capabilities
@@ -349,18 +349,35 @@ class TestParseConnectionsResponse:
         assert parse_connections_response({"connection": []}) == []
         assert parse_connections_response({}) == []
 
-    @pytest.mark.parametrize(
-        "raw",
-        [
-            [],
-            {"connection": "not a list"},
-            {"connection": ["not an object"]},
-            {"connection": [{"UID": "c1", "ip4_uptime": "soon"}]},
-        ],
-    )
-    def test_malformed_data_raises(self, raw):
+    @pytest.mark.parametrize("raw", [[], {"connection": "not a list"}])
+    def test_reply_of_the_wrong_shape_raises(self, raw):
         with pytest.raises(DataError):
             parse_connections_response(raw)
+
+    def test_unreadable_connection_is_skipped_and_recorded(self):
+        issues = Issues()
+        raw = {"connection": ["not an object", {"UID": ["x"]}, {"UID": "c3", "name": "ok"}]}
+
+        connections = parse_connections_response(raw, issues)
+
+        assert [c["uid"] for c in connections] == ["c3"]
+        assert issues.messages == [
+            "connections connection[0] skipped: connections connection[0]: expected an object, got str",
+            "connection 1 skipped: connections connection[1] UID: expected text, got list",
+        ]
+
+    def test_unreadable_uptime_is_none_and_recorded(self):
+        issues = Issues()
+
+        connections = parse_connections_response(
+            {"connection": [{"UID": "c1", "ip4_uptime": "soon", "ip6_uptime": "5"}]}, issues
+        )
+
+        assert connections[0]["ip4_uptime"] is None
+        assert connections[0]["ip6_uptime"] == 5
+        assert issues.messages == [
+            "connections connection[0] ip4_uptime: expected a whole number, got str"
+        ]
 
 
 # ---------------------------------------------------------------------------

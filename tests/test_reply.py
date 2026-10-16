@@ -5,7 +5,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from fritzexporter.reply import DataError, Reply, read_action, to_bool, to_float, to_int, to_str
+from fritzexporter.reply import (
+    DataError,
+    Issues,
+    Reply,
+    read_action,
+    to_bool,
+    to_float,
+    to_int,
+    to_str,
+)
 
 SECRET = "192.0.2.77"
 
@@ -166,3 +175,76 @@ class TestReadAction:
 
         with pytest.raises(DataError, match="DeviceInfo1.GetInfo: expected an object, got NoneType"):
             read_action(device, "DeviceInfo1", "GetInfo")
+
+
+class TestIssues:
+    reply = Reply({"n": "4", "bad": "x", "empty": "", "flag": "1", "state": "Up"}, "S.A")
+
+    def test_readers_return_values_and_record_nothing(self):
+        issues = Issues()
+
+        assert issues.num(self.reply, "n") == 4.0
+        assert issues.num(self.reply, "n", divide_by=10) == 0.4
+        assert issues.opt_num(self.reply, "empty") is None
+        assert issues.opt_integer(self.reply, "n") == 4
+        assert issues.flag(self.reply, "flag") == 1
+        assert issues.equals(self.reply, "state", "Up") == 1
+        assert issues.equals(self.reply, "missing", "Up") == 0
+        assert issues.text(self.reply, "missing", "n/a") == "n/a"
+        assert issues.num_or(self.reply, "missing", 0.0) == 0.0
+        assert issues.convert("2.5", to_float, "x") == 2.5
+        assert issues.messages == []
+
+    def test_defects_give_none_and_are_recorded(self):
+        issues = Issues()
+
+        assert issues.num(self.reply, "bad") is None
+        assert issues.num(self.reply, "missing") is None
+        assert issues.num_or(self.reply, "bad", 0.0) is None
+        assert issues.flag(self.reply, "bad") is None
+        assert issues.convert("x", to_int, "item 3") is None
+        assert issues.messages == [
+            "S.A bad: expected a number, got str",
+            "S.A missing: missing",
+            "S.A bad: expected a number, got str",
+            "S.A bad: expected a flag, got str",
+            "item 3: expected a whole number, got str",
+        ]
+
+    def test_other_errors_are_not_contained(self):
+        def broken():
+            raise KeyError("x")
+
+        with pytest.raises(KeyError):
+            Issues().value(broken)
+
+    def test_objects_skips_and_records_elements_that_are_no_objects(self):
+        issues = Issues()
+        reply = Reply({"rows": [{"a": 1}, "x", {"a": 2}]}, "S.A")
+
+        rows = [(index, row.integer("a")) for index, row in issues.objects(reply, "rows")]
+
+        assert rows == [(0, 1), (2, 2)]
+        assert issues.messages == ["S.A rows[1] skipped: S.A rows[1]: expected an object, got str"]
+
+    def test_objects_raises_when_the_list_itself_is_wrong(self):
+        with pytest.raises(DataError, match="S.A rows: expected a list"):
+            list(Issues().objects(Reply({"rows": "x"}, "S.A"), "rows"))
+
+    def test_item_skips_the_rest_of_the_block_and_undoes_it(self):
+        issues = Issues()
+        done = []
+
+        for index in range(3):
+            with issues.item(f"item {index}", on_skip=done.pop):
+                done.append(index)
+                if index == 1:
+                    to_int("x", "item value")
+                done.append("ok")
+
+        assert done == [0, "ok", 2, "ok"]
+        assert issues.messages == ["item 1 skipped: item value: expected a whole number, got str"]
+
+    def test_item_lets_other_errors_through(self):
+        with pytest.raises(KeyError), Issues().item("item"):
+            raise KeyError("x")

@@ -12,8 +12,14 @@ applies everywhere:
 
 Numbers come back as ``int`` or ``float`` and labels as ``str``, so nothing of
 the wrong type can reach a metric and fail later, when Prometheus renders the
-scrape. ``FritzCapability.get_metrics`` catches :class:`DataError` and skips
-that capability for that device in that scrape.
+scrape.
+
+A failure stays at the level it affects: :class:`Issues` contains a
+:class:`DataError` at the value or item level and records it, so a defective
+value costs only the samples built from it and a defective item (a host, a
+channel) only that item. Whatever a level depends on - the structure of a
+reply, a label shared by all its samples - is read outside, so its failure
+moves up to the capability (see ``FritzCapability.get_metrics``).
 
 A :class:`DataError` names the source and the field, never the value: values
 can carry addresses, names or tokens.
@@ -22,7 +28,8 @@ can carry addresses, names or tokens.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -30,6 +37,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "DataError",
+    "Issues",
     "Reply",
     "read_action",
     "to_bool",
@@ -126,7 +134,8 @@ class Reply:
     def __repr__(self) -> str:
         return f"Reply({self._source}, keys={sorted(self._data)})"
 
-    def _what(self, key: str) -> str:
+    def where(self, key: str) -> str:
+        """``source key``, as used in error messages."""
         return f"{self._source} {key}"
 
     def raw(self, key: str) -> Any:  # noqa: ANN401
@@ -139,30 +148,30 @@ class Reply:
 
     def _required[T](self, value: T | None, key: str) -> T:
         if value is None:
-            msg = f"{self._what(key)}: missing"
+            msg = f"{self.where(key)}: missing"
             raise DataError(msg)
         return value
 
     def opt_num(self, key: str) -> float | None:
-        return to_float(self._data.get(key), self._what(key))
+        return to_float(self._data.get(key), self.where(key))
 
     def num(self, key: str) -> float:
         return self._required(self.opt_num(key), key)
 
     def opt_integer(self, key: str) -> int | None:
-        return to_int(self._data.get(key), self._what(key))
+        return to_int(self._data.get(key), self.where(key))
 
     def integer(self, key: str) -> int:
         return self._required(self.opt_integer(key), key)
 
     def opt_flag(self, key: str) -> bool | None:
-        return to_bool(self._data.get(key), self._what(key))
+        return to_bool(self._data.get(key), self.where(key))
 
     def flag(self, key: str) -> bool:
         return self._required(self.opt_flag(key), key)
 
     def opt_text(self, key: str) -> str | None:
-        return to_str(self._data.get(key), self._what(key))
+        return to_str(self._data.get(key), self.where(key))
 
     def text(self, key: str, default: str | None = None) -> str:
         """Read a label; ``default`` replaces an absent value, else it is an error."""
@@ -175,7 +184,7 @@ class Reply:
         value = self._data.get(key)
         if _is_absent(value):
             return None
-        return Reply(value, self._what(key))
+        return Reply(value, self.where(key))
 
     def obj(self, key: str) -> Reply:
         return self._required(self.opt_obj(key), key)
@@ -183,7 +192,7 @@ class Reply:
     def objects(self, key: str) -> list[Reply]:
         """Read a list of objects; an absent list is empty."""
         return [
-            Reply(item, f"{self._what(key)}[{index}]") for index, item in enumerate(self.items(key))
+            Reply(item, f"{self.where(key)}[{index}]") for index, item in enumerate(self.items(key))
         ]
 
     def items(self, key: str) -> list[Any]:
@@ -192,8 +201,94 @@ class Reply:
         if _is_absent(value):
             return []
         if not isinstance(value, list):
-            raise _fail(self._what(key), "a list", value)
+            raise _fail(self.where(key), "a list", value)
         return value
+
+
+class Issues:
+    """Defects contained at the value or item level during one collection.
+
+    The value readers behave like the :class:`Reply` methods of the same name,
+    but record a :class:`DataError` and return ``None`` instead of raising.
+    """
+
+    def __init__(self) -> None:
+        self.messages: list[str] = []
+
+    def value[T](self, read: Callable[[], T | None]) -> T | None:
+        """Run ``read``; a :class:`DataError` is recorded and gives ``None``."""
+        try:
+            return read()
+        except DataError as e:
+            self.messages.append(str(e))
+            return None
+
+    def num(self, reply: Reply, key: str, divide_by: float = 1) -> float | None:
+        value = self.value(lambda: reply.num(key))
+        return None if value is None else value / divide_by
+
+    def opt_num(self, reply: Reply, key: str, divide_by: float = 1) -> float | None:
+        value = self.value(lambda: reply.opt_num(key))
+        return None if value is None else value / divide_by
+
+    def num_or(self, reply: Reply, key: str, default: float) -> float | None:
+        """``default`` if the value is absent, ``None`` if it is defective."""
+        try:
+            value = reply.opt_num(key)
+        except DataError as e:
+            self.messages.append(str(e))
+            return None
+        return default if value is None else value
+
+    def text(self, reply: Reply, key: str, default: str) -> str | None:
+        """A label; ``default`` if absent, ``None`` if defective."""
+        return self.value(lambda: reply.text(key, default))
+
+    def opt_integer(self, reply: Reply, key: str) -> int | None:
+        return self.value(lambda: reply.opt_integer(key))
+
+    def flag(self, reply: Reply, key: str) -> int | None:
+        """A required flag as 1 or 0."""
+        value = self.value(lambda: reply.flag(key))
+        return None if value is None else int(value)
+
+    def equals(self, reply: Reply, key: str, expected: str) -> int | None:
+        """1 if the text at ``key`` is ``expected``, else 0 (also when absent)."""
+        value = self.value(lambda: reply.opt_text(key) or "")
+        return None if value is None else int(value == expected)
+
+    def convert[T](
+        self, value: object, convert: Callable[[object, str], T | None], what: str
+    ) -> T | None:
+        """Convert a single value (a list item, XML text) with ``to_float`` and friends."""
+        return self.value(lambda: convert(value, what))
+
+    def objects(self, reply: Reply, key: str) -> Iterator[tuple[int, Reply]]:
+        """Like :meth:`Reply.objects`, but an element that is no object is skipped.
+
+        A value at ``key`` that is no list at all still raises.
+        """
+        for index, element in enumerate(reply.items(key)):
+            what = f"{reply.where(key)}[{index}]"
+            try:
+                obj = Reply(element, what)
+            except DataError as e:
+                self.messages.append(f"{what} skipped: {e}")
+                continue
+            yield index, obj
+
+    @contextmanager
+    def item(self, what: str, on_skip: Callable[[], None] | None = None) -> Iterator[None]:
+        """Skip the rest of the block on a :class:`DataError` and record it.
+
+        ``on_skip`` undoes what the block did before it failed.
+        """
+        try:
+            yield
+        except DataError as e:
+            if on_skip is not None:
+                on_skip()
+            self.messages.append(f"{what} skipped: {e}")
 
 
 def read_action(device: FritzDevice, service: str, action: str, **arguments: Any) -> Reply:  # noqa: ANN401

@@ -63,11 +63,13 @@ class TestDataDonation:
         caplog.set_level(logging.DEBUG)
 
         fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = call_action_no_basic_mock
+        fc.call_action.side_effect = call_action_mock
         fc.services = create_fc_services(fc_services_no_basic_info)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        # A device without a serial is not set up at all, so DeviceInfo1 goes away only now.
+        fc.call_action.side_effect = call_action_no_basic_mock
 
         # Act
-        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         version = get_sw_version(fd)
 
         # Check
@@ -78,11 +80,13 @@ class TestDataDonation:
         caplog.set_level(logging.DEBUG)
 
         fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = call_action_no_basic_action_error_mock
+        fc.call_action.side_effect = call_action_mock
         fc.services = create_fc_services(fc_services_no_basic_info)
+        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        # A device without a serial is not set up at all, so DeviceInfo1 goes away only now.
+        fc.call_action.side_effect = call_action_no_basic_action_error_mock
 
         # Act
-        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
         version = get_sw_version(fd)
 
         # Check
