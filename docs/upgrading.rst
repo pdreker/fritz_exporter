@@ -29,6 +29,27 @@ The exporter now logs in again only when the device rejects the session, not aft
 every failed request, and it stops sending web interface requests for the rest of a
 scrape once the device does not answer one. Replies larger than 4 MiB are refused.
 
+Docker image and Helm chart
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* The image runs as user ``nobody`` (65534) instead of root. **A mounted config
+  file or password file must be readable by that user.** The Helm chart already ran
+  the container as 65534.
+* The image sets ``FRITZ_LISTEN_ADDRESS=0.0.0.0``, so a published port reaches the
+  exporter with the environment configuration. With a config file, set
+  ``listen_address: 0.0.0.0`` in it.
+* The Helm chart puts ``listen_address: 0.0.0.0`` into the config secret it creates,
+  unless ``config`` sets ``listen_address``. A secret of your own
+  (``createConfigSecret: false``) must set it.
+* The image installs the dependency versions from ``uv.lock``, checked against their
+  hashes.
+
+``--donate-data`` removed
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The data donation (``--donate-data``, ``--upload-data``, ``--sanitize``) is gone. To
+help with a device the exporter does not support yet, open an issue.
+
 Stricter configuration
 ^^^^^^^^^^^^^^^^^^^^^^
 

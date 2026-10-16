@@ -9,7 +9,6 @@ from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
 
 from fritzexporter.config import DeviceConfig, ExporterError, get_config
-from fritzexporter.data_donation import donate_data
 from fritzexporter.fritzdevice import (
     DeviceSpec,
     FritzCollector,
@@ -40,29 +39,6 @@ def parse_cmdline() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--donate-data",
-        action="store_const",
-        const="donate",
-        help="Do not start exporter, collect and print data to assist the project",
-    )
-
-    parser.add_argument(
-        "--upload-data",
-        action="store_const",
-        const="upload",
-        help="Instead of displaying the collected data donation, upload it.",
-    )
-
-    parser.add_argument(
-        "-s",
-        "--sanitize",
-        action="append",
-        nargs="+",
-        metavar="FIELD_SPEC",
-        help="Sanitize 'service, action, field' from the data donation output",
-    )
-
-    parser.add_argument(
         "--version", action="store_const", const="version", help="Print version number and exit."
     )
 
@@ -78,9 +54,7 @@ def _resolve_password(dev: DeviceConfig) -> str:
     return password
 
 
-def _register_device(
-    dev: DeviceConfig, args: argparse.Namespace, fritzcollector: FritzCollector
-) -> None:
+def _register_device(dev: DeviceConfig, fritzcollector: FritzCollector) -> None:
     spec = DeviceSpec(
         FritzCredentials(dev.hostname, dev.username, _resolve_password(dev)),
         dev.name,
@@ -94,10 +68,7 @@ def _register_device(
             allow_unsafe_md5_password=dev.allow_unsafe_md5_password,
         ),
     )
-    fritz_device = fritzcollector.add_device(spec)
-    if fritz_device is not None and args.donate_data == "donate":
-        donate_data(fritz_device, upload=args.upload_data == "upload", sanitation=args.sanitize)
-        sys.exit(0)
+    fritzcollector.add_device(spec)
 
 
 def main() -> None:
@@ -121,7 +92,7 @@ def main() -> None:
     logger.setLevel(args.log_level or config.log_level)
 
     for dev in config.devices:
-        _register_device(dev, args, fritzcollector)
+        _register_device(dev, fritzcollector)
 
     REGISTRY.register(fritzcollector)
 
