@@ -44,6 +44,13 @@ SERIAL_RETRIES: int = 3
 SCRAPE_LOCK_TIMEOUT: float = 30.0
 
 
+def device_log_name(friendly_name: str, host: str) -> str:
+    """How log messages name a device: ``"<friendly name> (<host>)"``, or just the host."""
+    if not friendly_name or friendly_name == host:
+        return host
+    return f"{friendly_name} ({host})"
+
+
 class FritzCredentials(NamedTuple):
     host: str
     user: str
@@ -69,6 +76,10 @@ class OfflineDevice(NamedTuple):
     def given_up(self) -> bool:
         return self.serial_failures > SERIAL_RETRIES
 
+    @property
+    def log_name(self) -> str:
+        return device_log_name(self.friendly_name, self.creds.host)
+
 
 class FritzDevice:
     def __init__(
@@ -85,6 +96,7 @@ class FritzDevice:
         self.serial: str = "n/a"
         self.model: str = "n/a"
         self.friendly_name: str = name
+        self.log_name: str = device_log_name(name, creds.host)
         self.host_info: bool = host_info
         self.wifi_client_info: bool = wifi_client_info
         self.webui_client: FritzWebUiClient | None = None
@@ -94,7 +106,9 @@ class FritzDevice:
 
         if len(creds.password) > FRITZ_MAX_PASSWORD_LENGTH:
             logger.warning(
-                "Password is longer than %d characters! Login may not succeed, please see README!",
+                "Password for %s is longer than %d characters! Login may not succeed, "
+                "please see README!",
+                self.log_name,
                 FRITZ_MAX_PASSWORD_LENGTH,
             )
 
@@ -106,17 +120,17 @@ class FritzDevice:
                 connection=connection,
             )
         except FritzConnectionException, RequestException:
-            logger.exception("unable to connect to %s.", creds.host)
+            logger.exception("unable to connect to %s.", self.log_name)
             raise
 
         self.get_device_info()
 
-        logger.info("Connection to %s successful, reading capabilities", creds.host)
+        logger.info("Connection to %s successful, reading capabilities", self.log_name)
         self.capabilities = FritzCapabilities(self)
 
         logger.info(
             "Reading capabilities for %s, got serial %s, model name %s completed",
-            creds.host,
+            self.log_name,
             self.serial,
             self.model,
         )
@@ -125,7 +139,7 @@ class FritzDevice:
                 "HostInfo Capability enabled on device %s. "
                 "This will cause slow responses from the exporter. "
                 "Ensure prometheus is configured appropriately.",
-                creds.host,
+                self.log_name,
             )
         # The web UI client is shared by every capability that reads data from
         # the Fritz!Box web interface (AHA smart home data, DOCSIS channel data,
@@ -142,7 +156,7 @@ class FritzDevice:
         if any(self.capabilities[name].present for name in webui_capabilities):
             logger.info(
                 "Web interface collector enabled on device %s. Reading web-interface data.",
-                creds.host,
+                self.log_name,
             )
             self.webui_client = FritzWebUiClient(
                 creds.host,
@@ -152,9 +166,10 @@ class FritzDevice:
                 port=connection.web_port,
                 timeout=connection.connection_timeout,
                 allow_unsafe_md5_password=connection.allow_unsafe_md5_password,
+                name=self.log_name,
             )
         if self.capabilities.empty():
-            logger.critical("Device %s has no detected capabilities. Exiting.", creds.host)
+            logger.critical("Device %s has no detected capabilities.", self.log_name)
             raise FritzDeviceHasNoCapabilitiesError
 
     def get_device_info(self) -> None:
@@ -168,11 +183,12 @@ class FritzDevice:
             # Prometheus reject the whole scrape over duplicate samples. Logged
             # once at registration; retries stay quiet, fritz_device_reachable
             # shows the device as down meanwhile.
-            msg = f"could not read the serial number of {self.host} (DeviceInfo1.GetInfo: {e})"
+            msg = f"could not read the serial number of {self.log_name} (DeviceInfo1.GetInfo: {e})"
             raise FritzDeviceSerialUnknownError(msg) from None
         except FritzAuthorizationError:
             logger.exception(
-                "Not authorized to get device info from %s. Check username/password.", self.host
+                "Not authorized to get device info from %s. Check username/password.",
+                self.log_name,
             )
             raise
 
@@ -190,24 +206,25 @@ class FritzDevice:
             # the device available so its other capabilities (uptime, WLAN, hosts)
             # are still collected.
             logger.debug(
-                "No WAN connection-mode info on %s (no WAN service); skipping metric.", self.host
+                "No WAN connection-mode info on %s (no WAN service); skipping metric.",
+                self.log_name,
             )
             return None
         except FritzConnectionException, RequestException:
-            logger.exception("Failed to retrieve connection mode info from %s", self.host)
+            logger.exception("Failed to retrieve connection mode info from %s", self.log_name)
             self.available = False
             return None
         except DataError as e:
             report_problem(
                 self.connection_mode_state,
                 "ConnectionMode",
-                self.host,
+                self.log_name,
                 level=ProblemLevel.SKIPPED,
-                headline=f"Could not read the connection mode of {self.host}",
+                headline=f"Could not read the connection mode of {self.log_name}",
                 details=str(e),
             )
             return None
-        report_problem(self.connection_mode_state, "ConnectionMode", self.host, level=None)
+        report_problem(self.connection_mode_state, "ConnectionMode", self.log_name, level=None)
 
         if link_status == "Up" and access_type == "DSL":
             mode = 1  # DSL connection active
@@ -255,7 +272,7 @@ class FritzCollector(Collector):
 
     def register(self, fritzdev: FritzDevice) -> None:
         self.devices.append(fritzdev)
-        logger.debug("registered device %s (%s) to collector", fritzdev.host, fritzdev.model)
+        logger.debug("registered device %s, %s, to collector", fritzdev.log_name, fritzdev.model)
 
     def register_offline(  # noqa: PLR0913
         self,
@@ -283,7 +300,10 @@ class FritzCollector(Collector):
                 serial_failures=int(isinstance(failure, FritzDeviceSerialUnknownError)),
             )
         )
-        logger.debug("registered offline device %s (%s) to collector", creds.host, friendly_name)
+        logger.debug(
+            "registered offline device %s to collector",
+            device_log_name(friendly_name, creds.host),
+        )
 
     def _retry_offline_devices(self) -> None:
         still_offline: list[OfflineDevice] = []
@@ -305,11 +325,7 @@ class FritzCollector(Collector):
                         allow_unsafe_md5_password=offline.allow_unsafe_md5_password,
                     ),
                 )
-                logger.info(
-                    "Device %s (%s) is back online, registering to collector.",
-                    offline.creds.host,
-                    offline.friendly_name,
-                )
+                logger.info("Device %s is back online, registering to collector.", offline.log_name)
                 self.register(fritz_device)
             except (
                 FritzConnectionException,
@@ -324,7 +340,7 @@ class FritzCollector(Collector):
     @staticmethod
     def _offline_failure(offline: OfflineDevice, error: Exception) -> OfflineDevice:
         """Record a failed retry; log it when the reason changes or the device is given up."""
-        host = offline.creds.host
+        name = offline.log_name
         failed = offline._replace(
             last_failure=type(error).__name__,
             serial_failures=offline.serial_failures
@@ -332,17 +348,16 @@ class FritzCollector(Collector):
         )
         if failed.given_up:
             logger.error(
-                "Giving up on device %s (%s) after %d attempts: %s. It stays reported as "
+                "Giving up on device %s after %d attempts: %s. It stays reported as "
                 "unreachable until the exporter is restarted.",
-                host,
-                offline.friendly_name,
+                name,
                 failed.serial_failures,
                 error,
             )
         elif failed.last_failure != offline.last_failure:
-            logger.warning("Device %s is still offline, now because: %s", host, error)
+            logger.warning("Device %s is still offline, now because: %s", name, error)
         else:
-            logger.debug("Device %s is still offline: %s", host, error)
+            logger.debug("Device %s is still offline: %s", name, error)
         return failed
 
     def _build_self_monitoring_metrics(

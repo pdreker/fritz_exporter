@@ -67,28 +67,28 @@ class TestFritzDevice:
             assert (
                 LOGSOURCE,
                 logging.DEBUG,
-                f"Capability {capability} in WLAN 1 set to True on device somehost",
+                f"Capability {capability} in WLAN 1 set to True on device FritzMock (somehost)",
             ) in caplog.record_tuples
             assert (
                 LOGSOURCE,
                 logging.DEBUG,
-                f"Capability {capability} in WLAN 2 set to True on device somehost",
+                f"Capability {capability} in WLAN 2 set to True on device FritzMock (somehost)",
             ) in caplog.record_tuples
             assert (
                 LOGSOURCE,
                 logging.DEBUG,
-                f"Capability {capability} in WLAN 3 set to False on device somehost",
+                f"Capability {capability} in WLAN 3 set to False on device FritzMock (somehost)",
             ) in caplog.record_tuples
             assert (
                 LOGSOURCE,
                 logging.DEBUG,
-                f"Capability {capability} in WLAN 4 set to False on device somehost",
+                f"Capability {capability} in WLAN 4 set to False on device FritzMock (somehost)",
             ) in caplog.record_tuples
         else:
             assert (
                 LOGSOURCE,
                 logging.DEBUG,
-                f"Capability {capability} set to True on device somehost",
+                f"Capability {capability} set to True on device FritzMock (somehost)",
             ) in caplog.record_tuples
 
     def test_should_raise_fritz_connection_exception(self, mock_fritzconnection: MagicMock, caplog):
@@ -105,7 +105,7 @@ class TestFritzDevice:
         assert (
             FRITZDEVICE_LOG_SOURCE,
             logging.ERROR,
-            "unable to connect to somehost.",
+            "unable to connect to FritzMock (somehost).",
         ) in caplog.record_tuples
 
     def test_should_invalidate_presented_service(self, mock_fritzconnection: MagicMock, caplog):
@@ -173,7 +173,8 @@ class TestFritzDevice:
         assert (
             FRITZDEVICE_LOG_SOURCE,
             logging.WARN,
-            "Password is longer than 32 characters! Login may not succeed, please see README!",
+            "Password for Fritz!Mock (somehost) is longer than 32 characters! Login may not succeed, "
+            "please see README!",
         ) in caplog.record_tuples
 
     def test_should_find_no_capabilities(self, mock_fritzconnection: MagicMock, caplog):
@@ -193,7 +194,7 @@ class TestFritzDevice:
         assert (
             FRITZDEVICE_LOG_SOURCE,
             logging.CRITICAL,
-            "Device somehost has no detected capabilities. Exiting.",
+            "Device FritzMock (somehost) has no detected capabilities.",
         ) in caplog.record_tuples
 
     def test_should_not_collect_a_device_without_serial(self, mock_fritzconnection: MagicMock, caplog):
@@ -204,7 +205,7 @@ class TestFritzDevice:
         fc.call_action.side_effect = call_action_no_basic_mock
         fc.services = create_fc_services(fc_services_no_basic_info)
 
-        with pytest.raises(FritzDeviceSerialUnknownError, match="could not read the serial number of somehost"):
+        with pytest.raises(FritzDeviceSerialUnknownError, match=r"could not read the serial number of FritzMock \(somehost\)"):
             FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
 
     @pytest.mark.parametrize(
@@ -377,6 +378,7 @@ class TestFritzDevice:
             port=None,
             timeout=expected,
             allow_unsafe_md5_password=False,
+            name="FritzMock (somehost)",
         )
 
     @patch("fritzexporter.fritzdevice.FritzWebUiClient")
@@ -551,7 +553,7 @@ class TestFritzDevice:
             FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
 
         assert any(
-            "unable to connect to somehost" in record.message
+            "unable to connect to FritzMock (somehost)" in record.message
             for record in caplog.records
             if record.levelno == logging.ERROR
         )
@@ -1305,7 +1307,7 @@ class TestFritzCollector:
         assert device_reachable_metrics[0].samples[0].value == 1.0
 
         for capability in ("HomeAutomation", "WanSegmentUtilization", "WanConnectionStatus"):
-            assert f"Could not read {capability} data from somehost" in caplog.text
+            assert f"Could not read {capability} data from FritzMock (somehost)" in caplog.text
 
     def test_should_survive_transport_error_on_connection_mode(
         self, mock_fritzconnection: MagicMock, caplog
@@ -1460,7 +1462,7 @@ class TestMeshTopologyParsing:
 
         assert "fritz_mesh_link_available{" not in output
         assert self.REACHABLE in output
-        assert "Could not read MeshTopology data from somehost" in caplog.text
+        assert "Could not read MeshTopology data from FritzMock (somehost)" in caplog.text
 
     @pytest.mark.parametrize(
         ("topology", "skipped"),
@@ -1490,7 +1492,7 @@ class TestMeshTopologyParsing:
 
         assert "fritz_mesh_link_available{" not in output
         assert self.REACHABLE in output
-        assert "Skipped part of the MeshTopology data from somehost" in caplog.text
+        assert "Skipped part of the MeshTopology data from FritzMock (somehost)" in caplog.text
         assert skipped in caplog.text
 
     @pytest.mark.parametrize(
@@ -1519,7 +1521,7 @@ class TestMeshTopologyParsing:
         assert 'fritz_mesh_link_current_data_rate_kbps{direction="tx"' in output
         assert 'fritz_mesh_link_max_data_rate_kbps{direction="tx"' in output
         assert "expected a number" in caplog.text
-        assert "Skipped part of the MeshTopology data from somehost" in caplog.text
+        assert "Skipped part of the MeshTopology data from FritzMock (somehost)" in caplog.text
 
     def test_link_labels_come_from_the_first_endpoint_in_device_order(
         self, mock_fritzhosts, mock_fritzconnection
@@ -1838,7 +1840,7 @@ class TestGetConnectionMode:
         assert (
             FRITZDEVICE_LOG_SOURCE,
             logging.ERROR,
-            "Failed to retrieve connection mode info from somehost",
+            "Failed to retrieve connection mode info from FritzMock (somehost)",
         ) in caplog.record_tuples
 
 
@@ -1868,7 +1870,7 @@ class TestFritzDeviceAuthError:
         assert (
             FRITZDEVICE_LOG_SOURCE,
             logging.ERROR,
-            "Not authorized to get device info from somehost. Check username/password.",
+            "Not authorized to get device info from FritzMock (somehost). Check username/password.",
         ) in caplog.record_tuples
 
 

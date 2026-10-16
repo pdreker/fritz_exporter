@@ -40,10 +40,40 @@ Unreadable data is skipped and reported
 When a value, an item (a host, a channel, ...) or a whole reply cannot be read, the
 exporter skips only that part and reports it in the new ``fritz_read_problem`` metric
 and in the log. Before, such a value silently became a gap, or the whole scrape
-failed. The log messages for failing web interface requests changed from
-"Failed to fetch … data" to "Could not read <Capability> data from <host>,
-skipping it: …"; while a problem lasts it is repeated as a reminder once an hour
-instead of on every scrape.
+failed. See below for the new log messages.
+
+Log messages reworked
+^^^^^^^^^^^^^^^^^^^^^
+
+Many log messages changed wording, level or frequency. **If you match log messages,
+e.g. for alerts or in a log analysis tool, check your patterns.** For alerting,
+consider the ``fritz_read_problem`` and ``fritz_device_reachable`` metrics instead,
+which do not depend on wording.
+
+* **Device names:** every message about a device names it the same way,
+  "<name> (<host>)", e.g. "Fritz!Box 7690 (fritz.box)", or the host alone if the
+  device has no name. Messages used to show the host, the serial number
+  ("device serial …") or no device at all.
+* **Skipped data** (replaces "Failed to fetch … data from …"):
+
+  * "Could not read <Capability> data from <device>, skipping it: <reason>" — the
+    whole capability was skipped for this scrape;
+  * "Skipped part of the <Capability> data from <device>: <details>" — some values
+    or items were skipped;
+  * "Bug while collecting <Capability> data from <device>, …" — an error in the
+    exporter, logged at ``ERROR`` with a traceback;
+  * while a problem lasts, the warning is repeated once an hour as
+    "…, still since <time> (<n> scrapes): …" instead of on every scrape (details at
+    ``DEBUG`` in between), and "Reading <Capability> data from <device> works again"
+    is logged at ``INFO`` when it is gone.
+
+* **Devices that stay offline:** "Device <device> is still offline, now because:
+  <reason>" at ``WARNING`` when the reason changes, and "Giving up on device <device>
+  after <n> attempts: …" at ``ERROR``.
+* **Web login:** "login not retried for <n> seconds after: <reason>" while the
+  exporter waits after a refused login.
+* "Device <device> has no detected capabilities." no longer ends in "Exiting.": the
+  exporter keeps running and reports the device as unreachable.
 
 Smart home values that are unknown are no longer reported as 0
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -305,6 +305,18 @@ class TestFritzWebUiClientAuth:
         session.post.assert_not_called()
 
     @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_md5_refusal_names_the_device(self, mock_session_cls: MagicMock):
+        session = mock_session_cls.return_value
+        session.get.return_value = MagicMock(
+            text="<SessionInfo><SID>0000000000000000</SID>"
+            "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>"
+        )
+        client = FritzWebUiClient("fritz.box", "user", "pass", name="Fritz!Box 7690 (fritz.box)")
+
+        with pytest.raises(FritzWebUiMd5DisabledError, match=r"^Fritz!Box 7690 \(fritz\.box\) offers"):
+            client._login()
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_uses_md5_for_legacy_firmware(self, mock_session_cls: MagicMock, caplog):
         session = mock_session_cls.return_value
 
