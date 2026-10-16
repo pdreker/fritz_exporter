@@ -143,24 +143,23 @@ Known Problems
 Grafana Dashboards
 ------------------
 Two Grafana dashboards come with the exporter, in ``misc/grafana`` in the
-`repository <https://github.com/pdreker/fritz_exporter/tree/main/misc/grafana>`_.
-Import them with "Dashboards" -> "New" -> "Import" in Grafana 10 or later, and pick
-your Prometheus data source and the device at the top.
+`repository <https://github.com/pdreker/fritz_exporter>`_. Take them from the tag of
+the exporter version you run, so they match its metrics, e.g.
+https://github.com/pdreker/fritz_exporter/tree/fritzexporter-v4.0.0/misc/grafana for
+4.0.0; ``main`` has the dashboards of the next release. Import them with
+"Dashboards" -> "New" -> "Import" -> "Upload dashboard JSON file" in Grafana 10 or
+later, and pick your Prometheus data source and the device at the top.
 
 * **Fritz!Exporter Overview** (``fritz-exporter-overview.json``) shows every metric
   the exporter has, one row per topic (device, internet, DSL, cable, fibre, LAN, WiFi,
   mesh, hosts, smart home, provider management), with many kinds of panels. Use it to
   see what there is and as a starting point for your own dashboards. Rows that do not
-  apply to a device stay empty. It is also on grafana.com as dashboard ``13983``.
+  apply to a device stay empty.
 * **Fritz!Exporter Home** (``fritz-exporter-home.json``) shows what is useful every
   day on one screen: connection, traffic, line usage and quality, devices online,
   WiFi, mesh and smart home.
 
 Hosts need ``host_info: true`` and WiFi clients ``wifi_client_info: true``.
-
-The dashboard ``17751`` on grafana.com was contributed separately and is not
-maintained here; with 4.0 its host and connection panels need the ``_info`` metrics
-(see :doc:`upgrading`).
 
 Helm Chart
 ----------
