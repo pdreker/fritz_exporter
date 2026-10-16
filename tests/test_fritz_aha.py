@@ -41,7 +41,31 @@ class TestParseAhaDevicelistXml:
 
         assert devices[0]["battery_level"] is None
         assert devices[0]["device_name"] == "Fritz!DECT 200"
-        assert issues.messages == ["AHA device battery: expected a whole number, got str"]
+        assert issues.messages == ["AHA device 123456789012 battery: expected a whole number, got str"]
+
+    def test_nested_values_name_the_device_and_the_element(self):
+        deviceinfo = """<devicelist version="1">
+        <device identifier="0815" id="1" manufacturer="AVM" productname="Fritz!DECT 301">
+            <present>1</present><name>x</name><hkr><tsoll>warm</tsoll></hkr>
+        </device></devicelist>"""
+        issues = Issues()
+
+        parse_aha_devicelist_xml(deviceinfo, issues)
+
+        assert issues.messages == ["AHA device 0815 hkr tsoll: expected a whole number, got str"]
+
+    def test_battery_values_fall_back_to_hkr_one_by_one(self):
+        # A device-level batterylow must not be dropped because the level
+        # comes from <hkr>.
+        deviceinfo = """<devicelist version="1">
+        <device identifier="1" id="1" manufacturer="AVM" productname="Fritz!DECT 301">
+            <present>1</present><name>x</name><batterylow>1</batterylow>
+            <hkr><battery>50</battery><batterylow>0</batterylow></hkr>
+        </device></devicelist>"""
+
+        [device] = parse_aha_devicelist_xml(deviceinfo, Issues())
+
+        assert (device["battery_level"], device["battery_low"]) == (50, "1")
 
     def test_empty_battery_low_and_lock_mean_unknown_not_zero(self):
         # AVM leaves these empty when the value is unknown; exporting 0 would

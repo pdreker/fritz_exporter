@@ -156,7 +156,7 @@ class TestCreateFritzConnection:
             address="box.example",
             user="user",
             password="pass",
-            timeout=None,
+            timeout=10,
             use_tls=True,
             port=11243,
         )

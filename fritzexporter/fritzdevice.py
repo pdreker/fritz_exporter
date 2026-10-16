@@ -405,9 +405,8 @@ class FritzCollector(Collector):
         reason = _setup_failure(error)
         if failed.given_up:
             logger.error(
-                "Giving up on device %s after %d attempts without a readable serial "
-                "number: %s. It stays reported as unreachable until the exporter is "
-                "restarted.",
+                "Giving up on device %s: its serial number could not be read %d times: "
+                "%s. It stays reported as unreachable until the exporter is restarted.",
                 name,
                 failed.serial_failures,
                 reason,

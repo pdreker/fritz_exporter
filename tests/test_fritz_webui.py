@@ -486,7 +486,7 @@ class TestFritzWebUiClientFetch:
         client = FritzWebUiClient("fritz.box", "user", "pass")
         result = client.fetch_page("docInfo")
 
-        assert result["data"]["readyState"] == "ready"
+        assert result == {"pid": "docInfo", "data": {"readyState": "ready"}}
         # data.lua must be called with the docInfo page params
         posted_data = session.post.call_args.kwargs["data"]
         assert posted_data["page"] == "docInfo"
@@ -525,7 +525,7 @@ class TestFritzWebUiClientFetch:
         client.fetch_page("docInfo")
         result = client.fetch_page("docInfo")
 
-        assert result["data"]["readyState"] == "ready"
+        assert result == {"data": {"readyState": "ready"}}
         assert session.post.call_count == 3
         assert session.get.call_count == 2
 
@@ -829,7 +829,7 @@ class TestTransportFailuresKeepTheirKind:
         # No new login, no second try: the device does not answer.
         assert session.get.call_count == 2
         _log_like_capabilities(info.value)
-        _assert_clean(caplog, info.value, f"request failed ({suffix})")
+        _assert_clean(caplog, info.value, f"Fritz device did not answer ({suffix})")
 
     def test_kinds_are_distinguishable(self):
         texts = {
@@ -841,7 +841,7 @@ class TestTransportFailuresKeepTheirKind:
         a = requests.ConnectionError("a")
         b = OSError("b")
         a.__cause__, b.__cause__ = b, a
-        assert _failure_text(a) == "request failed (ConnectionError: OSError)"
+        assert _failure_text(a) == "Fritz device did not answer (ConnectionError: OSError)"
         deep = requests.RequestException("0")
         for _ in range(20):
             err = requests.RequestException("x")

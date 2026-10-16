@@ -61,13 +61,15 @@ key, on:
   config file and for ``FRITZ_NAME``; it used to be empty in the config file and
   ``Fritz!Box`` from the environment. Without a ``name``, the ``friendly_name``
   label of your series changes, so set ``name`` (or ``FRITZ_NAME``) to keep it.
-
 * a ``password_file`` the exporter cannot read, or a password longer than 32
   characters in it (a long password in ``password`` was refused already; from a
   file it only gave a warning);
 * a value of the wrong type for a text key, e.g. ``name: true``. Numbers are taken
   as written (``name: 7590`` is ``"7590"``); before, a number as ``name`` made every
   scrape fail.
+* a number with a fraction or a boolean for a number key, e.g.
+  ``connection_timeout: 2.5`` or ``port: true``; these used to be cut to ``2`` and
+  taken as ``1``.
 
 A config file that is not valid YAML, or of the wrong shape, gives that message
 instead of a traceback; it names the line and column, not the text there.
@@ -226,8 +228,8 @@ which do not depend on wording.
     is logged at ``INFO`` when it is gone.
 
 * **Devices that stay offline:** "Device <device> is still offline, now because:
-  <reason>" at ``WARNING`` when the reason changes, and "Giving up on device <device>
-  after <n> attempts without a readable serial number: …" at ``ERROR``. An
+  <reason>" at ``WARNING`` when the reason changes, and "Giving up on device <device>:
+  its serial number could not be read <n> times: …" at ``ERROR``. An
   unexpected error while setting up a device is logged with its traceback and
   "(unexpected; please report this)", and keeps only that device offline.
 * **Web login:** "login not retried for <n> seconds after: <reason>" while the

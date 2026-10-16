@@ -143,10 +143,9 @@ def report_problem(  # noqa: PLR0913
         state.problem = _Problem(level)
         if level != ProblemLevel.ERROR:
             logger.warning("%s: %s", headline, details)
-    elif (
-        level != ProblemLevel.ERROR
-        and time.monotonic() - state.problem.reminded >= PROBLEM_REMINDER_INTERVAL
-    ):
+    elif level == ProblemLevel.ERROR:
+        pass  # logged by the caller
+    elif time.monotonic() - state.problem.reminded >= PROBLEM_REMINDER_INTERVAL:
         state.problem.reminded = time.monotonic()
         logger.warning(
             "%s, still since %s (%d scrapes): %s",
@@ -267,6 +266,8 @@ class FritzCapability(ABC):
 
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
+        if cls.__name__.startswith("_"):
+            return  # a base shared by capabilities, not one itself
         logger.debug("Capability subclass %s registered", cls.__name__)
         FritzCapability.subclasses.append(cls)
 
@@ -928,24 +929,31 @@ class WanCommonInterfaceConfig(FritzCapability):
         )
 
 
-class WanCommonInterfaceDataBytes(FritzCapability):
-    WAN_COMMON_INTERFACE_SERVICE: str = "WANCommonInterfaceConfig1"
+class _WanTotals(FritzCapability):
+    """Totals received and sent from WANCommonInterfaceConfig1; ``what``: Bytes or Packets."""
+
+    what: ClassVar[str]
 
     def __init__(self) -> None:
         super().__init__()
-        self.requirements.append(("WANCommonInterfaceConfig1", "GetTotalBytesReceived"))
-        self.requirements.append(("WANCommonInterfaceConfig1", "GetTotalBytesSent"))
-
-    def create_metrics(self) -> None:
-        self._counter("wanbytes", "fritz_wan_data", "WAN data in bytes", "direction", unit="bytes")
+        self.requirements += [
+            ("WANCommonInterfaceConfig1", f"GetTotal{self.what}{action}")
+            for action in ("Received", "Sent")
+        ]
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        service = self.WAN_COMMON_INTERFACE_SERVICE
         labels = [device.serial, device.friendly_name]
-        rx = read_action(device, service, "GetTotalBytesReceived")
-        tx = read_action(device, service, "GetTotalBytesSent")
-        self._add("wanbytes", [*labels, "tx"], self.issues.num(tx, "NewTotalBytesSent"))
-        self._add("wanbytes", [*labels, "rx"], self.issues.num(rx, "NewTotalBytesReceived"))
+        for direction, action in (("rx", "Received"), ("tx", "Sent")):
+            name = f"Total{self.what}{action}"
+            result = read_action(device, "WANCommonInterfaceConfig1", f"Get{name}")
+            self._add("totals", [*labels, direction], self.issues.num(result, f"New{name}"))
+
+
+class WanCommonInterfaceDataBytes(_WanTotals):
+    what = "Bytes"
+
+    def create_metrics(self) -> None:
+        self._counter("totals", "fritz_wan_data", "WAN data in bytes", "direction", unit="bytes")
 
 
 class WanCommonInterfaceByteRate(FritzCapability):
@@ -986,26 +994,13 @@ class WanCommonInterfaceByteRate(FritzCapability):
             self._add("layer1max", [*labels, direction], self.issues.opt_num(result, field))
 
 
-class WanCommonInterfaceDataPackets(FritzCapability):
-    WAN_COMMON_INTERFACE_SERVICE: str = "WANCommonInterfaceConfig1"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.requirements.append(("WANCommonInterfaceConfig1", "GetTotalPacketsReceived"))
-        self.requirements.append(("WANCommonInterfaceConfig1", "GetTotalPacketsSent"))
+class WanCommonInterfaceDataPackets(_WanTotals):
+    what = "Packets"
 
     def create_metrics(self) -> None:
         self._counter(
-            "wanpackets", "fritz_wan_data_packets", "WAN data in packets", "direction", unit="count"
+            "totals", "fritz_wan_data_packets", "WAN data in packets", "direction", unit="count"
         )
-
-    def _generate_metric_values(self, device: FritzDevice) -> None:
-        service = self.WAN_COMMON_INTERFACE_SERVICE
-        labels = [device.serial, device.friendly_name]
-        rx = read_action(device, service, "GetTotalPacketsReceived")
-        tx = read_action(device, service, "GetTotalPacketsSent")
-        self._add("wanpackets", [*labels, "tx"], self.issues.num(tx, "NewTotalPacketsSent"))
-        self._add("wanpackets", [*labels, "rx"], self.issues.num(rx, "NewTotalPacketsReceived"))
 
 
 # WLANConfiguration1..4: what the bands are on Fritz!Boxes.
@@ -1318,33 +1313,26 @@ class MeshTopology(FritzCapability):
         self.requirements.append(("Hosts1", "X_AVM-DE_GetMeshListPath"))
 
     def create_metrics(self) -> None:
-        link_labels = [
-            "serial",
-            "friendly_name",
-            "node",
-            "peer",
-            "type",
-            "interface",
-            "direction",
-        ]
-        self.metrics["datarate"] = GaugeMetricFamily(
+        link = ("node", "peer", "type", "interface")
+        self._gauge(
+            "datarate",
             "fritz_mesh_link_current_data_rate_kbps",
             "Current data rate of a mesh backhaul link in kbit/s",
-            labels=link_labels,
+            *link,
+            "direction",
         )
-        self.metrics["maxdatarate"] = GaugeMetricFamily(
+        self._gauge(
+            "maxdatarate",
             "fritz_mesh_link_max_data_rate_kbps",
             "Maximum data rate of a mesh backhaul link in kbit/s",
-            labels=link_labels,
+            *link,
+            "direction",
         )
         self._gauge(
             "available",
             "fritz_mesh_link_available",
             "Mesh backhaul link state (1=connected, 0=otherwise)",
-            "node",
-            "peer",
-            "type",
-            "interface",
+            *link,
         )
 
     @staticmethod
@@ -1487,12 +1475,6 @@ class HostInfo(FritzCapability):
         host_interface = host_port = host_model = "n/a"
         host_speed: float | None = 0.0
         if host_ip != "":
-            logger.debug(
-                "Fetching extended AVM host information for host number %s on %s by IP %s",
-                host_index,
-                device.log_name,
-                host_ip,
-            )
             try:
                 avm_host_result = read_action(
                     device, "Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP", NewIPAddress=host_ip
@@ -1506,10 +1488,9 @@ class HostInfo(FritzCapability):
                 # info for this host and keep scanning. Letting it bubble up
                 # would flip the whole device to unreachable for this cycle.
                 logger.debug(
-                    "Host %s (IP %s) left the host table during scan of %s; "
+                    "Host %s left the host table during scan of %s; "
                     "using n/a extended info for this host",
                     host_index,
-                    host_ip,
                     device.log_name,
                 )
             else:
@@ -1536,15 +1517,13 @@ class HostInfo(FritzCapability):
 
 class HomeAutomation(FritzCapability):
     uses_webui = True
-    _HA_LABELS: ClassVar[list[str]] = [
-        "serial",
-        "friendly_name",
+    _HA_LABELS: ClassVar[tuple[str, ...]] = (
         "ain",
         "device_name",
         "device_id",
         "manufacturer",
         "productname",
-    ]
+    )
     _HKR_VALVE_MAP: ClassVar[dict[str, int]] = {"CLOSED": 0, "OPEN": 1, "TEMP": 2}
     _HTTP_SWITCH_STATE_MAP: ClassVar[dict[str | None, int]] = {"0": 0, "1": 1}
     _HTTP_SWITCH_MODE_MAP: ClassVar[dict[str | None, int]] = {"manuell": 0, "auto": 1}
@@ -1554,7 +1533,6 @@ class HomeAutomation(FritzCapability):
         self.requirements.append(("X_AVM-DE_Homeauto1", "GetInfo"))
 
     def create_metrics(self) -> None:
-        labels = self._HA_LABELS
         metric_definitions: list[tuple[str, str, str]] = [
             ("devicepresent", "fritz_ha_device_present", "Indicates that the device is present"),
             ("battery_level", "fritz_ha_battery_level_percent", "Battery level in percent"),
@@ -1607,7 +1585,7 @@ class HomeAutomation(FritzCapability):
             ),
         ]
         for key, metric_name, help_text in metric_definitions:
-            self.metrics[key] = GaugeMetricFamily(metric_name, help_text, labels=labels)
+            self._gauge(key, metric_name, help_text, *self._HA_LABELS)
 
     def _build_ha_labels(self, device: FritzDevice, ha_device: AhaDevice) -> list[str]:
         return [
@@ -1693,6 +1671,8 @@ class HomeAutomation(FritzCapability):
         for index, ha_device in enumerate(parse_aha_devicelist_xml(devicelist_xml, self.issues)):
             labels = self._build_ha_labels(device, ha_device)
 
+            # 2 for present, not 1: what the exporter has always sent, and what
+            # dashboards and alerts compare with.
             self._add("devicepresent", labels, 2 if ha_device["present"] else 0)
             self._collect_multimeter(ha_device, labels)
             self._collect_temperature(ha_device, labels)
@@ -2016,27 +1996,27 @@ class ManagementServerInfo(FritzCapability):
         self.requirements.append(("ManagementServer1", "GetInfo"))
 
     def create_metrics(self) -> None:
-        labels = ["serial", "friendly_name"]
-        self.metrics["acs_info"] = GaugeMetricFamily(
+        self._gauge(
+            "acs_info",
             "fritz_tr069_acs_info",
             "TR-069 management server host name (always 1 if present)",
-            labels=[*labels, "acs_host"],
+            "acs_host",
         )
-        self.metrics["inform_enabled"] = GaugeMetricFamily(
+        self._gauge(
+            "inform_enabled",
             "fritz_tr069_periodic_inform_enabled",
             "Whether the device periodically informs the TR-069 management server",
-            labels=labels,
         )
-        self.metrics["inform_interval"] = GaugeMetricFamily(
+        self._gauge(
+            "inform_interval",
             "fritz_tr069_periodic_inform_interval",
             "Interval of the periodic TR-069 inform",
-            labels=labels,
             unit="seconds",
         )
-        self.metrics["upgrades_managed"] = GaugeMetricFamily(
+        self._gauge(
+            "upgrades_managed",
             "fritz_tr069_upgrades_managed",
             "Whether firmware upgrades are managed by the TR-069 management server",
-            labels=labels,
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
@@ -2059,9 +2039,20 @@ class UspControllers(FritzCapability):
 
     def __init__(self) -> None:
         super().__init__()
-        # GetUSPControllerByIndex needs an argument, so it cannot be a requirement.
-        self.requirements.append(("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries"))
-        self.requirements.append(("X_AVM-DE_USPController1", "GetUSPMyFRITZEnable"))
+        self.requirements += [
+            ("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries"),
+            ("X_AVM-DE_USPController1", "GetUSPControllerByIndex"),
+            ("X_AVM-DE_USPController1", "GetUSPMyFRITZEnable"),
+        ]
+
+    def _probe(self, device: FritzDevice, service: str, action: str) -> bool:
+        # Index 0 is missing when no controller is configured: that answer shows
+        # that the action works.
+        if action == "GetUSPControllerByIndex":
+            return probe_action(
+                device, service, action, arguments={"NewIndex": 0}, confirms=(FritzArrayIndexError,)
+            )
+        return super()._probe(device, service, action)
 
     def create_metrics(self) -> None:
         self._gauge(

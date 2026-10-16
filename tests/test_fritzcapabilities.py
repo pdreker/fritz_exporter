@@ -14,7 +14,12 @@ from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import Metric
 
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
-from fritzexporter.fritzcapabilities import FritzCapabilities
+from fritzexporter.fritzcapabilities import (
+    FritzCapabilities,
+    ProblemLevel,
+    ProblemState,
+    report_problem,
+)
 from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiError
 
 from .fc_services_mock import (
@@ -24,7 +29,7 @@ from .fc_services_mock import (
     fc_services_capabilities,
     fc_services_devices,
 )
-from .collect import collect_device, sample_map, services
+from .collect import collect_device, fake_device, sample_map, services
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
@@ -823,6 +828,22 @@ class TestUspControllers:
             mock_fritzconnection, services("DeviceInfo", "UspControllers"), overrides=overrides
         )
 
+    @pytest.mark.parametrize(
+        ("error", "present"), [(FritzArrayIndexError, True), (FritzActionError, False)]
+    )
+    def test_controller_lookup_is_probed(self, mock_fritzconnection: MagicMock, error, present):
+        # No controller at index 0 still shows the action works; an error
+        # reply means the device only advertises it.
+        def by_index(**_):
+            raise error
+
+        device = fake_device(
+            mock_fritzconnection,
+            services("DeviceInfo", "UspControllers"),
+            overrides={("X_AVM-DE_USPController1", "GetUSPControllerByIndex"): by_index},
+        )
+        assert device.capabilities["UspControllers"].present is present
+
     def test_usp_controller_flags(self, mock_fritzconnection: MagicMock):
         by_name = self._collect(mock_fritzconnection)
 
@@ -1087,3 +1108,15 @@ class TestExitReviewFixes:
         problems = {(s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples}
         assert ("HostInfo", "partial") in problems
 
+
+
+def test_a_lasting_bug_adds_no_log_lines_of_its_own():
+    # The caller logs a bug with its traceback on every scrape; report_problem
+    # only keeps count and must not add an empty line.
+    state = ProblemState()
+    with patch("fritzexporter.fritzcapabilities.logger") as log:
+        for _ in range(3):
+            report_problem(state, "HostInfo", "host", level=ProblemLevel.ERROR)
+    assert log.mock_calls == []
+    assert state.problem is not None
+    assert state.problem.scrapes == 3
