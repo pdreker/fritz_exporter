@@ -204,7 +204,7 @@ fritzexporter/
 
 - **`FritzDevice`**: connects to a single Fritz device, probes its capabilities, and holds a `FritzCapabilities` instance.
 
-- **`FritzCollector`** (Prometheus `Collector`): holds multiple `FritzDevice` instances (and offline devices it retries) and implements `collect()` to yield all metrics, plus the self-monitoring metrics (`fritz_scrapes_*`, `fritz_device_reachable`, `fritz_read_problem`).
+- **`FritzCollector`** (Prometheus `Collector`): holds multiple `FritzDevice` instances (and offline devices it retries in a background thread that scrapes start but do not wait for) and implements `collect()` to yield all metrics, plus the self-monitoring metrics (`fritz_scrapes_*`, `fritz_device_reachable`, `fritz_read_problem`).
 
 - **Configuration** is loaded either from a YAML file or from environment variables. Config objects are `attrs` `@define` classes with validators. See the **Dual Configuration** section below for the complete mapping and the rule that both paths must stay in sync.
 

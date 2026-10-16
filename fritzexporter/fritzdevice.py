@@ -316,11 +316,12 @@ class FritzCollector(Collector):
         self._capability_instances: FritzCapabilities = FritzCapabilities()
         self._collect_lock = threading.RLock()
         # Setting up offline devices again can take a connection timeout per
-        # device, so it runs outside _collect_lock, one scrape at a time.
-        # _devices_lock guards the hand-over to devices and offline_devices.
-        self._retry_lock = threading.Lock()
+        # device, so it runs in a thread of its own, one at a time, and no scrape
+        # waits for it. _devices_lock guards the hand-over to devices and
+        # offline_devices, and the start of that thread.
         self._devices_lock = threading.Lock()
         self._back_online: list[FritzDevice] = []
+        self._retry_thread: threading.Thread | None = None
         # Counters describing the exporter's own operation (self-monitoring).
         # Guarded by a dedicated lock because scrapes increment/read them from
         # threads that do NOT hold _collect_lock (e.g. the lock-timeout path).
@@ -328,6 +329,14 @@ class FritzCollector(Collector):
         self._scrapes_per_device: dict[tuple[str, str], int] = {}
         self._scrape_timeouts: int = 0
         self._scrape_failures: int = 0
+
+    def describe(self) -> list[CounterMetricFamily | GaugeMetricFamily]:
+        """Nothing up front: without describe(), registering runs a whole scrape.
+
+        That scrape logged in to every device before the HTTP server started, was
+        counted in fritz_scrapes_total, and an error in it stopped the start.
+        """
+        return []
 
     def register(self, fritzdev: FritzDevice) -> None:
         self.devices.append(fritzdev)
@@ -351,30 +360,42 @@ class FritzCollector(Collector):
             self.offline_devices.append(OfflineDevice(spec).failed(result))
         return None
 
+    def _start_offline_retry(self) -> None:
+        """Set up the offline devices again in the background; the scrape goes on.
+
+        A device that does not answer takes its connection timeout to fail; in
+        the scrape, that time would be added to every scrape while it is
+        offline. A device that comes back is collected from the next scrape on.
+        """
+        with self._devices_lock:
+            if all(offline.given_up for offline in self.offline_devices):
+                return
+            if self._retry_thread is not None and self._retry_thread.is_alive():
+                return
+            self._retry_thread = threading.Thread(
+                target=self._retry_offline_devices, name="fritz-offline-retry", daemon=True
+            )
+            self._retry_thread.start()
+
     def _retry_offline_devices(self) -> None:
-        """Try to set up the offline devices again; skipped while another scrape does."""
-        if not self._retry_lock.acquire(blocking=False):
-            return
-        try:
-            with self._devices_lock:
-                offline_devices = list(self.offline_devices)
-            still_offline: list[OfflineDevice] = []
-            back_online: list[FritzDevice] = []
-            for offline in offline_devices:
-                if offline.given_up:
-                    still_offline.append(offline)
-                    continue
-                result = _set_up(offline.spec)
-                if isinstance(result, Exception):
-                    still_offline.append(self._offline_failure(offline, result))
-                    continue
-                logger.info("Device %s is back online, registering to collector.", offline.log_name)
-                back_online.append(result)
-            with self._devices_lock:
-                self.offline_devices = still_offline
-                self._back_online.extend(back_online)
-        finally:
-            self._retry_lock.release()
+        """Try to set up the offline devices again (in the retry thread)."""
+        with self._devices_lock:
+            offline_devices = list(self.offline_devices)
+        still_offline: list[OfflineDevice] = []
+        back_online: list[FritzDevice] = []
+        for offline in offline_devices:
+            if offline.given_up:
+                still_offline.append(offline)
+                continue
+            result = _set_up(offline.spec)
+            if isinstance(result, Exception):
+                still_offline.append(self._offline_failure(offline, result))
+                continue
+            logger.info("Device %s is back online, registering to collector.", offline.log_name)
+            back_online.append(result)
+        with self._devices_lock:
+            self.offline_devices = still_offline
+            self._back_online.extend(back_online)
 
     @staticmethod
     def _offline_failure(offline: OfflineDevice, error: Exception) -> OfflineDevice:
@@ -486,7 +507,7 @@ class FritzCollector(Collector):
         return problems
 
     def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
-        self._retry_offline_devices()
+        self._start_offline_retry()
         # The lock is held for the whole scrape (blocking TR-064 calls included),
         # so acquiring it must be bounded: a slow or wedged first scrape would
         # otherwise block every concurrent scrape from other Prometheus instances

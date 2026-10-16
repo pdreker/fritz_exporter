@@ -554,6 +554,14 @@ class TestFritzDevice:
 
 
 
+def _scrape(collector: FritzCollector) -> list[Metric]:
+    """One scrape, then wait for the background retry of offline devices it started."""
+    metrics: list[Metric] = list(collector.collect())
+    if collector._retry_thread is not None:
+        collector._retry_thread.join(5)
+    return metrics
+
+
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestFritzCollector:
     def test_should_instantiate_empty_collector(self, caplog):
@@ -879,7 +887,7 @@ class TestFritzCollector:
         _register_offline(collector, creds, "FritzMock")
 
         # First collect: device still offline → reachable=0, stays in offline_devices
-        metrics_round1: list[Metric] = list(collector.collect())
+        metrics_round1: list[Metric] = _scrape(collector)
         reachable_round1 = [m for m in metrics_round1 if m.name == "fritz_device_reachable"]
         assert reachable_round1[0].samples[0].value == 0.0
         assert len(collector.devices) == 0
@@ -888,7 +896,8 @@ class TestFritzCollector:
         # Device comes back: second collect retries and promotes it
         fc.call_action.side_effect = call_action_mock
         fc.call_http.side_effect = call_http_mock
-        metrics_round2: list[Metric] = list(collector.collect())
+        _scrape(collector)  # brings it back in the background
+        metrics_round2: list[Metric] = _scrape(collector)
         reachable_round2 = [m for m in metrics_round2 if m.name == "fritz_device_reachable"]
         assert reachable_round2[0].samples[0].value == 1.0
         assert reachable_round2[0].samples[0].labels["serial"] == "1234567890"
@@ -927,7 +936,8 @@ class TestFritzCollector:
         # Device comes back during retry
         fc.call_action.side_effect = call_action_mock
 
-        list(collector.collect())
+        _scrape(collector)
+        _scrape(collector)
 
         # Check: FritzConnection was called with the stored timeout during the retry
         assert mock_fritzconnection.call_args == call(
@@ -975,7 +985,8 @@ class TestFritzCollector:
         assert collector.offline_devices[0].spec.connection.allow_unsafe_md5_password is True
 
         fc.call_action.side_effect = call_action_mock
-        list(collector.collect())
+        _scrape(collector)
+        _scrape(collector)
 
         assert len(collector.devices) == 1
         assert mock_webui_client.call_args.kwargs["allow_unsafe_md5_password"] is True
@@ -994,7 +1005,8 @@ class TestFritzCollector:
         )
 
         fc.call_action.side_effect = call_action_mock
-        list(collector.collect())
+        _scrape(collector)
+        _scrape(collector)
 
         assert mock_fritzconnection.call_args == call(
             address="somehost",

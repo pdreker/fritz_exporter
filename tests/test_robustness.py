@@ -90,7 +90,14 @@ class Scenario:
                 for _, capability in device.capabilities.items():
                     if capability.uses_webui:
                         capability.present = False
-            return generate_latest(self.registry).decode()
+            output = generate_latest(self.registry).decode()
+            # The retry of offline devices runs in the background; wait for it
+            # here, while the fake devices are patched in. A device it brings
+            # back shows from the next scrape on.
+            thread = self.collector._retry_thread
+            if thread is not None:
+                thread.join(timeout=5)
+            return output
 
 
 def samples(output: str, metric: str, serial: str) -> list[str]:
@@ -304,8 +311,10 @@ class TestDeviceLevel:
         scenario.scrape()
         assert len(errors()) == 1
 
-        # Once the serial can be read, the device is collected.
+        # Once the serial can be read, the device is set up in the background
+        # and collected from the next scrape on.
         del scenario.overrides["bad"][("DeviceInfo1", "GetInfo")]
+        scenario.scrape()
         output = scenario.scrape()
 
         assert reachable(output, "BAD", "BAD") == 1.0
@@ -346,6 +355,7 @@ class TestDeviceLevel:
         assert offline.serial_failures == 0
 
         del scenario.overrides["bad"][("DeviceInfo1", "GetInfo")]
+        scenario.scrape()
         scenario.scrape()
         assert [d.friendly_name for d in scenario.collector.devices] == ["GOOD", "BAD"]
 
@@ -420,15 +430,32 @@ class TestOfflineRetries:
         assert reachable(output, "BAD", "BAD") == 1.0
         assert samples(output, "fritz_lan_status", "BAD")
 
-    def test_only_one_scrape_retries_at_a_time(self):
+    def test_scrapes_do_not_wait_for_the_retry_and_start_it_once(self, monkeypatch):
         scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
-        del scenario.overrides["bad"][("DeviceInfo1", "GetInfo")]
+        release = threading.Event()
+        calls = []
 
-        with scenario.collector._retry_lock:
-            output = scenario.scrape()
+        def slow_retry():
+            calls.append(1)
+            release.wait(5)
 
-        assert reachable(output, "BAD", "n/a") == 0.0
-        assert [o.friendly_name for o in scenario.collector.offline_devices] == ["BAD"]
+        monkeypatch.setattr(scenario.collector, "_retry_offline_devices", slow_retry)
+        try:
+            outputs = [generate_latest(scenario.registry).decode() for _ in range(3)]
+        finally:
+            release.set()
+
+        # Three scrapes went through while one retry was still running.
+        assert calls == [1]
+        for output in outputs:
+            assert reachable(output, "GOOD", "GOOD") == 1.0
+            assert reachable(output, "BAD", "n/a") == 0.0
+
+    def test_no_retry_when_every_offline_device_is_given_up(self):
+        scenario = Scenario()
+        scenario.collector.offline_devices = []
+        scenario.scrape()
+        assert scenario.collector._retry_thread is None
 
 
 class TestUnexpectedSetupErrors:
@@ -668,3 +695,13 @@ class TestDeviceNamesInLogs:
             message = record.getMessage()
             if "WLAN" in message or "Capability" in message or "Fetching" in message:
                 assert "GOOD (good)" in message or "BAD (bad)" in message, message
+
+
+def test_registering_the_collector_does_not_scrape(monkeypatch):
+    # Without describe(), the registry runs a whole scrape at registration:
+    # logins to every device before the HTTP server is up.
+    scenario = Scenario()
+    calls = []
+    monkeypatch.setattr(scenario.collector, "_collect_devices", lambda: calls.append(1) or ([], []))
+    CollectorRegistry().register(scenario.collector)
+    assert calls == []

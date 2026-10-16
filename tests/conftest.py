@@ -1,5 +1,7 @@
 """Shared test setup."""
 
+import threading
+
 import pytest
 import requests
 
@@ -18,3 +20,16 @@ def _no_network(monkeypatch):
         raise requests.ConnectionError(f"network access in tests: {request.method} {request.url}")
 
     monkeypatch.setattr(requests.Session, "send", refuse)
+
+
+@pytest.fixture(autouse=True)
+def _offline_retries_finish():
+    """Wait for the background retries of offline devices a test started.
+
+    They run in their own thread; one still running would set up devices with
+    the next test's mocks.
+    """
+    yield
+    for thread in threading.enumerate():
+        if thread.name == "fritz-offline-retry":
+            thread.join(timeout=5)

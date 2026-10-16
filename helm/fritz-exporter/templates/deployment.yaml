@@ -36,8 +36,8 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: metrics
-              containerPort: 9787
+            - name: {{ .Values.service.portName }}
+              containerPort: {{ .Values.config.exporter_port | default 9787 }}
               protocol: TCP
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
