@@ -5,25 +5,15 @@ import sys
 import threading
 from pathlib import Path
 
-from fritzconnection.core.exceptions import (  # type: ignore[import]
-    FritzAuthorizationError,
-    FritzConnectionException,
-)
 from prometheus_client import start_http_server
 from prometheus_client.core import REGISTRY
-from requests.exceptions import RequestException
 
 from fritzexporter.config import DeviceConfig, ExporterError, get_config
 from fritzexporter.data_donation import donate_data
-from fritzexporter.exceptions import (
-    FritzDeviceHasNoCapabilitiesError,
-    FritzDeviceSerialUnknownError,
-)
 from fritzexporter.fritzdevice import (
+    DeviceSpec,
     FritzCollector,
     FritzCredentials,
-    FritzDevice,
-    device_log_name,
 )
 from fritzexporter.tr064_remote import ConnectionOptions
 
@@ -91,50 +81,23 @@ def _resolve_password(dev: DeviceConfig) -> str:
 def _register_device(
     dev: DeviceConfig, args: argparse.Namespace, fritzcollector: FritzCollector
 ) -> None:
-    password = _resolve_password(dev)
-    creds = FritzCredentials(dev.hostname, dev.username, password)
-    connection = ConnectionOptions(
-        connection_timeout=dev.connection_timeout,
-        use_tls=dev.use_tls,
-        port=dev.port,
-        remote_access=dev.remote_access,
-        allow_unsafe_md5_password=dev.allow_unsafe_md5_password,
+    spec = DeviceSpec(
+        FritzCredentials(dev.hostname, dev.username, _resolve_password(dev)),
+        dev.name,
+        host_info=dev.host_info,
+        wifi_client_info=dev.wifi_client_info,
+        connection=ConnectionOptions(
+            connection_timeout=dev.connection_timeout,
+            use_tls=dev.use_tls,
+            port=dev.port,
+            remote_access=dev.remote_access,
+            allow_unsafe_md5_password=dev.allow_unsafe_md5_password,
+        ),
     )
-    try:
-        fritz_device = FritzDevice(
-            creds,
-            dev.name,
-            host_info=dev.host_info,
-            wifi_client_info=dev.wifi_client_info,
-            connection=connection,
-        )
-    except (
-        FritzConnectionException,
-        FritzAuthorizationError,
-        FritzDeviceHasNoCapabilitiesError,
-        FritzDeviceSerialUnknownError,
-        RequestException,
-    ) as e:
-        logger.exception(
-            "Failed to initialize device %s, it will be reported as down",
-            device_log_name(dev.name, dev.hostname),
-        )
-        fritzcollector.register_offline(
-            creds,
-            dev.name,
-            host_info=dev.host_info,
-            wifi_client_info=dev.wifi_client_info,
-            connection=connection,
-            failure=e,
-        )
-        return
-
-    if args.donate_data == "donate":
+    fritz_device = fritzcollector.add_device(spec)
+    if fritz_device is not None and args.donate_data == "donate":
         donate_data(fritz_device, upload=args.upload_data == "upload", sanitation=args.sanitize)
         sys.exit(0)
-    else:
-        logger.info("registering %s to collector", fritz_device.log_name)
-        fritzcollector.register(fritz_device)
 
 
 def main() -> None:

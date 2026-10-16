@@ -126,7 +126,7 @@ class TestCreateFritzConnection:
 
         with (
             patch.object(requests.Session, "request", side_effect=requests.ReadTimeout),
-            pytest.raises(FritzConnectionException, match="timed out"),
+            pytest.raises(FritzConnectionException, match=r"did not answer \(ReadTimeout\)"),
         ):
             captured_sessions[0].get("https://box.example/webservices/homeautoswitch.lua")
 

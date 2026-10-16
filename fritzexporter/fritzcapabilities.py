@@ -21,7 +21,6 @@ from fritzconnection.core.exceptions import (  # type: ignore[import]
 )
 from fritzconnection.lib.fritzhosts import FritzHosts  # type: ignore[import]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
-from requests.exceptions import RequestException
 
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
 from fritzexporter.fritz_docsis import (
@@ -37,11 +36,14 @@ from fritzexporter.fritz_rest_generic import (
 )
 from fritzexporter.fritz_webui import FritzWebUiError
 from fritzexporter.reply import DataError, Issues, Reply, read_action
+from fritzexporter.tr064_remote import TRANSPORT_ERRORS, transport_failure_text
 
 if TYPE_CHECKING:
     from fritzexporter.fritzdevice import FritzDevice
 
 logger = logging.getLogger("fritzexporter.fritzcapability")
+
+_PACKAGE_DIR = Path(__file__).parent
 
 # Errors that mean a bug in the exporter rather than bad device data, since all
 # reads go through fritzexporter.reply. They are contained like data problems,
@@ -80,14 +82,21 @@ class _Problem:
 
 
 def _origin(exc: BaseException) -> str:
-    """``file:line in function`` of the innermost frame of ``exc``."""
+    """``file:line in function`` of the innermost frame of ``exc`` in the exporter.
+
+    Errors raised inside a library (fritzconnection) are placed at the exporter's
+    call into it, which tells more.
+    """
     tb = exc.__traceback__
     if tb is None:
         return "unknown"
-    while tb.tb_next is not None:
+    frame = tb
+    while tb is not None:
+        if Path(tb.tb_frame.f_code.co_filename).parent == _PACKAGE_DIR:
+            frame = tb
         tb = tb.tb_next
-    code = tb.tb_frame.f_code
-    return f"{Path(code.co_filename).name}:{tb.tb_lineno} in {code.co_name}"
+    code = frame.tb_frame.f_code
+    return f"{Path(code.co_filename).name}:{frame.tb_lineno} in {code.co_name}"
 
 
 def _describe(exc: BaseException) -> str:
@@ -290,6 +299,8 @@ class FritzCapability(ABC):
           exported; other capabilities and devices are unaffected.
         * A bug in the exporter is contained the same way, but logged with a
           traceback on every scrape.
+        * The device answers a TR-064 request with an error: handled like a
+          reply that cannot be read.
         * The device does not answer: its samples of this capability are dropped
           and it is marked unavailable for this cycle.
         """
@@ -300,15 +311,16 @@ class FritzCapability(ABC):
         try:
             self._generate_metric_values(device)
             _check_samples(self.metrics, counts)
-        except FritzConnectionException, RequestException:
+        except TRANSPORT_ERRORS as e:
             self._rollback(counts)
-            logger.exception(
-                "Device %s is unreachable, skipping %s metrics for this collection cycle",
+            logger.warning(
+                "Device %s is unreachable, skipping %s metrics for this collection cycle: %s",
                 device.log_name,
                 name,
+                transport_failure_text(e),
             )
             device.available = False
-        except (FritzWebUiError, DataError) as e:
+        except (FritzConnectionException, FritzWebUiError, DataError) as e:
             self._rollback(counts)
             report_problem(
                 state,
@@ -1456,11 +1468,11 @@ class MeshTopology(FritzCapability):
                 "No mesh topology available from %s (not the mesh master)", device.log_name
             )
             return
-        except FritzConnectionException, RequestException:
-            # The mesh list is fetched over HTTP; a transient failure should not
-            # mark the whole device unavailable — just skip mesh metrics this cycle.
-            logger.warning("Failed to retrieve mesh topology from %s", device.log_name)
-            return
+        except TRANSPORT_ERRORS as e:
+            # meshlist.lua is a web interface page, fetched apart from TR-064: if
+            # only it fails, the device's other metrics are still good.
+            msg = f"mesh list request failed: {transport_failure_text(e)}"
+            raise FritzWebUiError(msg) from None
 
         for link in _MeshParser(topology, self.issues).links():
             base = [device.serial, device.friendly_name, *link.labels]

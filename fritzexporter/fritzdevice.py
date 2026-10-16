@@ -1,8 +1,8 @@
 import collections
 import logging
 import threading
-from typing import NamedTuple
 
+from attrs import Factory, define, evolve, field
 from fritzconnection import FritzConnection  # type: ignore[import]
 from fritzconnection.core.exceptions import (  # type: ignore[import]
     FritzActionError,
@@ -26,7 +26,12 @@ from fritzexporter.fritzcapabilities import (
     report_problem,
 )
 from fritzexporter.reply import DataError, read_action
-from fritzexporter.tr064_remote import ConnectionOptions, create_fritz_connection
+from fritzexporter.tr064_remote import (
+    TRANSPORT_ERRORS,
+    ConnectionOptions,
+    create_fritz_connection,
+    transport_failure_text,
+)
 
 logger = logging.getLogger("fritzexporter.fritzdevice")
 
@@ -51,22 +56,44 @@ def device_log_name(friendly_name: str, host: str) -> str:
     return f"{friendly_name} ({host})"
 
 
-class FritzCredentials(NamedTuple):
+# Errors that keep a device from being set up; it is then reported as unreachable
+# and set up again on every scrape. FritzAuthorizationError is a
+# FritzConnectionException.
+_SETUP_ERRORS: tuple[type[Exception], ...] = (
+    FritzConnectionException,
+    FritzDeviceHasNoCapabilitiesError,
+    FritzDeviceSerialUnknownError,
+    RequestException,
+)
+
+
+@define(frozen=True)
+class FritzCredentials:
     host: str
     user: str
-    password: str
+    password: str = field(repr=False)
 
 
-class OfflineDevice(NamedTuple):
+@define(frozen=True)
+class DeviceSpec:
+    """Everything needed to set up a device, at startup and after it was offline."""
+
     creds: FritzCredentials
-    friendly_name: str
-    host_info: bool
-    connection_timeout: int | None
-    wifi_client_info: bool
-    use_tls: bool = False
-    port: int | None = None
-    remote_access: bool = False
-    allow_unsafe_md5_password: bool = False
+    name: str
+    host_info: bool = False
+    wifi_client_info: bool = False
+    connection: ConnectionOptions = Factory(ConnectionOptions)
+
+    @property
+    def log_name(self) -> str:
+        return device_log_name(self.name, self.creds.host)
+
+
+@define(frozen=True)
+class OfflineDevice:
+    """A device that could not be set up yet."""
+
+    spec: DeviceSpec
     # Why the last attempt failed (exception type), and how often the serial
     # number could not be read; see SERIAL_RETRIES.
     last_failure: str = ""
@@ -77,8 +104,29 @@ class OfflineDevice(NamedTuple):
         return self.serial_failures > SERIAL_RETRIES
 
     @property
+    def friendly_name(self) -> str:
+        return self.spec.name
+
+    @property
     def log_name(self) -> str:
-        return device_log_name(self.friendly_name, self.creds.host)
+        return self.spec.log_name
+
+    def failed(self, error: Exception) -> OfflineDevice:
+        return evolve(
+            self,
+            last_failure=type(error).__name__,
+            serial_failures=self.serial_failures + isinstance(error, FritzDeviceSerialUnknownError),
+        )
+
+
+def _setup_failure(error: Exception) -> str:
+    """Why a device could not be set up, for the log."""
+    if isinstance(error, TRANSPORT_ERRORS):
+        return transport_failure_text(error)
+    text = f"{type(error).__name__}: {error}" if str(error) else type(error).__name__
+    if isinstance(error, FritzAuthorizationError):
+        text += " (check username and password)"
+    return text
 
 
 class FritzDevice:
@@ -112,16 +160,12 @@ class FritzDevice:
                 FRITZ_MAX_PASSWORD_LENGTH,
             )
 
-        try:
-            self.fc: FritzConnection = create_fritz_connection(
-                address=creds.host,
-                user=creds.user,
-                password=creds.password,
-                connection=connection,
-            )
-        except FritzConnectionException, RequestException:
-            logger.exception("unable to connect to %s.", self.log_name)
-            raise
+        self.fc: FritzConnection = create_fritz_connection(
+            address=creds.host,
+            user=creds.user,
+            password=creds.password,
+            connection=connection,
+        )
 
         self.get_device_info()
 
@@ -169,8 +213,8 @@ class FritzDevice:
                 name=self.log_name,
             )
         if self.capabilities.empty():
-            logger.critical("Device %s has no detected capabilities.", self.log_name)
-            raise FritzDeviceHasNoCapabilitiesError
+            msg = f"{self.log_name} has no detected capabilities"
+            raise FritzDeviceHasNoCapabilitiesError(msg)
 
     def get_device_info(self) -> None:
         try:
@@ -185,17 +229,19 @@ class FritzDevice:
             # shows the device as down meanwhile.
             msg = f"could not read the serial number of {self.log_name} (DeviceInfo1.GetInfo: {e})"
             raise FritzDeviceSerialUnknownError(msg) from None
-        except FritzAuthorizationError:
-            logger.exception(
-                "Not authorized to get device info from %s. Check username/password.",
-                self.log_name,
-            )
-            raise
 
-    def get_connection_mode(self) -> GaugeMetricFamily | None:
-        """
-        Returns a metric to detect whether device is in DSL, fibre, mobile fallback or offline mode.
-        """
+    @classmethod
+    def from_spec(cls, spec: DeviceSpec) -> FritzDevice:
+        return cls(
+            spec.creds,
+            spec.name,
+            host_info=spec.host_info,
+            wifi_client_info=spec.wifi_client_info,
+            connection=spec.connection,
+        )
+
+    def add_connection_mode(self, family: GaugeMetricFamily) -> None:
+        """Add whether the device is in DSL, fibre, cable, mobile fallback or offline mode."""
         try:
             resp = read_action(self, "WANCommonInterfaceConfig", "GetCommonLinkProperties")
             link_status = resp.opt_text("NewPhysicalLinkStatus")
@@ -209,21 +255,21 @@ class FritzDevice:
                 "No WAN connection-mode info on %s (no WAN service); skipping metric.",
                 self.log_name,
             )
-            return None
-        except FritzConnectionException, RequestException:
-            logger.exception("Failed to retrieve connection mode info from %s", self.log_name)
+            return
+        except TRANSPORT_ERRORS as e:
+            logger.warning("Device %s is unreachable: %s", self.log_name, transport_failure_text(e))
             self.available = False
-            return None
-        except DataError as e:
+            return
+        except (FritzConnectionException, DataError) as e:
             report_problem(
                 self.connection_mode_state,
                 "ConnectionMode",
                 self.log_name,
                 level=ProblemLevel.SKIPPED,
                 headline=f"Could not read the connection mode of {self.log_name}",
-                details=str(e),
+                details=str(e) if isinstance(e, DataError) else type(e).__name__,
             )
-            return None
+            return
         report_problem(self.connection_mode_state, "ConnectionMode", self.log_name, level=None)
 
         if link_status == "Up" and access_type == "DSL":
@@ -238,15 +284,16 @@ class FritzDevice:
             mode = 5  # Cable (DOCSIS) connection active
         else:
             mode = 0  # Disconnected or not available
+        family.add_metric([self.serial, self.friendly_name, access_type], mode)
 
-        m = GaugeMetricFamily(
-            "fritz_connection_mode",
-            "Connection mode: 1=DSL, 2=Mobile fallback, 3=Mobile-only, "
-            "4=Fiber, 5=Cable, 0=offline/unknown",
-            labels=["serial", "friendly_name", "access_type"],
-        )
-        m.add_metric([self.serial, self.friendly_name, access_type], mode)
-        return m
+
+def _connection_mode_family() -> GaugeMetricFamily:
+    return GaugeMetricFamily(
+        "fritz_connection_mode",
+        "Connection mode: 1=DSL, 2=Mobile fallback, 3=Mobile-only, "
+        "4=Fiber, 5=Cable, 0=offline/unknown",
+        labels=["serial", "friendly_name", "access_type"],
+    )
 
 
 class FritzCollector(Collector):
@@ -258,6 +305,12 @@ class FritzCollector(Collector):
         # which are the authority on what each device actually supports.
         self._capability_instances: FritzCapabilities = FritzCapabilities()
         self._collect_lock = threading.RLock()
+        # Setting up offline devices again can take a connection timeout per
+        # device, so it runs outside _collect_lock, one scrape at a time.
+        # _devices_lock guards the hand-over to devices and offline_devices.
+        self._retry_lock = threading.Lock()
+        self._devices_lock = threading.Lock()
+        self._back_online: list[FritzDevice] = []
         # Counters describing the exporter's own operation (self-monitoring).
         # Guarded by a dedicated lock because scrapes increment/read them from
         # threads that do NOT hold _collect_lock (e.g. the lock-timeout path).
@@ -270,90 +323,68 @@ class FritzCollector(Collector):
         self.devices.append(fritzdev)
         logger.debug("registered device %s, %s, to collector", fritzdev.log_name, fritzdev.model)
 
-    def register_offline(  # noqa: PLR0913
-        self,
-        creds: FritzCredentials,
-        friendly_name: str,
-        *,
-        host_info: bool = False,
-        wifi_client_info: bool = False,
-        connection: ConnectionOptions | None = None,
-        failure: Exception | None = None,
-    ) -> None:
-        connection = connection or ConnectionOptions()
-        self.offline_devices.append(
-            OfflineDevice(
-                creds,
-                friendly_name,
-                host_info,
-                connection.connection_timeout,
-                wifi_client_info,
-                connection.use_tls,
-                connection.port,
-                connection.remote_access,
-                connection.allow_unsafe_md5_password,
-                last_failure=type(failure).__name__ if failure else "",
-                serial_failures=int(isinstance(failure, FritzDeviceSerialUnknownError)),
+    def add_device(self, spec: DeviceSpec) -> FritzDevice | None:
+        """Set up a device and register it; if that fails, report it as unreachable."""
+        try:
+            device = FritzDevice.from_spec(spec)
+        except _SETUP_ERRORS as e:
+            # No traceback: the reason says it all, and these are expected.
+            logger.error(  # noqa: TRY400
+                "Failed to initialize device %s, it will be reported as down: %s",
+                spec.log_name,
+                _setup_failure(e),
             )
-        )
-        logger.debug(
-            "registered offline device %s to collector",
-            device_log_name(friendly_name, creds.host),
-        )
+            with self._devices_lock:
+                self.offline_devices.append(OfflineDevice(spec).failed(e))
+            return None
+        logger.info("registering %s to collector", device.log_name)
+        self.register(device)
+        return device
 
     def _retry_offline_devices(self) -> None:
-        still_offline: list[OfflineDevice] = []
-        for offline in self.offline_devices:
-            if offline.given_up:
-                still_offline.append(offline)
-                continue
-            try:
-                fritz_device = FritzDevice(
-                    offline.creds,
-                    offline.friendly_name,
-                    host_info=offline.host_info,
-                    wifi_client_info=offline.wifi_client_info,
-                    connection=ConnectionOptions(
-                        connection_timeout=offline.connection_timeout,
-                        use_tls=offline.use_tls,
-                        port=offline.port,
-                        remote_access=offline.remote_access,
-                        allow_unsafe_md5_password=offline.allow_unsafe_md5_password,
-                    ),
-                )
+        """Try to set up the offline devices again; skipped while another scrape does."""
+        if not self._retry_lock.acquire(blocking=False):
+            return
+        try:
+            with self._devices_lock:
+                offline_devices = list(self.offline_devices)
+            still_offline: list[OfflineDevice] = []
+            back_online: list[FritzDevice] = []
+            for offline in offline_devices:
+                if offline.given_up:
+                    still_offline.append(offline)
+                    continue
+                try:
+                    device = FritzDevice.from_spec(offline.spec)
+                except _SETUP_ERRORS as e:
+                    still_offline.append(self._offline_failure(offline, e))
+                    continue
                 logger.info("Device %s is back online, registering to collector.", offline.log_name)
-                self.register(fritz_device)
-            except (
-                FritzConnectionException,
-                FritzAuthorizationError,
-                FritzDeviceHasNoCapabilitiesError,
-                FritzDeviceSerialUnknownError,
-                RequestException,
-            ) as e:
-                still_offline.append(self._offline_failure(offline, e))
-        self.offline_devices = still_offline
+                back_online.append(device)
+            with self._devices_lock:
+                self.offline_devices = still_offline
+                self._back_online.extend(back_online)
+        finally:
+            self._retry_lock.release()
 
     @staticmethod
     def _offline_failure(offline: OfflineDevice, error: Exception) -> OfflineDevice:
         """Record a failed retry; log it when the reason changes or the device is given up."""
         name = offline.log_name
-        failed = offline._replace(
-            last_failure=type(error).__name__,
-            serial_failures=offline.serial_failures
-            + isinstance(error, FritzDeviceSerialUnknownError),
-        )
+        failed = offline.failed(error)
+        reason = _setup_failure(error)
         if failed.given_up:
             logger.error(
                 "Giving up on device %s after %d attempts: %s. It stays reported as "
                 "unreachable until the exporter is restarted.",
                 name,
                 failed.serial_failures,
-                error,
+                reason,
             )
         elif failed.last_failure != offline.last_failure:
-            logger.warning("Device %s is still offline, now because: %s", name, error)
+            logger.warning("Device %s is still offline, now because: %s", name, reason)
         else:
-            logger.debug("Device %s is still offline: %s", name, error)
+            logger.debug("Device %s is still offline: %s", name, reason)
         return failed
 
     def _build_self_monitoring_metrics(
@@ -389,10 +420,18 @@ class FritzCollector(Collector):
             failures_total.add_metric([], float(self._scrape_failures))
         return scrapes_total, timeouts_total, failures_total
 
-    def _collect_devices(self) -> list[CounterMetricFamily | GaugeMetricFamily]:
-        """Collect all device metrics eagerly, so device availability is known first."""
-        # Attempt to bring offline devices back online before collecting
-        self._retry_offline_devices()
+    def _collect_devices(
+        self,
+    ) -> tuple[list[CounterMetricFamily | GaugeMetricFamily], list[OfflineDevice]]:
+        """Collect all device metrics eagerly, so device availability is known first.
+
+        Also returns the devices that are offline in this scrape.
+        """
+        with self._devices_lock:
+            for device in self._back_online:
+                self.register(device)
+            self._back_online.clear()
+            offline_devices = list(self.offline_devices)
 
         # Reset availability for this collection cycle
         for dev in self.devices:
@@ -400,16 +439,14 @@ class FritzCollector(Collector):
             if dev.webui_client is not None:
                 dev.webui_client.start_scrape()
 
-        collected: list[CounterMetricFamily | GaugeMetricFamily] = []
-
+        connection_mode = _connection_mode_family()
         for dev in self.devices:
-            mode_metric = dev.get_connection_mode()
-            if mode_metric:
-                collected.append(mode_metric)
+            dev.add_connection_mode(connection_mode)
+        collected: list[CounterMetricFamily | GaugeMetricFamily] = [connection_mode]
 
         for name, capa in self._capability_instances.items():
             collected.extend(list(capa.get_metrics(self.devices, name)))
-        return collected
+        return collected, offline_devices
 
     def _build_problem_metric(self) -> GaugeMetricFamily:
         """One series per device and capability whose last scrape skipped data."""
@@ -434,6 +471,7 @@ class FritzCollector(Collector):
         return problems
 
     def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
+        self._retry_offline_devices()
         # The lock is held for the whole scrape (blocking TR-064 calls included),
         # so acquiring it must be bounded: a slow or wedged first scrape would
         # otherwise block every concurrent scrape from other Prometheus instances
@@ -450,7 +488,7 @@ class FritzCollector(Collector):
             )
             return
         try:
-            collected = self._collect_devices()
+            collected, offline_devices = self._collect_devices()
 
             # Built under the stats lock, yielded outside it, so the counters in
             # one output agree with the fritz_device_reachable gauge of the same cycle.
@@ -467,7 +505,7 @@ class FritzCollector(Collector):
             )
             for dev in self.devices:
                 device_up.add_metric([dev.serial, dev.friendly_name], 1.0 if dev.available else 0.0)
-            for offline in self.offline_devices:
+            for offline in offline_devices:
                 device_up.add_metric(["n/a", offline.friendly_name], 0.0)
             yield device_up
             yield self._build_problem_metric()
