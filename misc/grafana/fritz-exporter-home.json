@@ -191,7 +191,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max((fritz_wan_connection_uptime_seconds_total{friendly_name=\"$device\"} and on (serial, connection, stack) fritz_wan_connection_status{friendly_name=\"$device\",state=\"connected\"}) or fritz_ppp_connection_uptime_seconds_total{friendly_name=\"$device\"})",
+          "expr": "max((fritz_wan_connection_uptime_seconds_total{friendly_name=\"$device\"} and on (serial, connection, stack) (fritz_wan_connection_status{friendly_name=\"$device\"} == 1)) or fritz_ppp_connection_uptime_seconds_total{friendly_name=\"$device\"})",
           "refId": "A",
           "legendFormat": "__auto"
         }
@@ -882,7 +882,9 @@
           },
           "expr": "fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\",direction=\"rx\"}",
           "refId": "A",
-          "legendFormat": "down"
+          "legendFormat": "down",
+          "instant": true,
+          "range": false
         },
         {
           "datasource": {
@@ -891,7 +893,9 @@
           },
           "expr": "fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\",direction=\"tx\"}",
           "refId": "B",
-          "legendFormat": "up"
+          "legendFormat": "up",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -950,9 +954,11 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_wifi_associations_count{friendly_name=\"$device\"}",
+          "expr": "fritz_wifi_associations_count{friendly_name=\"$device\"} * on (serial, wifi_index) group_left (ssid) fritz_wifi_info{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "{{ssid}} ({{wifi_name}})"
+          "legendFormat": "{{ssid}} ({{wifi_name}})",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -1074,7 +1080,9 @@
           },
           "expr": "fritz_ha_temperature_C{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "{{device_name}}"
+          "legendFormat": "{{device_name}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {

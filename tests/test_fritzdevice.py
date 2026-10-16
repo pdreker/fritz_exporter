@@ -1124,7 +1124,9 @@ class TestFritzCollector:
         assert len(signal) == 1
         assert len(signal[0].samples) == 4
         assert any(s.labels["client_mac"] == "AA:BB:CC:00:01:00" for s in signal[0].samples)
-        assert any(s.labels["wifi_name"] == "2.4GHz" for s in signal[0].samples)
+        # Band and address are in fritz_wifi_client_info: they change.
+        [info] = [m for m in metrics if m.name == "fritz_wifi_client_info"]
+        assert {"2.4GHz", "5GHz"} <= {s.labels["wifi_name"] for s in info.samples}
 
     def test_should_not_collect_wifi_client_info_by_default(
         self, mock_fritzconnection: MagicMock, caplog
@@ -1650,12 +1652,14 @@ class TestConcurrentScrapes:
 class TestGetConnectionMode:
     """Tests for FritzDevice.add_connection_mode()"""
 
-    @staticmethod
-    def _mode(device: FritzDevice) -> GaugeMetricFamily | None:
-        family = GaugeMetricFamily(
-            "fritz_connection_mode", "", labels=["serial", "friendly_name", "access_type"]
+    def _mode(self, device: FritzDevice) -> GaugeMetricFamily | None:
+        family = GaugeMetricFamily("fritz_connection_mode", "", labels=["serial", "friendly_name"])
+        info = GaugeMetricFamily(
+            "fritz_wan_access_type_info", "", labels=["serial", "friendly_name", "access_type"]
         )
-        device.add_connection_mode(family)
+        device.add_connection_mode(family, info)
+        # The access type is in its own info metric.
+        self.access_types = [s.labels["access_type"] for s in info.samples]
         return family if family.samples else None
 
     def _create_device(self, mock_fc: MagicMock) -> tuple:
@@ -1683,7 +1687,7 @@ class TestGetConnectionMode:
         assert metric.samples[0].value == 1
         assert metric.samples[0].labels["serial"] == "1234567890"
         assert metric.samples[0].labels["friendly_name"] == "FritzMock"
-        assert metric.samples[0].labels["access_type"] == "DSL"
+        assert self.access_types == ["DSL"]
 
     def test_get_connection_mode_mobile_fallback(self, mock_fc: MagicMock):
         # Prepare
@@ -1701,7 +1705,7 @@ class TestGetConnectionMode:
         assert metric is not None
         assert metric.samples[0].value == 2
         assert metric.samples[0].labels["serial"] == "1234567890"
-        assert metric.samples[0].labels["access_type"] == "X_AVM-DE_Mobile"
+        assert self.access_types == ["X_AVM-DE_Mobile"]
 
     def test_get_connection_mode_mobile_only(self, mock_fc: MagicMock):
         # Prepare
@@ -1734,7 +1738,7 @@ class TestGetConnectionMode:
         # Check
         assert metric is not None
         assert metric.samples[0].value == 4
-        assert metric.samples[0].labels["access_type"] == "X_AVM-DE_Fiber"
+        assert self.access_types == ["X_AVM-DE_Fiber"]
 
     def test_get_connection_mode_cable(self, mock_fc: MagicMock):
         # Prepare
@@ -1751,7 +1755,7 @@ class TestGetConnectionMode:
         # Check
         assert metric is not None
         assert metric.samples[0].value == 5
-        assert metric.samples[0].labels["access_type"] == "X_AVM-DE_Cable"
+        assert self.access_types == ["X_AVM-DE_Cable"]
 
     def test_get_connection_mode_offline(self, mock_fc: MagicMock):
         # Prepare

@@ -7,7 +7,7 @@
 > - **Docker image runs as `nobody` (65534).** Mounted config and password files must be readable by that user. The image and the Helm chart now listen on `0.0.0.0` by default; a config file used with plain Docker must set `listen_address: 0.0.0.0`.
 > - **`--donate-data` removed.**
 > - **Stricter configuration.** Unknown keys, a device without password and duplicate device names stop the exporter at startup. The device name now defaults to the hostname (also for `FRITZ_NAME`, which used to default to `Fritz!Box`): set `name` to keep your `friendly_name` labels.
-> - **Addresses and names moved to `_info` metrics.** `fritz_wan_connection_uptime_seconds_total` and `fritz_wan_connection_status` lose `ip_address` (now in `fritz_wan_connection_info`); `fritz_host_active` and `fritz_host_speed` are keyed by `mac_address` only (address, name, interface, port and model are in `fritz_host_info`). Update dashboards and alerts that use these labels.
+> - **Changing labels moved to `_info` metrics.** Labels that change with the device's state (Fritz!OS version, update version, access type, PPP error, WAN connection state and address, WiFi SSID/standard/enabled, WiFi client band and address, host address and name) are no longer labels of the data series, but of new `…_info` metrics (`fritz_device_info`, `fritz_wifi_info`, `fritz_host_info`, …). Update dashboards and alerts that use these labels; the upgrade notes list them all.
 > - **Log messages reworked.** Many messages changed wording, level or frequency, and every message about a device now names it as `<name> (<host>)`. If you match log messages, e.g. for alerts, check your patterns.
 >
 > See the [upgrade notes](https://fritz-exporter.readthedocs.io/en/latest/upgrading.html) for details.

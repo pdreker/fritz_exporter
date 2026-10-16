@@ -53,22 +53,22 @@ Metrics
 
 The following groups of metrics are currently available:
 
-* Base Information (Model, Serial, Software Version, Uptime)
-* Software Information (Update available)
-* Connection mode (DSL, fibre, cable, mobile fallback or offline)
+* Base Information (uptime; model and Fritz!OS version in ``fritz_device_info``)
+* Software Information (update available; its version in ``fritz_update_info``)
+* Connection mode (DSL, fibre, cable, mobile fallback or offline; the access type in ``fritz_wan_access_type_info``)
 * Host table (number of known devices; with ``host_info`` enabled, activity and speed of each host by MAC address, and its address, name and connection in ``fritz_host_info``)
 * LAN statistics (Ethernet only)
 * WAN statistics (including the delegated IPv6 prefix)
 * DSL statistics
 * Fibre / GPON statistics (optical levels, SFP/GPON identity, fibre counters)
 * PPP statistics
-* WiFi statistics (with ``wifi_client_info`` enabled, also signal strength and speed of each client)
+* WiFi statistics per band, with SSID and standard in ``fritz_wifi_info`` (with ``wifi_client_info`` enabled, also signal strength and speed of each client, with band and address in ``fritz_wifi_client_info``)
 * Mesh backhaul links (data rate and state of the links between mesh nodes, read from the mesh master)
 * Provider management channel (TR-069 management server host, periodic inform, managed upgrades; USP controller enable flags, see below)
 * Telephony (number of configured telephone numbers; the numbers themselves are not exported)
 * WAN Layer1 (physical link) statistics, including 64-bit max bitrate for multi-gig links
 * DOCSIS cable channel statistics (auto-detected on cable boxes; power, MER/MSE, corrected/uncorrected errors, latency). On the Fritz!Box 6660 Cable, DOCSIS 3.1 channels report an uncorrected-error counter but no corrected one, so ``fritz_docsis_corrected_errors_total`` has no series for them.
-* Shared segment utilization (``fritz_cable_segment_*``, cable boxes; other boxes report no samples) and per-connection IPv4/IPv6 status, uptime and address (``fritz_wan_connection_info``) via the Fritz!OS REST API
+* Shared segment utilization (``fritz_cable_segment_*``, cable boxes; other boxes report no samples) and per-connection IPv4/IPv6 status, uptime, state and address (``fritz_wan_connection_info``) via the Fritz!OS REST API
 * Home Automation Devices (switches, heating valves, temperatures, power meters, and battery status; window/door sensors (open/closed) are not yet reported)
 
 USP controllers

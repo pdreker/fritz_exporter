@@ -155,20 +155,28 @@ class TestValueLevel:
 class TestItemLevel:
     def test_unreadable_label_skips_only_that_item(self, caplog):
         caplog.set_level(logging.DEBUG)
+        scenario = Scenario({("WLANConfiguration1", "GetInfo"): wlan1_info(NewSSID={"a": 1})})
+
+        output = scenario.scrape()
+
+        infos = samples(output, "fritz_wifi_info", "BAD")
+        assert not any('wifi_index="1"' in line for line in infos)
+        assert any('wifi_index="2"' in line for line in infos)
+        # The WLAN's values do not depend on the SSID.
+        assert any('wifi_index="1"' in line for line in samples(output, "fritz_wifi_status", "BAD"))
+        assert (
+            "Skipped part of the WlanConfigurationInfo data from BAD (bad): WLAN 1 info skipped: "
+            "WLANConfiguration1.GetInfo NewSSID: expected text, got dict"
+        ) in caplog.text
+
+    def test_unreadable_value_skips_only_its_sample(self):
         scenario = Scenario({("WLANConfiguration1", "GetInfo"): wlan1_info(NewEnable="maybe")})
 
         output = scenario.scrape()
 
-        for metric in ("fritz_wifi_status", "fritz_wifi_channel", "fritz_wifi_packets_count_total"):
-            wlans = samples(output, metric, "BAD")
-            assert wlans
-            assert not any('wifi_index="1"' in line for line in wlans)
-            assert any('wifi_index="2"' in line for line in wlans)
-        assert len(samples(output, "fritz_wifi_status", "GOOD")) == 3
-        assert (
-            "Skipped part of the WlanConfigurationInfo data from BAD (bad): WLAN 1 skipped: "
-            "WLANConfiguration1.GetInfo NewEnable: expected a flag, got str"
-        ) in caplog.text
+        enabled = samples(output, "fritz_wifi_enabled", "BAD")
+        assert not any('wifi_index="1"' in line for line in enabled)
+        assert any('wifi_index="1"' in line for line in samples(output, "fritz_wifi_channel", "BAD"))
 
 
 class TestSingleCases:
@@ -193,8 +201,8 @@ class TestSingleCases:
 
         output = scenario.scrape()
 
-        [status] = samples(output, "fritz_wan_phys_link_status", "BAD")
-        assert 'wantype=""' in status
+        # The access type is not a label any more (fritz_wan_access_type_info).
+        assert len(samples(output, "fritz_wan_phys_link_status", "BAD")) == 1
         assert len(samples(output, "fritz_wan_max_bitrate_bps", "BAD")) == 2
 
     def test_uptime_uses_the_device_serial(self):
@@ -215,8 +223,9 @@ class TestSingleCases:
 
         output = scenario.scrape()
 
-        [uptime] = samples(output, "fritz_uptime_seconds_total", "BAD")
-        assert 'modelname="n/a"' in uptime
+        assert samples(output, "fritz_uptime_seconds_total", "BAD")
+        [info] = samples(output, "fritz_device_info", "BAD")
+        assert 'modelname="n/a"' in info
 
 
 class TestCapabilityLevel:

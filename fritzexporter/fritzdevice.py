@@ -240,7 +240,7 @@ class FritzDevice:
             connection=spec.connection,
         )
 
-    def add_connection_mode(self, family: GaugeMetricFamily) -> None:
+    def add_connection_mode(self, family: GaugeMetricFamily, info: GaugeMetricFamily) -> None:
         """Add whether the device is in DSL, fibre, cable, mobile fallback or offline mode."""
         try:
             resp = read_action(self, "WANCommonInterfaceConfig", "GetCommonLinkProperties")
@@ -273,7 +273,10 @@ class FritzDevice:
         report_problem(self.connection_mode_state, "ConnectionMode", self.log_name, level=None)
 
         mode = _CONNECTION_MODES.get((link_status, access_type), 0)
-        family.add_metric([self.serial, self.friendly_name, access_type], mode)
+        family.add_metric([self.serial, self.friendly_name], mode)
+        # The access type changes on a mobile fallback; as a label of the mode it
+        # started a new series each time.
+        info.add_metric([self.serial, self.friendly_name, access_type], 1)
 
 
 # fritz_connection_mode by (physical link status, WAN access type); anything
@@ -288,13 +291,19 @@ _CONNECTION_MODES: dict[tuple[str | None, str], int] = {
 }
 
 
-def _connection_mode_family() -> GaugeMetricFamily:
-    return GaugeMetricFamily(
+def _connection_mode_families() -> tuple[GaugeMetricFamily, GaugeMetricFamily]:
+    mode = GaugeMetricFamily(
         "fritz_connection_mode",
         "Connection mode: 1=DSL, 2=Mobile fallback, 3=Mobile-only, "
         "4=Fiber, 5=Cable, 0=offline/unknown",
+        labels=["serial", "friendly_name"],
+    )
+    info = GaugeMetricFamily(
+        "fritz_wan_access_type_info",
+        "WAN access type of the device: DSL, X_AVM-DE_Mobile, ... (always 1)",
         labels=["serial", "friendly_name", "access_type"],
     )
+    return mode, info
 
 
 class FritzCollector(Collector):
@@ -445,10 +454,10 @@ class FritzCollector(Collector):
             if dev.webui_client is not None:
                 dev.webui_client.start_scrape()
 
-        connection_mode = _connection_mode_family()
+        connection_mode, access_type = _connection_mode_families()
         for dev in self.devices:
-            dev.add_connection_mode(connection_mode)
-        collected: list[CounterMetricFamily | GaugeMetricFamily] = [connection_mode]
+            dev.add_connection_mode(connection_mode, access_type)
+        collected: list[CounterMetricFamily | GaugeMetricFamily] = [connection_mode, access_type]
 
         for name, capa in self._capability_instances.items():
             collected.extend(list(capa.get_metrics(self.devices, name)))

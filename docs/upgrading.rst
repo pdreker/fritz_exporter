@@ -7,25 +7,45 @@ v4.0.0
 The first three sections need action from most users: dashboards and alerts that
 use the moved labels, configs without ``name``, and Docker or Helm setups.
 
-Addresses and names moved to ``_info`` metrics
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Changing labels moved to ``_info`` metrics
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Labels that change while the thing they describe stays the same made a new series
-each time: a reconnect, a new DHCP lease, a renamed host. They moved to a separate
-metric with the value ``1``, which you can join on its key labels.
+each time, and for counters a reset: a Fritz!OS update, a reconnect, a mobile
+fallback, a new DHCP lease, a client roaming to the other band. They moved to a
+separate metric with the value ``1``, which you can join on its key labels.
 
+* **Device:** ``fritz_uptime_seconds_total`` loses ``modelname`` and
+  ``softwareversion``; they are in the new ``fritz_device_info``.
+* **Fritz!OS update:** ``fritz_update_available`` loses ``newsoftwareversion``; the
+  new ``fritz_update_info{newsoftwareversion}`` has a series only while an update is
+  available.
+* **WAN access type:** ``fritz_connection_mode`` loses ``access_type``, and
+  ``fritz_wan_max_bitrate_bps`` and ``fritz_wan_phys_link_status`` lose ``wantype``
+  (the same value); it is in the new ``fritz_wan_access_type_info{access_type}``.
+* **PPP:** ``fritz_ppp_connection_state`` loses ``last_error``; it is in the new
+  ``fritz_ppp_connection_info``.
 * **WAN connections:** ``fritz_wan_connection_uptime_seconds_total`` and
-  ``fritz_wan_connection_status`` lose ``ip_address``. The address is in the new
-  ``fritz_wan_connection_info{connection, connection_name, media_type, stack,
-  ip_address}``, for every stack that has one.
+  ``fritz_wan_connection_status`` lose ``ip_address`` and ``state``; both are in the
+  new ``fritz_wan_connection_info{connection, connection_name, media_type, stack,
+  state, ip_address}``.
+* **WiFi:** ``fritz_wifi_status``, ``fritz_wifi_channel``,
+  ``fritz_wifi_associations_count`` and ``fritz_wifi_packets_count_total`` are keyed
+  by ``wifi_index`` and ``wifi_name`` only; ``ssid`` and ``standard`` are in the new
+  ``fritz_wifi_info``, and the ``enabled`` label is the new gauge
+  ``fritz_wifi_enabled``.
+* **WiFi clients** (``wifi_client_info: true``): ``fritz_wifi_client_signal_strength``
+  and ``fritz_wifi_client_speed`` are keyed by ``client_mac`` only; ``wifi_name`` and
+  ``client_ip`` are in the new ``fritz_wifi_client_info``.
 * **Hosts** (``host_info: true``): ``fritz_host_active`` and ``fritz_host_speed`` are
   keyed by ``mac_address`` only; ``ip_address``, ``hostname``, ``interface``,
   ``port`` and ``model`` are in the new ``fritz_host_info``. Hosts without a MAC
   address (e.g. some VPN clients) are left out, since nothing tells them apart.
 
-To keep a host's name in a query, join on the MAC address, e.g.::
+To keep a label in a query, join the ``_info`` metric on its key labels, e.g.::
 
   fritz_host_active * on (serial, mac_address) group_left (hostname) fritz_host_info
+  fritz_wifi_associations_count * on (serial, wifi_index) group_left (ssid) fritz_wifi_info
 
 Stricter configuration
 ^^^^^^^^^^^^^^^^^^^^^^

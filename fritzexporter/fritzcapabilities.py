@@ -510,22 +510,31 @@ class DeviceInfo(FritzCapability):
         self.requirements.append(("DeviceInfo1", "GetInfo"))
 
     def create_metrics(self) -> None:
-        self.metrics["uptime"] = CounterMetricFamily(
-            "fritz_uptime",
-            "FritzBox uptime, system info in labels",
-            labels=["modelname", "softwareversion", "serial", "friendly_name"],
-            unit="seconds",
+        self._counter("uptime", "fritz_uptime", "Device uptime", unit="seconds")
+        # Model and Fritz!OS version change with an update; as labels of the
+        # uptime they started a new series (and a counter reset) each time.
+        self._gauge(
+            "info",
+            "fritz_device_info",
+            "Model and Fritz!OS version of the device (always 1)",
+            "modelname",
+            "softwareversion",
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         info = read_action(device, "DeviceInfo1", "GetInfo")
-        labels = [
-            info.text("NewModelName", "n/a"),
-            info.text("NewSoftwareVersion", "n/a"),
-            device.serial,
-            device.friendly_name,
-        ]
+        labels = [device.serial, device.friendly_name]
         self._add("uptime", labels, self.issues.num(info, "NewUpTime"))
+        with self._item("device info"):
+            self._add(
+                "info",
+                [
+                    *labels,
+                    info.text("NewModelName", "n/a"),
+                    info.text("NewSoftwareVersion", "n/a"),
+                ],
+                1,
+            )
 
 
 class HostNumberOfEntries(FritzCapability):
@@ -553,18 +562,22 @@ class UserInterface(FritzCapability):
         self.requirements.append(("UserInterface1", "GetInfo"))
 
     def create_metrics(self) -> None:
+        self._gauge("update", "fritz_update_available", "Fritz!OS update available")
         self._gauge(
-            "update", "fritz_update_available", "FritzBox update available", "newsoftwareversion"
+            "info",
+            "fritz_update_info",
+            "Version of the available Fritz!OS update (always 1, only while there is one)",
+            "newsoftwareversion",
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         result = read_action(device, "UserInterface1", "GetInfo")
-        # The version label depends on the flag, so both are read strictly.
-        available = result.flag("NewUpgradeAvailable")
-        new_software_version = result.text("NewX_AVM-DE_Version", "n/a") if available else "n/a"
-        self._add(
-            "update", [device.serial, device.friendly_name, new_software_version], int(available)
-        )
+        labels = [device.serial, device.friendly_name]
+        available = self.issues.flag(result, "NewUpgradeAvailable")
+        self._add("update", labels, available)
+        if available:
+            with self._item("update version"):
+                self._add("info", [*labels, result.text("NewX_AVM-DE_Version", "n/a")], 1)
 
 
 class LanInterfaceConfig(FritzCapability):
@@ -863,18 +876,23 @@ class WanPPPConnectionStatus(FritzCapability):
         self._counter(
             "uptime", "fritz_ppp_connection_uptime", "PPP connection uptime", unit="seconds"
         )
-        self._gauge("connected", "fritz_ppp_connection_state", "PPP connection state", "last_error")
+        self._gauge("connected", "fritz_ppp_connection_state", "PPP connection state")
+        self._gauge(
+            "info",
+            "fritz_ppp_connection_info",
+            "Last error of the PPP connection (always 1)",
+            "last_error",
+        )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         result = read_action(device, "WANPPPConnection1", "GetStatusInfo")
         labels = [device.serial, device.friendly_name]
         self._add("uptime", labels, self.issues.num(result, "NewUptime"))
-        with self._item("PPP connection state"):
-            self._add(
-                "connected",
-                [*labels, result.text("NewLastConnectionError", "")],
-                self.issues.equals(result, "NewConnectionStatus", "Connected"),
-            )
+        self._add(
+            "connected", labels, self.issues.equals(result, "NewConnectionStatus", "Connected")
+        )
+        with self._item("PPP last error"):
+            self._add("info", [*labels, result.text("NewLastConnectionError", "")], 1)
 
 
 class WanCommonInterfaceConfig(FritzCapability):
@@ -887,21 +905,18 @@ class WanCommonInterfaceConfig(FritzCapability):
             "wanconfig",
             "fritz_wan_max_bitrate",
             "max bitrate at the physical layer",
-            "wantype",
             "direction",
             unit="bps",
         )
         self._gauge(
-            "wanlinkstatus",
-            "fritz_wan_phys_link_status",
-            "link status at the physical layer",
-            "wantype",
+            "wanlinkstatus", "fritz_wan_phys_link_status", "link status at the physical layer"
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         result = read_action(device, "WANCommonInterfaceConfig1", "GetCommonLinkProperties")
-        # The access type is a label of every sample here, so it is read strictly.
-        labels = [device.serial, device.friendly_name, result.text("NewWANAccessType", "")]
+        # The access type is in fritz_wan_access_type_info: it changes on a mobile
+        # fallback.
+        labels = [device.serial, device.friendly_name]
         self._add(
             "wanconfig", [*labels, "tx"], self.issues.num(result, "NewLayer1UpstreamMaxBitRate")
         )
@@ -993,15 +1008,17 @@ class WanCommonInterfaceDataPackets(FritzCapability):
         self._add("wanpackets", [*labels, "rx"], self.issues.num(rx, "NewTotalPacketsReceived"))
 
 
-class WlanConfigurationInfo(FritzCapability):
-    WIFI_NAMES: ClassVar[list[str]] = ["2.4GHz", "5GHz", "Guest", "WLAN4"]
+# WLANConfiguration1..4: what the bands are on Fritz!Boxes.
+WIFI_NAMES: tuple[str, ...] = ("2.4GHz", "5GHz", "Guest", "WLAN4")
 
+
+class WlanConfigurationInfo(FritzCapability):
     def __init__(self) -> None:
         super().__init__()
-        self.wifi_present: list[bool] = [False] * len(self.WIFI_NAMES)
+        self.wifi_present: list[bool] = [False] * len(WIFI_NAMES)
 
     def check_capability(self, device: FritzDevice) -> None:
-        for index in range(len(self.WIFI_NAMES)):
+        for index in range(len(WIFI_NAMES)):
             service = f"WLANConfiguration{index + 1}"
             requirements = [
                 (service, "GetInfo"),
@@ -1022,33 +1039,17 @@ class WlanConfigurationInfo(FritzCapability):
         self.present = any(self.wifi_present)
 
     def create_metrics(self) -> None:
+        # Keyed by the band. SSID, standard and the enabled flag change when the
+        # WLAN is set up differently; as labels they started new series.
+        self._gauge("wlanstatus", "fritz_wifi_status", "Status of WiFi", "wifi_index", "wifi_name")
+        self._gauge("wlanenabled", "fritz_wifi_enabled", "WiFi enabled", "wifi_index", "wifi_name")
         self._gauge(
-            "wlanstatus",
-            "fritz_wifi_status",
-            "Status of WiFi",
-            "enabled",
-            "standard",
-            "ssid",
-            "wifi_index",
-            "wifi_name",
-        )
-        self._gauge(
-            "wlanchannel",
-            "fritz_wifi_channel",
-            "Channel of WiFi",
-            "enabled",
-            "standard",
-            "ssid",
-            "wifi_index",
-            "wifi_name",
+            "wlanchannel", "fritz_wifi_channel", "Channel of WiFi", "wifi_index", "wifi_name"
         )
         self._gauge(
             "wlanassocs",
             "fritz_wifi_associations",
             "Number of associations (devices) in WiFi",
-            "enabled",
-            "standard",
-            "ssid",
             "wifi_index",
             "wifi_name",
             unit="count",
@@ -1057,13 +1058,19 @@ class WlanConfigurationInfo(FritzCapability):
             "wlanpackets",
             "fritz_wifi_packets",
             "Amount of packets in WiFi",
-            "enabled",
-            "standard",
-            "ssid",
-            "direction",
             "wifi_index",
             "wifi_name",
+            "direction",
             unit="count",
+        )
+        self._gauge(
+            "wlaninfo",
+            "fritz_wifi_info",
+            "SSID and standard of a WiFi (always 1)",
+            "wifi_index",
+            "wifi_name",
+            "ssid",
+            "standard",
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
@@ -1080,33 +1087,23 @@ class WlanConfigurationInfo(FritzCapability):
     def _collect_wlan(self, device: FritzDevice, index: int) -> None:
         service = f"WLANConfiguration{index + 1}"
         info = read_action(device, service, "GetInfo")
-        enabled = "1" if info.flag("NewEnable") else "0"
-        # The labels shared by every WLAN metric, in label order; "direction"
-        # of the packet counter goes in before the last two. A defect in them
-        # skips this WLAN.
-        head = [
-            device.serial,
-            device.friendly_name,
-            enabled,
-            info.text("NewStandard", ""),
-            info.text("NewSSID", ""),
-        ]
-        tail = [str(index + 1), self.WIFI_NAMES[index]]
-        self._add("wlanstatus", [*head, *tail], self.issues.equals(info, "NewStatus", "Up"))
-        self._add("wlanchannel", [*head, *tail], self.issues.num(info, "NewChannel"))
+        labels = [device.serial, device.friendly_name, str(index + 1), WIFI_NAMES[index]]
+        self._add("wlanstatus", labels, self.issues.equals(info, "NewStatus", "Up"))
+        self._add("wlanenabled", labels, self.issues.flag(info, "NewEnable"))
+        self._add("wlanchannel", labels, self.issues.num(info, "NewChannel"))
+        with self._item(f"WLAN {index + 1} info"):
+            self._add(
+                "wlaninfo",
+                [*labels, info.text("NewSSID", ""), info.text("NewStandard", "")],
+                1,
+            )
 
         associations = read_action(device, service, "GetTotalAssociations")
-        self._add(
-            "wlanassocs", [*head, *tail], self.issues.num(associations, "NewTotalAssociations")
-        )
+        self._add("wlanassocs", labels, self.issues.num(associations, "NewTotalAssociations"))
 
         packets = read_action(device, service, "GetPacketStatistics")
-        self._add(
-            "wlanpackets", [*head, "rx", *tail], self.issues.num(packets, "NewTotalPacketsReceived")
-        )
-        self._add(
-            "wlanpackets", [*head, "tx", *tail], self.issues.num(packets, "NewTotalPacketsSent")
-        )
+        for direction, field in (("rx", "NewTotalPacketsReceived"), ("tx", "NewTotalPacketsSent")):
+            self._add("wlanpackets", [*labels, direction], self.issues.num(packets, field))
 
 
 class WlanAssociatedDevices(FritzCapability):
@@ -1118,11 +1115,9 @@ class WlanAssociatedDevices(FritzCapability):
     repeater availability fix) mesh repeaters alike.
     """
 
-    WIFI_NAMES: ClassVar[list[str]] = ["2.4GHz", "5GHz", "Guest", "WLAN4"]
-
     def __init__(self) -> None:
         super().__init__()
-        self.wifi_present: list[bool] = [False] * len(self.WIFI_NAMES)
+        self.wifi_present: list[bool] = [False] * len(WIFI_NAMES)
 
     def enabled(self, device: FritzDevice) -> bool:
         return device.wifi_client_info
@@ -1131,7 +1126,7 @@ class WlanAssociatedDevices(FritzCapability):
         if not self.enabled(device):
             self.present = False
             return
-        for index in range(len(self.WIFI_NAMES)):
+        for index in range(len(WIFI_NAMES)):
             service = f"WLANConfiguration{index + 1}"
             # Only GetTotalAssociations is probed: GetGenericAssociatedDeviceInfo
             # needs an index and raises on a radio with no clients.
@@ -1143,16 +1138,27 @@ class WlanAssociatedDevices(FritzCapability):
         self.present = any(self.wifi_present)
 
     def create_metrics(self) -> None:
-        labels = ["serial", "friendly_name", "wifi_name", "client_mac", "client_ip"]
-        self.metrics["signal"] = GaugeMetricFamily(
+        # Keyed by the client's MAC address: its band changes when it roams and
+        # its address with a new lease; as labels they started new series.
+        self._gauge(
+            "signal",
             "fritz_wifi_client_signal_strength",
             "Signal strength of an associated WiFi client in percent",
-            labels=labels,
+            "client_mac",
         )
-        self.metrics["speed"] = GaugeMetricFamily(
+        self._gauge(
+            "speed",
             "fritz_wifi_client_speed",
             "Negotiated speed of an associated WiFi client in Mbit/s",
-            labels=labels,
+            "client_mac",
+        )
+        self._gauge(
+            "info",
+            "fritz_wifi_client_info",
+            "Band and address of an associated WiFi client (always 1)",
+            "client_mac",
+            "wifi_name",
+            "client_ip",
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
@@ -1189,16 +1195,12 @@ class WlanAssociatedDevices(FritzCapability):
                     # the next index; it was read already.
                     continue
                 seen.add(mac)
-                labels = [
-                    device.serial,
-                    device.friendly_name,
-                    self.WIFI_NAMES[index],
-                    mac,
-                    # A client may not have an address yet.
-                    info.text("NewAssociatedDeviceIPAddress", ""),
-                ]
+                labels = [device.serial, device.friendly_name, mac]
                 self._add("signal", labels, self.issues.num(info, "NewX_AVM-DE_SignalStrength"))
                 self._add("speed", labels, self.issues.num(info, "NewX_AVM-DE_Speed"))
+                # A client may not have an address yet.
+                address = info.text("NewAssociatedDeviceIPAddress", "")
+                self._add("info", [*labels, WIFI_NAMES[index], address], 1)
 
 
 class _MeshLink(NamedTuple):
@@ -1964,23 +1966,23 @@ class WanConnectionStatus(FritzCapability):
             "status",
             "fritz_wan_connection_status",
             "Per-stack connection state of a WAN connection "
-            "(1 when connected, 0 otherwise; state in label)",
+            "(1 when connected, 0 otherwise; the state is in fritz_wan_connection_info)",
+            "connection",
+            "connection_name",
+            "media_type",
+            "stack",
+        )
+        # The state and the address change on every reconnect; as labels of the
+        # metrics above they made new series each time.
+        self._gauge(
+            "info",
+            "fritz_wan_connection_info",
+            "State and address of a WAN connection stack (always 1)",
             "connection",
             "connection_name",
             "media_type",
             "stack",
             "state",
-        )
-        # The address changes on reconnect; as a label of the metrics above it
-        # made new series each time.
-        self._gauge(
-            "info",
-            "fritz_wan_connection_info",
-            "Current address of a WAN connection stack (always 1 while it has one)",
-            "connection",
-            "connection_name",
-            "media_type",
-            "stack",
             "ip_address",
         )
 
@@ -1996,9 +1998,9 @@ class WanConnectionStatus(FritzCapability):
                 self._add("uptime", [*base_labels, stack], conn[uptime_key])
                 state = conn[status_key]
                 if state:
-                    self._add("status", [*base_labels, stack, state], int(state == "connected"))
-                if conn[ip_key]:
-                    self._add("info", [*base_labels, stack, conn[ip_key]], 1)
+                    self._add("status", [*base_labels, stack], int(state == "connected"))
+                if state or conn[ip_key]:
+                    self._add("info", [*base_labels, stack, state, conn[ip_key]], 1)
 
 
 class ManagementServerInfo(FritzCapability):
