@@ -101,6 +101,13 @@ its own operation:
 * ``fritz_scrapes_timeouts_total`` -- scrapes skipped because a previous scrape
   was still in progress when the collector lock deadline was reached
 * ``fritz_scrapes_failed_total`` -- scrapes aborted by an unexpected error
+* ``fritz_read_problem`` -- ``1`` while the exporter skips data of a capability
+  (labels ``capability`` and ``level``): ``partial`` (some values or items could not
+  be read), ``skipped`` (the whole capability), or ``error`` (a bug in the exporter,
+  please report it). The series disappears when the problem is gone. Use it to
+  explain gaps in other metrics, or to alert on them; the log has the details: a
+  warning when a problem appears, an hourly reminder while it lasts (with the time
+  it started) and an info line when it is gone.
 
 The standard ``prometheus_client`` process and interpreter metrics
 (``process_*``, ``python_gc_*``, ``python_info``) are exposed as well.

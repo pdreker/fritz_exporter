@@ -179,9 +179,10 @@ never by indexing the raw data:
   wraps a JSON object the same way.
 * ``reply.num(key)``, ``reply.integer(key)``, ``reply.flag(key)`` and
   ``reply.text(key, default)`` read a required value; the ``opt_*`` variants return
-  ``None`` instead.  ``reply.obj(key)``, ``reply.objects(key)`` and ``reply.items(key)``
-  read nested objects and lists.  ``to_float``/``to_int``/``to_bool``/``to_str`` do the
-  same for single values, e.g. list items or XML text.
+  ``None`` instead.  ``reply.opt_obj(key)`` and ``reply.items(key)`` read nested
+  objects and lists; ``issues.objects(reply, key)`` walks a list of objects.
+  ``to_float``/``to_int``/``to_bool``/``to_str`` do the same for single values, e.g.
+  list items or XML text.
 
 One rule applies everywhere: a value that is missing, ``None`` or ``""`` is *absent*
 (required reads raise, optional reads return ``None``); a value that is present but
@@ -207,6 +208,9 @@ in a graph can be matched to a log line.
 |            | not a list, or a value the whole       | this scrape (no partial set)      |
 |            | capability depends on                  |                                   |
 +------------+----------------------------------------+-----------------------------------+
+| Capability | a bug in the exporter (``KeyError``,   | as above, logged with a traceback |
+|            | ``TypeError``, ...)                    | on every scrape                   |
++------------+----------------------------------------+-----------------------------------+
 | Device     | the serial number cannot be read       | the device is registered offline  |
 |            |                                        | and retried                       |
 +------------+----------------------------------------+-----------------------------------+
@@ -231,14 +235,29 @@ How the levels are built:
   the device is not collected, because the serial is the label that tells devices
   apart (names may repeat).
 
-``FritzCapability.get_metrics`` guards each device's ``_generate_metric_values`` call:
-a connection error marks the device unavailable; a ``FritzWebUiError``, a
-``DataError`` or any other data error (``KeyError``, ``TypeError``, ...) drops the
-samples that device added to the capability.  Before samples are kept, they are
-checked to be renderable (numeric value, ``str`` labels), because ``prometheus_client``
-converts values only while rendering the scrape.  Each problem is logged as a warning
-when it first appears or changes, at debug level while it lasts, and with an info line
-when it is gone.
+``FritzCapability.get_metrics`` guards each device's ``_generate_metric_values`` call.
+In every case below, the samples that device added to the capability are dropped, so
+no partial set is exported:
+
+* a connection error marks the device unavailable for this scrape;
+* a ``FritzWebUiError`` or ``DataError`` skips the capability for this scrape;
+* any other error (``KeyError``, ``TypeError``, ...) is a bug, since all reads go
+  through ``reply.py``: it is contained the same way, so it does not break the scrape,
+  but logged with a traceback on every scrape.
+
+Before samples are kept, they are checked to be renderable (numeric value, ``str``
+labels), because ``prometheus_client`` converts values only while rendering the
+scrape.
+
+**Reporting.** Each device and capability keeps its current problem level
+(``partial``, ``skipped`` or ``error``):
+
+* ``fritz_read_problem{capability, level}`` is ``1`` while a problem lasts, so a gap in
+  a graph can be explained from Prometheus alone, even weeks later;
+* a warning is logged when a problem appears or changes level, a reminder with the
+  start time every hour (``PROBLEM_REMINDER_INTERVAL``) while it lasts, the details at
+  debug level on the other scrapes, and an info line when it is gone. Comparing the
+  level, not the text, keeps changing item indexes from causing new warnings.
 
 A capability does not catch errors itself, except where it can do better than skip,
 e.g. the fibre levels fall back to the TR-064 values.
