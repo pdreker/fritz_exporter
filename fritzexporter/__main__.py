@@ -18,7 +18,12 @@ from fritzexporter.exceptions import (
     FritzDeviceHasNoCapabilitiesError,
     FritzDeviceSerialUnknownError,
 )
-from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
+from fritzexporter.fritzdevice import (
+    FritzCollector,
+    FritzCredentials,
+    FritzDevice,
+    device_log_name,
+)
 from fritzexporter.tr064_remote import ConnectionOptions
 
 from . import __version__
@@ -110,9 +115,8 @@ def _register_device(
         RequestException,
     ) as e:
         logger.exception(
-            "Failed to initialize device %s (%s), it will be reported as down",
-            dev.hostname,
-            dev.name,
+            "Failed to initialize device %s, it will be reported as down",
+            device_log_name(dev.name, dev.hostname),
         )
         fritzcollector.register_offline(
             creds,
@@ -128,7 +132,7 @@ def _register_device(
         donate_data(fritz_device, upload=args.upload_data == "upload", sanitation=args.sanitize)
         sys.exit(0)
     else:
-        logger.info("registering %s to collector", dev.hostname)
+        logger.info("registering %s to collector", fritz_device.log_name)
         fritzcollector.register(fritz_device)
 
 

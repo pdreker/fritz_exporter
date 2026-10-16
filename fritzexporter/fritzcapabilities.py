@@ -205,14 +205,16 @@ def probe_action(
     except FritzServiceError, FritzActionError:
         logger.info(
             "device %s does not support service %s, action %s; disabling its metrics",
-            device.host,
+            device.log_name,
             service,
             action,
         )
         return False
     except failures as e:
         logger.warning(
-            "disabling metrics at service %s, action %s - fritzconnection.call_action returned %s",
+            "disabling metrics of %s at service %s, action %s - "
+            "fritzconnection.call_action returned %s",
+            device.log_name,
             service,
             action,
             str(e),
@@ -245,7 +247,10 @@ class FritzCapability(ABC):
             for (service, action) in self.requirements
         )
         logger.debug(
-            "Capability %s set to %s on device %s", type(self).__name__, self.present, device.host
+            "Capability %s set to %s on device %s",
+            type(self).__name__,
+            self.present,
+            device.log_name,
         )
 
         # Some boxes report services/actions they don't actually support, so
@@ -268,7 +273,7 @@ class FritzCapability(ABC):
             logger.debug(
                 "Fetching %s metrics for %s: %s",
                 name,
-                device.host,
+                device.log_name,
                 device.capabilities[name].present,
             )
             if device.capabilities[name].present and device.available:
@@ -302,7 +307,7 @@ class FritzCapability(ABC):
             self._rollback(counts)
             logger.exception(
                 "Device %s is unreachable, skipping %s metrics for this collection cycle",
-                device.host,
+                device.log_name,
                 name,
             )
             device.available = False
@@ -311,9 +316,9 @@ class FritzCapability(ABC):
             report_problem(
                 state,
                 name,
-                device.host,
+                device.log_name,
                 level=ProblemLevel.SKIPPED,
-                headline=f"Could not read {name} data from {device.host}, skipping it",
+                headline=f"Could not read {name} data from {device.log_name}, skipping it",
                 details=_describe(e),
             )
         except _BUG_ERRORS:
@@ -322,21 +327,21 @@ class FritzCapability(ABC):
                 "Bug while collecting %s data from %s, skipping it for this cycle; "
                 "please report this",
                 name,
-                device.host,
+                device.log_name,
             )
-            report_problem(state, name, device.host, level=ProblemLevel.ERROR)
+            report_problem(state, name, device.log_name, level=ProblemLevel.ERROR)
         else:
             if self.issues.messages:
                 report_problem(
                     state,
                     name,
-                    device.host,
+                    device.log_name,
                     level=ProblemLevel.PARTIAL,
-                    headline=f"Skipped part of the {name} data from {device.host}",
+                    headline=f"Skipped part of the {name} data from {device.log_name}",
                     details="; ".join(self.issues.messages),
                 )
             else:
-                report_problem(state, name, device.host, level=None)
+                report_problem(state, name, device.log_name, level=None)
 
     def _sample_counts(self) -> dict[str, int]:
         return {key: len(family.samples) for key, family in self.metrics.items()}
@@ -751,7 +756,9 @@ class WanFiberInterfaceConfig(FritzCapability):
         except (FritzWebUiError, DataError) as e:
             # The fallback is optional: keep the TR-064 values and the other fibre
             # metrics instead of skipping the capability.
-            logger.warning("Could not read fibre levels from the web UI of %s: %s", device.host, e)
+            logger.warning(
+                "Could not read fibre levels from the web UI of %s: %s", device.log_name, e
+            )
             return receive, transmit
         if levels["receive_dbm"] is not None:
             receive = levels["receive_dbm"]
@@ -1073,7 +1080,7 @@ class WlanConfigurationInfo(FritzCapability):
                 (service, "GetPacketStatistics"),
             ]
             logger.debug(
-                "Capability %s checking %s on %s", type(self).__name__, service, device.host
+                "Capability %s checking %s on %s", type(self).__name__, service, device.log_name
             )
             self.wifi_present[index] = all(
                 (service in device.fc.services) and (action in device.fc.services[service].actions)
@@ -1084,7 +1091,7 @@ class WlanConfigurationInfo(FritzCapability):
                 type(self).__name__,
                 index + 1,
                 self.wifi_present[index],
-                device.host,
+                device.log_name,
             )
             if self.wifi_present[index]:
                 for svc, action in requirements:
@@ -1150,18 +1157,11 @@ class WlanConfigurationInfo(FritzCapability):
         )
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
-        logger.debug(
-            "WLANConfigurationInfo._generateMetricValues called: %s - %s",
-            device.host,
-            self.__class__.__name__,
-        )
+
         device_wlan_cap = cast(WlanConfigurationInfo, device.capabilities[self.__class__.__name__])
         for index, wlan_present in enumerate(device_wlan_cap.wifi_present):
             logger.debug(
-                "WLANConfigurationInfo._generateMetricValues checking WLAN %s (enabled: %s) on %s",
-                index,
-                wlan_present,
-                device.host,
+                "Checking WLAN %d on %s (present: %s)", index + 1, device.log_name, wlan_present
             )
             if wlan_present:
                 with self._item(f"WLAN {index + 1}"):
@@ -1270,7 +1270,7 @@ class WlanAssociatedDevices(FritzCapability):
             logger.warning(
                 "failed to read WiFi associations from %s on %s: %s",
                 service,
-                device.host,
+                device.log_name,
                 str(e),
             )
             return
@@ -1292,7 +1292,7 @@ class WlanAssociatedDevices(FritzCapability):
                     "failed to read associated device info for %s index %d on %s: %s",
                     service,
                     client_index,
-                    device.host,
+                    device.log_name,
                     str(e),
                 )
                 break
@@ -1455,12 +1455,14 @@ class MeshTopology(FritzCapability):
             # "Device has no access to topology information" (404). That is the normal
             # case for mesh slaves/repeaters, so log it quietly and skip mesh metrics
             # for this device — do NOT mark it unavailable.
-            logger.debug("No mesh topology available from %s (not the mesh master)", device.host)
+            logger.debug(
+                "No mesh topology available from %s (not the mesh master)", device.log_name
+            )
             return
         except FritzConnectionException, RequestException:
             # The mesh list is fetched over HTTP; a transient failure should not
             # mark the whole device unavailable — just skip mesh metrics this cycle.
-            logger.warning("Failed to retrieve mesh topology from %s", device.host)
+            logger.warning("Failed to retrieve mesh topology from %s", device.log_name)
             return
 
         for link in _MeshParser(topology, self.issues).links():
@@ -1506,8 +1508,9 @@ class HostInfo(FritzCapability):
                 self._probe_specific_host_entry(device, svc, action)
         except (FritzServiceError, FritzActionError, FritzInternalError) as e:
             logger.warning(
-                "disabling metrics at service %s, action %s - "
+                "disabling metrics of %s at service %s, action %s - "
                 "fritzconnection.call_action returned %s",
+                device.log_name,
                 svc,
                 action,
                 str(e),
@@ -1521,7 +1524,10 @@ class HostInfo(FritzCapability):
             for (service, action) in self.requirements
         )
         logger.debug(
-            "Capability %s set to %s on device %s", type(self).__name__, self.present, device.host
+            "Capability %s set to %s on device %s",
+            type(self).__name__,
+            self.present,
+            device.log_name,
         )
         if self.present:
             for svc, action in self.requirements:
@@ -1563,12 +1569,16 @@ class HostInfo(FritzCapability):
             "NewHostNumberOfEntries"
         )
         logger.debug(
-            "Fetching host information for device serial %s (hosts found: %s)",
-            device.serial,
+            "Fetching host information for %s (hosts found: %s)",
+            device.log_name,
             num_hosts,
         )
         for host_index in range(num_hosts):
-            logger.debug("Fetching generic host information for host number %s", host_index)
+            logger.debug(
+                "Fetching generic host information for host number %s on %s",
+                host_index,
+                device.log_name,
+            )
             try:
                 host_result = read_action(
                     device, "Hosts1", "GetGenericHostEntry", NewIndex=host_index
@@ -1581,9 +1591,9 @@ class HostInfo(FritzCapability):
                 # enumerating and keep the hosts collected so far. Letting it bubble
                 # up would flip the whole device to unreachable for this cycle.
                 logger.debug(
-                    "Host table shrank during scan of device serial %s at index %s; "
+                    "Host table shrank during scan of %s at index %s; "
                     "stopping host enumeration for this cycle",
-                    device.serial,
+                    device.log_name,
                     host_index,
                 )
                 break
@@ -1599,8 +1609,9 @@ class HostInfo(FritzCapability):
         host_speed: float | None = 0.0
         if host_ip != "":
             logger.debug(
-                "Fetching extended AVM host information for host number %s by IP %s",
+                "Fetching extended AVM host information for host number %s on %s by IP %s",
                 host_index,
+                device.log_name,
                 host_ip,
             )
             try:
@@ -1616,11 +1627,11 @@ class HostInfo(FritzCapability):
                 # info for this host and keep scanning. Letting it bubble up
                 # would flip the whole device to unreachable for this cycle.
                 logger.debug(
-                    "Host %s (IP %s) left the host table during scan of device "
-                    "serial %s; using n/a extended info for this host",
+                    "Host %s (IP %s) left the host table during scan of %s; "
+                    "using n/a extended info for this host",
                     host_index,
                     host_ip,
-                    device.serial,
+                    device.log_name,
                 )
             else:
                 host_interface = avm_host_result.text("NewInterfaceType", "")
@@ -1629,8 +1640,10 @@ class HostInfo(FritzCapability):
                 host_speed = self.issues.num_or(avm_host_result, "NewX_AVM-DE_Speed", 0.0)
         else:
             logger.debug(
-                "Unable to fetch extended AVM host information for host number %s: no IP found",
+                "Unable to fetch extended AVM host information for host number %s on %s: "
+                "no IP found",
                 host_index,
+                device.log_name,
             )
         labels = [
             device.serial,
@@ -1781,7 +1794,9 @@ class HomeAutomation(FritzCapability):
                 device, "X_AVM-DE_Homeauto1", "GetSpecificDeviceInfos", NewAIN=ain
             )
         except FritzArgumentError, FritzActionError, FritzArrayIndexError:
-            logger.debug("Could not fetch HKR valve state for ain %s, skipping", ain)
+            logger.debug(
+                "Could not fetch HKR valve state for ain %s on %s, skipping", ain, device.log_name
+            )
             return
 
         for metric, key in (
@@ -1795,7 +1810,9 @@ class HomeAutomation(FritzCapability):
             # An unknown status is a value new firmware may add, not malformed
             # data: skip just this sample, as for the switch state and mode.
             if status not in self._HKR_VALVE_MAP:
-                logger.debug("Unknown valve status %s for ain %s, skipping", key, ain)
+                logger.debug(
+                    "Unknown valve status %s for ain %s on %s, skipping", key, ain, device.log_name
+                )
                 continue
             self._add(metric, labels, self._HKR_VALVE_MAP[status])
 
@@ -1808,7 +1825,7 @@ class HomeAutomation(FritzCapability):
         # The AHA interface is part of the web UI, not TR-064: use the web UI
         # client, which targets the right port for local TLS and remote access.
         if not device.webui_client:
-            logger.debug("No web UI client on device %s, skipping", device.host)
+            logger.debug("No web UI client on device %s, skipping", device.log_name)
             return
 
         devicelist_xml = device.webui_client.fetch_aha("getdevicelistinfos")
@@ -1881,7 +1898,9 @@ class WanDocsisCable(FritzCapability):
             FritzConnectionException,
             DataError,
         ):
-            logger.debug("No WAN access type info on %s, DOCSIS capability disabled", device.host)
+            logger.debug(
+                "No WAN access type info on %s, DOCSIS capability disabled", device.log_name
+            )
             self.present = False
             return
 
@@ -1890,7 +1909,7 @@ class WanDocsisCable(FritzCapability):
             "Capability %s set to %s on device %s",
             type(self).__name__,
             self.present,
-            device.host,
+            device.log_name,
         )
 
     def create_metrics(self) -> None:
@@ -1985,7 +2004,7 @@ class WanDocsisCable(FritzCapability):
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         if not device.webui_client:
-            logger.debug("No web UI client on device %s, skipping", device.host)
+            logger.debug("No web UI client on device %s, skipping", device.log_name)
             return
 
         data = parse_docsis_response(device.webui_client.fetch_page(DOC_INFO_PAGE), self.issues)
@@ -2051,7 +2070,7 @@ class WanSegmentUtilization(FritzCapability):
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         if not device.webui_client:
-            logger.debug("No web UI client on device %s, skipping", device.host)
+            logger.debug("No web UI client on device %s, skipping", device.log_name)
             return
 
         data = parse_monitor_segment(
@@ -2137,7 +2156,7 @@ class WanConnectionStatus(FritzCapability):
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         if not device.webui_client:
-            logger.debug("No web UI client on device %s, skipping", device.host)
+            logger.debug("No web UI client on device %s, skipping", device.log_name)
             return
 
         raw = device.webui_client.fetch_api("/api/v0/generic/connections")

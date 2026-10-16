@@ -120,7 +120,7 @@ class TestWanFiberWebUiFallback:
         with caplog.at_level(logging.WARNING):
             levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
         assert levels == {"receive": 0, "transmit": 0}
-        assert "Could not read fibre levels from the web UI of somehost: login failed" in caplog.text
+        assert "Could not read fibre levels from the web UI of FritzFiber (somehost): login failed" in caplog.text
 
     def test_malformed_web_ui_data_keeps_tr064_values(self, mock_fritzconnection: MagicMock, caplog):
         client = MagicMock()
@@ -128,7 +128,7 @@ class TestWanFiberWebUiFallback:
         with caplog.at_level(logging.WARNING):
             levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
         assert levels == {"receive": 0, "transmit": 0}
-        assert "Skipped part of the WanFiberInterfaceConfig data from somehost: " in caplog.text
+        assert "Skipped part of the WanFiberInterfaceConfig data from FritzFiber (somehost): " in caplog.text
         assert "fiberStats opt_ds[0] value: expected a number, got str" in caplog.text
 
     @patch("fritzexporter.fritzdevice.FritzWebUiClient")

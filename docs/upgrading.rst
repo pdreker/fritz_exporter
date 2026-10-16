@@ -41,9 +41,11 @@ When a value, an item (a host, a channel, ...) or a whole reply cannot be read, 
 exporter skips only that part and reports it in the new ``fritz_read_problem`` metric
 and in the log. Before, such a value silently became a gap, or the whole scrape
 failed. The log messages for failing web interface requests changed from
-"Failed to fetch … data" to "Could not read <Capability> data from <host>,
+"Failed to fetch … data" to "Could not read <Capability> data from <device>,
 skipping it: …"; while a problem lasts it is repeated as a reminder once an hour
-instead of on every scrape.
+instead of on every scrape. Log messages about a device now name it as
+"<name> (<host>)", e.g. "Fritz!Box 7690 (fritz.box)", or by its host alone if it has
+no name.
 
 Smart home values that are unknown are no longer reported as 0
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

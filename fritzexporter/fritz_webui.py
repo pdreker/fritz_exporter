@@ -158,8 +158,11 @@ class FritzWebUiClient:
         port: int | None = None,
         timeout: float | None = None,
         allow_unsafe_md5_password: bool = False,
+        name: str | None = None,
     ) -> None:
         self.host = host
+        # How log messages and errors name the device; see device_log_name().
+        self.name = name or host
         self.username = username
         self.password = password
         self.timeout = timeout
@@ -227,8 +230,8 @@ class FritzWebUiClient:
         # A forged reply can push any box onto MD5, so refuse it unless allowed.
         if _LEGACY_CHALLENGE_RE.fullmatch(challenge):
             if not self.allow_unsafe_md5_password:
-                raise FritzWebUiMd5DisabledError(self.host)
-            logger.warning("Using the unsafe legacy MD5 web login for %s", self.host)
+                raise FritzWebUiMd5DisabledError(self.name)
+            logger.warning("Using the unsafe legacy MD5 web login for %s", self.name)
         return self._md5_response(challenge, self.password)
 
     def _get_session_info(self) -> dict[str, str]:
@@ -294,7 +297,7 @@ class FritzWebUiClient:
             # Users can report this so the bounds can follow real firmware.
             logger.debug(
                 "Rejected login challenge from %s: %r",
-                self.host,
+                self.name,
                 challenge[:_CHALLENGE_LOG_LIMIT],
             )
             raise
@@ -326,7 +329,7 @@ class FritzWebUiClient:
             msg = "login failed: wrong password or username"
             raise FritzWebUiLoginError(msg)
 
-        logger.debug("Fritz!Box web login successful, SID obtained")
+        logger.debug("Web login to %s successful, SID obtained", self.name)
         return sid
 
     def _ensure_sid(self) -> str:
@@ -402,7 +405,7 @@ class FritzWebUiClient:
             return self._fetch_page(sid, page)
         except FritzWebUiError:
             # Session may have expired server-side; try re-logging in once.
-            logger.debug("data.lua fetch failed, re-authenticating...")
+            logger.debug("data.lua fetch from %s failed, re-authenticating...", self.name)
             self._invalidate_sid()
             sid = self._ensure_sid()
             return self._fetch_page(sid, page)
@@ -442,7 +445,7 @@ class FritzWebUiClient:
         try:
             return self._fetch_aha(sid, command, params)
         except FritzWebUiError:
-            logger.debug("AHA fetch failed, re-authenticating...")
+            logger.debug("AHA fetch from %s failed, re-authenticating...", self.name)
             self._invalidate_sid()
             sid = self._ensure_sid()
             return self._fetch_aha(sid, command, params)
@@ -491,7 +494,7 @@ class FritzWebUiClient:
         try:
             return self._fetch_api(sid, path)
         except FritzWebUiError:
-            logger.debug("REST API fetch failed, re-authenticating...")
+            logger.debug("REST API fetch from %s failed, re-authenticating...", self.name)
             self._invalidate_sid()
             sid = self._ensure_sid()
             return self._fetch_api(sid, path)

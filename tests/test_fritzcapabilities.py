@@ -76,17 +76,17 @@ class TestFritzCapabilitiesMethods:
             (
                 FritzActionError,
                 logging.INFO,
-                "device somehost does not support service Hosts1, action GetHostNumberOfEntries",
+                "device FritzMock (somehost) does not support service Hosts1, action GetHostNumberOfEntries",
             ),
             (
                 FritzServiceError,
                 logging.INFO,
-                "device somehost does not support service Hosts1, action GetHostNumberOfEntries",
+                "device FritzMock (somehost) does not support service Hosts1, action GetHostNumberOfEntries",
             ),
             (
                 FritzInternalError,
                 logging.WARNING,
-                "disabling metrics at service Hosts1, action GetHostNumberOfEntries",
+                "disabling metrics of FritzMock (somehost) at service Hosts1, action GetHostNumberOfEntries",
             ),
         ],
     )
@@ -249,7 +249,7 @@ class TestHostInfoCapability:
 
         # Check - benign shrink path is logged and no unreachable error is emitted
         assert any(
-            "Host table shrank during scan of device serial" in record.message
+            "Host table shrank during scan of FritzMock (somehost)" in record.message
             for record in caplog.records
             if record.levelno == logging.DEBUG
         )
@@ -333,7 +333,7 @@ class TestHostInfoCapability:
 
         # Check - benign lookup-miss path is logged and no unreachable error is emitted
         assert any(
-            "left the host table during scan of device serial" in record.message
+            "left the host table during scan of FritzMock (somehost)" in record.message
             for record in caplog.records
             if record.levelno == logging.DEBUG
         )
@@ -541,7 +541,7 @@ class TestHomeAutomationCapability:
 
         # Warning should be logged
         assert any(
-            "Could not read HomeAutomation data from somehost, skipping it: AHA request failed"
+            "Could not read HomeAutomation data from FritzMock (somehost), skipping it: AHA request failed"
             in record.message
             for record in caplog.records
         )

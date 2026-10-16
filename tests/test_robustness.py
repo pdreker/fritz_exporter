@@ -16,7 +16,7 @@ from prometheus_client.core import GaugeMetricFamily
 from fritzexporter.__main__ import _register_device
 from fritzexporter.config import DeviceConfig
 from fritzexporter.fritzcapabilities import LanInterfaceConfigStatistics, _check_samples
-from fritzexporter.fritzdevice import SERIAL_RETRIES, FritzCollector
+from fritzexporter.fritzdevice import SERIAL_RETRIES, FritzCollector, device_log_name
 from fritzexporter.reply import DataError
 
 from .fc_services_mock import call_action_mock, create_fc_services, fc_services_devices
@@ -131,7 +131,7 @@ class TestValueLevel:
         assert len(samples(output, "fritz_lan_packet_count_total", "BAD")) == 2
         assert len(samples(output, "fritz_lan_data_bytes_total", "GOOD")) == 2
         assert (
-            "Skipped part of the LanInterfaceConfigStatistics data from bad: "
+            "Skipped part of the LanInterfaceConfigStatistics data from BAD (bad): "
             "LANEthernetInterfaceConfig1.GetStatistics NewBytesSent: missing"
         ) in caplog.text
 
@@ -163,7 +163,7 @@ class TestItemLevel:
             assert any('wifi_index="2"' in line for line in wlans)
         assert len(samples(output, "fritz_wifi_status", "GOOD")) == 3
         assert (
-            "Skipped part of the WlanConfigurationInfo data from bad: WLAN 1 skipped: "
+            "Skipped part of the WlanConfigurationInfo data from BAD (bad): WLAN 1 skipped: "
             "WLANConfiguration1.GetInfo NewEnable: expected a flag, got str"
         ) in caplog.text
 
@@ -228,7 +228,7 @@ class TestCapabilityLevel:
         assert samples(output, "fritz_lan_status", "BAD")
         assert reachable(output, "BAD", "BAD") == 1.0
         assert (
-            "Could not read LanInterfaceConfigStatistics data from bad, skipping it: "
+            "Could not read LanInterfaceConfigStatistics data from BAD (bad), skipping it: "
             "LANEthernetInterfaceConfig1.GetStatistics: expected an object, got str"
         ) in caplog.text
 
@@ -288,7 +288,7 @@ class TestDeviceLevel:
             return [r for r in caplog.records if r.levelno >= logging.ERROR]
 
         assert len(errors()) == 1
-        assert "could not read the serial number of bad" in str(errors()[0].exc_info[1])
+        assert "could not read the serial number of BAD (bad)" in str(errors()[0].exc_info[1])
         scenario.scrape()
         assert len(errors()) == 1
 
@@ -312,7 +312,7 @@ class TestDeviceLevel:
         assert offline.given_up
         assert offline.serial_failures == SERIAL_RETRIES + 1
         assert reachable(output, "BAD", "n/a") == 0.0
-        giving_up = [r for r in caplog.records if r.getMessage().startswith("Giving up on device bad")]
+        giving_up = [r for r in caplog.records if r.getMessage().startswith("Giving up on device BAD (bad)")]
         assert len(giving_up) == 1
         assert giving_up[0].levelno == logging.ERROR
 
@@ -349,9 +349,9 @@ class TestDeviceLevel:
         scenario.scrape()
 
         warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
-        reasons = [m for m in warnings if m.startswith("Device bad is still offline, now because:")]
+        reasons = [m for m in warnings if m.startswith("Device BAD (bad) is still offline, now because:")]
         assert len(reasons) == 1
-        assert "could not read the serial number of bad" in reasons[0]
+        assert "could not read the serial number of BAD (bad)" in reasons[0]
 
     def test_connection_errors_still_mark_the_device_unreachable(self):
         scenario = Scenario()
@@ -437,7 +437,7 @@ class TestProblemMetricMore:
             if r.levelno == logging.WARNING and "connection mode" in r.getMessage()
         ]
         assert warnings == [
-            "Could not read the connection mode of bad: "
+            "Could not read the connection mode of BAD (bad): "
             "WANCommonInterfaceConfig.GetCommonLinkProperties NewPhysicalLinkStatus: "
             "expected text, got list"
         ]
@@ -459,7 +459,7 @@ class TestLogging:
         assert len(samples(output, "fritz_lan_data_bytes_total", "BAD")) == 2
         [recovered] = lan_records(caplog, logging.INFO)
         assert recovered.startswith(
-            "Reading LanInterfaceConfigStatistics data from bad works again"
+            "Reading LanInterfaceConfigStatistics data from BAD (bad) works again"
         )
         assert recovered.endswith(", 3 scrapes)")
 
@@ -478,7 +478,7 @@ class TestLogging:
         warnings = lan_records(caplog, logging.WARNING)
         assert len(warnings) == 2
         assert warnings[0].startswith(
-            "Skipped part of the LanInterfaceConfigStatistics data from bad: "
+            "Skipped part of the LanInterfaceConfigStatistics data from BAD (bad): "
         )
         assert "still since " in warnings[1]
         assert (
@@ -547,3 +547,30 @@ class TestCheckSamples:
 
         with pytest.raises(DataError, match="metric m:"):
             _check_samples({"m": family}, {"m": 0})
+
+
+class TestDeviceNamesInLogs:
+    @pytest.mark.parametrize(
+        ("friendly_name", "host", "expected"),
+        [
+            ("Fritz!Box 7690", "fritz.box", "Fritz!Box 7690 (fritz.box)"),
+            ("", "fritz.box", "fritz.box"),
+            ("fritz.box", "fritz.box", "fritz.box"),
+        ],
+    )
+    def test_device_log_name(self, friendly_name, host, expected):
+        assert device_log_name(friendly_name, host) == expected
+
+    def test_every_device_related_message_names_its_device(self, caplog):
+        # With two devices, each message about one of them must say which.
+        caplog.set_level(logging.DEBUG)
+        scenario = Scenario({("WLANConfiguration1", "GetInfo"): wlan1_info(NewEnable="maybe")})
+
+        scenario.scrape()
+
+        for record in caplog.records:
+            if not record.name.startswith(("fritzexporter.fritzcapability", "fritzexporter.fritzdevice")):
+                continue
+            message = record.getMessage()
+            if "WLAN" in message or "Capability" in message or "Fetching" in message:
+                assert "GOOD (good)" in message or "BAD (bad)" in message, message
