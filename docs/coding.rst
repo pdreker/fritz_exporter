@@ -326,7 +326,8 @@ Adding a New Metric / Capability
    ``enabled(device)``; if a requirement needs arguments to be probed, override
    ``_probe()``.  Tables read by index go through ``self._enumerate()``.
 7. Add tests in ``tests/test_fritzcapabilities.py`` using the mock infrastructure in
-   ``tests/fc_services_mock.py``.  No further registration is needed; the subclass is
+   ``tests/fc_services_mock.py``; ``collect_device()`` in ``tests/collect.py`` sets
+   up one fake device and scrapes it.  No further registration is needed; the subclass is
    discovered automatically via ``__init_subclass__``.
 8. Show the new metrics in the overview dashboard, see *Grafana Dashboards* below.
 
@@ -342,7 +343,8 @@ run it::
 
 ``tests/test_grafana_dashboards.py`` fails when the JSON is not what the script
 writes, when a metric family of the exporter is missing from the overview, when a
-query does not select the device (``friendly_name="$device"``), or when panels
+query does not select the device (``friendly_name="$device"``), when a query uses a
+label or label value that the demo exporter's boxes do not send, or when panels
 overlap.
 
 To look at the dashboards, run Prometheus and Grafana (e.g. in containers) and let

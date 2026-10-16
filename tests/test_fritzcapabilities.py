@@ -24,6 +24,7 @@ from .fc_services_mock import (
     fc_services_capabilities,
     fc_services_devices,
 )
+from .collect import collect_device, sample_map, services
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
@@ -612,46 +613,30 @@ class TestHomeAutomationCapability:
         assert len(battery_low[0].samples) == 0
 
 
-def _sample_map(metric: Metric) -> dict[tuple[tuple[str, str], ...], float]:
-    return {
-        tuple(sorted(sample.labels.items())): sample.value
-        for sample in metric.samples
-    }
-
-
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestWanFiberCapabilities:
     """Tests for fibre WAN capability metrics."""
 
-    def _collect_fiber_metrics(self, mock_fritzconnection: MagicMock) -> list[Metric]:
-        fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = call_action_mock
-        fiber_services = {
-            **fc_services_capabilities["DeviceInfo"],
-            **fc_services_capabilities["WanCommonInterfaceByteRate"],
-            "X_AVM-DE_WANFiber1": ["GetInfo", "GetInfoGPON", "GetStatistics"],
-        }
-        fc.services = create_fc_services(fiber_services)
-
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzFiber",
-            host_info=False,
+    def _collect_fiber_metrics(self, mock_fritzconnection: MagicMock) -> dict[str, Metric]:
+        return collect_device(
+            mock_fritzconnection,
+            services(
+                "DeviceInfo",
+                "WanCommonInterfaceByteRate",
+                **{"X_AVM-DE_WANFiber1": ["GetInfo", "GetInfoGPON", "GetStatistics"]},
+            ),
+            name="FritzFiber",
         )
-        collector.register(device)
-        return list(collector.collect())
 
     def test_fiber_optical_and_sfp_metrics(self, mock_fritzconnection: MagicMock):
-        metrics = self._collect_fiber_metrics(mock_fritzconnection)
-        by_name = {m.name: m for m in metrics}
+        by_name = self._collect_fiber_metrics(mock_fritzconnection)
 
         assert "fritz_fiber_optical_signal_level_dBm" in by_name
         assert by_name["fritz_fiber_optical_signal_level_dBm"].samples[0].value == pytest.approx(
             -15.6
         )
 
-        thresholds = _sample_map(by_name["fritz_fiber_optical_threshold_dBm"])
+        thresholds = sample_map(by_name["fritz_fiber_optical_threshold_dBm"])
         assert thresholds[
             (("bound", "lower"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
         ] == pytest.approx(-28.0)
@@ -667,8 +652,7 @@ class TestWanFiberCapabilities:
         assert by_name["fritz_fiber_tx_wavelength_nm"].samples[0].value == 1310
 
     def test_fiber_gpon_metrics_include_serial(self, mock_fritzconnection: MagicMock):
-        metrics = self._collect_fiber_metrics(mock_fritzconnection)
-        by_name = {m.name: m for m in metrics}
+        by_name = self._collect_fiber_metrics(mock_fritzconnection)
 
         gpon_info = by_name["fritz_fiber_gpon_info"].samples[0]
         assert gpon_info.value == 1
@@ -679,10 +663,9 @@ class TestWanFiberCapabilities:
         assert by_name["fritz_fiber_gpon_gem_port_count"].samples[0].value == 3
 
     def test_fiber_statistics_metrics(self, mock_fritzconnection: MagicMock):
-        metrics = self._collect_fiber_metrics(mock_fritzconnection)
-        by_name = {m.name: m for m in metrics}
+        by_name = self._collect_fiber_metrics(mock_fritzconnection)
 
-        bytes_map = _sample_map(by_name["fritz_fiber_data_bytes"])
+        bytes_map = sample_map(by_name["fritz_fiber_data_bytes"])
         assert bytes_map[
             (("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
         ] == 97008448189
@@ -690,7 +673,7 @@ class TestWanFiberCapabilities:
             (("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
         ] == 123456789
 
-        rates = _sample_map(by_name["fritz_fiber_connection_rate"])
+        rates = sample_map(by_name["fritz_fiber_connection_rate"])
         assert rates[
             (("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
         ] == 2500000
@@ -699,10 +682,9 @@ class TestWanFiberCapabilities:
         ] == 1250000
 
     def test_layer1_64bit_max_bitrate_from_addon_infos(self, mock_fritzconnection: MagicMock):
-        metrics = self._collect_fiber_metrics(mock_fritzconnection)
-        by_name = {m.name: m for m in metrics}
+        by_name = self._collect_fiber_metrics(mock_fritzconnection)
 
-        layer1 = _sample_map(by_name["fritz_wan_layer1_max_bitrate_bps"])
+        layer1 = sample_map(by_name["fritz_wan_layer1_max_bitrate_bps"])
         assert layer1[
             (("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
         ] == 2500000000
@@ -759,7 +741,7 @@ class TestWanCommonInterfaceByteRateCableWan:
         assert by_name["fritz_wan_layer1_max_bitrate_bps"].samples == []
 
         # ...and the sibling byte-rate metric from the same call is unaffected.
-        byterate = _sample_map(by_name["fritz_wan_datarate_bytes"])
+        byterate = sample_map(by_name["fritz_wan_datarate_bytes"])
         assert byterate[
             (("direction", "rx"), ("friendly_name", "FritzCable"), ("serial", "1234567890"))
         ] == 12345
@@ -782,30 +764,9 @@ class TestManagementServer:
     """Tests for the TR-069 management server metrics."""
 
     def _collect(self, mock_fritzconnection: MagicMock, overrides=None):
-        fc = mock_fritzconnection.return_value
-        overrides = overrides or {}
-
-        def call_action_provider(service, action, **kwargs):
-            if (service, action) in overrides:
-                return overrides[(service, action)]()
-            return call_action_mock(service, action, **kwargs)
-
-        fc.call_action.side_effect = call_action_provider
-        fc.services = create_fc_services(
-            {
-                **fc_services_capabilities["DeviceInfo"],
-                **fc_services_capabilities["ManagementServerInfo"],
-            }
+        return collect_device(
+            mock_fritzconnection, services("DeviceInfo", "ManagementServerInfo"), overrides=overrides
         )
-
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzMock",
-            host_info=False,
-        )
-        collector.register(device)
-        return {m.name: m for m in collector.collect()}
 
     def test_management_server_metrics(self, mock_fritzconnection: MagicMock):
         by_name = self._collect(mock_fritzconnection)
@@ -840,7 +801,7 @@ class TestManagementServer:
         by_name = self._collect(
             mock_fritzconnection,
             {
-                ("ManagementServer1", "GetInfo"): lambda: {
+                ("ManagementServer1", "GetInfo"): lambda **_: {
                     "NewURL": "",
                     "NewPeriodicInformEnable": False,
                     "NewPeriodicInformInterval": 0,
@@ -858,30 +819,9 @@ class TestUspControllers:
     """Tests for the USP controller metrics."""
 
     def _collect(self, mock_fritzconnection: MagicMock, overrides=None):
-        fc = mock_fritzconnection.return_value
-        overrides = overrides or {}
-
-        def call_action_provider(service, action, **kwargs):
-            if (service, action) in overrides:
-                return overrides[(service, action)]()
-            return call_action_mock(service, action, **kwargs)
-
-        fc.call_action.side_effect = call_action_provider
-        fc.services = create_fc_services(
-            {
-                **fc_services_capabilities["DeviceInfo"],
-                **fc_services_capabilities["UspControllers"],
-            }
+        return collect_device(
+            mock_fritzconnection, services("DeviceInfo", "UspControllers"), overrides=overrides
         )
-
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzMock",
-            host_info=False,
-        )
-        collector.register(device)
-        return {m.name: m for m in collector.collect()}
 
     def test_usp_controller_flags(self, mock_fritzconnection: MagicMock):
         by_name = self._collect(mock_fritzconnection)
@@ -905,7 +845,7 @@ class TestUspControllers:
         by_name = self._collect(
             mock_fritzconnection,
             {
-                ("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries"): lambda: {
+                ("X_AVM-DE_USPController1", "GetUSPControllerNumberOfEntries"): lambda **_: {
                     "NewUSPControllerNumberOfEntries": 0
                 }
             },
@@ -920,29 +860,11 @@ class TestTelephonyNumbers:
     """Tests for the telephony number count metric."""
 
     def _collect_numbers_metric(self, mock_fritzconnection: MagicMock, count: int | None):
-        fc = mock_fritzconnection.return_value
-
-        def call_action_numbers(service, action, **kwargs):
-            if (service, action) == ("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers") and count is not None:
-                return {"NewNumberOfNumbers": count}
-            return call_action_mock(service, action, **kwargs)
-
-        fc.call_action.side_effect = call_action_numbers
-        fc.services = create_fc_services(
-            {
-                **fc_services_capabilities["DeviceInfo"],
-                **fc_services_capabilities["TelephonyNumbers"],
-            }
+        reply = {"NewNumberOfNumbers": count}
+        overrides = {("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers"): reply} if count is not None else {}
+        return collect_device(
+            mock_fritzconnection, services("DeviceInfo", "TelephonyNumbers"), overrides=overrides
         )
-
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzMock",
-            host_info=False,
-        )
-        collector.register(device)
-        return {m.name: m for m in collector.collect()}
 
     def test_number_count_metric(self, mock_fritzconnection: MagicMock):
         by_name = self._collect_numbers_metric(mock_fritzconnection, None)
@@ -965,29 +887,10 @@ class TestWanIPv6Prefix:
     """Tests for the delegated IPv6 prefix info metric."""
 
     def _collect_prefix_metric(self, mock_fritzconnection: MagicMock, prefix_result: dict | None):
-        fc = mock_fritzconnection.return_value
-
-        def call_action_prefix(service, action, **kwargs):
-            if (service, action) == ("WANIPConn1", "X_AVM_DE_GetIPv6Prefix") and prefix_result:
-                return prefix_result
-            return call_action_mock(service, action, **kwargs)
-
-        fc.call_action.side_effect = call_action_prefix
-        fc.services = create_fc_services(
-            {
-                **fc_services_capabilities["DeviceInfo"],
-                **fc_services_capabilities["WanIPv6Prefix"],
-            }
+        overrides = {("WANIPConn1", "X_AVM_DE_GetIPv6Prefix"): lambda **_: prefix_result} if prefix_result else {}
+        return collect_device(
+            mock_fritzconnection, services("DeviceInfo", "WanIPv6Prefix"), overrides=overrides
         )
-
-        collector = FritzCollector()
-        device = FritzDevice(
-            FritzCredentials("somehost", "someuser", "password"),
-            "FritzMock",
-            host_info=False,
-        )
-        collector.register(device)
-        return {m.name: m for m in collector.collect()}
 
     def test_prefix_info_metric(self, mock_fritzconnection: MagicMock):
         by_name = self._collect_prefix_metric(mock_fritzconnection, None)

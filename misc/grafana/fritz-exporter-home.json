@@ -650,7 +650,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_wan_datarate_bytes{friendly_name=\"$device\",direction=\"rx\"} * 8 / fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\",direction=\"rx\"} * 100",
+          "expr": "fritz_wan_datarate_bytes{friendly_name=\"$device\",direction=\"rx\"} * 8 / (fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\",direction=\"rx\"} or fritz_wan_max_bitrate_bps{friendly_name=\"$device\",direction=\"rx\"}) * 100",
           "refId": "A",
           "legendFormat": "__auto"
         }
@@ -718,7 +718,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_wan_datarate_bytes{friendly_name=\"$device\",direction=\"tx\"} * 8 / fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\",direction=\"tx\"} * 100",
+          "expr": "fritz_wan_datarate_bytes{friendly_name=\"$device\",direction=\"tx\"} * 8 / (fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\",direction=\"tx\"} or fritz_wan_max_bitrate_bps{friendly_name=\"$device\",direction=\"tx\"}) * 100",
           "refId": "A",
           "legendFormat": "__auto"
         }
@@ -880,7 +880,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\",direction=\"rx\"}",
+          "expr": "(fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\",direction=\"rx\"} or fritz_wan_max_bitrate_bps{friendly_name=\"$device\",direction=\"rx\"})",
           "refId": "A",
           "legendFormat": "down",
           "instant": true,
@@ -891,7 +891,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\",direction=\"tx\"}",
+          "expr": "(fritz_wan_layer1_max_bitrate_bps{friendly_name=\"$device\",direction=\"tx\"} or fritz_wan_max_bitrate_bps{friendly_name=\"$device\",direction=\"tx\"})",
           "refId": "B",
           "legendFormat": "up",
           "instant": true,
