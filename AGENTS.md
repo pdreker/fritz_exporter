@@ -234,6 +234,17 @@ fritzexporter/
 4. The subclass is automatically discovered — no registration needed.
 5. Add corresponding tests in `tests/test_fritzcapabilities.py`, using the mock infrastructure in `tests/fc_services_mock.py`.
 
+### Naming new metrics
+
+New metrics follow the [Prometheus naming rules](https://prometheus.io/docs/practices/naming/):
+
+- The unit goes into the name as a plural suffix (set it with `unit=`), in base units: `seconds`, `bytes` (also for bits), `meters`, `volts`, `amperes`, `joules`, `celsius`. Logarithmic units without a base unit (`db`, `dbm`) are written in lowercase.
+- Counters end in `_total`; rates are `…_per_second`; ratios are 0–1 with the suffix `_ratio`, not percent.
+- `count` is not a unit, and `_count`/`_sum`/`_bucket` are reserved for histograms and summaries.
+- Changing attributes (addresses, names) go into a separate `…_info` metric with value `1`, not into the labels of the data series.
+
+**Existing metric names are not renamed.** Many predate these rules (`…_kbps`, `…_percent`, `…_count`, `…_C`), but renaming them would break users' dashboards and alerts for no functional gain (decided for 4.0, #744). Do not "fix" them in passing.
+
 ---
 
 ## Dual Configuration: File vs. Environment Variables
