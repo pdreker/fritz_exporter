@@ -32,7 +32,9 @@ class TestConverters:
         assert to_float(value, "x") == expected
 
     def test_to_float_keeps_nan_and_inf(self):
-        assert math.isnan(to_float("nan", "x"))
+        nan = to_float("nan", "x")
+        assert nan is not None
+        assert math.isnan(nan)
         assert to_float("1e999", "x") == math.inf
 
     @pytest.mark.parametrize("value", ["abc", True, [], {}, object()])
@@ -233,10 +235,13 @@ class TestIssues:
 
     def test_item_skips_the_rest_of_the_block_and_undoes_it(self):
         issues = Issues()
-        done = []
+        done: list[int | str] = []
+
+        def undo() -> None:
+            done.pop()
 
         for index in range(3):
-            with issues.item(f"item {index}", on_skip=done.pop):
+            with issues.item(f"item {index}", on_skip=undo):
                 done.append(index)
                 if index == 1:
                     to_int("x", "item value")

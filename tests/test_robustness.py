@@ -273,7 +273,8 @@ class TestCheckSamples:
 
     def test_only_new_samples_are_checked(self):
         family = GaugeMetricFamily("m", "h", labels=["a"])
-        family.add_metric(["x"], "old and not mine")
+        # Deliberately not a number: only the samples after the count are checked.
+        family.add_metric(["x"], "old and not mine")  # ty: ignore[invalid-argument-type]
         family.add_metric(["y"], 1)
 
         _check_samples({"m": family}, {"m": 1})
