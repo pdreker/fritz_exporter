@@ -43,6 +43,10 @@ __all__ = [
 # device says it blocks logins for longer).
 LOGIN_RETRY_DELAY: float = 60.0
 
+# Seconds before a page refused for lack of permission gets a fresh login again:
+# rights granted later only apply to a new session.
+PERMISSION_RETRY_DELAY: float = 900.0
+
 # Fritz!OS 7.24 and later only offer the PBKDF2 challenge when asked for it with
 # version=2; without it they keep sending the MD5 challenge, for older clients.
 _LOGIN_VERSION = {"version": "2"}
@@ -192,9 +196,10 @@ class FritzWebUiClient:
         # session in fritzconnection, which does not verify it either.
         self.session.verify = False
         self._sid: str | None = None
-        # Pages the device refused right after a fresh login: no permission, not
-        # an expired session, so a new login would not help. See _with_session().
-        self._forbidden: set[str] = set()
+        # Pages the device refused right after a fresh login, and when: no
+        # permission, not an expired session, so a new login would not help for
+        # a while. See _with_session().
+        self._forbidden: dict[str, float] = {}
         # The last refused login, and when the next attempt may be made.
         self._login_refused: str | None = None
         self._login_retry_at: float = 0.0
@@ -289,25 +294,29 @@ class FritzWebUiClient:
 
         The device answers "no permission" the same way as "session expired". A
         page it refuses right after a fresh login is taken as no permission and
-        gets no more logins until it works again: one login per page and scrape
-        would fill the device's event log.
+        gets a new login only every ``PERMISSION_RETRY_DELAY`` seconds, so rights
+        granted later take effect: one login per page and scrape would fill the
+        device's event log.
         """
         cached = self._sid is not None
         sid = self._ensure_sid()
         try:
             result = fetch(sid)
         except _SessionRejectedError as e:
-            if not cached or page in self._forbidden:
-                self._forbidden.add(page)
+            refused_at = self._forbidden.get(page)
+            if not cached:
+                self._forbidden[page] = time.monotonic()
+                raise
+            if refused_at is not None and time.monotonic() - refused_at < PERMISSION_RETRY_DELAY:
                 raise
             logger.debug("%s rejected the web session (%s), logging in again", self.name, e)
             self._invalidate_sid()
             try:
                 result = fetch(self._ensure_sid())
             except _SessionRejectedError:
-                self._forbidden.add(page)
+                self._forbidden[page] = time.monotonic()
                 raise
-        self._forbidden.discard(page)
+        self._forbidden.pop(page, None)
         return result
 
     # ------------------------------------------------------------------

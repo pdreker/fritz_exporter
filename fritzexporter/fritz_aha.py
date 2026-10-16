@@ -125,9 +125,10 @@ def parse_aha_devicelist_xml(content: str, issues: Issues) -> list[AhaDevice]:
         raise DataError(msg)
 
     devices: list[AhaDevice] = []
-    for device in devicelist.findall("device"):
+    for index, device in enumerate(devicelist.findall("device")):
         ain = device.attrib.get("identifier", "")
-        where = f"AHA device {ain}"
+        # Named by index, like the capability does: the AIN is a device value.
+        where = f"smart home device {index}"
         hkr = _parse_hkr(device, issues, where)
         # On some firmware versions battery data is only reported nested
         # inside <hkr> instead of as a direct child of <device>.

@@ -41,9 +41,9 @@ class TestParseAhaDevicelistXml:
 
         assert devices[0]["battery_level"] is None
         assert devices[0]["device_name"] == "Fritz!DECT 200"
-        assert issues.messages == ["AHA device 123456789012 battery: expected a whole number, got str"]
+        assert issues.messages == ["smart home device 0 battery: expected a whole number, got str"]
 
-    def test_nested_values_name_the_device_and_the_element(self):
+    def test_nested_values_name_the_device_by_index_and_the_element(self):
         deviceinfo = """<devicelist version="1">
         <device identifier="0815" id="1" manufacturer="AVM" productname="Fritz!DECT 301">
             <present>1</present><name>x</name><hkr><tsoll>warm</tsoll></hkr>
@@ -52,7 +52,7 @@ class TestParseAhaDevicelistXml:
 
         parse_aha_devicelist_xml(deviceinfo, issues)
 
-        assert issues.messages == ["AHA device 0815 hkr tsoll: expected a whole number, got str"]
+        assert issues.messages == ["smart home device 0 hkr tsoll: expected a whole number, got str"]
 
     def test_battery_values_fall_back_to_hkr_one_by_one(self):
         # A device-level batterylow must not be dropped because the level

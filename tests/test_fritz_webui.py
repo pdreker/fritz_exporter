@@ -14,6 +14,7 @@ import urllib3.exceptions
 
 from fritzexporter.fritz_webui import (
     LOGIN_RETRY_DELAY,
+    PERMISSION_RETRY_DELAY,
     FritzWebUiClient,
     FritzWebUiError,
     FritzWebUiMd5DisabledError,
@@ -1082,7 +1083,37 @@ class TestNoPermission:
 
         replies["/api/v0/x"] = _resp('{"ok": 1}')
         assert client.fetch_api("/api/v0/x") == {"ok": 1}
-        assert client._forbidden == set()
+        assert client._forbidden == {}
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_refused_page_gets_a_fresh_login_now_and_then(self, mock_session_cls, monkeypatch):
+        # Rights granted later only apply to a new session.
+        now = [1000.0]
+        monkeypatch.setattr("fritzexporter.fritz_webui.time.monotonic", lambda: now[0])
+        session = mock_session_cls.return_value
+        replies = {"/login_sid.lua": _resp(self.LOGIN), "/api/v0/x": _resp(status=403)}
+        session.get.side_effect = lambda url, **_k: replies[url.removeprefix("http://fritz.box")]
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+
+        def logins() -> int:
+            return sum(c.args[0].endswith("/login_sid.lua") for c in session.get.call_args_list)
+
+        with pytest.raises(FritzWebUiError):
+            client.fetch_api("/api/v0/x")
+        now[0] += PERMISSION_RETRY_DELAY - 1
+        with pytest.raises(FritzWebUiError):
+            client.fetch_api("/api/v0/x")
+        assert logins() == 1
+
+        now[0] += 1
+        replies["/api/v0/x"] = _resp('{"ok": 1}')
+        session.get.side_effect = lambda url, **_k: (
+            replies[url.removeprefix("http://fritz.box")]
+            if logins() > 1 or not url.endswith("/api/v0/x")
+            else _resp(status=403)
+        )
+        assert client.fetch_api("/api/v0/x") == {"ok": 1}
+        assert logins() == 2
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_session_is_kept_while_it_works(self, mock_session_cls, monkeypatch):

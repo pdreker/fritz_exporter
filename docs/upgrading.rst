@@ -126,8 +126,8 @@ The exporter now logs in again only when the device rejects the session, not aft
 every failed request or every 15 minutes, and it stops sending web interface
 requests for the rest of a scrape once the device does not answer one. A page the
 device refuses right after a login (the exporter's user lacks the right for it) gets
-no more logins until it works again; it used to cost a login on every scrape, each
-one an entry in the device's event log. Replies larger than 4 MiB are refused.
+a new login only every 15 minutes, so a right granted later takes effect; it used to
+cost a login on every scrape, each one an entry in the device's event log. Replies larger than 4 MiB are refused.
 
 ``--donate-data`` removed
 ^^^^^^^^^^^^^^^^^^^^^^^^^
