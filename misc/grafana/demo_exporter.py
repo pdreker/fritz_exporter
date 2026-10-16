@@ -33,6 +33,8 @@ from tests.test_fritz_rest_api import CONNECTIONS_RAW, SEGMENT_RAW
 START = time.time()
 
 HOSTS = ["laptop", "phone", "tv", "nas", "printer", "watch"]
+# WiFi clients per WLANConfiguration (2.4 GHz, 5 GHz, guest).
+WIFI_CLIENTS = {1: 4, 2: 7, 3: 1}
 
 # Counter-like TR-064 fields grow, everything else numeric wobbles.
 GROWING = ("Total", "Bytes", "Packets", "Errors", "UpTime", "Uptime", "FEC", "CRC", "Discard")
@@ -53,13 +55,50 @@ def _move(key: str, value: object, seed: str) -> object:
     if any(word in key for word in GROWING):
         rate = max(abs(value), 1) / 600
         return type(value)(value + rate * _elapsed() * (1 + 0.5 * math.sin(_elapsed() / 90)))
-    if value == 0:
+    if value in (0, 1):
+        # Flags and states: a change would make a new series (e.g. "enabled" label).
         return value
     return type(value)(_wobble(value, seed + key))
 
 
+def _argument(kwargs: dict[str, Any], name: str) -> int:
+    """An index argument, given as keyword (reads) or in ``arguments`` (probes)."""
+    return int(kwargs.get(name, (kwargs.get("arguments") or {}).get(name, 0)))
+
+
+def _demo_reply(service: str, action: str, kwargs: dict[str, Any]) -> dict | None:
+    """Replies the test mock does not have: hosts, WiFi clients, the mesh list path."""
+    wlan = int(service.removeprefix("WLANConfiguration")) if "WLANConfiguration" in service else 0
+    if (service, action) == ("Hosts1", "X_AVM-DE_GetMeshListPath"):
+        return {"NewX_AVM-DE_MeshListPath": "/meshlist.lua"}
+    if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
+        return {"NewHostNumberOfEntries": len(HOSTS)}
+    if (service, action) == ("Hosts1", "GetGenericHostEntry"):
+        index = _argument(kwargs, "NewIndex")
+        return {
+            "NewIPAddress": f"192.168.178.{20 + index}",
+            "NewMACAddress": f"AA:BB:CC:00:00:{index:02X}",
+            "NewHostName": HOSTS[index],
+            "NewActive": int(HOSTS[index] != "printer"),
+        }
+    if action == "GetTotalAssociations":
+        return {"NewTotalAssociations": WIFI_CLIENTS.get(wlan, 0)}
+    if action == "GetGenericAssociatedDeviceInfo":
+        client = _argument(kwargs, "NewAssociatedDeviceIndex")
+        return {
+            "NewAssociatedDeviceMACAddress": f"02:00:0{wlan}:00:00:{client:02X}",
+            "NewAssociatedDeviceIPAddress": f"192.168.178.{100 + 10 * wlan + client}",
+            "NewX_AVM-DE_SignalStrength": int(_wobble(90 - 9 * client, f"{wlan}{client}", 0.1)),
+            "NewX_AVM-DE_Speed": [144, 866, 72][wlan - 1] // (client + 1),
+        }
+    return None
+
+
 def _actions(serial: str, model: str, access_type: str) -> Callable[..., object]:
-    def call_action(service: str, action: str, **kwargs: object) -> object:
+    def call_action(service: str, action: str, **kwargs: Any) -> object:  # noqa: ANN401
+        demo = _demo_reply(service, action, kwargs)
+        if demo is not None:
+            return demo
         result = copy.deepcopy(call_action_mock(service, action, **kwargs))
         if (service, action) == ("DeviceInfo1", "GetInfo"):
             result.update(
@@ -67,17 +106,16 @@ def _actions(serial: str, model: str, access_type: str) -> Callable[..., object]
             )
         if action == "GetCommonLinkProperties":
             result["NewWANAccessType"] = access_type
-        if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
-            result["NewHostNumberOfEntries"] = len(HOSTS)
-        if (service, action) == ("Hosts1", "GetGenericHostEntry"):
-            arguments: Any = kwargs.get("arguments") or {}
-            index: int = kwargs.get("NewIndex", arguments.get("NewIndex", 0))  # ty: ignore[invalid-assignment]
-            return {
-                "NewIPAddress": f"192.168.178.{20 + index}",
-                "NewMACAddress": f"AA:BB:CC:00:00:{index:02X}",
-                "NewHostName": HOSTS[index],
-                "NewActive": int(HOSTS[index] != "printer"),
-            }
+            # A 1000/50 Mbit/s line, with traffic to match below.
+            result["NewLayer1DownstreamMaxBitRate"] = 1_000_000_000
+            result["NewLayer1UpstreamMaxBitRate"] = 50_000_000
+            return result
+        if (service, action) == ("WANCommonIFC1", "GetAddonInfos"):
+            result["NewByteReceiveRate"] = int(abs(_wobble(30e6, "down", 0.9)))
+            result["NewByteSendRate"] = int(abs(_wobble(2e6, "up", 0.8)))
+            result["NewX_AVM_DE_Layer1DownstreamMaxBitRate64"] = 1_000_000_000
+            result["NewX_AVM_DE_Layer1UpstreamMaxBitRate64"] = 50_000_000
+            return result
         if isinstance(result, dict):
             return {k: _move(k, v, f"{serial}{service}{action}") for k, v in result.items()}
         return result
@@ -143,6 +181,46 @@ def _aha() -> str:
     return f'<devicelist version="1">{"".join(parts)}</devicelist>'
 
 
+def _mesh_topology() -> dict:
+    """The box and one repeater, linked on 2.4 and 5 GHz."""
+
+    def link(uid: str, rate: int, top: int) -> dict:
+        return {
+            "uid": uid,
+            "node_1_uid": "box",
+            "node_2_uid": "repeater",
+            "state": "CONNECTED",
+            "cur_data_rate_rx": int(_wobble(rate, uid + "rx", 0.2)),
+            "cur_data_rate_tx": int(_wobble(rate * 0.8, uid + "tx", 0.2)),
+            "max_data_rate_rx": top,
+            "max_data_rate_tx": top,
+        }
+
+    return {
+        "nodes": [
+            {
+                "uid": "box",
+                "device_name": "fritz.box",
+                "is_meshed": True,
+                "node_interfaces": [
+                    {"type": "WLAN", "name": "AP:2G:0", "node_links": [link("l1", 180000, 286000)]},
+                    {
+                        "type": "WLAN",
+                        "name": "AP:5G:0",
+                        "node_links": [link("l2", 1100000, 2400000)],
+                    },
+                ],
+            },
+            {
+                "uid": "repeater",
+                "device_name": "Repeater",
+                "is_meshed": True,
+                "node_interfaces": [],
+            },
+        ]
+    }
+
+
 def _webui() -> MagicMock:
     client = MagicMock()
     client.fetch_aha.side_effect = lambda *_a, **_k: _aha()
@@ -173,6 +251,9 @@ def main() -> None:
         ("demo-cable", "Demo Cable", "DEMOCABLE01", "FRITZ!Box 6690 Cable", "X_AVM-DE_Cable"),
         ("demo-fiber", "Demo Fiber", "DEMOFIBER01", "FRITZ!Box 5590 Fiber", "X_AVM-DE_Fiber"),
     ]
+    services.setdefault("Hosts1", []).append("X_AVM-DE_GetMeshListPath")
+    hosts = MagicMock()
+    hosts.return_value.get_mesh_topology.side_effect = lambda *_a, **_k: _mesh_topology()
     fcs = {}
     for host, _, serial, model, access in boxes:
         fc = MagicMock()
@@ -182,6 +263,8 @@ def main() -> None:
         fcs[host] = fc
 
     collector = FritzCollector()
+    # The mesh list is read at every scrape, so this patch stays for the whole run.
+    patch("fritzexporter.fritzcapabilities.FritzHosts", hosts).start()
     with patch.multiple(
         "fritzexporter.fritzdevice",
         create_fritz_connection=lambda **kw: fcs[kw["address"]],
