@@ -42,8 +42,15 @@ key, on:
   ``Fritz!Box`` from the environment. Without a ``name``, the ``friendly_name``
   label of your series changes, so set ``name`` (or ``FRITZ_NAME``) to keep it.
 
+* a ``password_file`` the exporter cannot read, or a password longer than 32
+  characters in it (a long password in ``password`` was refused already; from a
+  file it only gave a warning);
+* a value of the wrong type for a text key, e.g. ``name: true``. Numbers are taken
+  as written (``name: 7590`` is ``"7590"``); before, a number as ``name`` made every
+  scrape fail.
+
 A config file that is not valid YAML, or of the wrong shape, gives that message
-instead of a traceback.
+instead of a traceback; it names the line and column, not the text there.
 
 Docker image and Helm chart
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,8 +97,11 @@ the next attempt. It used to try again for every web interface metric group, whi
 made the device block logins longer, also for the browser.
 
 The exporter now logs in again only when the device rejects the session, not after
-every failed request, and it stops sending web interface requests for the rest of a
-scrape once the device does not answer one. Replies larger than 4 MiB are refused.
+every failed request or every 15 minutes, and it stops sending web interface
+requests for the rest of a scrape once the device does not answer one. A page the
+device refuses right after a login (the exporter's user lacks the right for it) gets
+no more logins until it works again; it used to cost a login on every scrape, each
+one an entry in the device's event log. Replies larger than 4 MiB are refused.
 
 ``--donate-data`` removed
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -118,7 +128,10 @@ it, even when the device answered, e.g. with "action not supported". Now only a
 device that does not answer (refused, timed out, reset) is unreachable; an error
 reply skips the metric group that got it, shown in ``fritz_read_problem``; one for a
 single host, WiFi client or similar skips only that one. A failure to fetch the mesh
-list only skips the mesh metrics.
+list only skips the mesh metrics. Two mesh links between nodes of the same names on
+the same interface would be two identical series, which made Prometheus refuse the
+whole scrape; the second is now skipped and reported, so give your mesh nodes
+different names.
 
 ``host_info: true`` now also works on a device with fewer than two hosts in its host
 table; such a device used to fail its setup and was never collected.
@@ -149,6 +162,10 @@ Unknown values are no longer reported as 0
   ``<batterylow/>`` or ``<lock/>`` used to be exported as ``0`` ("battery fine",
   "not locked"); it now gives no sample for ``fritz_ha_battery_low`` or
   ``fritz_ha_switch_lock``.
+* **Thermostats switched off or on:** Fritz!OS reports these as set temperature 253
+  and 254. They used to be exported as 126.5 °C and 127 °C in
+  ``fritz_ha_heater_set_temperature_C`` (and the comfort and reduced
+  temperatures); now there is no sample while a thermostat is switched off or on.
 
 Log messages reworked
 ^^^^^^^^^^^^^^^^^^^^^
@@ -177,7 +194,9 @@ which do not depend on wording.
 
 * **Devices that stay offline:** "Device <device> is still offline, now because:
   <reason>" at ``WARNING`` when the reason changes, and "Giving up on device <device>
-  after <n> attempts: …" at ``ERROR``.
+  after <n> attempts without a readable serial number: …" at ``ERROR``. An
+  unexpected error while setting up a device is logged with its traceback and
+  "(unexpected; please report this)", and keeps only that device offline.
 * **Web login:** "login not retried for <n> seconds after: <reason>" while the
   exporter waits after a refused login.
 * **Devices that cannot be set up:** one error, "Failed to initialize device

@@ -36,8 +36,6 @@ from fritzexporter.tr064_remote import (
 logger = logging.getLogger("fritzexporter.fritzdevice")
 
 
-FRITZ_MAX_PASSWORD_LENGTH = 32
-
 # A device that answers but gives no readable serial number is retried this many
 # times after its first failure, then given up until the exporter is restarted.
 # Connection failures are retried for as long as they last.
@@ -126,7 +124,27 @@ def _setup_failure(error: Exception) -> str:
     text = f"{type(error).__name__}: {error}" if str(error) else type(error).__name__
     if isinstance(error, FritzAuthorizationError):
         text += " (check username and password)"
+    if not isinstance(error, _SETUP_ERRORS):
+        text += " (unexpected; please report this)"
     return text
+
+
+def _set_up(spec: DeviceSpec) -> FritzDevice | Exception:
+    """Set up a device, or return why that failed.
+
+    Any error is caught, not only the expected ones: an odd reply during setup
+    (a bug in the exporter or a library) keeps this one device offline instead
+    of stopping every scrape.
+    """
+    try:
+        return FritzDevice.from_spec(spec)
+    except Exception as e:  # noqa: BLE001 - contained per device, logged by the caller
+        return e
+
+
+def _traceback(error: Exception) -> Exception | None:
+    """Unexpected setup errors are logged with their traceback."""
+    return None if isinstance(error, _SETUP_ERRORS) else error
 
 
 class FritzDevice:
@@ -151,14 +169,6 @@ class FritzDevice:
         self.available: bool = True
         # Problems reading the connection mode; reported like a capability's.
         self.connection_mode_state = ProblemState()
-
-        if len(creds.password) > FRITZ_MAX_PASSWORD_LENGTH:
-            logger.warning(
-                "Password for %s is longer than %d characters! Login may not succeed, "
-                "please see README!",
-                self.log_name,
-                FRITZ_MAX_PASSWORD_LENGTH,
-            )
 
         self.fc: FritzConnection = create_fritz_connection(
             address=creds.host,
@@ -316,22 +326,20 @@ class FritzCollector(Collector):
 
     def add_device(self, spec: DeviceSpec) -> FritzDevice | None:
         """Set up a device and register it; if that fails, report it as unreachable."""
-        try:
-            device = FritzDevice.from_spec(spec)
-        except _SETUP_ERRORS as e:
-            failure = e
-        else:
-            logger.info("registering %s to collector", device.log_name)
-            self.register(device)
-            return device
-        # Logged without a traceback: the reason says it all, and these are expected.
+        result = _set_up(spec)
+        if isinstance(result, FritzDevice):
+            logger.info("registering %s to collector", result.log_name)
+            self.register(result)
+            return result
+        # Expected failures without a traceback: the reason says it all.
         logger.error(
             "Failed to initialize device %s, it will be reported as down: %s",
             spec.log_name,
-            _setup_failure(failure),
+            _setup_failure(result),
+            exc_info=_traceback(result),
         )
         with self._devices_lock:
-            self.offline_devices.append(OfflineDevice(spec).failed(failure))
+            self.offline_devices.append(OfflineDevice(spec).failed(result))
         return None
 
     def _retry_offline_devices(self) -> None:
@@ -347,13 +355,12 @@ class FritzCollector(Collector):
                 if offline.given_up:
                     still_offline.append(offline)
                     continue
-                try:
-                    device = FritzDevice.from_spec(offline.spec)
-                except _SETUP_ERRORS as e:
-                    still_offline.append(self._offline_failure(offline, e))
+                result = _set_up(offline.spec)
+                if isinstance(result, Exception):
+                    still_offline.append(self._offline_failure(offline, result))
                     continue
                 logger.info("Device %s is back online, registering to collector.", offline.log_name)
-                back_online.append(device)
+                back_online.append(result)
             with self._devices_lock:
                 self.offline_devices = still_offline
                 self._back_online.extend(back_online)
@@ -368,14 +375,20 @@ class FritzCollector(Collector):
         reason = _setup_failure(error)
         if failed.given_up:
             logger.error(
-                "Giving up on device %s after %d attempts: %s. It stays reported as "
-                "unreachable until the exporter is restarted.",
+                "Giving up on device %s after %d attempts without a readable serial "
+                "number: %s. It stays reported as unreachable until the exporter is "
+                "restarted.",
                 name,
                 failed.serial_failures,
                 reason,
             )
         elif failed.last_failure != offline.last_failure:
-            logger.warning("Device %s is still offline, now because: %s", name, reason)
+            logger.warning(
+                "Device %s is still offline, now because: %s",
+                name,
+                reason,
+                exc_info=_traceback(error),
+            )
         else:
             logger.debug("Device %s is still offline: %s", name, reason)
         return failed

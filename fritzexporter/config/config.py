@@ -12,8 +12,6 @@ import attrs
 import yaml
 from attrs import Converter, converters, define, field, validators
 
-from fritzexporter.fritzdevice import FRITZ_MAX_PASSWORD_LENGTH
-
 from .exceptions import (
     ConfigError,
     ConfigFileUnreadableError,
@@ -35,6 +33,21 @@ logger = logging.getLogger("fritzexporter.config")
 DEFAULT_CONNECTION_TIMEOUT: int = 10
 
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+
+# Fritz!OS cuts longer passwords when they are set, so a longer one never matches.
+FRITZ_MAX_PASSWORD_LENGTH = 32
+
+
+def _text(value: object) -> str:
+    """A text value; YAML numbers are taken as written, other types refused."""
+    if isinstance(value, bool) or not isinstance(value, str | int):
+        msg = f"expected text, got {type(value).__name__} (put the value in quotes)"
+        raise TypeError(msg)
+    return str(value)
+
+
+def _optional_text(value: object) -> str | None:
+    return None if value is None else _text(value)
 
 
 def _zero_is_none(value: int | str | None) -> int | None:
@@ -61,6 +74,14 @@ def _named(convert: Callable[[Any], Any]) -> Any:  # noqa: ANN401
     return Converter(wrapped, takes_self=True, takes_field=True)
 
 
+def _read_password_file(path: str) -> str:
+    try:
+        return Path(path).read_text().strip()
+    except OSError as e:
+        msg = f"password_file {path} cannot be read: {e.strerror}"
+        raise FritzPasswordFileDoesNotExistError(msg) from None
+
+
 def _ip_address(_: object, attribute: attrs.Attribute, value: str) -> None:
     try:
         ipaddress.ip_address(value)
@@ -77,11 +98,11 @@ def _read_config_file(config_file_path: str) -> dict:
         msg = f"config file {config_file_path} could not be read: {e.strerror}"
         raise ConfigFileUnreadableError(msg) from None
     except yaml.YAMLError as e:
-        # Only the position: the parser's text quotes the line, which may hold a password.
+        # Only the position: the parser's texts quote values (a tag, an alias),
+        # which may be a password.
         mark = getattr(e, "problem_mark", None)
         where = f" at line {mark.line + 1}, column {mark.column + 1}" if mark else ""
-        problem = getattr(e, "problem", None) or "not valid YAML"
-        msg = f"config file {config_file_path} is not valid YAML{where}: {problem}"
+        msg = f"config file {config_file_path} is not valid YAML{where}"
         raise ConfigFileUnreadableError(msg) from None
     logger.info("Read configuration from %s.", config_file_path)
     return config
@@ -198,13 +219,15 @@ class ExporterConfig:
 @define
 class DeviceConfig:
     hostname: str = field(
-        default="fritz.box", validator=validators.min_len(1), converter=_named(str.lower)
+        default="fritz.box",
+        validator=validators.min_len(1),
+        converter=_named(lambda value: _text(value).lower()),
     )
-    username: str = field(default="", validator=validators.min_len(1))
-    password: str | None = field(default=None, repr=False)
-    password_file: str | None = field(default=None)
+    username: str = field(default="", validator=validators.min_len(1), converter=_named(_text))
+    password: str | None = field(default=None, repr=False, converter=_named(_optional_text))
+    password_file: str | None = field(default=None, converter=_named(_optional_text))
     # Defaults to the hostname.
-    name: str = ""
+    name: str = field(default="", converter=_named(_text))
     host_info: bool = field(default=False, converter=_named(converters.to_bool))
     wifi_client_info: bool = field(default=False, converter=_named(converters.to_bool))
     connection_timeout: int | None = field(
@@ -235,9 +258,17 @@ class DeviceConfig:
             raise FritzPasswordTooLongError
 
     @password_file.validator  # ty: ignore[unresolved-attribute]
-    def check_password_file(self, _: attrs.Attribute, value: str | None) -> None:
-        if value is not None and not Path(value).is_file():
-            raise FritzPasswordFileDoesNotExistError
+    def check_password_file(self, attribute: attrs.Attribute, value: str | None) -> None:
+        # Read now, so an unreadable file (e.g. not readable by the container's
+        # user) stops the start with a message instead of a traceback later.
+        if value is not None:
+            self.check_password(attribute, _read_password_file(value))
+
+    def read_password(self) -> str:
+        """The password, from ``password`` or from ``password_file``."""
+        if self.password_file is not None:
+            return _read_password_file(self.password_file)
+        return self.password or ""
 
     @remote_access.validator  # ty: ignore[unresolved-attribute]
     def check_remote_access(self, _: attrs.Attribute, value: bool) -> None:  # noqa: FBT001

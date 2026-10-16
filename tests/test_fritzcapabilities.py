@@ -478,7 +478,7 @@ class TestHomeAutomationCapability:
         assert len(valve_set[0].samples) == 1
         assert valve_set[0].samples[0].value == 1  # OPEN
 
-    def test_homeautomation_valve_state_lookup_failure_is_skipped(
+    def test_homeautomation_valve_state_lookup_failure_skips_only_the_valve_state(
         self, mock_fritzconnection: MagicMock, caplog
     ):
         # Prepare - GetSpecificDeviceInfos can fail for a device (e.g. it
@@ -505,10 +505,14 @@ class TestHomeAutomationCapability:
         valve_set = [m for m in metrics if m.name == "fritz_ha_heater_valve_set_state"]
         assert len(valve_set[0].samples) == 0
 
-        assert any(
-            "Could not fetch the valve state of smart home device 0" in record.message
-            for record in caplog.records
+        # Reported as a partial read: the valve state of that device is skipped.
+        assert (
+            "valve state of smart home device 0 skipped: FritzArgumentError" in caplog.text
         )
+        problems = [m for m in metrics if m.name == "fritz_read_problem"][0].samples
+        assert ("HomeAutomation", "partial") in {
+            (s.labels["capability"], s.labels["level"]) for s in problems
+        }
 
     def test_homeautomation_multiple_devices_in_one_response(self, mock_fritzconnection: MagicMock):
         # Prepare - two devices returned from a single getdevicelistinfos call
@@ -1134,5 +1138,47 @@ class TestHostInfoKeyedByMac:
 
         assert [s.labels["hostname"] for s in by_name["fritz_host_info"].samples] == ["first"]
         assert len(by_name["fritz_host_active"].samples) == 1
+        assert ("HostInfo", "partial") in problems
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestExitReviewFixes:
+    """Values and items the 4.0 exit review found handled wrongly."""
+
+    def test_thermostat_off_and_on_are_no_temperatures(self, mock_fritzconnection: MagicMock):
+        helper = TestHomeAutomationCapability()
+        xml = helper._make_devicelist_xml(helper._make_device_xml()).replace(
+            "<tsoll>234</tsoll><absenk>234</absenk><komfort>234</komfort>",
+            "<tsoll>253</tsoll><absenk>254</absenk><komfort>42</komfort>",
+        )
+        collector, _, _ = helper._setup_ha_device(mock_fritzconnection, xml)
+
+        by_name = {m.name: m for m in collector.collect()}
+
+        assert by_name["fritz_ha_heater_set_temperature_C"].samples == []
+        assert by_name["fritz_ha_heater_reduced_temperature_C"].samples == []
+        assert [s.value for s in by_name["fritz_ha_heater_comfort_temperature_C"].samples] == [21.0]
+
+    def test_error_reply_for_one_host_skips_only_that_host(self, mock_fritzconnection: MagicMock):
+        def host_table(service, action, **kwargs):
+            if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
+                return {"NewHostNumberOfEntries": 2}
+            if (service, action) == ("Hosts1", "GetGenericHostEntry"):
+                index = _argument(kwargs, "NewIndex")
+                if index == 0 and "NewIndex" in kwargs:
+                    raise FritzInternalError("820")
+                return {"NewIPAddress": "", "NewMACAddress": f"AA:BB:CC:DD:EE:0{index}", "NewHostName": "h", "NewActive": 1}
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = host_table
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+        collector = FritzCollector()
+        collector.register(FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock", host_info=True))
+
+        by_name = {m.name: m for m in collector.collect()}
+
+        assert [s.labels["mac_address"] for s in by_name["fritz_host_active"].samples] == ["AA:BB:CC:DD:EE:01"]
+        problems = {(s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples}
         assert ("HostInfo", "partial") in problems
 

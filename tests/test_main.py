@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from importlib.metadata import version
 from http.client import RemoteDisconnected
 from unittest.mock import MagicMock, call, patch
@@ -148,8 +149,6 @@ class Test_Main:
 
         main()
 
-        assert any(
-            "Using password from password file" in record.message
-            and record.levelno == logging.DEBUG
-            for record in caplog.records
-        )
+        # The device is set up with the password from the file.
+        password = Path("tests/conffiles/password.txt").read_text().strip()
+        assert mock_fc.call_args.kwargs["password"] == password
