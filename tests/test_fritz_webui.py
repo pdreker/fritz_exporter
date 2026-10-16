@@ -1024,5 +1024,6 @@ class TestRequestHandling:
         session = mock_session_cls.return_value
         session.get.return_value = _resp(self.ENTITY_BOMB)
 
+        client = FritzWebUiClient("fritz.box", "user", "pass")
         with pytest.raises(FritzWebUiError, match="could not parse login_sid.lua response"):
-            FritzWebUiClient("fritz.box", "user", "pass")._login()
+            client._login()

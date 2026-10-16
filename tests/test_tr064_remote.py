@@ -170,10 +170,11 @@ class TestCreateFritzConnection:
 
         mock_fc.side_effect = ParseError("not well-formed")
 
+        options = ConnectionOptions(use_tls=True, port=11243, remote_access=True)
         with pytest.raises(FritzConnectionException, match="not XML"):
             create_fritz_connection(
                 address="box.example",
                 user="user",
                 password="pass",
-                connection=ConnectionOptions(use_tls=True, port=11243, remote_access=True),
+                connection=options,
             )

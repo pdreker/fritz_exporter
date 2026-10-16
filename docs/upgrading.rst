@@ -4,6 +4,62 @@ Upgrade Notes (potentially breaking changes)
 v4.0.0
 ------
 
+The first three sections need action from most users: dashboards and alerts that
+use the moved labels, configs without ``name``, and Docker or Helm setups.
+
+Addresses and names moved to ``_info`` metrics
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Labels that change while the thing they describe stays the same made a new series
+each time: a reconnect, a new DHCP lease, a renamed host. They moved to a separate
+metric with the value ``1``, which you can join on its key labels.
+
+* **WAN connections:** ``fritz_wan_connection_uptime_seconds_total`` and
+  ``fritz_wan_connection_status`` lose ``ip_address``. The address is in the new
+  ``fritz_wan_connection_info{connection, connection_name, media_type, stack,
+  ip_address}``, for every stack that has one.
+* **Hosts** (``host_info: true``): ``fritz_host_active`` and ``fritz_host_speed`` are
+  keyed by ``mac_address`` only; ``ip_address``, ``hostname``, ``interface``,
+  ``port`` and ``model`` are in the new ``fritz_host_info``. Hosts without a MAC
+  address (e.g. some VPN clients) are left out, since nothing tells them apart.
+
+To keep a host's name in a query, join on the MAC address, e.g.::
+
+  fritz_host_active * on (serial, mac_address) group_left (hostname) fritz_host_info
+
+Stricter configuration
+^^^^^^^^^^^^^^^^^^^^^^
+
+The exporter now refuses to start, with one message that names the device and the
+key, on:
+
+* a key it does not know, at the top level or in a device (a typo such as
+  ``pasword:`` used to be ignored, and the device then logged in without a
+  password);
+* a device without ``password`` or ``password_file`` in the config file;
+* two devices with the same name. **The name now defaults to the hostname**, in the
+  config file and for ``FRITZ_NAME``; it used to be empty in the config file and
+  ``Fritz!Box`` from the environment. Without a ``name``, the ``friendly_name``
+  label of your series changes, so set ``name`` (or ``FRITZ_NAME``) to keep it.
+
+A config file that is not valid YAML, or of the wrong shape, gives that message
+instead of a traceback.
+
+Docker image and Helm chart
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* The image runs as user ``nobody`` (65534) instead of root. **A mounted config
+  file or password file must be readable by that user.** The Helm chart already ran
+  the container as 65534.
+* The image sets ``FRITZ_LISTEN_ADDRESS=0.0.0.0``, so a published port reaches the
+  exporter with the environment configuration. With a config file, set
+  ``listen_address: 0.0.0.0`` in it.
+* The Helm chart puts ``listen_address: 0.0.0.0`` into the config secret it creates,
+  unless ``config`` sets ``listen_address``. A secret of your own
+  (``createConfigSecret: false``) must set it.
+* The image installs the dependency versions from ``uv.lock``, checked against their
+  hashes.
+
 Legacy MD5 web login disabled by default
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -29,69 +85,16 @@ The exporter now logs in again only when the device rejects the session, not aft
 every failed request, and it stops sending web interface requests for the rest of a
 scrape once the device does not answer one. Replies larger than 4 MiB are refused.
 
-Docker image and Helm chart
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-* The image runs as user ``nobody`` (65534) instead of root. **A mounted config
-  file or password file must be readable by that user.** The Helm chart already ran
-  the container as 65534.
-* The image sets ``FRITZ_LISTEN_ADDRESS=0.0.0.0``, so a published port reaches the
-  exporter with the environment configuration. With a config file, set
-  ``listen_address: 0.0.0.0`` in it.
-* The Helm chart puts ``listen_address: 0.0.0.0`` into the config secret it creates,
-  unless ``config`` sets ``listen_address``. A secret of your own
-  (``createConfigSecret: false``) must set it.
-* The image installs the dependency versions from ``uv.lock``, checked against their
-  hashes.
-
 ``--donate-data`` removed
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The data donation (``--donate-data``, ``--upload-data``, ``--sanitize``) is gone. To
 help with a device the exporter does not support yet, open an issue.
 
-Stricter configuration
-^^^^^^^^^^^^^^^^^^^^^^
-
-The exporter now refuses to start, with one message that names the device and the
-key, on:
-
-* a key it does not know, at the top level or in a device (a typo such as
-  ``pasword:`` used to be ignored, and the device then logged in without a
-  password);
-* a device without ``password`` or ``password_file`` in the config file;
-* two devices with the same name. **The name now defaults to the hostname**, in the
-  config file and for ``FRITZ_NAME``; it used to be empty in the config file and
-  ``Fritz!Box`` from the environment. Without a ``name``, the ``friendly_name``
-  label of your series changes, so set ``name`` (or ``FRITZ_NAME``) to keep it.
-
-A config file that is not valid YAML, or of the wrong shape, gives that message
-instead of a traceback.
-
-Addresses and names moved to ``_info`` metrics
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Labels that change while the thing they describe stays the same made a new series
-each time: a reconnect, a new DHCP lease, a renamed host. They moved to a separate
-metric with the value ``1``, which you can join on its key labels.
-
-* **WAN connections:** ``fritz_wan_connection_uptime_seconds_total`` and
-  ``fritz_wan_connection_status`` lose ``ip_address``. The address is in the new
-  ``fritz_wan_connection_info{connection, connection_name, media_type, stack,
-  ip_address}``, for every stack that has one.
-* **Hosts** (``host_info: true``): ``fritz_host_active`` and ``fritz_host_speed`` are
-  keyed by ``mac_address`` only; ``ip_address``, ``hostname``, ``interface``,
-  ``port`` and ``model`` are in the new ``fritz_host_info``. Hosts without a MAC
-  address (e.g. some VPN clients) are left out, since nothing tells them apart.
-
-To keep a host's name in a query, join on the MAC address, e.g.::
-
-  fritz_host_active * on (serial, mac_address) group_left (hostname) fritz_host_info
-
 Devices without a readable serial number are not collected
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The serial number is the label that tells devices apart (names may repeat). A
+The serial number is the label that tells devices apart in Prometheus. A
 device that answers but gives no readable serial number is now reported as
 unreachable (``fritz_device_reachable 0``) instead of being collected with
 ``serial="n/a"``. The exporter retries it three times, then gives up with an error
@@ -120,6 +123,25 @@ exporter skips only that part and reports it in the new ``fritz_read_problem`` m
 and in the log. Before, such a value silently became a gap, or the whole scrape
 failed. See below for the new log messages.
 
+Unknown values are no longer reported as 0
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* **Fibre levels:** some fibre boxes answer 0 for both optical levels over TR-064;
+  the exporter then reads them from the web interface. When that fails, it used to
+  export ``0`` dBm; now ``fritz_fiber_optical_signal_level_dBm`` and
+  ``fritz_fiber_transmit_optical_level_dBm`` have no sample, and the failure shows
+  in ``fritz_read_problem{capability="WanFiberInterfaceConfig",level="partial"}``
+  instead of a warning on every scrape.
+* **DOCSIS channels** without a channel ID used to be exported as channel ``0``,
+  several of them as the same series; they are now skipped and reported.
+* A web interface reply without its data part (e.g. a ``docInfo`` page without
+  ``data``) used to give no metrics without a word; it is now reported as a read
+  problem. An empty data part still means "no data".
+* **Smart home:** Fritz!OS leaves an element empty when the value is unknown. An empty
+  ``<batterylow/>`` or ``<lock/>`` used to be exported as ``0`` ("battery fine",
+  "not locked"); it now gives no sample for ``fritz_ha_battery_low`` or
+  ``fritz_ha_switch_lock``.
+
 Log messages reworked
 ^^^^^^^^^^^^^^^^^^^^^
 
@@ -130,7 +152,7 @@ which do not depend on wording.
 
 * **Device names:** every message about a device names it the same way,
   "<name> (<host>)", e.g. "Fritz!Box 7690 (fritz.box)", or the host alone if the
-  device has no name. Messages used to show the host, the serial number
+  name is the host. Messages used to show the host, the serial number
   ("device serial …") or no device at all.
 * **Skipped data** (replaces "Failed to fetch … data from …"):
 
@@ -158,29 +180,6 @@ which do not depend on wording.
 * **Unreachable during a scrape:** "Device <device> is unreachable, skipping
   <Capability> metrics for this collection cycle: <reason>" at ``WARNING``, without
   a traceback.
-
-Unknown values are no longer reported as 0
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-* **Fibre levels:** some fibre boxes answer 0 for both optical levels over TR-064;
-  the exporter then reads them from the web interface. When that fails, it used to
-  export ``0`` dBm; now ``fritz_fiber_optical_signal_level_dBm`` and
-  ``fritz_fiber_transmit_optical_level_dBm`` have no sample, and the failure shows
-  in ``fritz_read_problem{capability="WanFiberInterfaceConfig",level="partial"}``
-  instead of a warning on every scrape.
-* **DOCSIS channels** without a channel ID used to be exported as channel ``0``,
-  several of them as the same series; they are now skipped and reported.
-* A web interface reply without its data part (e.g. a ``docInfo`` page without
-  ``data``) used to give no metrics without a word; it is now reported as a read
-  problem. An empty data part still means "no data".
-
-Smart home values that are unknown are no longer reported as 0
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Fritz!OS leaves an element empty when the value is unknown. An empty
-``<batterylow/>`` or ``<lock/>`` used to be exported as ``0`` ("battery fine",
-"not locked"); it now gives no sample for ``fritz_ha_battery_low`` or
-``fritz_ha_switch_lock``.
 
 v3.5.0
 ------

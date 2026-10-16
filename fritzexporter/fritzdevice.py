@@ -262,19 +262,20 @@ class FritzDevice:
             return
         report_problem(self.connection_mode_state, "ConnectionMode", self.log_name, level=None)
 
-        if link_status == "Up" and access_type == "DSL":
-            mode = 1  # DSL connection active
-        elif link_status == "Down" and access_type == "X_AVM-DE_Mobile":
-            mode = 2  # DSL disconnected -> Fallback mobile connection active
-        elif link_status == "Up" and access_type == "X_AVM-DE_Mobile":
-            mode = 3  # DSL disabled, only mobile connection active
-        elif link_status == "Up" and access_type == "X_AVM-DE_Fiber":
-            mode = 4  # Fibre connection active
-        elif link_status == "Up" and access_type in ("Cable", "X_AVM-DE_Cable"):
-            mode = 5  # Cable (DOCSIS) connection active
-        else:
-            mode = 0  # Disconnected or not available
+        mode = _CONNECTION_MODES.get((link_status, access_type), 0)
         family.add_metric([self.serial, self.friendly_name, access_type], mode)
+
+
+# fritz_connection_mode by (physical link status, WAN access type); anything
+# else is 0, disconnected or not available.
+_CONNECTION_MODES: dict[tuple[str | None, str], int] = {
+    ("Up", "DSL"): 1,  # DSL connection active
+    ("Down", "X_AVM-DE_Mobile"): 2,  # DSL disconnected -> fallback mobile connection active
+    ("Up", "X_AVM-DE_Mobile"): 3,  # DSL disabled, only mobile connection active
+    ("Up", "X_AVM-DE_Fiber"): 4,  # Fibre connection active
+    ("Up", "Cable"): 5,  # Cable (DOCSIS) connection active
+    ("Up", "X_AVM-DE_Cable"): 5,
+}
 
 
 def _connection_mode_family() -> GaugeMetricFamily:
@@ -318,18 +319,20 @@ class FritzCollector(Collector):
         try:
             device = FritzDevice.from_spec(spec)
         except _SETUP_ERRORS as e:
-            # No traceback: the reason says it all, and these are expected.
-            logger.error(  # noqa: TRY400
-                "Failed to initialize device %s, it will be reported as down: %s",
-                spec.log_name,
-                _setup_failure(e),
-            )
-            with self._devices_lock:
-                self.offline_devices.append(OfflineDevice(spec).failed(e))
-            return None
-        logger.info("registering %s to collector", device.log_name)
-        self.register(device)
-        return device
+            failure = e
+        else:
+            logger.info("registering %s to collector", device.log_name)
+            self.register(device)
+            return device
+        # Logged without a traceback: the reason says it all, and these are expected.
+        logger.error(
+            "Failed to initialize device %s, it will be reported as down: %s",
+            spec.log_name,
+            _setup_failure(failure),
+        )
+        with self._devices_lock:
+            self.offline_devices.append(OfflineDevice(spec).failed(failure))
+        return None
 
     def _retry_offline_devices(self) -> None:
         """Try to set up the offline devices again; skipped while another scrape does."""

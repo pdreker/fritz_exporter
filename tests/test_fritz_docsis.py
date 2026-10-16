@@ -435,8 +435,9 @@ class TestWanDocsisCable:
 
 class TestDocsisChannelId:
     def test_reply_without_data_raises(self):
+        issues = Issues()
         with pytest.raises(DataError, match="docInfo data: missing"):
-            parse_docsis_response({"pid": "docInfo"}, Issues())
+            parse_docsis_response({"pid": "docInfo"}, issues)
 
     def test_channel_without_id_is_skipped_not_numbered_0(self):
         issues = Issues()

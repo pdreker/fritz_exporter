@@ -63,6 +63,11 @@ def _is_absent(value: object) -> bool:
     return value is None or value == ""
 
 
+# What a value was expected to be, in DataError messages.
+_NUMBER = "a number"
+_WHOLE_NUMBER = "a whole number"
+
+
 def _fail(what: str, expected: str, value: object) -> DataError:
     return DataError(f"{what}: expected {expected}, got {type(value).__name__}")
 
@@ -72,11 +77,11 @@ def to_float(value: object, what: str) -> float | None:
     if _is_absent(value):
         return None
     if isinstance(value, bool) or not isinstance(value, int | float | str):
-        raise _fail(what, "a number", value)
+        raise _fail(what, _NUMBER, value)
     try:
         return float(value)
     except ValueError:
-        raise _fail(what, "a number", value) from None
+        raise _fail(what, _NUMBER, value) from None
 
 
 def to_int(value: object, what: str) -> int | None:
@@ -84,17 +89,17 @@ def to_int(value: object, what: str) -> int | None:
     if _is_absent(value):
         return None
     if isinstance(value, bool) or not isinstance(value, int | float | str):
-        raise _fail(what, "a whole number", value)
+        raise _fail(what, _WHOLE_NUMBER, value)
     if isinstance(value, int):
         return value
     if isinstance(value, float):
         if not (math.isfinite(value) and value.is_integer()):
-            raise _fail(what, "a whole number", value)
+            raise _fail(what, _WHOLE_NUMBER, value)
         return int(value)
     try:
         return int(value.strip())
     except ValueError:
-        raise _fail(what, "a whole number", value) from None
+        raise _fail(what, _WHOLE_NUMBER, value) from None
 
 
 def to_bool(value: object, what: str) -> bool | None:

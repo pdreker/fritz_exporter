@@ -42,8 +42,9 @@ class TestParseFiberStats:
 
     @pytest.mark.parametrize("raw", [{"data": "not an object"}, []])
     def test_reply_of_the_wrong_shape_raises(self, raw):
+        issues = Issues()
         with pytest.raises(DataError):
-            parse_fiber_stats_response(raw, Issues())
+            parse_fiber_stats_response(raw, issues)
 
 
 FIBER_RAW = {"data": {"opt_ds": [["sa", 9, -65], ["sa", 8, -66]], "opt_us": [["sa", 9, -54]]}}
