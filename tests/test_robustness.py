@@ -95,9 +95,24 @@ def samples(output: str, metric: str, serial: str) -> list[str]:
     ]
 
 
+def problems(output: str, serial: str) -> list[tuple[str, str]]:
+    """(capability, level) of the fritz_read_problem series of a device."""
+    found = []
+    for line in output.splitlines():
+        if line.startswith("fritz_read_problem{") and f'serial="{serial}"' in line:
+            labels = dict(
+                part.split("=", 1)
+                for part in line[line.index("{") + 1 : line.index("}")].split(",")
+            )
+            found.append((labels["capability"].strip('"'), labels["level"].strip('"')))
+    return sorted(found)
+
+
 def reachable(output: str, name: str, serial: str) -> float:
     prefix = f'fritz_device_reachable{{friendly_name="{name}",serial="{serial}"}} '
-    return float(next(line for line in output.splitlines() if line.startswith(prefix))[len(prefix) :])
+    return float(
+        next(line for line in output.splitlines() if line.startswith(prefix))[len(prefix) :]
+    )
 
 
 class TestValueLevel:
@@ -150,6 +165,29 @@ class TestItemLevel:
         ) in caplog.text
 
 
+class TestSingleCases:
+    def test_malformed_acs_url_skips_only_the_acs_host(self, caplog):
+        caplog.set_level(logging.DEBUG)
+        info = {**call_action_mock("ManagementServer1", "GetInfo"), "NewURL": "http://[::1"}
+        scenario = Scenario({("ManagementServer1", "GetInfo"): info})
+
+        output = scenario.scrape()
+
+        assert samples(output, "fritz_tr069_acs_info", "BAD") == []
+        assert samples(output, "fritz_tr069_periodic_inform_interval_seconds", "BAD")
+        assert samples(output, "fritz_tr069_acs_info", "GOOD")
+        assert "ACS host skipped: ManagementServer1.GetInfo NewURL: not a valid URL" in caplog.text
+
+    def test_empty_model_name_keeps_the_uptime_metric(self):
+        info = {**call_action_mock("DeviceInfo1", "GetInfo"), "NewSerialNumber": "BAD", "NewModelName": ""}
+        scenario = Scenario({("DeviceInfo1", "GetInfo"): info})
+
+        output = scenario.scrape()
+
+        [uptime] = samples(output, "fritz_uptime_seconds_total", "BAD")
+        assert 'modelname="n/a"' in uptime
+
+
 class TestCapabilityLevel:
     def test_reply_of_the_wrong_shape_skips_the_capability(self, caplog):
         caplog.set_level(logging.DEBUG)
@@ -162,25 +200,48 @@ class TestCapabilityLevel:
         assert samples(output, "fritz_lan_status", "BAD")
         assert reachable(output, "BAD", "BAD") == 1.0
         assert (
-            "Could not read LanInterfaceConfigStatistics data from bad, skipping it for this "
-            "cycle: LANEthernetInterfaceConfig1.GetStatistics: expected an object, got str"
+            "Could not read LanInterfaceConfigStatistics data from bad, skipping it: "
+            "LANEthernetInterfaceConfig1.GetStatistics: expected an object, got str"
         ) in caplog.text
 
-    def test_unexpected_error_is_logged_by_type_and_place_only(self, caplog):
+    def test_bug_is_contained_but_logged_with_traceback_on_every_scrape(self, caplog):
         caplog.set_level(logging.DEBUG)
         scenario = Scenario()
 
         with patch.object(
-            LanInterfaceConfigStatistics,
-            "_generate_metric_values",
-            side_effect=KeyError(SECRET),
+            LanInterfaceConfigStatistics, "_generate_metric_values", side_effect=KeyError("oops")
         ):
-            output = scenario.scrape()
+            for _ in range(3):
+                output = scenario.scrape()
 
         assert samples(output, "fritz_lan_data_bytes_total", "GOOD") == []
-        assert "Could not read LanInterfaceConfigStatistics data from good" in caplog.text
-        assert "KeyError at " in caplog.text
-        assert SECRET not in caplog.text
+        assert samples(output, "fritz_lan_status", "GOOD")
+        bugs = [
+            r
+            for r in caplog.records
+            if r.getMessage().startswith("Bug while collecting LanInterfaceConfigStatistics data")
+        ]
+        # Both devices, every scrape, with the traceback.
+        assert len(bugs) == 6
+        assert all(r.levelno == logging.ERROR and r.exc_info for r in bugs)
+        assert problems(output, "GOOD") == [("LanInterfaceConfigStatistics", "error")]
+
+    def test_connection_error_drops_the_partial_set(self):
+        scenario = Scenario()
+        original = scenario.fcs["bad"].call_action.side_effect
+
+        def failing(service, action, **kwargs):
+            # WLAN 1 and 2 are read, then the device stops answering.
+            if (service, action) == ("WLANConfiguration3", "GetInfo"):
+                raise FritzConnectionException("down")
+            return original(service, action, **kwargs)
+
+        scenario.fcs["bad"].call_action.side_effect = failing
+        output = scenario.scrape()
+
+        assert reachable(output, "BAD", "BAD") == 0.0
+        assert samples(output, "fritz_wifi_status", "BAD") == []
+        assert len(samples(output, "fritz_wifi_status", "GOOD")) == 3
 
 
 class TestDeviceLevel:
@@ -194,7 +255,14 @@ class TestDeviceLevel:
         assert reachable(output, "BAD", "n/a") == 0.0
         assert reachable(output, "GOOD", "GOOD") == 1.0
         assert samples(output, "fritz_lan_status", "GOOD")
-        assert "Could not read the serial number of bad" in caplog.text
+        # Logged once at registration, quiet while retrying.
+        def errors():
+            return [r for r in caplog.records if r.levelno >= logging.ERROR]
+
+        assert len(errors()) == 1
+        assert "could not read the serial number of bad" in str(errors()[0].exc_info[1])
+        scenario.scrape()
+        assert len(errors()) == 1
 
         # Once the serial can be read, the device is collected.
         del scenario.overrides["bad"][("DeviceInfo1", "GetInfo")]
@@ -219,30 +287,101 @@ class TestDeviceLevel:
         assert reachable(output, "GOOD", "GOOD") == 1.0
 
 
+def lan_records(caplog, level):
+    return [
+        r.getMessage()
+        for r in caplog.records
+        if r.levelno == level and "LanInterfaceConfigStatistics" in r.getMessage()
+    ]
+
+
+class TestProblemMetric:
+    def test_problems_are_exported_per_capability_and_level(self):
+        scenario = Scenario(
+            {
+                LAN_STATS: "garbage",
+                ("WLANConfiguration1", "GetInfo"): wlan1_info(NewEnable="maybe"),
+            }
+        )
+
+        output = scenario.scrape()
+
+        assert problems(output, "BAD") == [
+            ("LanInterfaceConfigStatistics", "skipped"),
+            ("WlanConfigurationInfo", "partial"),
+        ]
+        assert problems(output, "GOOD") == []
+
+    def test_problem_series_goes_away_when_it_is_solved(self):
+        scenario = Scenario({LAN_STATS: "garbage"})
+        assert problems(scenario.scrape(), "BAD") == [("LanInterfaceConfigStatistics", "skipped")]
+
+        scenario.overrides["bad"][LAN_STATS] = lan_stats()
+
+        assert problems(scenario.scrape(), "BAD") == []
+
+
 class TestLogging:
     def test_lasting_problem_warns_once_and_recovery_is_logged(self, caplog):
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({LAN_STATS: lan_stats(NewBytesSent=None)})
 
-        def records(level):
-            return [
-                r
-                for r in caplog.records
-                if r.levelno == level and "LanInterfaceConfigStatistics" in r.getMessage()
-            ]
-
         for _ in range(3):
             scenario.scrape()
-        assert len(records(logging.WARNING)) == 1
-        assert len(records(logging.DEBUG)) >= 2
+        assert len(lan_records(caplog, logging.WARNING)) == 1
+        assert len(lan_records(caplog, logging.DEBUG)) >= 2
 
         scenario.overrides["bad"][LAN_STATS] = lan_stats()
         output = scenario.scrape()
 
         assert len(samples(output, "fritz_lan_data_bytes_total", "BAD")) == 2
-        assert [r.getMessage() for r in records(logging.INFO)] == [
+        [recovered] = lan_records(caplog, logging.INFO)
+        assert recovered.startswith(
             "Reading LanInterfaceConfigStatistics data from bad works again"
+        )
+        assert recovered.endswith(", 3 scrapes)")
+
+    def test_lasting_problem_is_reminded_of_with_its_start(self, caplog, monkeypatch):
+        caplog.set_level(logging.DEBUG)
+        scenario = Scenario({LAN_STATS: lan_stats(NewBytesSent=None)})
+        clock = [1000.0]
+        monkeypatch.setattr("fritzexporter.fritzcapabilities.time.monotonic", lambda: clock[0])
+
+        scenario.scrape()
+        clock[0] += 1800
+        scenario.scrape()
+        clock[0] += 1800
+        scenario.scrape()
+
+        warnings = lan_records(caplog, logging.WARNING)
+        assert len(warnings) == 2
+        assert warnings[0].startswith(
+            "Skipped part of the LanInterfaceConfigStatistics data from bad: "
+        )
+        assert "still since " in warnings[1]
+        assert (
+            "(3 scrapes): LANEthernetInterfaceConfig1.GetStatistics NewBytesSent: missing"
+            in warnings[1]
+        )
+
+    def test_changing_item_indexes_do_not_warn_again(self, caplog):
+        caplog.set_level(logging.DEBUG)
+        scenario = Scenario({("WLANConfiguration1", "GetInfo"): wlan1_info(NewEnable="maybe")})
+        scenario.scrape()
+
+        scenario.overrides["bad"].pop(("WLANConfiguration1", "GetInfo"))
+        scenario.overrides["bad"][("WLANConfiguration2", "GetInfo")] = {
+            **call_action_mock("WLANConfiguration2", "GetInfo"),
+            "NewEnable": "maybe",
+        }
+        scenario.scrape()
+
+        warnings = [
+            r.getMessage()
+            for r in caplog.records
+            if r.levelno == logging.WARNING and "WlanConfigurationInfo" in r.getMessage()
         ]
+        assert len(warnings) == 1
 
     def test_a_different_problem_warns_again(self, caplog):
         caplog.set_level(logging.DEBUG)

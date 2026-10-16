@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Generator, ItemsView, Iterator
 from contextlib import contextmanager, suppress
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 from urllib.parse import urlparse
@@ -41,10 +43,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("fritzexporter.fritzcapability")
 
-# What a malformed reply, or a mistake in reading one, raises while a capability
-# collects. DataError (a ValueError) is what the reply accessors raise; the rest
-# come from code that indexes or converts data directly.
-_DATA_ERRORS: tuple[type[Exception], ...] = (
+# Errors that mean a bug in the exporter rather than bad device data, since all
+# reads go through fritzexporter.reply. They are contained like data problems,
+# so one capability's bug does not break the scrape, but logged with a traceback
+# on every scrape.
+_BUG_ERRORS: tuple[type[Exception], ...] = (
     KeyError,
     IndexError,
     TypeError,
@@ -52,6 +55,28 @@ _DATA_ERRORS: tuple[type[Exception], ...] = (
     AttributeError,
     ArithmeticError,
 )
+
+# A lasting problem is logged when it appears or changes level, then reminded of
+# at this interval, so its details are never far back in the log.
+PROBLEM_REMINDER_INTERVAL: float = 3600.0
+
+
+class ProblemLevel:
+    """How much of a capability's data the last scrape of a device skipped."""
+
+    PARTIAL = "partial"  # some values or items
+    SKIPPED = "skipped"  # the whole capability
+    ERROR = "error"  # the whole capability, because of a bug in the exporter
+
+
+class _Problem:
+    """A problem of one capability on one device, while it lasts."""
+
+    def __init__(self, level: str) -> None:
+        self.level = level
+        self.since = datetime.now(tz=UTC)
+        self.scrapes = 0
+        self.reminded = time.monotonic()
 
 
 def _origin(exc: BaseException) -> str:
@@ -70,6 +95,24 @@ def _describe(exc: BaseException) -> str:
     if isinstance(exc, DataError | FritzWebUiError):
         return str(exc)
     return f"{type(exc).__name__} at {_origin(exc)}"
+
+
+def _url_host(url: str, what: str) -> str | None:
+    """The host name of ``url``; a malformed URL is a :class:`DataError`."""
+    try:
+        return urlparse(url).hostname
+    except ValueError:
+        msg = f"{what}: not a valid URL"
+        raise DataError(msg) from None
+
+
+def _div(value: float | None, by: float) -> float | None:
+    """``value / by``, passing an absent value on."""
+    return None if value is None else value / by
+
+
+def _since(problem: _Problem) -> str:
+    return problem.since.astimezone().isoformat(timespec="seconds")
 
 
 def _check_samples(
@@ -132,9 +175,9 @@ class FritzCapability(ABC):
         self.metrics: dict[str, CounterMetricFamily | GaugeMetricFamily] = {}
         # Defects contained while collecting the current device; see _add/_item.
         self.issues = Issues()
-        # Per device (on the device's own instance): the problem logged for the
-        # last scrape, so a lasting problem warns once, not every scrape.
-        self.problem: str | None = None
+        # Per device (on the device's own instance): the problem of the last
+        # scrape, if any; exported as fritz_read_problem.
+        self.problem: _Problem | None = None
 
     def __init_subclass__(cls, **kwargs: dict[str, Any]) -> None:
         super().__init_subclass__(**kwargs)
@@ -185,7 +228,10 @@ class FritzCapability(ABC):
         * The web interface fails, or a reply cannot be read at all: the samples
           this device added to this capability are dropped, so no partial set is
           exported; other capabilities and devices are unaffected.
-        * The device does not answer: it is marked unavailable for this cycle.
+        * A bug in the exporter is contained the same way, but logged with a
+          traceback on every scrape.
+        * The device does not answer: its samples of this capability are dropped
+          and it is marked unavailable for this cycle.
 
         Anything else, such as the refused MD5 login, is meant to reach the
         collector.
@@ -196,38 +242,82 @@ class FritzCapability(ABC):
             self._generate_metric_values(device)
             _check_samples(self.metrics, counts)
         except FritzConnectionException, RequestException:
+            self._rollback(counts)
             logger.exception(
                 "Device %s is unreachable, skipping %s metrics for this collection cycle",
                 device.host,
                 name,
             )
             device.available = False
-            return
-        except (FritzWebUiError, *_DATA_ERRORS) as e:
+        except (FritzWebUiError, DataError) as e:
             self._rollback(counts)
             self._report(
                 device,
                 name,
-                f"Could not read {name} data from {device.host}, skipping it for this cycle: "
-                f"{_describe(e)}",
+                ProblemLevel.SKIPPED,
+                f"Could not read {name} data from {device.host}, skipping it",
+                _describe(e),
             )
-            return
-        problem = None
-        if self.issues.messages:
-            problem = f"Skipped part of the {name} data from {device.host}: " + "; ".join(
-                self.issues.messages
+        except _BUG_ERRORS:
+            self._rollback(counts)
+            logger.exception(
+                "Bug while collecting %s data from %s, skipping it for this cycle; "
+                "please report this",
+                name,
+                device.host,
             )
-        self._report(device, name, problem)
+            self._report(device, name, ProblemLevel.ERROR, "", "")
+        else:
+            if self.issues.messages:
+                self._report(
+                    device,
+                    name,
+                    ProblemLevel.PARTIAL,
+                    f"Skipped part of the {name} data from {device.host}",
+                    "; ".join(self.issues.messages),
+                )
+            else:
+                self._report(device, name, None, "", "")
 
     @staticmethod
-    def _report(device: FritzDevice, name: str, problem: str | None) -> None:
-        """Log a problem when it first appears or changes, and when it is gone."""
+    def _report(
+        device: FritzDevice, name: str, level: str | None, headline: str, details: str
+    ) -> None:
+        """Log a problem when it appears or changes level, remind of it while it lasts.
+
+        A bug (``ProblemLevel.ERROR``) is logged by the caller on every scrape.
+        """
         state = device.capabilities[name]
-        if problem is not None:
-            (logger.debug if problem == state.problem else logger.warning)(problem)
-        elif state.problem is not None:
-            logger.info("Reading %s data from %s works again", name, device.host)
-        state.problem = problem
+        if level is None:
+            if state.problem is not None:
+                logger.info(
+                    "Reading %s data from %s works again (problem since %s, %d scrapes)",
+                    name,
+                    device.host,
+                    _since(state.problem),
+                    state.problem.scrapes,
+                )
+            state.problem = None
+            return
+        if state.problem is None or state.problem.level != level:
+            state.problem = _Problem(level)
+            if level != ProblemLevel.ERROR:
+                logger.warning("%s: %s", headline, details)
+        elif (
+            level != ProblemLevel.ERROR
+            and time.monotonic() - state.problem.reminded >= PROBLEM_REMINDER_INTERVAL
+        ):
+            state.problem.reminded = time.monotonic()
+            logger.warning(
+                "%s, still since %s (%d scrapes): %s",
+                headline,
+                _since(state.problem),
+                state.problem.scrapes + 1,
+                details,
+            )
+        else:
+            logger.debug("%s: %s", headline, details)
+        state.problem.scrapes += 1
 
     def _sample_counts(self) -> dict[str, int]:
         return {key: len(family.samples) for key, family in self.metrics.items()}
@@ -307,8 +397,8 @@ class DeviceInfo(FritzCapability):
     def _generate_metric_values(self, device: FritzDevice) -> None:
         info = read_action(device, "DeviceInfo1", "GetInfo")
         labels = [
-            info.text("NewModelName"),
-            info.text("NewSoftwareVersion"),
+            info.text("NewModelName", "n/a"),
+            info.text("NewSoftwareVersion", "n/a"),
             info.text("NewSerialNumber"),
             device.friendly_name,
         ]
@@ -1238,7 +1328,9 @@ class _MeshParser:
 
     def links(self) -> list[_MeshLink]:
         links: list[_MeshLink] = []
-        for uid, node in sorted(self.meshed.items()):
+        # In the device's order: the first endpoint seen gives the type and
+        # interface labels of a link, so the order must not change.
+        for uid, node in self.meshed.items():
             with self.issues.item(f"mesh node {uid}"):
                 for index, interface in self.issues.objects(node, "node_interfaces"):
                     with self.issues.item(f"mesh node {uid} interface {index}"):
@@ -1630,34 +1722,25 @@ class HomeAutomation(FritzCapability):
         powermeter = ha_device["powermeter"]
         if powermeter is None:
             return
-        if powermeter["power"] is not None:
-            self.metrics["multimeter_power"].add_metric(labels, powermeter["power"] / 1000.0)
-        if powermeter["energy"] is not None:
-            self.metrics["multimeter_energy"].add_metric(labels, powermeter["energy"])
+        self._add("multimeter_power", labels, _div(powermeter["power"], 1000))
+        self._add("multimeter_energy", labels, powermeter["energy"])
 
     def _collect_temperature(self, ha_device: dict[str, Any], labels: list[str]) -> None:
         temperature = ha_device["temperature"]
         if temperature is None:
             return
-        if temperature["celsius"] is not None:
-            self.metrics["temperature"].add_metric(labels, temperature["celsius"] / 10.0)
-        if temperature["offset"] is not None:
-            self.metrics["temperature_offset"].add_metric(labels, temperature["offset"] / 10.0)
+        self._add("temperature", labels, _div(temperature["celsius"], 10))
+        self._add("temperature_offset", labels, _div(temperature["offset"], 10))
 
     def _collect_switch(self, ha_device: dict[str, Any], labels: list[str]) -> None:
         switch = ha_device["switch"]
         if switch is None:
             return
-        if switch["state"] in self._HTTP_SWITCH_STATE_MAP:
-            self.metrics["switch_state"].add_metric(
-                labels, self._HTTP_SWITCH_STATE_MAP[switch["state"]]
-            )
-        if switch["mode"] in self._HTTP_SWITCH_MODE_MAP:
-            self.metrics["switch_mode"].add_metric(
-                labels, self._HTTP_SWITCH_MODE_MAP[switch["mode"]]
-            )
+        # Unknown states or modes (new firmware) skip just their sample.
+        self._add("switch_state", labels, self._HTTP_SWITCH_STATE_MAP.get(switch["state"]))
+        self._add("switch_mode", labels, self._HTTP_SWITCH_MODE_MAP.get(switch["mode"]))
         if switch["lock"] is not None:
-            self.metrics["switch_lock"].add_metric(labels, 1 if switch["lock"] == "1" else 0)
+            self._add("switch_lock", labels, int(switch["lock"] == "1"))
 
     def _collect_heater(self, ha_device: dict[str, Any], labels: list[str]) -> None:
         hkr = ha_device["hkr"]
@@ -1665,14 +1748,10 @@ class HomeAutomation(FritzCapability):
             return
         # HKR temperatures from the AHA HTTP API are reported in half-degree
         # steps, unlike the plain <temperature> element (tenths of a degree).
-        if hkr["tist"] is not None:
-            self.metrics["heater_temperature"].add_metric(labels, hkr["tist"] / 2.0)
-        if hkr["tsoll"] is not None:
-            self.metrics["heater_set_temperature"].add_metric(labels, hkr["tsoll"] / 2.0)
-        if hkr["absenk"] is not None:
-            self.metrics["heater_reduced_temperature"].add_metric(labels, hkr["absenk"] / 2.0)
-        if hkr["komfort"] is not None:
-            self.metrics["heater_comfort_temperature"].add_metric(labels, hkr["komfort"] / 2.0)
+        self._add("heater_temperature", labels, _div(hkr["tist"], 2))
+        self._add("heater_set_temperature", labels, _div(hkr["tsoll"], 2))
+        self._add("heater_reduced_temperature", labels, _div(hkr["absenk"], 2))
+        self._add("heater_comfort_temperature", labels, _div(hkr["komfort"], 2))
 
     def _collect_heater_valve_state(self, device: FritzDevice, ain: str, labels: list[str]) -> None:
         # The valve/ventil status fields are not exposed by the AHA HTTP API's
@@ -1699,15 +1778,12 @@ class HomeAutomation(FritzCapability):
             if status not in self._HKR_VALVE_MAP:
                 logger.debug("Unknown valve status %s for ain %s, skipping", key, ain)
                 continue
-            self.metrics[metric].add_metric(labels, self._HKR_VALVE_MAP[status])
+            self._add(metric, labels, self._HKR_VALVE_MAP[status])
 
     def _collect_battery(self, ha_device: dict[str, Any], labels: list[str]) -> None:
-        if ha_device["battery_level"] is not None:
-            self.metrics["battery_level"].add_metric(labels, float(ha_device["battery_level"]))
+        self._add("battery_level", labels, ha_device["battery_level"])
         if ha_device["battery_low"] is not None:
-            self.metrics["battery_low"].add_metric(
-                labels, 1 if ha_device["battery_low"] == "1" else 0
-            )
+            self._add("battery_low", labels, int(ha_device["battery_low"] == "1"))
 
     def _generate_metric_values(self, device: FritzDevice) -> None:
         # The AHA interface is part of the web UI, not TR-064: use the web UI
@@ -1720,7 +1796,7 @@ class HomeAutomation(FritzCapability):
         for ha_device in parse_aha_devicelist_xml(devicelist_xml, self.issues):
             labels = self._build_ha_labels(device, ha_device)
 
-            self.metrics["devicepresent"].add_metric(labels, 2 if ha_device["present"] else 0)
+            self._add("devicepresent", labels, 2 if ha_device["present"] else 0)
             self._collect_multimeter(ha_device, labels)
             self._collect_temperature(ha_device, labels)
             self._collect_switch(ha_device, labels)
@@ -1965,21 +2041,14 @@ class WanSegmentUtilization(FritzCapability):
         labels = [device.serial, device.friendly_name]
 
         if data["last_sample_time"] is not None:
-            self.metrics["sample_age"].add_metric(labels, data["last_sample_time"])
+            self._add("sample_age", labels, data["last_sample_time"])
 
         # "own" -> what our traffic contributes, "total" -> whole shared medium.
         for series in data["series"]:
             for direction in ("downstream", "upstream"):
                 samples = series[direction]
-                if not samples:
-                    continue
-                newest = samples[-1]
-                if newest is None:
-                    continue
-                self.metrics["utilization"].add_metric(
-                    [*labels, direction, series["type"]],
-                    newest,
-                )
+                if samples:
+                    self._add("utilization", [*labels, direction, series["type"]], samples[-1])
 
     def _get_metric_values(
         self,
@@ -2060,14 +2129,13 @@ class WanConnectionStatus(FritzCapability):
                 ("ipv4", "ip4_uptime", "ip4_connstatus", "ip4_addr"),
                 ("ipv6", "ip6_uptime", "ip6_connstatus", "ip6_addr"),
             ):
-                uptime = conn[uptime_key]
-                if uptime is not None:
-                    self.metrics["uptime"].add_metric([*base_labels, conn[ip_key], stack], uptime)
+                self._add("uptime", [*base_labels, conn[ip_key], stack], conn[uptime_key])
                 state = conn[status_key]
                 if state:
-                    connected = 1 if state == "connected" else 0
-                    self.metrics["status"].add_metric(
-                        [*base_labels, conn[ip_key], stack, state], connected
+                    self._add(
+                        "status",
+                        [*base_labels, conn[ip_key], stack, state],
+                        int(state == "connected"),
                     )
 
     def _get_metric_values(
@@ -2117,7 +2185,7 @@ class ManagementServerInfo(FritzCapability):
         result = read_action(device, "ManagementServer1", "GetInfo")
         labels = [device.serial, device.friendly_name]
         with self._item("ACS host"):
-            acs_host = urlparse(result.text("NewURL", "")).hostname
+            acs_host = _url_host(result.text("NewURL", ""), result.where("NewURL"))
             if acs_host:
                 self._add("acs_info", [*labels, acs_host], 1)
         self._add("inform_enabled", labels, self.issues.flag(result, "NewPeriodicInformEnable"))

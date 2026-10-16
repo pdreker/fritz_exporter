@@ -110,11 +110,13 @@ class TestReply:
         assert self.reply.num("rate") == 1.5
         assert self.reply.text("name") == "box"
         assert self.reply.flag("on") is True
-        assert self.reply.obj("nested").integer("inner") == 1
+        nested = self.reply.opt_obj("nested")
+        assert nested is not None
+        assert nested.integer("inner") == 1
 
     @pytest.mark.parametrize("key", ["empty", "none", "missing"])
     def test_required_read_of_absent_value_raises(self, key):
-        for read in (self.reply.num, self.reply.integer, self.reply.flag, self.reply.obj):
+        for read in (self.reply.num, self.reply.integer, self.reply.flag, self.reply.text):
             with pytest.raises(DataError, match=f"Svc.Action {key}: missing"):
                 read(key)
 
@@ -125,7 +127,6 @@ class TestReply:
         assert self.reply.opt_flag(key) is None
         assert self.reply.opt_text(key) is None
         assert self.reply.opt_obj(key) is None
-        assert not self.reply.has(key)
 
     def test_text_default_replaces_only_absent_values(self):
         assert self.reply.text("missing", "n/a") == "n/a"
@@ -143,20 +144,13 @@ class TestReply:
             self.reply.opt_obj("name")
 
     def test_lists(self):
-        assert [row.integer("a") for row in self.reply.objects("rows")] == [1, 2]
         assert self.reply.items("samples") == [1, None, "2"]
-        assert self.reply.objects("missing") == []
+        assert self.reply.items("missing") == []
         assert self.reply.items("none") == []
 
-    def test_list_errors_name_the_element(self):
-        with pytest.raises(DataError, match=r"Svc.Action bad_rows\[1\]: expected an object"):
-            self.reply.objects("bad_rows")
+    def test_list_errors_name_the_field(self):
         with pytest.raises(DataError, match="Svc.Action name: expected a list"):
             self.reply.items("name")
-
-    def test_raw_passes_values_on_unchanged(self):
-        assert self.reply.raw("samples") == [1, None, "2"]
-        assert self.reply.raw("missing") is None
 
 
 class TestReadAction:

@@ -204,10 +204,8 @@ class TestFritzDevice:
         fc.call_action.side_effect = call_action_no_basic_mock
         fc.services = create_fc_services(fc_services_no_basic_info)
 
-        with pytest.raises(FritzDeviceSerialUnknownError):
+        with pytest.raises(FritzDeviceSerialUnknownError, match="could not read the serial number of somehost"):
             FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
-
-        assert "Could not read the serial number of somehost" in caplog.text
 
     @pytest.mark.parametrize(
         "info",
@@ -1523,6 +1521,32 @@ class TestMeshTopologyParsing:
         assert "expected a number" in caplog.text
         assert "Skipped part of the MeshTopology data from somehost" in caplog.text
 
+    def test_link_labels_come_from_the_first_endpoint_in_device_order(
+        self, mock_fritzhosts, mock_fritzconnection
+    ):
+        # Each link is listed under both endpoints, with each side's own interface.
+        # The master comes first in the topology, although its uid sorts last; its
+        # side must keep supplying the labels, as in earlier releases.
+        link = _mesh_link(uid="l1", node_1_uid="z-master", node_2_uid="a-rep")
+        topology = {
+            "nodes": [
+                {
+                    "uid": "z-master", "device_name": "fritzbox", "is_meshed": True,
+                    "node_interfaces": [{"type": "WLAN", "name": "AP:5G:0", "node_links": [link]}],
+                },
+                {
+                    "uid": "a-rep", "device_name": "repeater", "is_meshed": True,
+                    "node_interfaces": [{"type": "WLAN", "name": "UPLINK:5G:0", "node_links": [link]}],
+                },
+            ]
+        }
+
+        output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
+
+        [available] = [l for l in output.splitlines() if l.startswith("fritz_mesh_link_available{")]
+        assert 'interface="AP:5G:0"' in available
+        assert 'node="fritzbox"' in available
+
     def test_numeric_strings_and_non_string_names_are_accepted(
         self, mock_fritzhosts, mock_fritzconnection, caplog
     ):
@@ -1872,6 +1896,21 @@ class TestParseAhaDevicelistXml:
         assert devices[0]["battery_level"] is None
         assert devices[0]["device_name"] == "Fritz!DECT 200"
         assert issues.messages == ["AHA device battery: expected a whole number, got str"]
+
+    def test_empty_battery_low_and_lock_mean_unknown_not_zero(self):
+        # AVM leaves these empty when the value is unknown; exporting 0 would
+        # claim "battery fine" / "not locked".
+        deviceinfo = """<devicelist version="1">
+        <device identifier="1" id="1" manufacturer="AVM" productname="Fritz!DECT 301">
+            <present>1</present><name>x</name><battery>80</battery><batterylow></batterylow>
+            <switch><state>1</state><mode>manuell</mode><lock></lock></switch>
+        </device></devicelist>"""
+
+        [device] = parse_aha_devicelist_xml(deviceinfo)
+
+        assert device["battery_level"] == 80
+        assert device["battery_low"] is None
+        assert device["switch"]["lock"] is None
 
     def test_should_treat_empty_int_fields_as_absent(self):
         deviceinfo = """<devicelist version="1">

@@ -145,14 +145,11 @@ class FritzDevice:
         except (FritzServiceError, FritzActionError, DataError) as e:
             # Without a serial, the device's series cannot be told apart from
             # another device's of the same name; collecting it could make
-            # Prometheus reject the whole scrape over duplicate samples.
-            logger.error(  # noqa: TRY400 - the cause is in the message, a traceback adds nothing
-                "Could not read the serial number of %s (DeviceInfo1.GetInfo: %s), "
-                "not collecting this device; it is retried on the next scrape",
-                self.host,
-                e,
-            )
-            raise FritzDeviceSerialUnknownError(self.host) from None
+            # Prometheus reject the whole scrape over duplicate samples. Logged
+            # once at registration; retries stay quiet, fritz_device_reachable
+            # shows the device as down meanwhile.
+            msg = f"could not read the serial number of {self.host} (DeviceInfo1.GetInfo: {e})"
+            raise FritzDeviceSerialUnknownError(msg) from None
         except FritzAuthorizationError:
             logger.exception(
                 "Not authorized to get device info from %s. Check username/password.", self.host
@@ -286,7 +283,8 @@ class FritzCollector(Collector):
                 FritzDeviceHasNoCapabilitiesError,
                 FritzDeviceSerialUnknownError,
                 RequestException,
-            ):
+            ) as e:
+                logger.debug("Device %s is still offline: %s", offline.creds.host, e)
                 still_offline.append(offline)
         self.offline_devices = still_offline
 
@@ -343,6 +341,22 @@ class FritzCollector(Collector):
             collected.extend(list(capa.get_metrics(self.devices, name)))
         return collected
 
+    def _build_problem_metric(self) -> GaugeMetricFamily:
+        """One series per device and capability whose last scrape skipped data."""
+        problems = GaugeMetricFamily(
+            "fritz_read_problem",
+            "1 while the exporter skips data of a capability: some values or items "
+            "(level=partial), the whole capability (skipped) or a bug (error); see the log",
+            labels=["serial", "friendly_name", "capability", "level"],
+        )
+        for dev in self.devices:
+            for name, capability in dev.capabilities.items():
+                if capability.problem is not None:
+                    problems.add_metric(
+                        [dev.serial, dev.friendly_name, name, capability.problem.level], 1.0
+                    )
+        return problems
+
     def collect(self) -> collections.abc.Iterable[CounterMetricFamily | GaugeMetricFamily]:
         # The lock is held for the whole scrape (blocking TR-064 calls included),
         # so acquiring it must be bounded: a slow or wedged first scrape would
@@ -385,6 +399,7 @@ class FritzCollector(Collector):
             for offline in self.offline_devices:
                 device_up.add_metric(["n/a", offline.friendly_name], 0.0)
             yield device_up
+            yield self._build_problem_metric()
 
             yield from collected
         except Exception:

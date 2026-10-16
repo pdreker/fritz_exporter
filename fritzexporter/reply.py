@@ -138,14 +138,6 @@ class Reply:
         """``source key``, as used in error messages."""
         return f"{self._source} {key}"
 
-    def raw(self, key: str) -> Any:  # noqa: ANN401
-        """The unconverted value; only for values that are passed on as they are."""
-        return self._data.get(key)
-
-    def has(self, key: str) -> bool:
-        """Whether ``key`` holds a value that is not absent."""
-        return not _is_absent(self._data.get(key))
-
     def _required[T](self, value: T | None, key: str) -> T:
         if value is None:
             msg = f"{self.where(key)}: missing"
@@ -185,15 +177,6 @@ class Reply:
         if _is_absent(value):
             return None
         return Reply(value, self.where(key))
-
-    def obj(self, key: str) -> Reply:
-        return self._required(self.opt_obj(key), key)
-
-    def objects(self, key: str) -> list[Reply]:
-        """Read a list of objects; an absent list is empty."""
-        return [
-            Reply(item, f"{self.where(key)}[{index}]") for index, item in enumerate(self.items(key))
-        ]
 
     def items(self, key: str) -> list[Any]:
         """Read a list of unconverted items; an absent list is empty."""
