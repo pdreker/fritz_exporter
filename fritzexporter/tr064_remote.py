@@ -9,7 +9,7 @@ See https://fritz.support/resources/TR-064_Remote_Access.pdf
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -80,7 +80,7 @@ def transport_failure_text(error: Exception) -> str:
 
 
 @contextmanager
-def fritz_connection_session(*, remote_access: bool, timeout: int | None) -> Iterator[None]:
+def fritz_connection_session(*, remote_access: bool, timeout: int | None) -> Generator[None]:
     """Configure sessions created while initializing ``FritzConnection``.
 
     FritzConnection creates its Session inside ``__init__`` before loading the
