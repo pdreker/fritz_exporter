@@ -103,7 +103,7 @@ Legacy MD5 web login disabled by default
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Devices on Fritz!OS before 7.24 only offer an MD5 login to the web interface,
-which the smart home, DOCSIS and REST API metrics use. The exporter now refuses
+which the smart home, DOCSIS, fibre and REST API metrics use. The exporter now refuses
 that login by default: it logs an error and reads no web interface metrics from
 that device until it is restarted; its TR-064 metrics keep working. To get them
 back, upgrade Fritz!OS or set
@@ -248,7 +248,7 @@ Remote access uses one port for TR-064 and the web interface
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 With ``remote_access: true`` (env: ``FRITZ_REMOTE_ACCESS``), ``port`` now sets the
-remote HTTPS port for both TR-064 and the web interface (smart home, DOCSIS and REST
+remote HTTPS port for both TR-064 and the web interface (smart home, DOCSIS, fibre and REST
 API metrics). Without ``port`` the exporter now uses ``443`` for both; it used to
 send TR-064 to ``49443``, which the device does not serve over remote access.
 

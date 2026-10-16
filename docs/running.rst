@@ -82,7 +82,7 @@ Bare Metal (no container)
 
 Running directly from sources is not recommended and should only be used for development. Please run this from docker/containers for real use.
 
-This exporter requires Python >=3.11.
+This exporter requires Python 3.14 or later.
 
 This project uses `uv <https://docs.astral.sh/uv/>`_ to manage dependencies. Install it, then recreate the virtual environment by running ``uv sync`` from the checked out repository.
 

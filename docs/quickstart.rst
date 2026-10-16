@@ -66,7 +66,7 @@ Next run ``docker compose up -d`` which should start the 3 services. Use ``docke
   ❯ docker ps -a
   CONTAINER ID   IMAGE                           COMMAND                  CREATED         STATUS         PORTS                    NAMES
   2bb64e672ddf   prom/prometheus:v3              "/bin/prometheus --c…"   3 seconds ago   Up 2 seconds   0.0.0.0:9090->9090/tcp   prometheus
-  3b4a78035327   pdreker/fritz_exporter:v2.1.1   "python -m fritzexpo…"   3 seconds ago   Up 2 seconds   0.0.0.0:9787->9787/tcp   fritz-exporter
+  3b4a78035327   pdreker/fritz_exporter:4        "python -m fritzexpo…"   3 seconds ago   Up 2 seconds   0.0.0.0:9787->9787/tcp   fritz-exporter
   9c7473367721   grafana/grafana:13.1            "/run.sh"                3 seconds ago   Up 2 seconds   0.0.0.0:3000->3000/tcp   grafana
 
 Checking Prometheus
@@ -83,11 +83,9 @@ If your prometheus shows the exporter as a **Up** you should also be able to see
 Configuring Grafana
 -------------------
 
-Now you can point your browser to http://localhost:3000/ to access Grafana. Login with username "admin" and password "admin" and set a new password (and make sure you do not forget that password). Once logged into Grafana go to "Configuration" (small Gear icon at the bottom end of the left sidebar) -> "Data Sources".
+Now you can point your browser to http://localhost:3000/ to access Grafana. Login with username "admin" and password "admin" and set a new password (and make sure you do not forget that password). Once logged into Grafana open the menu and go to "Connections" -> "Data sources".
 
-.. image:: _static/grafana_datasrc.png
-
-Click "Add Data Source" and choose "Prometheus" from the list. Enter ``http://prometheus:9090`` for the URL, leave everything else as is, scroll down and click on "Save & Test". You should see a green checkmark indicating that Grafana was able to connect to prometheus.
+Click "Add new data source" and choose "Prometheus" from the list. Enter ``http://prometheus:9090`` for the URL, leave everything else as is, scroll down and click on "Save & Test". You should see a green checkmark indicating that Grafana was able to connect to prometheus.
 
 .. image:: _static/datasrc_ok.png
 
