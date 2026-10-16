@@ -246,6 +246,35 @@ class TestFritzWebUiClientAuth:
         assert posted_data["response"].startswith("2$")
 
     @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_login_asks_for_the_pbkdf2_challenge(self, mock_session_cls: MagicMock):
+        # Fritz!OS sends the PBKDF2 challenge only for version=2 and falls back to
+        # MD5 otherwise, also on current firmware.
+        session = mock_session_cls.return_value
+        session.get.return_value = MagicMock(
+            text="<SessionInfo><SID>0000000000000000</SID>"
+            "<Challenge>2$60000$aabb$6000$ccdd</Challenge><BlockTime>0</BlockTime></SessionInfo>"
+        )
+        session.post.return_value = MagicMock(
+            text="<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
+        )
+
+        FritzWebUiClient("fritz.box", "user", "pass")._login()
+
+        assert session.get.call_args.kwargs["params"] == {"version": "2", "username": "user"}
+        assert session.post.call_args.kwargs["params"] == {"version": "2"}
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_login_without_user_name_still_asks_for_version_2(self, mock_session_cls: MagicMock):
+        session = mock_session_cls.return_value
+        session.get.return_value = MagicMock(
+            text="<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
+        )
+
+        FritzWebUiClient("fritz.box", "", "pass")._login()
+
+        assert session.get.call_args.kwargs["params"] == {"version": "2"}
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_refuses_md5_by_default(self, mock_session_cls: MagicMock):
         session = mock_session_cls.return_value
         get_resp = MagicMock()

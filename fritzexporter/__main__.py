@@ -155,7 +155,11 @@ def main() -> None:
     for dev in config.devices:
         _register_device(dev, args, fritzcollector)
 
+    # Registering runs a first collection; an error that must stop the exporter
+    # (e.g. a refused MD5 login) has been logged by then.
     REGISTRY.register(fritzcollector)
+    if fritzcollector.fatal_error.is_set():
+        sys.exit(1)
 
     logger.info("Starting listener at %s:%d", config.listen_address, config.exporter_port)
     start_http_server(int(config.exporter_port), str(config.listen_address))
