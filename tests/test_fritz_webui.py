@@ -21,6 +21,9 @@ from fritzexporter.fritz_webui import (
     _http_error_text,
 )
 
+from .web_replies import web_reply as _resp
+
+
 
 # ---------------------------------------------------------------------------
 # FritzWebUiClient authentication
@@ -57,7 +60,10 @@ class TestFritzWebUiClientAuth:
         challenge = f"2$60000${salt1.hex()}$6000${salt2.hex()}"
         hash1 = hashlib.pbkdf2_hmac("sha256", b"test", salt1, 60000, 32)
         hash2 = hashlib.pbkdf2_hmac("sha256", hash1, salt2, 6000, 32)
-        assert FritzWebUiClient._pbkdf2_response(challenge, "test") == f"{challenge.split('$')[4]}${hash2.hex()}"
+        assert (
+            FritzWebUiClient._pbkdf2_response(challenge, "test")
+            == f"{challenge.split('$')[4]}${hash2.hex()}"
+        )
 
     @pytest.mark.parametrize(
         ("iter1", "iter2", "ok"),
@@ -130,7 +136,10 @@ class TestFritzWebUiClientAuth:
         challenge = "2$10000$5A1711$2000$2ca9a9b1"
         hash1 = hashlib.pbkdf2_hmac("sha256", b"test", salt1, 10000, 32)
         hash2 = hashlib.pbkdf2_hmac("sha256", hash1, salt2, 2000, 32)
-        assert FritzWebUiClient._pbkdf2_response(challenge, "test") == f"{challenge.split('$')[4]}${hash2.hex()}"
+        assert (
+            FritzWebUiClient._pbkdf2_response(challenge, "test")
+            == f"{challenge.split('$')[4]}${hash2.hex()}"
+        )
 
     def test_pbkdf2_accepts_salt_of_64_hex_chars(self):
         challenge = "2$60000$" + "ab" * 32 + "$6000$" + "cd" * 32
@@ -177,8 +186,7 @@ class TestFritzWebUiClientAuth:
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_rejects_hostile_challenge_without_posting(self, mock_session_cls: MagicMock):
         session = mock_session_cls.return_value
-        get_resp = MagicMock()
-        get_resp.text = (
+        get_resp = _resp(
             "<SessionInfo><SID>0000000000000000</SID>"
             "<Challenge>2$1$aa$1$bb</Challenge><BlockTime>0</BlockTime></SessionInfo>"
         )
@@ -195,8 +203,7 @@ class TestFritzWebUiClientAuth:
         self, mock_session_cls: MagicMock, challenge: str
     ):
         session = mock_session_cls.return_value
-        get_resp = MagicMock()
-        get_resp.text = (
+        get_resp = _resp(
             "<SessionInfo><SID>0000000000000000</SID>"
             f"<Challenge>{challenge}</Challenge><BlockTime>0</BlockTime></SessionInfo>"
         )
@@ -214,8 +221,7 @@ class TestFritzWebUiClientAuth:
         self, mock_session_cls: MagicMock, block_time: str
     ):
         session = mock_session_cls.return_value
-        get_resp = MagicMock()
-        get_resp.text = (
+        get_resp = _resp(
             "<SessionInfo><SID>0000000000000000</SID><Challenge>12345678</Challenge>"
             f"<BlockTime>{block_time}</BlockTime></SessionInfo>"
         )
@@ -232,8 +238,7 @@ class TestFritzWebUiClientAuth:
         session = mock_session_cls.return_value
 
         # First GET returns a challenge (no valid SID)
-        get_resp = MagicMock()
-        get_resp.text = (
+        get_resp = _resp(
             "<SessionInfo><SID>0000000000000000</SID>"
             "<Challenge>2$9000$00112233445566778899aabbccddeeff$1000$"
             "ffeeddccbbaa99887766554433221100</Challenge>"
@@ -242,8 +247,7 @@ class TestFritzWebUiClientAuth:
         session.get.return_value = get_resp
 
         # POST returns a valid SID
-        post_resp = MagicMock()
-        post_resp.text = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
+        post_resp = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
         session.post.return_value = post_resp
 
         client = FritzWebUiClient("fritz.box", "user", "pass")
@@ -259,13 +263,11 @@ class TestFritzWebUiClientAuth:
         # Fritz!OS sends the PBKDF2 challenge only for version=2 and falls back to
         # MD5 otherwise, also on current firmware.
         session = mock_session_cls.return_value
-        session.get.return_value = MagicMock(
-            text="<SessionInfo><SID>0000000000000000</SID>"
+        session.get.return_value = _resp(
+            "<SessionInfo><SID>0000000000000000</SID>"
             "<Challenge>2$60000$aabb$6000$ccdd</Challenge><BlockTime>0</BlockTime></SessionInfo>"
         )
-        session.post.return_value = MagicMock(
-            text="<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
-        )
+        session.post.return_value = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
 
         FritzWebUiClient("fritz.box", "user", "pass")._login()
 
@@ -275,60 +277,77 @@ class TestFritzWebUiClientAuth:
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_without_user_name_still_asks_for_version_2(self, mock_session_cls: MagicMock):
         session = mock_session_cls.return_value
-        session.get.return_value = MagicMock(
-            text="<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
-        )
+        session.get.return_value = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
 
         FritzWebUiClient("fritz.box", "", "pass")._login()
 
         assert session.get.call_args.kwargs["params"] == {"version": "2"}
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_login_refuses_md5_by_default(self, mock_session_cls: MagicMock):
+    def test_login_refuses_md5_by_default(self, mock_session_cls: MagicMock, caplog):
         session = mock_session_cls.return_value
-        get_resp = MagicMock()
-        get_resp.text = (
+        session.get.return_value = _resp(
             "<SessionInfo><SID>0000000000000000</SID>"
             "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>"
         )
-        session.get.return_value = get_resp
 
         client = FritzWebUiClient("fritz.box", "user", "pass")
         with pytest.raises(FritzWebUiMd5DisabledError) as exc:
-            client._login()
+            client._ensure_sid()
 
-        # Not a FritzWebUiError: capabilities would swallow that and carry on.
-        assert not isinstance(exc.value, FritzWebUiError)
-        assert "fritz.box" in str(exc.value)
+        # A FritzWebUiError, so the capabilities of this device skip it like any
+        # other web interface failure.
+        assert isinstance(exc.value, FritzWebUiError)
         assert "allow_unsafe_md5_password" in str(exc.value)
-        assert "FRITZ_ALLOW_UNSAFE_MD5_PASSWORD" in str(exc.value)
         session.post.assert_not_called()
+        assert [r.levelno for r in caplog.records] == [logging.ERROR]
+        assert "FRITZ_ALLOW_UNSAFE_MD5_PASSWORD" in caplog.text
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_refused_md5_login_is_not_tried_again(self, mock_session_cls: MagicMock, caplog):
+        session = mock_session_cls.return_value
+        session.get.return_value = _resp(
+            "<SessionInfo><SID>0000000000000000</SID>"
+            "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>"
+        )
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+        with pytest.raises(FritzWebUiMd5DisabledError):
+            client.fetch_page("docInfo")
+        caplog.clear()
+
+        client.start_scrape()
+        for fetch in (lambda: client.fetch_page("docInfo"), lambda: client.fetch_api("/api/v0/x")):
+            with pytest.raises(FritzWebUiMd5DisabledError, match="disabled until restart"):
+                fetch()
+
+        assert session.get.call_count == 1
+        assert not caplog.records
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_md5_refusal_names_the_device(self, mock_session_cls: MagicMock):
         session = mock_session_cls.return_value
-        session.get.return_value = MagicMock(
-            text="<SessionInfo><SID>0000000000000000</SID>"
+        session.get.return_value = _resp(
+            "<SessionInfo><SID>0000000000000000</SID>"
             "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>"
         )
         client = FritzWebUiClient("fritz.box", "user", "pass", name="Fritz!Box 7690 (fritz.box)")
 
-        with pytest.raises(FritzWebUiMd5DisabledError, match=r"^Fritz!Box 7690 \(fritz\.box\) offers"):
+        with pytest.raises(
+            FritzWebUiMd5DisabledError, match=r"^Fritz!Box 7690 \(fritz\.box\) offers"
+        ):
             client._login()
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_uses_md5_for_legacy_firmware(self, mock_session_cls: MagicMock, caplog):
         session = mock_session_cls.return_value
 
-        get_resp = MagicMock()
-        get_resp.text = (
+        get_resp = _resp(
             "<SessionInfo><SID>0000000000000000</SID>"
             "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>"
         )
         session.get.return_value = get_resp
 
-        post_resp = MagicMock()
-        post_resp.text = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
+        post_resp = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
         session.post.return_value = post_resp
 
         client = FritzWebUiClient("fritz.box", "user", "pass", allow_unsafe_md5_password=True)
@@ -343,15 +362,13 @@ class TestFritzWebUiClientAuth:
     def test_login_raises_on_wrong_password(self, mock_session_cls: MagicMock):
         session = mock_session_cls.return_value
 
-        get_resp = MagicMock()
-        get_resp.text = (
+        get_resp = _resp(
             "<SessionInfo><SID>0000000000000000</SID>"
             "<Challenge>12345678</Challenge><BlockTime>0</BlockTime></SessionInfo>"
         )
         session.get.return_value = get_resp
 
-        post_resp = MagicMock()
-        post_resp.text = "<SessionInfo><SID>0000000000000000</SID></SessionInfo>"
+        post_resp = _resp("<SessionInfo><SID>0000000000000000</SID></SessionInfo>")
         session.post.return_value = post_resp
 
         client = FritzWebUiClient("fritz.box", "user", "wrong", allow_unsafe_md5_password=True)
@@ -362,8 +379,7 @@ class TestFritzWebUiClientAuth:
     def test_login_raises_when_blocked(self, mock_session_cls: MagicMock):
         session = mock_session_cls.return_value
 
-        get_resp = MagicMock()
-        get_resp.text = (
+        get_resp = _resp(
             "<SessionInfo><SID>0000000000000000</SID>"
             "<Challenge>12345678</Challenge><BlockTime>60</BlockTime></SessionInfo>"
         )
@@ -378,13 +394,11 @@ class TestFritzWebUiClientChallenge:
     @staticmethod
     def _client(mock_session_cls: MagicMock, challenge: str, block_time: str = "0"):
         session = mock_session_cls.return_value
-        session.get.return_value = MagicMock(
-            text="<SessionInfo><SID>0000000000000000</SID>"
+        session.get.return_value = _resp(
+            "<SessionInfo><SID>0000000000000000</SID>"
             f"<Challenge>{challenge}</Challenge><BlockTime>{block_time}</BlockTime></SessionInfo>"
         )
-        session.post.return_value = MagicMock(
-            text="<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
-        )
+        session.post.return_value = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
         return FritzWebUiClient("fritz.box", "user", "pass"), session
 
     @patch("fritzexporter.fritz_webui.requests.Session")
@@ -462,14 +476,11 @@ class TestFritzWebUiClientFetch:
         session = mock_session_cls.return_value
 
         # Login: return a valid SID directly (no challenge needed)
-        get_resp = MagicMock()
-        get_resp.text = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
+        get_resp = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
         session.get.return_value = get_resp
 
         # data.lua returns the DOCSIS JSON
-        post_resp = MagicMock()
-        post_resp.text = '{"pid":"docInfo","data":{"readyState":"ready"}}'
-        post_resp.json.return_value = {"pid": "docInfo", "data": {"readyState": "ready"}}
+        post_resp = _resp('{"pid":"docInfo","data":{"readyState":"ready"}}')
         session.post.return_value = post_resp
 
         client = FritzWebUiClient("fritz.box", "user", "pass")
@@ -486,12 +497,10 @@ class TestFritzWebUiClientFetch:
     def test_fetch_raises_when_html_returned(self, mock_session_cls: MagicMock):
         session = mock_session_cls.return_value
 
-        get_resp = MagicMock()
-        get_resp.text = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
+        get_resp = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
         session.get.return_value = get_resp
 
-        post_resp = MagicMock()
-        post_resp.text = "<html><body>login page</body></html>"
+        post_resp = _resp("<html><body>login page</body></html>")
         session.post.return_value = post_resp
 
         client = FritzWebUiClient("fritz.box", "user", "pass")
@@ -503,16 +512,12 @@ class TestFritzWebUiClientFetch:
         session = mock_session_cls.return_value
 
         # First login gives a SID
-        get_resp = MagicMock()
-        get_resp.text = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
+        get_resp = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
         session.get.return_value = get_resp
 
         # First data.lua call returns HTML (session expired), second returns JSON
-        html_resp = MagicMock()
-        html_resp.text = "<html>login</html>"
-        json_resp = MagicMock()
-        json_resp.text = '{"data":{"readyState":"ready"}}'
-        json_resp.json.return_value = {"data": {"readyState": "ready"}}
+        html_resp = _resp("<html>login</html>")
+        json_resp = _resp('{"data":{"readyState":"ready"}}')
         session.post.side_effect = [html_resp, json_resp]
 
         client = FritzWebUiClient("fritz.box", "user", "pass")
@@ -525,18 +530,12 @@ class TestFritzWebUiClientFetch:
     def test_fetch_aha_retries_once_on_forbidden(self, mock_session_cls: MagicMock):
         session = mock_session_cls.return_value
 
-        def sid_resp(sid: str) -> MagicMock:
-            resp = MagicMock()
-            resp.text = f"<SessionInfo><SID>{sid}</SID></SessionInfo>"
-            return resp
+        def sid_resp(sid: str) -> requests.Response:
+            return _resp(f"<SessionInfo><SID>{sid}</SID></SessionInfo>")
 
         # The box answers an expired SID with 403; the client logs in again once.
-        forbidden = MagicMock()
-        forbidden.ok = False
-        forbidden.status_code = 403
-        forbidden.reason = "Forbidden"
-        ok = MagicMock()
-        ok.text = '<devicelist version="1"></devicelist>'
+        forbidden = _resp(status=403)
+        ok = _resp('<devicelist version="1"></devicelist>')
         session.get.side_effect = [
             sid_resp("0123456789abcdef"),
             forbidden,
@@ -558,10 +557,8 @@ class TestFritzWebUiClientFetch:
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_fetch_aha_raises_on_empty_response(self, mock_session_cls: MagicMock):
         session = mock_session_cls.return_value
-        login = MagicMock()
-        login.text = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
-        empty = MagicMock()
-        empty.text = ""
+        login = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
+        empty = _resp("")
         session.get.side_effect = [login, empty, login, empty]
 
         client = FritzWebUiClient("fritz.box", "user", "pass")
@@ -573,11 +570,8 @@ class TestFritzWebUiClientFetch:
         session = mock_session_cls.return_value
 
         # First GET is the login_sid.lua challenge, second is the REST API call
-        login_resp = MagicMock()
-        login_resp.text = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
-        api_resp = MagicMock()
-        api_resp.text = '{"connection": []}'
-        api_resp.json.return_value = {"connection": []}
+        login_resp = _resp("<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>")
+        api_resp = _resp('{"connection": []}')
         session.get.side_effect = [login_resp, api_resp]
 
         client = FritzWebUiClient("fritz.box", "user", "pass")
@@ -629,19 +623,14 @@ _FAILURES = [
 ]
 
 
-def _status_response(code: int, reason: str) -> MagicMock:
-    resp = MagicMock()
-    resp.ok = False
-    resp.status_code = code
+def _status_response(code: int, reason: str) -> requests.Response:
+    resp = _resp(status=code)
     resp.reason = reason
-    resp.raise_for_status.side_effect = _http_error(code, reason)
     return resp
 
 
-def _login_ok() -> MagicMock:
-    resp = MagicMock()
-    resp.text = f"<SessionInfo><SID>{_SID}</SID></SessionInfo>"
-    return resp
+def _login_ok() -> requests.Response:
+    return _resp(f"<SessionInfo><SID>{_SID}</SID></SessionInfo>")
 
 
 def _assert_clean(caplog: pytest.LogCaptureFixture, err: FritzWebUiError, expected: str) -> None:
@@ -671,11 +660,17 @@ class TestFritzWebUiErrorTextHasNoUrl:
         caplog.set_level(logging.DEBUG)
 
     @staticmethod
-    def _failing(failure: BaseException) -> MagicMock | BaseException:
+    def _failing(failure: BaseException) -> requests.Response | BaseException:
         """Either raise ``failure`` from the session or answer with its status."""
         if isinstance(failure, requests.HTTPError) and failure.response is not None:
             return _status_response(failure.response.status_code, failure.response.reason)
         return failure
+
+    @staticmethod
+    def _tries(failure: BaseException) -> int:
+        """Only a rejected session (HTTP 403) is worth logging in again for."""
+        rejected = isinstance(failure, requests.HTTPError) and failure.response is not None
+        return 2 if rejected and failure.response.status_code == 403 else 1
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_challenge(self, mock_session_cls, caplog, failure, expected):
@@ -692,8 +687,7 @@ class TestFritzWebUiErrorTextHasNoUrl:
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_post(self, mock_session_cls, caplog, failure, expected):
         session = mock_session_cls.return_value
-        challenge = MagicMock()
-        challenge.text = (
+        challenge = _resp(
             "<SessionInfo><SID>0000000000000000</SID>"
             "<Challenge>2$10000$aabb$2000$ccdd</Challenge><BlockTime>0</BlockTime></SessionInfo>"
         )
@@ -717,12 +711,12 @@ class TestFritzWebUiErrorTextHasNoUrl:
         with pytest.raises(FritzWebUiError, match="data.lua request failed") as info:
             client.fetch_page("docInfo")
 
-        assert session.post.call_count == 2
+        assert session.post.call_count == self._tries(failure)
         _log_like_capabilities(info.value)
         _assert_clean(caplog, info.value, expected)
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_aha_retries_once(self, mock_session_cls, caplog, failure, expected):
+    def test_aha(self, mock_session_cls, caplog, failure, expected):
         session = mock_session_cls.return_value
         session.get.side_effect = [
             _login_ok(),
@@ -735,7 +729,7 @@ class TestFritzWebUiErrorTextHasNoUrl:
         with pytest.raises(FritzWebUiError, match="AHA request failed for x") as info:
             client.fetch_aha("x")
 
-        assert session.get.call_count == 4
+        assert session.get.call_count == 2 * self._tries(failure)
         _log_like_capabilities(info.value)
         _assert_clean(caplog, info.value, expected)
 
@@ -753,7 +747,7 @@ class TestFritzWebUiErrorTextHasNoUrl:
         with pytest.raises(FritzWebUiError, match="REST API request failed for /api/v0/x") as info:
             client.fetch_api("/api/v0/x")
 
-        assert session.get.call_count == 4
+        assert session.get.call_count == 2 * self._tries(failure)
         _log_like_capabilities(info.value)
         _assert_clean(caplog, info.value, expected)
 
@@ -828,7 +822,8 @@ class TestTransportFailuresKeepTheirKind:
         with pytest.raises(FritzWebUiError) as info:
             client.fetch_aha("x")
 
-        assert session.get.call_count == 4
+        # No new login, no second try: the device does not answer.
+        assert session.get.call_count == 2
         _log_like_capabilities(info.value)
         _assert_clean(caplog, info.value, f"request failed ({suffix})")
 
@@ -896,26 +891,28 @@ class TestLoginBackOff:
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_refused_login_is_not_retried_within_the_delay(self, mock_session_cls, clock):
         session = mock_session_cls.return_value
-        session.get.return_value = MagicMock(text=self.CHALLENGE.format(block=0))
-        session.post.return_value = MagicMock(text=self.REFUSED)
+        session.get.return_value = _resp(self.CHALLENGE.format(block=0))
+        session.post.return_value = _resp(self.REFUSED)
         client = FritzWebUiClient("fritz.box", "user", "wrong")
 
         with pytest.raises(FritzWebUiError, match="wrong password"):
             client._ensure_sid()
         clock[0] += LOGIN_RETRY_DELAY - 1
-        with pytest.raises(FritzWebUiError, match="login not retried for 1 seconds after: login failed"):
+        with pytest.raises(
+            FritzWebUiError, match="login not retried for 1 seconds after: login failed"
+        ):
             client._ensure_sid()
         assert session.post.call_count == 1
 
         clock[0] += 1
-        session.post.return_value = MagicMock(text=self.ACCEPTED)
+        session.post.return_value = _resp(self.ACCEPTED)
         assert client._ensure_sid() == "0123456789abcdef"
         assert session.post.call_count == 2
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_longer_block_time_of_the_box_is_respected(self, mock_session_cls, clock):
         session = mock_session_cls.return_value
-        session.get.return_value = MagicMock(text=self.CHALLENGE.format(block=300))
+        session.get.return_value = _resp(self.CHALLENGE.format(block=300))
         client = FritzWebUiClient("fritz.box", "user", "pw")
 
         with pytest.raises(FritzWebUiError, match="blocked for 300 seconds"):
@@ -930,11 +927,102 @@ class TestLoginBackOff:
         session = mock_session_cls.return_value
         session.get.side_effect = [
             requests.ConnectionError("refused"),
-            MagicMock(text=self.CHALLENGE.format(block=0)),
+            _resp(self.CHALLENGE.format(block=0)),
         ]
-        session.post.return_value = MagicMock(text=self.ACCEPTED)
+        session.post.return_value = _resp(self.ACCEPTED)
         client = FritzWebUiClient("fritz.box", "user", "pw")
 
         with pytest.raises(FritzWebUiError, match="request failed"):
             client._ensure_sid()
+        client.start_scrape()
         assert client._ensure_sid() == "0123456789abcdef"
+
+
+class TestRequestHandling:
+    LOGIN = f"<SessionInfo><SID>{_SID}</SID></SessionInfo>"
+    ENTITY_BOMB = (
+        '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "aaaa">]>'
+        "<SessionInfo><SID>&a;</SID></SessionInfo>"
+    )
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            _resp(status=404),
+            _resp(status=500),
+            _resp("{not json", headers={"Content-Type": "application/json"}),
+        ],
+        ids=["404", "500", "bad-json"],
+    )
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_other_errors_do_not_log_in_again(self, mock_session_cls, reply):
+        session = mock_session_cls.return_value
+        session.get.side_effect = [_resp(self.LOGIN), reply]
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+
+        with pytest.raises(FritzWebUiError):
+            client.fetch_api("/api/v0/x")
+
+        assert session.get.call_count == 2
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_device_not_answering_fails_the_rest_of_the_scrape_at_once(self, mock_session_cls):
+        session = mock_session_cls.return_value
+        session.get.side_effect = [_resp(self.LOGIN), requests.ReadTimeout("timed out")]
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+        with pytest.raises(FritzWebUiError, match="ReadTimeout"):
+            client.fetch_aha("getdevicelistinfos")
+
+        with pytest.raises(
+            FritzWebUiError, match=r"data.lua request failed: not sent.*ReadTimeout"
+        ):
+            client.fetch_page("docInfo")
+        session.post.assert_not_called()
+
+        client.start_scrape()
+        session.post.return_value = _resp('{"data": {}}')
+        assert client.fetch_page("docInfo") == {"data": {}}
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_reply_is_streamed(self, mock_session_cls):
+        session = mock_session_cls.return_value
+        session.get.return_value = _resp(self.LOGIN)
+        FritzWebUiClient("fritz.box", "user", "pass")._login()
+        assert session.get.call_args.kwargs["stream"] is True
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_announced_large_reply_is_refused(self, mock_session_cls, monkeypatch):
+        monkeypatch.setattr("fritzexporter.fritz_webui.MAX_RESPONSE_BYTES", 100)
+        session = mock_session_cls.return_value
+        session.get.side_effect = [
+            _resp(self.LOGIN),
+            _resp("{}", headers={"Content-Length": "101"}),
+        ]
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+
+        with pytest.raises(FritzWebUiError, match="reply larger than 100 bytes"):
+            client.fetch_api("/api/v0/x")
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_large_reply_is_cut_off_while_reading(self, mock_session_cls, monkeypatch):
+        monkeypatch.setattr("fritzexporter.fritz_webui.MAX_RESPONSE_BYTES", 100)
+        monkeypatch.setattr("fritzexporter.fritz_webui._READ_CHUNK_BYTES", 10)
+        session = mock_session_cls.return_value
+        big = _resp("x" * 1000)
+        read = []
+        chunks = big.iter_content
+        monkeypatch.setattr(big, "iter_content", lambda size: (read.append(c) or c for c in chunks(size)))
+        session.get.side_effect = [_resp(self.LOGIN), big]
+        client = FritzWebUiClient("fritz.box", "user", "pass")
+
+        with pytest.raises(FritzWebUiError, match="reply larger than 100 bytes"):
+            client.fetch_aha("getdevicelistinfos")
+        assert len(read) == 11
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_forbidden_xml_is_a_web_interface_error(self, mock_session_cls):
+        session = mock_session_cls.return_value
+        session.get.return_value = _resp(self.ENTITY_BOMB)
+
+        with pytest.raises(FritzWebUiError, match="could not parse login_sid.lua response"):
+            FritzWebUiClient("fritz.box", "user", "pass")._login()

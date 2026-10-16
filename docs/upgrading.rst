@@ -9,8 +9,9 @@ Legacy MD5 web login disabled by default
 
 Devices on Fritz!OS before 7.24 only offer an MD5 login to the web interface,
 which the smart home, DOCSIS and REST API metrics use. The exporter now refuses
-that login by default and exits with a critical log message at the first scrape.
-To keep scraping such a device, upgrade Fritz!OS or set
+that login by default: it logs an error and reads no web interface metrics from
+that device until it is restarted; its TR-064 metrics keep working. To get them
+back, upgrade Fritz!OS or set
 ``allow_unsafe_md5_password: true`` (env: ``FRITZ_ALLOW_UNSAFE_MD5_PASSWORD``) for
 it. See :ref:`md5-login`.
 
@@ -23,6 +24,10 @@ After a refused web login (wrong credentials, or logins blocked by the device) t
 exporter now waits at least a minute, or as long as the device blocks logins, before
 the next attempt. It used to try again for every web interface metric group, which
 made the device block logins longer, also for the browser.
+
+The exporter now logs in again only when the device rejects the session, not after
+every failed request, and it stops sending web interface requests for the rest of a
+scrape once the device does not answer one. Replies larger than 4 MiB are refused.
 
 Devices without a readable serial number are not collected
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

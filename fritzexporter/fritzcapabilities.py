@@ -292,9 +292,6 @@ class FritzCapability(ABC):
           traceback on every scrape.
         * The device does not answer: its samples of this capability are dropped
           and it is marked unavailable for this cycle.
-
-        Anything else, such as the refused MD5 login, is meant to reach the
-        collector.
         """
         counts = self._sample_counts()
         self.issues = Issues()

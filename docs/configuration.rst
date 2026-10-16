@@ -103,7 +103,10 @@ Fritz!OS 7.24 and later log in to the web interface with PBKDF2. Older firmware
 only offers an MD5 login. Anyone who can read the traffic between exporter and
 device can recover the password from an MD5 login, and on a hostile network can
 make a newer device ask for one. The exporter therefore refuses the MD5 login by
-default: when a device asks for it, the exporter logs a critical message and exits.
+default: when a device asks for it, the exporter logs an error and reads no more
+web interface metrics (smart home, DOCSIS, fibre, REST API) from that device until
+it is restarted. Its TR-064 metrics and all other devices keep working;
+``fritz_read_problem{level="skipped"}`` shows the metric groups left out.
 
 Upgrade Fritz!OS if you can. If you cannot, set ``allow_unsafe_md5_password: true``
 (env: ``FRITZ_ALLOW_UNSAFE_MD5_PASSWORD``) for that device to accept the risk. The

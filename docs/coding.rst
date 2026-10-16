@@ -58,10 +58,7 @@ The entry point is ``fritzexporter/__main__.py`` → ``main()``.
    reason an offline device fails changes.
 5. The ``FritzCollector`` is registered with the Prometheus ``REGISTRY``.
 6. An HTTP server is started (``prometheus_client.start_http_server``), and the main
-   thread waits on ``fritzcollector.fatal_error``.  Scrapes run in the HTTP server's
-   threads, where ``sys.exit()`` would end only that thread; an error that must stop
-   the exporter (such as a refused MD5 web login) sets the event instead, and the main
-   thread exits with status 1.
+   thread waits forever; scrapes run in the HTTP server's threads.
 
 When Prometheus scrapes ``/metrics``, ``FritzCollector.collect()`` is called.  It holds
 a re-entrant lock (``threading.RLock``) for the whole scrape, so concurrent scrapes do
@@ -342,9 +339,14 @@ that prefixes TR-064 paths with ``/tr064``.
 ``FritzWebUiClient``, the client for everything only the web interface offers: the
 challenge-response login (PBKDF2; the legacy MD5 login only with
 ``allow_unsafe_md5_password``), ``data.lua`` pages, the ``/api/v0`` REST API and the
-AHA smart home interface.  Errors are raised as ``FritzWebUiError`` with texts that
-never contain the session id; a refused MD5 login raises
-``FritzWebUiMd5DisabledError``, which stops the exporter.
+AHA smart home interface.  All requests go through ``_request``, which reads at most
+``MAX_RESPONSE_BYTES`` (4 MiB) of a reply.  Errors are raised as ``FritzWebUiError``
+with texts that never contain the session id.  The client logs in again only when the
+device rejects the session (HTTP 401/403, or the HTML login page instead of JSON).
+Once a request finds the device not answering, the other web interface requests of
+the scrape fail at once (``start_scrape()`` resets this).  A device that offers only
+the MD5 login, which is not allowed for it, gets no web interface requests until the
+exporter is restarted.
 
 **fritz_aha.py, fritz_docsis.py, fritz_fiber.py, fritz_rest_generic.py**
 

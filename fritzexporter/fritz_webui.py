@@ -19,14 +19,16 @@ from __future__ import annotations
 
 import errno
 import hashlib
+import json
 import logging
 import re
 import time
+from collections.abc import Callable
 from http import HTTPStatus
-from typing import Any
+from typing import Any, NamedTuple
 
 import requests
-from defusedxml import ElementTree
+from defusedxml import DefusedXmlException, ElementTree
 
 logger = logging.getLogger("fritzexporter.fritz_webui")
 
@@ -63,10 +65,21 @@ _PBKDF2_MAX_TOTAL_ITERATIONS = 1_000_000
 # Longest challenge echoed to the debug log; the reply may be hostile.
 _CHALLENGE_LOG_LIMIT = 200
 
+# Largest reply read from the web interface. The biggest real pages (DOCSIS
+# channels, a full smart home device list) stay well below 1 MiB; the cap keeps a
+# hostile or broken reply from filling the memory.
+MAX_RESPONSE_BYTES: int = 4 * 1024 * 1024
+_READ_CHUNK_BYTES = 64 * 1024
+
+# Statuses the device answers an invalid or expired SID with (AHA, REST API).
+_SESSION_REJECTED_STATUSES = (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN)
+
 # data.lua (and the REST API) return HTML (the login page) instead of JSON
 # when the SID is invalid or the session has expired.
 _HTML_RESPONSE_PREFIXES = ("<", "\ufeff<")
 _HTML_RESPONSE_HINT = "(SID invalid or no permission)"
+# Leading bytes looked at to tell HTML from JSON.
+_HTML_SNIFF_BYTES = 256
 
 
 class FritzWebUiError(Exception):
@@ -84,21 +97,23 @@ class FritzWebUiLoginError(FritzWebUiError):
         self.block_time = block_time
 
 
-class FritzWebUiMd5DisabledError(Exception):
-    """Raised when a device offers only the legacy MD5 login and MD5 is not allowed.
+class FritzWebUiMd5DisabledError(FritzWebUiError):
+    """The device offers only the legacy MD5 login, and MD5 is not allowed for it."""
 
-    Not a ``FritzWebUiError`` on purpose: capabilities log and skip those, but this
-    one must stop the exporter.
-    """
-
-    def __init__(self, host: str) -> None:
+    def __init__(self, name: str) -> None:
         super().__init__(
-            f"{host} offers only the legacy MD5 web login (Fritz!OS before 7.24). "
-            "Anyone who can read the traffic to the device can recover the password "
-            "from an MD5 login, so the exporter refuses it by default. Upgrade Fritz!OS "
-            "or, to accept the risk, enable allow_unsafe_md5_password "
-            "(env: FRITZ_ALLOW_UNSAFE_MD5_PASSWORD) for this device."
+            f"{name} offers only the MD5 web login, not allowed by allow_unsafe_md5_password, "
+            "web interface metrics disabled until restart"
         )
+
+
+class _SessionRejectedError(FritzWebUiError):
+    """The device did not accept the SID; logging in again may help."""
+
+
+class _Reply(NamedTuple):
+    body: bytes
+    content_type: str
 
 
 _MAX_CAUSE_DEPTH = 5
@@ -180,6 +195,96 @@ class FritzWebUiClient:
         # The last refused login, and when the next attempt may be made.
         self._login_refused: str | None = None
         self._login_retry_at: float = 0.0
+        # Set when the device offers only the MD5 login and MD5 is not allowed:
+        # the web interface stays unused until the exporter is restarted.
+        self._md5_refused: FritzWebUiMd5DisabledError | None = None
+        # Why a request of the current scrape could not reach the device; the
+        # following requests of the scrape fail at once instead of each waiting
+        # for its own timeout. See start_scrape().
+        self._unreachable: str | None = None
+
+    def start_scrape(self) -> None:
+        """Try the device again: called once per scrape, before the first request."""
+        self._unreachable = None
+
+    # ------------------------------------------------------------------
+    # HTTP
+    # ------------------------------------------------------------------
+
+    def _request(self, method: str, path: str, failed: str, **kwargs: Any) -> _Reply:  # noqa: ANN401
+        """Send one request and read the reply, at most ``MAX_RESPONSE_BYTES`` of it.
+
+        ``failed`` starts the error message, e.g. ``"data.lua request failed"``. A
+        device that does not answer fails the remaining requests of this scrape at
+        once.
+        """
+        if self._unreachable is not None:
+            msg = f"{failed}: not sent, the device did not answer earlier ({self._unreachable})"
+            raise FritzWebUiError(msg)
+        send = self.session.post if method == "POST" else self.session.get
+        try:
+            resp = send(f"{self.base_url}{path}", timeout=self.timeout, stream=True, **kwargs)
+            try:
+                if resp.status_code in _SESSION_REJECTED_STATUSES:
+                    msg = f"{failed}: {_http_error_text(resp)}"
+                    raise _SessionRejectedError(msg)
+                if not resp.ok:
+                    msg = f"{failed}: {_http_error_text(resp)}"
+                    raise FritzWebUiError(msg)
+                body = self._read_body(resp, failed)
+            finally:
+                resp.close()
+        except requests.RequestException as e:
+            self._unreachable = _failure_text(e)
+            msg = f"{failed}: {self._unreachable}"
+            raise FritzWebUiError(msg) from None
+        content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
+        return _Reply(body, content_type)
+
+    @staticmethod
+    def _read_body(resp: requests.Response, failed: str) -> bytes:
+        too_large = f"{failed}: reply larger than {MAX_RESPONSE_BYTES} bytes"
+        length = resp.headers.get("Content-Length", "") if resp.headers else ""
+        if length.isdigit() and int(length) > MAX_RESPONSE_BYTES:
+            raise FritzWebUiError(too_large)
+        body = bytearray()
+        for chunk in resp.iter_content(_READ_CHUNK_BYTES):
+            body += chunk
+            if len(body) > MAX_RESPONSE_BYTES:
+                raise FritzWebUiError(too_large)
+        return bytes(body)
+
+    @staticmethod
+    def _xml(reply: _Reply, what: str) -> Any:  # noqa: ANN401
+        try:
+            return ElementTree.fromstring(reply.body)
+        except (ElementTree.ParseError, DefusedXmlException) as e:
+            msg = f"could not parse {what}: {type(e).__name__}"
+            raise FritzWebUiError(msg) from None
+
+    @staticmethod
+    def _json(reply: _Reply, what: str) -> dict[str, Any]:
+        """Parse a JSON reply; the HTML login page means the SID was not accepted."""
+        start = reply.body[:_HTML_SNIFF_BYTES].decode("utf-8", "replace").lstrip()
+        is_html = "text/html" in reply.content_type or start.startswith(_HTML_RESPONSE_PREFIXES)
+        if not reply.body or is_html:
+            msg = f"Fritz!Box returned HTML instead of JSON for {what} {_HTML_RESPONSE_HINT}"
+            raise _SessionRejectedError(msg)
+        try:
+            return json.loads(reply.body)
+        except ValueError as e:
+            msg = f"could not parse JSON from {what}: {e}"
+            raise FritzWebUiError(msg) from None
+
+    def _with_session[T](self, fetch: Callable[[str], T]) -> T:
+        """Run ``fetch`` with a SID, logging in again once if the device rejects it."""
+        sid = self._ensure_sid()
+        try:
+            return fetch(sid)
+        except _SessionRejectedError as e:
+            logger.debug("%s rejected the web session (%s), logging in again", self.name, e)
+            self._invalidate_sid()
+            return fetch(self._ensure_sid())
 
     # ------------------------------------------------------------------
     # Authentication
@@ -230,30 +335,25 @@ class FritzWebUiClient:
         # A forged reply can push any box onto MD5, so refuse it unless allowed.
         if _LEGACY_CHALLENGE_RE.fullmatch(challenge):
             if not self.allow_unsafe_md5_password:
-                raise FritzWebUiMd5DisabledError(self.name)
+                self._md5_refused = FritzWebUiMd5DisabledError(self.name)
+                logger.error(
+                    "%s. Upgrade Fritz!OS to 7.24 or later, or, to accept that anyone who "
+                    "can read the traffic to the device can recover the password, set "
+                    "allow_unsafe_md5_password (env: FRITZ_ALLOW_UNSAFE_MD5_PASSWORD) "
+                    "for this device.",
+                    self._md5_refused,
+                )
+                raise self._md5_refused
             logger.warning("Using the unsafe legacy MD5 web login for %s", self.name)
         return self._md5_response(challenge, self.password)
 
     def _get_session_info(self) -> dict[str, str]:
         """Fetch the login challenge / SID from login_sid.lua."""
         params = {**_LOGIN_VERSION, "username": self.username} if self.username else _LOGIN_VERSION
-        try:
-            resp = self.session.get(
-                f"{self.base_url}/login_sid.lua", params=params, timeout=self.timeout
-            )
-        except requests.RequestException as e:
-            msg = f"login_sid.lua request failed: {_failure_text(e)}"
-            raise FritzWebUiError(msg) from None
-
-        if not resp.ok:
-            msg = f"login_sid.lua request failed: {_http_error_text(resp)}"
-            raise FritzWebUiError(msg)
-
-        try:
-            root = ElementTree.fromstring(resp.text)
-        except ElementTree.ParseError as e:
-            msg = f"could not parse login_sid.lua response: {e}"
-            raise FritzWebUiError(msg) from e
+        reply = self._request(
+            "GET", "/login_sid.lua", "login_sid.lua request failed", params=params
+        )
+        root = self._xml(reply, "login_sid.lua response")
 
         def _find(tag: str) -> str:
             elem = root.find(tag)
@@ -293,6 +393,8 @@ class FritzWebUiClient:
             raise FritzWebUiError(msg)
         try:
             response = self._challenge_response(challenge)
+        except FritzWebUiMd5DisabledError:
+            raise
         except FritzWebUiError:
             # Users can report this so the bounds can follow real firmware.
             logger.debug(
@@ -302,28 +404,14 @@ class FritzWebUiClient:
             )
             raise
 
-        try:
-            resp = self.session.post(
-                f"{self.base_url}/login_sid.lua",
-                params=_LOGIN_VERSION,
-                data={"username": self.username, "response": response},
-                timeout=self.timeout,
-            )
-        except requests.RequestException as e:
-            msg = f"login POST failed: {_failure_text(e)}"
-            raise FritzWebUiError(msg) from None
-
-        if not resp.ok:
-            msg = f"login POST failed: {_http_error_text(resp)}"
-            raise FritzWebUiError(msg)
-
-        try:
-            root = ElementTree.fromstring(resp.text)
-        except ElementTree.ParseError as e:
-            msg = f"could not parse login response: {e}"
-            raise FritzWebUiError(msg) from e
-
-        sid_elem = root.find("SID")
+        reply = self._request(
+            "POST",
+            "/login_sid.lua",
+            "login POST failed",
+            params=_LOGIN_VERSION,
+            data={"username": self.username, "response": response},
+        )
+        sid_elem = self._xml(reply, "login response").find("SID")
         sid = sid_elem.text if sid_elem is not None else ""
         if not sid or sid == "0000000000000000":
             msg = "login failed: wrong password or username"
@@ -337,8 +425,11 @@ class FritzWebUiClient:
 
         After a refused login, no new attempt is made for ``LOGIN_RETRY_DELAY``
         seconds, or as long as the device blocks logins: every failed attempt
-        makes the device block logins longer, for the web interface too.
+        makes the device block logins longer, for the web interface too. A
+        refused MD5 login is not tried again until the exporter is restarted.
         """
+        if self._md5_refused is not None:
+            raise self._md5_refused
         if self._sid and time.monotonic() < self._sid_expiry:
             return self._sid
         if self._login_refused is not None and time.monotonic() < self._login_retry_at:
@@ -363,141 +454,55 @@ class FritzWebUiClient:
         self._sid_expiry = 0.0
 
     # ------------------------------------------------------------------
-    # data.lua page fetching
+    # Endpoints
     # ------------------------------------------------------------------
-
-    def _fetch_page(self, sid: str, page: str) -> dict[str, Any]:
-        """POST to data.lua and return the parsed JSON document."""
-        payload = {"sid": sid, "page": page, "xhrId": "all", "xhr": "1"}
-        try:
-            resp = self.session.post(
-                f"{self.base_url}/data.lua", data=payload, timeout=self.timeout
-            )
-        except requests.RequestException as e:
-            msg = f"data.lua request failed: {_failure_text(e)}"
-            raise FritzWebUiError(msg) from None
-
-        if not resp.ok:
-            msg = f"data.lua request failed: {_http_error_text(resp)}"
-            raise FritzWebUiError(msg)
-
-        text = resp.text
-        content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
-        is_html = "text/html" in content_type or text.lstrip().startswith(_HTML_RESPONSE_PREFIXES)
-        if not text or is_html:
-            msg = f"Fritz!Box returned HTML instead of JSON {_HTML_RESPONSE_HINT}"
-            raise FritzWebUiError(msg)
-
-        try:
-            return resp.json()
-        except ValueError as e:
-            msg = f"could not parse data.lua JSON response: {e}"
-            raise FritzWebUiError(msg) from e
 
     def fetch_page(self, page: str) -> dict[str, Any]:
-        """Fetch a ``data.lua`` page, re-authenticating once if the session expired.
+        """Fetch a ``data.lua`` page as JSON.
 
-        Each HTTP request is bounded by the client ``timeout``, so the retry
-        path (re-login + re-fetch) is bounded to roughly twice that.
+        The device answers an invalid or expired SID with its HTML login page.
         """
-        sid = self._ensure_sid()
-        try:
-            return self._fetch_page(sid, page)
-        except FritzWebUiError:
-            # Session may have expired server-side; try re-logging in once.
-            logger.debug("data.lua fetch from %s failed, re-authenticating...", self.name)
-            self._invalidate_sid()
-            sid = self._ensure_sid()
-            return self._fetch_page(sid, page)
 
-    # ------------------------------------------------------------------
-    # AHA HTTP interface (homeautoswitch.lua) fetching
-    # ------------------------------------------------------------------
+        def fetch(sid: str) -> dict[str, Any]:
+            payload = {"sid": sid, "page": page, "xhrId": "all", "xhr": "1"}
+            reply = self._request("POST", "/data.lua", "data.lua request failed", data=payload)
+            return self._json(reply, "data.lua")
 
-    def _fetch_aha(self, sid: str, command: str, params: dict[str, str]) -> str:
-        """GET an AHA command from homeautoswitch.lua and return the response text."""
-        payload = {**params, "sid": sid, "switchcmd": command}
-        try:
-            resp = self.session.get(
-                f"{self.base_url}/webservices/homeautoswitch.lua",
-                params=payload,
-                timeout=self.timeout,
-            )
-        except requests.RequestException as e:
-            msg = f"AHA request failed for {command}: {_failure_text(e)}"
-            raise FritzWebUiError(msg) from None
-
-        if not resp.ok:
-            msg = f"AHA request failed for {command}: {_http_error_text(resp)}"
-            raise FritzWebUiError(msg)
-
-        if not resp.text:
-            msg = f"Fritz!Box returned an empty AHA response for {command}"
-            raise FritzWebUiError(msg)
-        return resp.text
+        return self._with_session(fetch)
 
     def fetch_aha(self, command: str, **params: str) -> str:
-        """Run an AHA command (e.g. ``getdevicelistinfos``), re-authenticating once if needed.
+        """Run an AHA command (e.g. ``getdevicelistinfos``) and return the reply text.
 
-        The box answers an invalid or expired SID with HTTP 403.
+        The device answers an invalid or expired SID with HTTP 403.
         """
-        sid = self._ensure_sid()
-        try:
-            return self._fetch_aha(sid, command, params)
-        except FritzWebUiError:
-            logger.debug("AHA fetch from %s failed, re-authenticating...", self.name)
-            self._invalidate_sid()
-            sid = self._ensure_sid()
-            return self._fetch_aha(sid, command, params)
+        failed = f"AHA request failed for {command}"
 
-    # ------------------------------------------------------------------
-    # REST API (/api/v0/...) fetching
-    # ------------------------------------------------------------------
+        def fetch(sid: str) -> str:
+            payload = {**params, "sid": sid, "switchcmd": command}
+            reply = self._request("GET", "/webservices/homeautoswitch.lua", failed, params=payload)
+            if not reply.body:
+                msg = f"Fritz!Box returned an empty AHA response for {command}"
+                raise FritzWebUiError(msg)
+            return reply.body.decode("utf-8", "replace")
 
-    def _fetch_api(self, sid: str, path: str) -> dict[str, Any]:
-        """GET a Fritz!OS REST API path and return the parsed JSON document.
-
-        ``path`` is the API path (e.g. ``/api/v0/generic/box``). The REST API
-        authenticates via an ``Authorization: AVM-SID <sid>`` header; passing
-        the SID as a query parameter is rejected with HTTP 400.
-        """
-        headers = {"Authorization": f"AVM-SID {sid}"}
-        try:
-            resp = self.session.get(f"{self.base_url}{path}", headers=headers, timeout=self.timeout)
-        except requests.RequestException as e:
-            msg = f"REST API request failed for {path}: {_failure_text(e)}"
-            raise FritzWebUiError(msg) from None
-
-        if not resp.ok:
-            msg = f"REST API request failed for {path}: {_http_error_text(resp)}"
-            raise FritzWebUiError(msg)
-
-        text = resp.text
-        content_type = str(resp.headers.get("Content-Type", "")) if resp.headers else ""
-        is_html = "text/html" in content_type or text.lstrip().startswith(_HTML_RESPONSE_PREFIXES)
-        if not text or is_html:
-            msg = f"Fritz!Box returned HTML instead of JSON for {path} {_HTML_RESPONSE_HINT}"
-            raise FritzWebUiError(msg)
-
-        try:
-            return resp.json()
-        except ValueError as e:
-            msg = f"could not parse REST API JSON response for {path}: {e}"
-            raise FritzWebUiError(msg) from e
+        return self._with_session(fetch)
 
     def fetch_api(self, path: str) -> dict[str, Any]:
-        """Fetch a Fritz!OS REST API path, re-authenticating once if needed.
+        """Fetch a Fritz!OS REST API path as JSON.
 
-        ``path`` is the API path below the host, e.g. ``/api/v0/generic/box``.
+        ``path`` is the API path below the host, e.g. ``/api/v0/generic/box``. The
+        REST API takes the SID in an ``Authorization: AVM-SID <sid>`` header only;
+        as a query parameter it is rejected with HTTP 400.
         """
-        sid = self._ensure_sid()
-        try:
-            return self._fetch_api(sid, path)
-        except FritzWebUiError:
-            logger.debug("REST API fetch from %s failed, re-authenticating...", self.name)
-            self._invalidate_sid()
-            sid = self._ensure_sid()
-            return self._fetch_api(sid, path)
+
+        def fetch(sid: str) -> dict[str, Any]:
+            headers = {"Authorization": f"AVM-SID {sid}"}
+            reply = self._request(
+                "GET", path, f"REST API request failed for {path}", headers=headers
+            )
+            return self._json(reply, path)
+
+        return self._with_session(fetch)
 
 
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>

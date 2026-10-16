@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import sys
+import threading
 from pathlib import Path
 
 from fritzconnection.core.exceptions import (  # type: ignore[import]
@@ -164,11 +165,7 @@ def main() -> None:
     for dev in config.devices:
         _register_device(dev, args, fritzcollector)
 
-    # Registering runs a first collection; an error that must stop the exporter
-    # (e.g. a refused MD5 login) has been logged by then.
     REGISTRY.register(fritzcollector)
-    if fritzcollector.fatal_error.is_set():
-        sys.exit(1)
 
     logger.info("Starting listener at %s:%d", config.listen_address, config.exporter_port)
     start_http_server(int(config.exporter_port), str(config.listen_address))
@@ -177,8 +174,7 @@ def main() -> None:
 
     # Avoid blocking forever when running tests
     if not os.getenv("FRITZ_EXPORTER_UNDER_TEST"):
-        fritzcollector.fatal_error.wait()
-        sys.exit(1)
+        threading.Event().wait()
 
 
 if __name__ == "__main__":
