@@ -46,8 +46,12 @@ Any TR-064 error used to report the device as unreachable
 (``fritz_device_reachable 0``) for the scrape and drop the metrics collected after
 it, even when the device answered, e.g. with "action not supported". Now only a
 device that does not answer (refused, timed out, reset) is unreachable; an error
-reply skips the metric group that got it, shown in ``fritz_read_problem``. A failure
-to fetch the mesh list only skips the mesh metrics.
+reply skips the metric group that got it, shown in ``fritz_read_problem``; one for a
+single host, WiFi client or similar skips only that one. A failure to fetch the mesh
+list only skips the mesh metrics.
+
+``host_info: true`` now also works on a device with fewer than two hosts in its host
+table; such a device used to fail its setup and was never collected.
 
 Unreadable data is skipped and reported
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,6 +99,21 @@ which do not depend on wording.
 * **Unreachable during a scrape:** "Device <device> is unreachable, skipping
   <Capability> metrics for this collection cycle: <reason>" at ``WARNING``, without
   a traceback.
+
+Unknown values are no longer reported as 0
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* **Fibre levels:** some fibre boxes answer 0 for both optical levels over TR-064;
+  the exporter then reads them from the web interface. When that fails, it used to
+  export ``0`` dBm; now ``fritz_fiber_optical_signal_level_dBm`` and
+  ``fritz_fiber_transmit_optical_level_dBm`` have no sample, and the failure shows
+  in ``fritz_read_problem{capability="WanFiberInterfaceConfig",level="partial"}``
+  instead of a warning on every scrape.
+* **DOCSIS channels** without a channel ID used to be exported as channel ``0``,
+  several of them as the same series; they are now skipped and reported.
+* A web interface reply without its data part (e.g. a ``docInfo`` page without
+  ``data``) used to give no metrics without a word; it is now reported as a read
+  problem. An empty data part still means "no data".
 
 Smart home values that are unknown are no longer reported as 0
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

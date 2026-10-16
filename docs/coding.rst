@@ -161,7 +161,7 @@ When ``FritzCollector.collect()`` runs:
       ``capa._generate_metric_values(device)`` only when
       ``device.capabilities[name].present`` is ``True`` for that device.  Each call is
       guarded, see *Reading Device Data* below.
-   c. ``capa._get_metric_values()`` yields the now-populated metric families.
+   c. ``capa._get_metric_values()`` yields all its metric families (``self.metrics``).
 
 4. The self-monitoring metrics follow: ``fritz_scrapes_total``,
    ``fritz_scrapes_timeouts_total``, ``fritz_scrapes_failed_total``,
@@ -304,9 +304,10 @@ Adding a New Metric / Capability
 3. In ``__init__``, call ``super().__init__()`` and then populate
    ``self.requirements`` with the ``(service, action)`` tuples the metric requires.
    These are TR-064 service/action pairs as exposed by ``fritzconnection``.
-4. Implement ``create_metrics(self)`` — create the Prometheus metric family objects and
-   store them in ``self.metrics[key]``.  Use ``GaugeMetricFamily`` for current values
-   and ``CounterMetricFamily`` for monotonically increasing counters.  Name new metrics
+4. Implement ``create_metrics(self)`` — create the metric families with
+   ``self._gauge(key, name, help, *labels, unit=...)`` for current values and
+   ``self._counter(...)`` for monotonically increasing counters; both put the
+   ``serial`` and ``friendly_name`` labels first.  Name new metrics
    by the `Prometheus naming rules <https://prometheus.io/docs/practices/naming/>`_
    (base units as a suffix via ``unit=``, ``_total`` for counters, ratios 0–1); existing
    names are kept as they are for compatibility, even where they predate these rules.
@@ -314,8 +315,10 @@ Adding a New Metric / Capability
    ``read_action(device, service, action)`` and add samples with
    ``self._add(key, labels, self.issues.num(reply, field))``, keeping failures at
    their level (see *Reading Device Data*).
-6. Implement ``_get_metric_values(self)`` — ``yield`` each metric family from
-   ``self.metrics``.
+6. If the capability reads the web interface, set ``uses_webui = True`` and get the
+   client with ``self._webui(device)``; if a config option switches it on, override
+   ``enabled(device)``; if a requirement needs arguments to be probed, override
+   ``_probe()``.  Tables read by index go through ``self._enumerate()``.
 7. Add tests in ``tests/test_fritzcapabilities.py`` using the mock infrastructure in
    ``tests/fc_services_mock.py``.  No further registration is needed; the subclass is
    discovered automatically via ``__init_subclass__``.

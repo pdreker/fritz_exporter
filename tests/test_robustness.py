@@ -88,7 +88,9 @@ class Scenario:
     def scrape(self) -> str:
         with self._patched():
             for device in self.collector.devices:
-                device.webui_client = None
+                for _, capability in device.capabilities.items():
+                    if capability.uses_webui:
+                        capability.present = False
             return generate_latest(self.registry).decode()
 
 

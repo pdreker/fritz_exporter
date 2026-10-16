@@ -78,7 +78,7 @@ def _channels(section: Reply | None, issues: Issues) -> list[tuple[str, Reply]]:
 def _upstream(ch: Reply, standard: str, issues: Issues) -> UpstreamChannel:
     return {
         # Every metric of a channel carries its id, so it is read strictly.
-        "channel_id": ch.opt_integer("channelID") or 0,
+        "channel_id": ch.integer("channelID"),
         "standard": standard,
         "modulation": issues.text(ch, "modulation", ""),
         "frequency": issues.text(ch, "frequency", ""),
@@ -99,7 +99,7 @@ def _downstream(ch: Reply, standard: str, issues: Issues) -> DownstreamChannel:
     }
 
 
-def parse_docsis_response(raw: object, issues: Issues | None = None) -> DocsisData:
+def parse_docsis_response(raw: object, issues: Issues) -> DocsisData:
     """Parse the raw data.lua?page=docInfo JSON into a normalized structure.
 
     Returns a :class:`DocsisData` with ``ready_state``, ``downstream`` and
@@ -108,11 +108,11 @@ def parse_docsis_response(raw: object, issues: Issues | None = None) -> DocsisDa
     power/modulation/frequency.
 
     Empty values become ``None``. A defective value also becomes ``None`` and a
-    channel with a defective id is left out, both recorded in ``issues``; data
-    of the wrong shape raises :class:`~fritzexporter.reply.DataError`.
+    channel with a missing or defective id is left out, both recorded in
+    ``issues``; data of the wrong shape, or without ``data``, raises
+    :class:`~fritzexporter.reply.DataError`.
     """
-    issues = issues if issues is not None else Issues()
-    inner = Reply(raw, "docInfo").opt_obj("data") or Reply({}, "docInfo data")
+    inner = Reply(raw, "docInfo").require_key("data").opt_obj("data") or Reply({}, "docInfo data")
     result: DocsisData = {
         "ready_state": issues.text(inner, "readyState", "unknown") or "unknown",
         "downstream": [],

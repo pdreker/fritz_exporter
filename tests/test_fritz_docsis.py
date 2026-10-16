@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from prometheus_client.core import Metric
 
+from fritzexporter.reply import DataError, Issues
 from fritzexporter.fritz_docsis import parse_docsis_response
 from fritzexporter.fritz_webui import FritzWebUiError
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
@@ -79,7 +80,7 @@ def _sample_map(metric: Metric) -> dict[tuple[tuple[str, str], ...], float]:
 
 class TestParseDocsisResponse:
     def test_parses_downstream_and_upstream(self):
-        data = parse_docsis_response(DOCSIS_RAW)
+        data = parse_docsis_response(DOCSIS_RAW, Issues())
 
         assert data["ready_state"] == "ready"
         assert len(data["downstream"]) == 2
@@ -113,13 +114,13 @@ class TestParseDocsisResponse:
         raw = {"data": {"channelDs": {"docsis31": {}, "docsis30": [{"channelID": "7"}]},
                         "channelUs": {"docsis31": {}, "docsis30": []}}}
 
-        data = parse_docsis_response(raw)
+        data = parse_docsis_response(raw, Issues())
 
         assert [ch["channel_id"] for ch in data["downstream"]] == [7]
         assert data["upstream"] == []
 
     def test_handles_missing_sections(self):
-        data = parse_docsis_response({"data": {}})
+        data = parse_docsis_response({"data": {}}, Issues())
         assert data["ready_state"] == "unknown"
         assert data["downstream"] == []
         assert data["upstream"] == []
@@ -144,7 +145,7 @@ class TestParseDocsisResponse:
                 "channelUs": {"docsis30": []},
             }
         }
-        data = parse_docsis_response(raw)
+        data = parse_docsis_response(raw, Issues())
         ch = data["downstream"][0]
         assert ch["channel_id"] == 7
         assert ch["power_dbmv"] == pytest.approx(-0.5)
@@ -430,3 +431,22 @@ class TestWanDocsisCable:
         assert by_name["fritz_docsis_power_dBmV"].samples == []
         assert "fritz_device_reachable" in by_name
 
+
+
+class TestDocsisChannelId:
+    def test_reply_without_data_raises(self):
+        with pytest.raises(DataError, match="docInfo data: missing"):
+            parse_docsis_response({"pid": "docInfo"}, Issues())
+
+    def test_channel_without_id_is_skipped_not_numbered_0(self):
+        issues = Issues()
+        raw = {
+            "data": {
+                "channelDs": {
+                    "docsis30": [{"powerLevel": "1"}, {"channelID": 7, "powerLevel": "2"}]
+                }
+            }
+        }
+        data = parse_docsis_response(raw, issues)
+        assert [ch["channel_id"] for ch in data["downstream"]] == [7]
+        assert any("channelID: missing" in m for m in issues.messages)

@@ -62,7 +62,7 @@ SEGMENT_RAW = {
 
 class TestParseMonitorSegment:
     def test_parses_series_and_last_sample_time(self):
-        data = parse_monitor_segment(SEGMENT_RAW)
+        data = parse_monitor_segment(SEGMENT_RAW, Issues())
 
         assert data["last_sample_time"] == 1789671960
         assert len(data["series"]) == 2
@@ -85,7 +85,7 @@ class TestParseMonitorSegment:
             ],
             "lastSampleTime": "1700000000",
         }
-        data = parse_monitor_segment(raw)
+        data = parse_monitor_segment(raw, Issues())
 
         assert data["last_sample_time"] == 1700000000
         series = data["series"][0]
@@ -95,7 +95,8 @@ class TestParseMonitorSegment:
         assert series["upstream"] == [1.0]
 
     def test_handles_empty_response(self):
-        data = parse_monitor_segment({})
+        # What a box on a medium that is not shared (DSL) answers.
+        data = parse_monitor_segment({"data": []}, Issues())
         assert data["last_sample_time"] is None
         assert data["series"] == []
 
@@ -325,7 +326,7 @@ CONNECTIONS_RAW: dict[str, Any] = {
 
 class TestParseConnectionsResponse:
     def test_parses_entries(self):
-        connections = parse_connections_response(CONNECTIONS_RAW)
+        connections = parse_connections_response(CONNECTIONS_RAW, Issues())
 
         assert len(connections) == 2
         active, disabled = connections
@@ -346,13 +347,12 @@ class TestParseConnectionsResponse:
         assert disabled["ip6_addr"] == ""
 
     def test_handles_empty_list(self):
-        assert parse_connections_response({"connection": []}) == []
-        assert parse_connections_response({}) == []
+        assert parse_connections_response({"connection": []}, Issues()) == []
 
     @pytest.mark.parametrize("raw", [[], {"connection": "not a list"}])
     def test_reply_of_the_wrong_shape_raises(self, raw):
         with pytest.raises(DataError):
-            parse_connections_response(raw)
+            parse_connections_response(raw, Issues())
 
     def test_unreadable_connection_is_skipped_and_recorded(self):
         issues = Issues()
@@ -596,3 +596,16 @@ class TestWanConnectionStatus:
         assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
         assert by_name["fritz_wan_connection_status"].samples == []
         assert "fritz_device_reachable" in by_name
+
+
+@pytest.mark.parametrize(
+    ("parse", "raw"),
+    [
+        (parse_monitor_segment, {"lastSampleTime": 1}),
+        (parse_connections_response, {"other": []}),
+    ],
+)
+def test_reply_without_its_data_container_raises(parse, raw):
+    # An empty container means "no data"; a missing one a reply not understood.
+    with pytest.raises(DataError, match="missing"):
+        parse(raw, Issues())
