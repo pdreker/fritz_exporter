@@ -91,7 +91,7 @@ Click "Add Data Source" and choose "Prometheus" from the list. Enter ``http://pr
 
 .. image:: _static/datasrc_ok.png
 
-Now go to "Dashboards" -> "Import" and enter "13983" into the "Import via grafana.com" input and click "Load".
+Now go to "Dashboards" -> "Import" and enter "13983" into the "Import via grafana.com" input and click "Load" (or upload ``misc/grafana/fritz-exporter-overview.json`` or ``fritz-exporter-home.json`` from the repository).
 
 .. image:: _static/dashboard_import.png
 

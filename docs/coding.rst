@@ -324,6 +324,30 @@ Adding a New Metric / Capability
 7. Add tests in ``tests/test_fritzcapabilities.py`` using the mock infrastructure in
    ``tests/fc_services_mock.py``.  No further registration is needed; the subclass is
    discovered automatically via ``__init_subclass__``.
+8. Show the new metrics in the overview dashboard, see *Grafana Dashboards* below.
+
+
+Grafana Dashboards
+------------------
+
+``misc/grafana/build_dashboards.py`` writes the two dashboards in ``misc/grafana``
+(classic dashboard JSON, Grafana 10 and later).  Edit the script, never the JSON, and
+run it::
+
+    uv run python misc/grafana/build_dashboards.py
+
+``tests/test_grafana_dashboards.py`` fails when the JSON is not what the script
+writes, when a metric family of the exporter is missing from the overview, when a
+query does not select the device (``friendly_name="$device"``), or when panels
+overlap.
+
+To look at the dashboards, run Prometheus and Grafana (e.g. in containers) and let
+Prometheus scrape your exporter and ``misc/grafana/demo_exporter.py``.  The demo
+exporter serves a cable and a fibre box with smart home devices, built from the test
+fixtures, with values that change over time, so the panels for hardware you do not
+have show data::
+
+    uv run python misc/grafana/demo_exporter.py 9788
 
 
 Supporting Modules

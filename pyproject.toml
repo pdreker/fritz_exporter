@@ -126,6 +126,10 @@ select = [
 ]
 ignore = ["E203", "COM812", "ISC001", "ANN204"]
 
+[tool.ruff.lint.per-file-ignores]
+# Stand-alone scripts, not part of a package.
+"misc/**" = ["INP001"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
