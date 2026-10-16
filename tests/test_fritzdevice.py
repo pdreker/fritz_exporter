@@ -16,8 +16,12 @@ from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import Metric
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
+from fritzexporter.exceptions import (
+    FritzDeviceHasNoCapabilitiesError,
+    FritzDeviceSerialUnknownError,
+)
 from fritzexporter.fritz_webui import FritzWebUiMd5DisabledError
+from fritzexporter.reply import DataError, Issues
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 from fritzexporter.fritz_aha import parse_aha_devicelist_xml
 from fritzexporter.tr064_remote import ConnectionOptions
@@ -108,8 +112,18 @@ class TestFritzDevice:
         # Prepare
         caplog.set_level(logging.DEBUG)
 
+        identified = []
+
+        def call_action(service, action, **kwargs):
+            # The first device info call works, so the device is identified, but
+            # every advertised capability (DeviceInfo included) fails its probe.
+            if (service, action) == ("DeviceInfo1", "GetInfo") and not identified:
+                identified.append(True)
+                return call_action_mock(service, action, **kwargs)
+            raise FritzServiceError("Mock FritzServiceError")
+
         fc = mock_fritzconnection.return_value
-        fc.call_action.side_effect = FritzServiceError("Mock FritzServiceError")
+        fc.call_action.side_effect = call_action
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         # Act
@@ -182,25 +196,53 @@ class TestFritzDevice:
             "Device somehost has no detected capabilities. Exiting.",
         ) in caplog.record_tuples
 
-    def test_should_detect_no_basic_info(self, mock_fritzconnection: MagicMock, caplog):
-        # Prepare
+    def test_should_not_collect_a_device_without_serial(self, mock_fritzconnection: MagicMock, caplog):
+        # The serial tells devices apart in Prometheus; without it the device is skipped.
         caplog.set_level(logging.DEBUG)
 
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_no_basic_mock
         fc.services = create_fc_services(fc_services_no_basic_info)
 
-        # Act
-        _ = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        with pytest.raises(FritzDeviceSerialUnknownError, match="could not read the serial number of somehost"):
+            FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
 
-        # Check
-        assert (
-            FRITZDEVICE_LOG_SOURCE,
-            logging.ERROR,
-            "Fritz Device somehost does not provide basic device "
-            "info (Service: DeviceInfo1, Action: GetInfo)."
-            "Serial number and model name will be unavailable.",
-        ) in caplog.record_tuples
+    @pytest.mark.parametrize(
+        "info",
+        [
+            {"NewModelName": "Fritz!Box", "NewSoftwareVersion": "1.2", "NewUpTime": 1},
+            {"NewSerialNumber": "", "NewModelName": "Fritz!Box"},
+            {"NewSerialNumber": ["not", "text"]},
+            "not an object",
+        ],
+    )
+    def test_unreadable_serial_skips_the_device(self, mock_fritzconnection: MagicMock, caplog, info):
+        def call_action(service, action, **kwargs):
+            if (service, action) == ("DeviceInfo1", "GetInfo"):
+                return info
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        with pytest.raises(FritzDeviceSerialUnknownError):
+            FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+
+    def test_missing_model_name_is_not_fatal(self, mock_fritzconnection: MagicMock):
+        def call_action(service, action, **kwargs):
+            if (service, action) == ("DeviceInfo1", "GetInfo"):
+                return {"NewSerialNumber": "1234567890"}
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = call_action
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+
+        assert device.serial == "1234567890"
+        assert device.model == "n/a"
 
     def test_should_correctly_parse_aha_xml(self, mock_fritzconnection: MagicMock, caplog):
         # Prepare
@@ -1262,9 +1304,8 @@ class TestFritzCollector:
         assert len(device_reachable_metrics) == 1
         assert device_reachable_metrics[0].samples[0].value == 1.0
 
-        assert "Failed to fetch home automation data" in caplog.text
-        assert "Failed to fetch segment utilization data" in caplog.text
-        assert "Failed to fetch connection status data" in caplog.text
+        for capability in ("HomeAutomation", "WanSegmentUtilization", "WanConnectionStatus"):
+            assert f"Could not read {capability} data from somehost" in caplog.text
 
     def test_should_survive_transport_error_on_connection_mode(
         self, mock_fritzconnection: MagicMock, caplog
@@ -1380,7 +1421,7 @@ def _mesh_topology(link=None, **node_overrides):
 @patch("fritzexporter.tr064_remote.FritzConnection")
 @patch("fritzexporter.fritzcapabilities.FritzHosts")
 class TestMeshTopologyParsing:
-    """Bad mesh data must skip the mesh metrics, not fail the scrape."""
+    """Bad mesh data costs only what it affects, and never the scrape."""
 
     def _scrape(self, mock_fritzhosts, mock_fritzconnection, topology):
         def call_with_mesh(service, action, **kwargs):
@@ -1403,29 +1444,108 @@ class TestMeshTopologyParsing:
         # fails here, not in collect().
         return generate_latest(registry).decode()
 
+    REACHABLE = 'fritz_device_reachable{friendly_name="FritzMock",serial="1234567890"} 1.0'
+
     @pytest.mark.parametrize(
         "topology",
         [
             pytest.param([], id="topology-is-a-list"),
-            pytest.param({"nodes": None}, id="nodes-is-none"),
             pytest.param({"nodes": "abc"}, id="nodes-is-a-string"),
-            pytest.param(_mesh_topology(node_interfaces=5), id="interfaces-not-a-list"),
-            pytest.param(_mesh_topology(link="l1"), id="link-not-a-dict"),
-            pytest.param(_mesh_topology(_mesh_link(uid=["x"])), id="unhashable-uid"),
-            pytest.param(_mesh_topology(_mesh_link(cur_data_rate_rx="invalid")), id="rate-text"),
-            pytest.param(_mesh_topology(_mesh_link(cur_data_rate_tx=None)), id="rate-none"),
-            pytest.param(_mesh_topology(_mesh_link(max_data_rate_rx={})), id="rate-dict"),
         ],
     )
-    def test_bad_topology_skips_mesh_metrics(
+    def test_topology_of_the_wrong_shape_skips_mesh_metrics(
         self, mock_fritzhosts, mock_fritzconnection, caplog, topology
     ):
         output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
 
         assert "fritz_mesh_link_available{" not in output
-        assert "fritz_mesh_link_current_data_rate_kbps{" not in output
-        assert 'fritz_device_reachable{friendly_name="FritzMock",serial="1234567890"} 1.0' in output
-        assert "Unexpected mesh topology from somehost, skipping mesh metrics" in caplog.text
+        assert self.REACHABLE in output
+        assert "Could not read MeshTopology data from somehost" in caplog.text
+
+    @pytest.mark.parametrize(
+        ("topology", "skipped"),
+        [
+            pytest.param(
+                _mesh_topology(node_interfaces=5),
+                "mesh node n1 skipped: mesh topology nodes[0] node_interfaces: expected a list",
+                id="interfaces-not-a-list",
+            ),
+            pytest.param(
+                _mesh_topology(link="l1"),
+                "node_links[0] skipped: mesh topology nodes[0] node_interfaces[0] node_links[0]: "
+                "expected an object",
+                id="link-not-a-dict",
+            ),
+            pytest.param(
+                _mesh_topology(_mesh_link(uid=["x"])),
+                "mesh link n1/0/0 skipped:",
+                id="unhashable-uid",
+            ),
+        ],
+    )
+    def test_unreadable_node_or_link_is_skipped(
+        self, mock_fritzhosts, mock_fritzconnection, caplog, topology, skipped
+    ):
+        output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
+
+        assert "fritz_mesh_link_available{" not in output
+        assert self.REACHABLE in output
+        assert "Skipped part of the MeshTopology data from somehost" in caplog.text
+        assert skipped in caplog.text
+
+    @pytest.mark.parametrize(
+        ("link", "missing"),
+        [
+            pytest.param(
+                _mesh_link(cur_data_rate_rx="invalid"),
+                'fritz_mesh_link_current_data_rate_kbps{direction="rx"',
+                id="rate-text",
+            ),
+            pytest.param(
+                _mesh_link(max_data_rate_rx={"not": "a number"}),
+                'fritz_mesh_link_max_data_rate_kbps{direction="rx"',
+                id="rate-dict",
+            ),
+        ],
+    )
+    def test_unreadable_rate_skips_only_that_sample(
+        self, mock_fritzhosts, mock_fritzconnection, caplog, link, missing
+    ):
+        output = self._scrape(mock_fritzhosts, mock_fritzconnection, _mesh_topology(link))
+
+        assert missing not in output
+        # The link and its other samples are still there.
+        assert "fritz_mesh_link_available{" in output
+        assert 'fritz_mesh_link_current_data_rate_kbps{direction="tx"' in output
+        assert 'fritz_mesh_link_max_data_rate_kbps{direction="tx"' in output
+        assert "expected a number" in caplog.text
+        assert "Skipped part of the MeshTopology data from somehost" in caplog.text
+
+    def test_link_labels_come_from_the_first_endpoint_in_device_order(
+        self, mock_fritzhosts, mock_fritzconnection
+    ):
+        # Each link is listed under both endpoints, with each side's own interface.
+        # The master comes first in the topology, although its uid sorts last; its
+        # side must keep supplying the labels, as in earlier releases.
+        link = _mesh_link(uid="l1", node_1_uid="z-master", node_2_uid="a-rep")
+        topology = {
+            "nodes": [
+                {
+                    "uid": "z-master", "device_name": "fritzbox", "is_meshed": True,
+                    "node_interfaces": [{"type": "WLAN", "name": "AP:5G:0", "node_links": [link]}],
+                },
+                {
+                    "uid": "a-rep", "device_name": "repeater", "is_meshed": True,
+                    "node_interfaces": [{"type": "WLAN", "name": "UPLINK:5G:0", "node_links": [link]}],
+                },
+            ]
+        }
+
+        output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
+
+        [available] = [l for l in output.splitlines() if l.startswith("fritz_mesh_link_available{")]
+        assert 'interface="AP:5G:0"' in available
+        assert 'node="fritzbox"' in available
 
     def test_numeric_strings_and_non_string_names_are_accepted(
         self, mock_fritzhosts, mock_fritzconnection, caplog
@@ -1444,7 +1564,7 @@ class TestMeshTopologyParsing:
             'fritz_mesh_link_max_data_rate_kbps{direction="tx",friendly_name="FritzMock",'
             'interface="AP:5G:0",node="7590",peer="repeater",serial="1234567890",type="WLAN"} 4000.5'
         ) in output
-        assert "Unexpected mesh topology" not in caplog.text
+        assert "Could not read MeshTopology data" not in caplog.text
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
@@ -1753,17 +1873,11 @@ class TestFritzDeviceAuthError:
 
 
 class TestParseAhaDevicelistXml:
-    def test_should_return_empty_list_on_parse_error(self):
-        # Prepare
-        invalid_xml = "this is not valid xml <<<"
+    def test_should_raise_data_error_on_parse_error(self):
+        with pytest.raises(DataError, match="not valid XML"):
+            parse_aha_devicelist_xml("this is not valid xml <<<")
 
-        # Act
-        result = parse_aha_devicelist_xml(invalid_xml)
-
-        # Check
-        assert result == []
-
-    def test_should_ignore_non_numeric_int_fields(self):
+    def test_should_record_non_numeric_int_fields_and_skip_the_value(self):
         # Prepare
         deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
         <devicelist version="1">
@@ -1775,11 +1889,36 @@ class TestParseAhaDevicelistXml:
         </device>
         </devicelist>
         """
-        # Act
-        devices = parse_aha_devicelist_xml(deviceinfo)
+        issues = Issues()
 
-        # Check
+        devices = parse_aha_devicelist_xml(deviceinfo, issues)
+
         assert devices[0]["battery_level"] is None
+        assert devices[0]["device_name"] == "Fritz!DECT 200"
+        assert issues.messages == ["AHA device battery: expected a whole number, got str"]
+
+    def test_empty_battery_low_and_lock_mean_unknown_not_zero(self):
+        # AVM leaves these empty when the value is unknown; exporting 0 would
+        # claim "battery fine" / "not locked".
+        deviceinfo = """<devicelist version="1">
+        <device identifier="1" id="1" manufacturer="AVM" productname="Fritz!DECT 301">
+            <present>1</present><name>x</name><battery>80</battery><batterylow></batterylow>
+            <switch><state>1</state><mode>manuell</mode><lock></lock></switch>
+        </device></devicelist>"""
+
+        [device] = parse_aha_devicelist_xml(deviceinfo)
+
+        assert device["battery_level"] == 80
+        assert device["battery_low"] is None
+        assert device["switch"]["lock"] is None
+
+    def test_should_treat_empty_int_fields_as_absent(self):
+        deviceinfo = """<devicelist version="1">
+        <device identifier="1" id="1" manufacturer="AVM" productname="Fritz!DECT 200">
+            <present>1</present><name>x</name><battery></battery>
+        </device></devicelist>"""
+
+        assert parse_aha_devicelist_xml(deviceinfo)[0]["battery_level"] is None
 
     def test_should_fall_back_to_hkr_battery_when_missing_on_device(self):
         # Prepare - some firmware versions only report battery data nested

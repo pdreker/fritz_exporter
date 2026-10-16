@@ -14,7 +14,10 @@ from requests.exceptions import RequestException
 
 from fritzexporter.config import DeviceConfig, ExporterError, get_config
 from fritzexporter.data_donation import donate_data
-from fritzexporter.exceptions import FritzDeviceHasNoCapabilitiesError
+from fritzexporter.exceptions import (
+    FritzDeviceHasNoCapabilitiesError,
+    FritzDeviceSerialUnknownError,
+)
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 from fritzexporter.tr064_remote import ConnectionOptions
 
@@ -103,8 +106,9 @@ def _register_device(
         FritzConnectionException,
         FritzAuthorizationError,
         FritzDeviceHasNoCapabilitiesError,
+        FritzDeviceSerialUnknownError,
         RequestException,
-    ):
+    ) as e:
         logger.exception(
             "Failed to initialize device %s (%s), it will be reported as down",
             dev.hostname,
@@ -116,6 +120,7 @@ def _register_device(
             host_info=dev.host_info,
             wifi_client_info=dev.wifi_client_info,
             connection=connection,
+            failure=e,
         )
         return
 

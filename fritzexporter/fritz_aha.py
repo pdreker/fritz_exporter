@@ -1,22 +1,28 @@
+"""Smart home (AHA) device list parsing.
+
+Values are read with the helpers of :mod:`fritzexporter.reply`: an empty or
+missing element is absent (``None``); a malformed one is ``None`` too and is
+recorded in the :class:`~fritzexporter.reply.Issues` passed in. A document that
+is not XML raises :class:`~fritzexporter.reply.DataError`.
+"""
+
 from typing import Any
 from xml.etree.ElementTree import Element
 
 from defusedxml import ElementTree
 
+from fritzexporter.reply import DataError, Issues, to_int
+
 
 def _findtext(elem: Element, tag: str) -> str | None:
     text = elem.findtext(tag)
-    return text.strip() if text is not None else None
-
-
-def _find_int(elem: Element, tag: str) -> int | None:
-    text = _findtext(elem, tag)
     if text is None:
         return None
-    try:
-        return int(text)
-    except ValueError:
-        return None
+    return text.strip() or None
+
+
+def _find_int(elem: Element, tag: str, issues: Issues) -> int | None:
+    return issues.convert(_findtext(elem, tag), to_int, f"AHA {elem.tag} {tag}")
 
 
 def _parse_switch(device: Element) -> dict[str, Any] | None:
@@ -30,52 +36,54 @@ def _parse_switch(device: Element) -> dict[str, Any] | None:
     }
 
 
-def _parse_powermeter(device: Element) -> dict[str, Any] | None:
+def _parse_powermeter(device: Element, issues: Issues) -> dict[str, Any] | None:
     powermeter = device.find("powermeter")
     if powermeter is None:
         return None
     return {
-        "power": _find_int(powermeter, "power"),
-        "energy": _find_int(powermeter, "energy"),
+        "power": _find_int(powermeter, "power", issues),
+        "energy": _find_int(powermeter, "energy", issues),
     }
 
 
-def _parse_temperature(device: Element) -> dict[str, Any] | None:
+def _parse_temperature(device: Element, issues: Issues) -> dict[str, Any] | None:
     temperature = device.find("temperature")
     if temperature is None:
         return None
     return {
-        "celsius": _find_int(temperature, "celsius"),
-        "offset": _find_int(temperature, "offset"),
+        "celsius": _find_int(temperature, "celsius", issues),
+        "offset": _find_int(temperature, "offset", issues),
     }
 
 
-def _parse_hkr(device: Element) -> dict[str, Any] | None:
+def _parse_hkr(device: Element, issues: Issues) -> dict[str, Any] | None:
     hkr = device.find("hkr")
     if hkr is None:
         return None
     return {
-        "tist": _find_int(hkr, "tist"),
-        "tsoll": _find_int(hkr, "tsoll"),
-        "absenk": _find_int(hkr, "absenk"),
-        "komfort": _find_int(hkr, "komfort"),
-        "battery_level": _find_int(hkr, "battery"),
+        "tist": _find_int(hkr, "tist", issues),
+        "tsoll": _find_int(hkr, "tsoll", issues),
+        "absenk": _find_int(hkr, "absenk", issues),
+        "komfort": _find_int(hkr, "komfort", issues),
+        "battery_level": _find_int(hkr, "battery", issues),
         "battery_low": _findtext(hkr, "batterylow"),
     }
 
 
-def parse_aha_devicelist_xml(content: str) -> list[dict[str, Any]]:
+def parse_aha_devicelist_xml(content: str, issues: Issues | None = None) -> list[dict[str, Any]]:
+    issues = issues if issues is not None else Issues()
     try:
         devicelist: Element = ElementTree.fromstring(content)
     except ElementTree.ParseError:
-        return []
+        msg = "AHA device list: not valid XML"
+        raise DataError(msg) from None
 
     devices = []
     for device in devicelist.findall("device"):
-        hkr = _parse_hkr(device)
+        hkr = _parse_hkr(device, issues)
         # On some firmware versions battery data is only reported nested
         # inside <hkr> instead of as a direct child of <device>.
-        battery_level = _find_int(device, "battery")
+        battery_level = _find_int(device, "battery", issues)
         battery_low = _findtext(device, "batterylow")
         if battery_level is None and hkr is not None:
             battery_level = hkr["battery_level"]
@@ -92,8 +100,8 @@ def parse_aha_devicelist_xml(content: str) -> list[dict[str, Any]]:
                 "battery_level": battery_level,
                 "battery_low": battery_low,
                 "switch": _parse_switch(device),
-                "powermeter": _parse_powermeter(device),
-                "temperature": _parse_temperature(device),
+                "powermeter": _parse_powermeter(device, issues),
+                "temperature": _parse_temperature(device, issues),
                 "hkr": hkr,
             }
         )

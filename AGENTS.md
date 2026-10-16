@@ -181,9 +181,11 @@ fritzexporter/
   fritz_webui.py        # Generic Fritz!Box web login + data.lua/REST API/AHA client
   fritz_docsis.py       # DOCSIS cable channel types + parser (web UI page)
   fritz_rest_generic.py # Technology-agnostic /api/v0 REST parsers (connections, segments)
+  fritz_fiber.py        # Fibre optical level parser (fiberStats web UI page)
   tr064_remote.py       # TR-064/web UI ports, WAN remote TR-064 (/tr064) rewriting
+  reply.py              # Typed reading of device replies (Reply, read_action, Issues, DataError)
   action_blacklists.py  # TR-064 actions that must never be called
-  data_donation.py      # --donate / --sanitize: collect + upload anonymized device data
+  data_donation.py      # --donate-data / --sanitize: collect + upload anonymized device data
   exceptions.py         # Project-level exceptions
   config/
     __init__.py
@@ -199,19 +201,36 @@ fritzexporter/
   - Implements `_generate_metric_values(device)` — queries the device and populates metrics.
   - Implements `_get_metric_values()` — yields the populated metric families.
 
-- **`FritzCapabilities`** (container): holds one instance of every `FritzCapability` subclass, keyed by class name. Supports merging across multiple devices.
+- **`FritzCapabilities`** (container): holds one instance of every `FritzCapability` subclass, keyed by class name. Each device has its own (with `present` flags and the current read problem per capability); the collector has one without a device that drives the collect loop.
 
 - **`FritzDevice`**: connects to a single Fritz device, probes its capabilities, and holds a `FritzCapabilities` instance.
 
-- **`FritzCollector`** (Prometheus `Collector`): holds multiple `FritzDevice` instances and implements `collect()` to yield all metrics.
+- **`FritzCollector`** (Prometheus `Collector`): holds multiple `FritzDevice` instances (and offline devices it retries) and implements `collect()` to yield all metrics, plus the self-monitoring metrics (`fritz_scrapes_*`, `fritz_device_reachable`, `fritz_read_problem`).
 
 - **Configuration** is loaded either from a YAML file or from environment variables. Config objects are `attrs` `@define` classes with validators. See the **Dual Configuration** section below for the complete mapping and the rule that both paths must stay in sync.
+
+### Reading device data
+
+**Never index raw device data** (`result["NewFoo"]`, `raw.get("data", {})`). Read every value through `fritzexporter/reply.py`:
+
+- `read_action(device, service, action, **arguments)` returns a `Reply`; `Reply(raw, "source")` wraps JSON objects.
+- `num()`, `integer()`, `flag()`, `text(key, default)` for strict reads; `opt_*` for optional ones; `opt_obj()`, `items()` and `issues.objects()` for nesting; `to_float`/`to_int`/`to_bool`/`to_str` for single values.
+- Rule: missing/`None`/`""`/`[]`/`{}` is absent; present but wrong type raises `DataError`. `DataError` messages name the field, never the value.
+
+**Keep failures at the level they affect** (see "Reading Device Data" in `docs/coding.rst`):
+
+- Value: `self._add(key, labels, self.issues.num(reply, field))` — a defective value costs only its sample.
+- Item (host, channel, WLAN band, ...): `with self._item("host 3"):` — a defective label costs only that item.
+- Capability: strict reads outside an item — use them only for what the whole capability depends on (shared labels, loop counts, reply structure).
+- Device: an unreadable serial raises `FritzDeviceSerialUnknownError`; the device is registered offline and given up after `SERIAL_RETRIES` (3) retries.
+
+`FritzCapability.get_metrics` handles the rest centrally: it exports `fritz_read_problem{capability, level}` while a problem lasts and logs it when it appears, hourly while it lasts and when it is gone (`report_problem()`; also used for the connection mode). Errors other than `DataError`/`FritzWebUiError` are treated as bugs (traceback on every scrape). **Do not add `try/except` in a capability just to log and return** — only where it can do better than skipping (e.g. a fallback).
 
 ### Adding a new metric/capability
 
 1. Add a new subclass of `FritzCapability` in `fritzcapabilities.py`.
 2. Set `self.requirements` in `__init__` with the required TR-064 `(service, action)` pairs.
-3. Implement `create_metrics()`, `_generate_metric_values()`, and `_get_metric_values()`.
+3. Implement `create_metrics()`, `_generate_metric_values()` (reading data as described above), and `_get_metric_values()`.
 4. The subclass is automatically discovered — no registration needed.
 5. Add corresponding tests in `tests/test_fritzcapabilities.py`, using the mock infrastructure in `tests/fc_services_mock.py`.
 

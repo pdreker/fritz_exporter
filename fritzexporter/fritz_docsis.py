@@ -14,7 +14,9 @@ neobiker.de / dc8wan.de shell scripts.
 
 from __future__ import annotations
 
-from typing import Any, Final, TypedDict
+from typing import Final, TypedDict
+
+from fritzexporter.reply import Issues, Reply
 
 __all__ = [
     "DOC_INFO_PAGE",
@@ -33,15 +35,15 @@ class DownstreamChannel(TypedDict):
 
     channel_id: int
     standard: str
-    modulation: str
-    frequency: str
+    modulation: str | None
+    frequency: str | None
     power_dbmv: float | None
     mer_db: float | None
     mse_db: float | None
     corrected_errors: int | None
     uncorrected_errors: int | None
     latency_ms: float | None
-    fft: str
+    fft: str | None
 
 
 class UpstreamChannel(TypedDict):
@@ -49,8 +51,8 @@ class UpstreamChannel(TypedDict):
 
     channel_id: int
     standard: str
-    modulation: str
-    frequency: str
+    modulation: str | None
+    frequency: str | None
     power_dbmv: float | None
 
 
@@ -62,79 +64,66 @@ class DocsisData(TypedDict):
     upstream: list[UpstreamChannel]
 
 
-def _to_float(value: Any) -> float | None:  # noqa: ANN401
-    """Safely convert a value (string or number) to float, None on failure."""
-    if value is None or value == "":
-        return None
-    try:
-        return float(value)
-    except TypeError, ValueError:
-        return None
+def _channels(section: Reply | None, issues: Issues) -> list[tuple[str, Reply]]:
+    """The channels of a ``channelDs``/``channelUs`` section with their standard."""
+    if section is None:
+        return []
+    return [
+        (standard, channel)
+        for standard, key in (("DOCSIS 3.1", "docsis31"), ("DOCSIS 3.0", "docsis30"))
+        for _, channel in issues.objects(section, key)
+    ]
 
 
-def _to_int(value: Any) -> int | None:  # noqa: ANN401
-    """Convert a value to int, None on failure (unknown)."""
-    if value is None or value == "":
-        return None
-    try:
-        return int(value)
-    except TypeError, ValueError:
-        return None
+def _upstream(ch: Reply, standard: str, issues: Issues) -> UpstreamChannel:
+    return {
+        # Every metric of a channel carries its id, so it is read strictly.
+        "channel_id": ch.opt_integer("channelID") or 0,
+        "standard": standard,
+        "modulation": issues.text(ch, "modulation", ""),
+        "frequency": issues.text(ch, "frequency", ""),
+        "power_dbmv": issues.opt_num(ch, "powerLevel"),
+    }
 
 
-def parse_docsis_response(raw: dict[str, Any]) -> DocsisData:
+def _downstream(ch: Reply, standard: str, issues: Issues) -> DownstreamChannel:
+    """The upstream fields plus the downstream quality fields."""
+    return {
+        **_upstream(ch, standard, issues),
+        "mer_db": issues.opt_num(ch, "mer"),
+        "mse_db": issues.opt_num(ch, "mse"),
+        "corrected_errors": issues.opt_integer(ch, "corrErrors"),
+        "uncorrected_errors": issues.opt_integer(ch, "nonCorrErrors"),
+        "latency_ms": issues.opt_num(ch, "latency"),
+        "fft": issues.text(ch, "fft", ""),
+    }
+
+
+def parse_docsis_response(raw: object, issues: Issues | None = None) -> DocsisData:
     """Parse the raw data.lua?page=docInfo JSON into a normalized structure.
 
     Returns a :class:`DocsisData` with ``ready_state``, ``downstream`` and
     ``upstream`` lists of channel dicts. Downstream channels carry the quality
     fields (MER/MSE, errors, latency); upstream channels carry
     power/modulation/frequency.
+
+    Empty values become ``None``. A defective value also becomes ``None`` and a
+    channel with a defective id is left out, both recorded in ``issues``; data
+    of the wrong shape raises :class:`~fritzexporter.reply.DataError`.
     """
-    inner = raw.get("data", {})
+    issues = issues if issues is not None else Issues()
+    inner = Reply(raw, "docInfo").opt_obj("data") or Reply({}, "docInfo data")
     result: DocsisData = {
-        "ready_state": inner.get("readyState", "unknown"),
+        "ready_state": issues.text(inner, "readyState", "unknown") or "unknown",
         "downstream": [],
         "upstream": [],
     }
-
-    ch_ds = inner.get("channelDs", {})
-    for standard, channels in (
-        ("DOCSIS 3.1", ch_ds.get("docsis31", [])),
-        ("DOCSIS 3.0", ch_ds.get("docsis30", [])),
-    ):
-        for ch in channels:
-            result["downstream"].append(
-                {
-                    "channel_id": _to_int(ch.get("channelID")) or 0,
-                    "standard": standard,
-                    "modulation": str(ch.get("modulation") or ""),
-                    "frequency": str(ch.get("frequency") or ""),
-                    "power_dbmv": _to_float(ch.get("powerLevel")),
-                    "mer_db": _to_float(ch.get("mer")),
-                    "mse_db": _to_float(ch.get("mse")),
-                    "corrected_errors": _to_int(ch.get("corrErrors")),
-                    "uncorrected_errors": _to_int(ch.get("nonCorrErrors")),
-                    "latency_ms": _to_float(ch.get("latency")),
-                    "fft": str(ch.get("fft") or ""),
-                }
-            )
-
-    ch_us = inner.get("channelUs", {})
-    for standard, channels in (
-        ("DOCSIS 3.1", ch_us.get("docsis31", [])),
-        ("DOCSIS 3.0", ch_us.get("docsis30", [])),
-    ):
-        for ch in channels:
-            result["upstream"].append(
-                {
-                    "channel_id": _to_int(ch.get("channelID")) or 0,
-                    "standard": standard,
-                    "modulation": str(ch.get("modulation") or ""),
-                    "frequency": str(ch.get("frequency") or ""),
-                    "power_dbmv": _to_float(ch.get("powerLevel")),
-                }
-            )
-
+    for standard, ch in _channels(inner.opt_obj("channelDs"), issues):
+        with issues.item(f"downstream channel {ch.where('channelID')}"):
+            result["downstream"].append(_downstream(ch, standard, issues))
+    for standard, ch in _channels(inner.opt_obj("channelUs"), issues):
+        with issues.item(f"upstream channel {ch.where('channelID')}"):
+            result["upstream"].append(_upstream(ch, standard, issues))
     return result
 
 

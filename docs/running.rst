@@ -86,7 +86,7 @@ Systemd
 
 It's also possible to run the exporter using a `systemd <https://systemd.io/>`_ service.
 
-Make sure you have python >=3.11 and pip installed on your system.
+Make sure you have Python 3.14 or later and pip installed on your system.
 Usually these packages are called ``python3`` and ``python3-pip``. Please consult your distro documentation.
 
 Create a new user for the exporter.

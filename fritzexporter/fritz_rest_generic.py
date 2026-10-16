@@ -12,7 +12,9 @@ This module holds the domain types and parsers for those endpoint responses.
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import TypedDict
+
+from fritzexporter.reply import Issues, Reply, to_float
 
 __all__ = [
     "ConnectionInfo",
@@ -61,27 +63,21 @@ class ConnectionInfo(TypedDict):
     ip6_addr: str
 
 
-def _to_float(value: Any) -> float | None:  # noqa: ANN401
-    """Safely convert a value (string or number) to float, None on failure."""
-    if value is None or value == "":
-        return None
-    try:
-        return float(value)
-    except TypeError, ValueError:
-        return None
+def _segment_series(entry: Reply, issues: Issues) -> SegmentSeries:
+    return {
+        "media_type": entry.text("mediaType", ""),
+        "type": entry.text("type", ""),
+        "downstream": [
+            issues.convert(v, to_float, entry.where("downstream"))
+            for v in entry.items("downstream")
+        ],
+        "upstream": [
+            issues.convert(v, to_float, entry.where("upstream")) for v in entry.items("upstream")
+        ],
+    }
 
 
-def _to_int(value: Any) -> int | None:  # noqa: ANN401
-    """Convert a value to int, None on failure (unknown)."""
-    if value is None or value == "":
-        return None
-    try:
-        return int(value)
-    except TypeError, ValueError:
-        return None
-
-
-def parse_monitor_segment(raw: dict[str, Any]) -> MonitorSegmentData:
+def parse_monitor_segment(raw: object, issues: Issues | None = None) -> MonitorSegmentData:
     """Parse a ``/api/v0/monitor/segment/<n>`` response into normalized data.
 
     The response has a top-level ``lastSampleTime`` (Unix epoch seconds of the
@@ -89,45 +85,53 @@ def parse_monitor_segment(raw: dict[str, Any]) -> MonitorSegmentData:
     (traffic this box generates) and ``total`` (traffic of every subscriber in
     the shared segment). Each series carries ``downstream`` and ``upstream``
     utilization series in percent; the newest sample is the last element of
-    each list. Unknown/non-numeric samples become ``None``.
+    each list.
+
+    Empty samples become ``None``. A defective sample also becomes ``None`` and
+    a defective series is left out, both recorded in ``issues``; data of the
+    wrong shape raises :class:`~fritzexporter.reply.DataError`.
     """
-    series: list[SegmentSeries] = [
-        {
-            "media_type": str(entry.get("mediaType") or ""),
-            "type": str(entry.get("type") or ""),
-            "downstream": [_to_float(v) for v in entry.get("downstream", [])],
-            "upstream": [_to_float(v) for v in entry.get("upstream", [])],
-        }
-        for entry in raw.get("data", [])
-    ]
-    result: MonitorSegmentData = {
-        "last_sample_time": _to_int(raw.get("lastSampleTime")),
+    issues = issues if issues is not None else Issues()
+    reply = Reply(raw, "monitor segment")
+    series: list[SegmentSeries] = []
+    for index, entry in issues.objects(reply, "data"):
+        with issues.item(f"monitor segment series {index}"):
+            series.append(_segment_series(entry, issues))
+    return {
+        "last_sample_time": issues.opt_integer(reply, "lastSampleTime"),
         "series": series,
     }
-    return result
 
 
-def parse_connections_response(raw: list[dict[str, Any]]) -> list[ConnectionInfo]:
-    """Parse the ``connection`` list from ``/api/v0/generic/connections``.
+def _connection(entry: Reply, issues: Issues) -> ConnectionInfo:
+    return {
+        # Labels of every sample of the connection, so they are read strictly.
+        "uid": entry.text("UID", ""),
+        "name": entry.text("name", ""),
+        "media_type": entry.text("media_type", ""),
+        "ip4_connstatus": entry.text("ip4_connstatus", ""),
+        "ip6_connstatus": entry.text("ip6_connstatus", ""),
+        "ip4_uptime": issues.opt_integer(entry, "ip4_uptime"),
+        "ip6_uptime": issues.opt_integer(entry, "ip6_uptime"),
+        "ip4_addr": entry.text("ip4_masqaddr", ""),
+        "ip6_addr": entry.text("ip6_addr", ""),
+    }
 
-    ``raw`` is the list of connection entries. Uptime fields are numeric
-    strings in seconds; empty or missing values (reported for disabled
-    connections) become ``None`` so callers can skip them.
+
+def parse_connections_response(raw: object, issues: Issues | None = None) -> list[ConnectionInfo]:
+    """Parse the ``connection`` list of an ``/api/v0/generic/connections`` response.
+
+    Uptime fields are numeric strings in seconds; empty or missing values
+    (reported for disabled connections) become ``None`` so callers can skip them.
+    A defective uptime also becomes ``None`` and a connection with defective
+    labels is left out, both recorded in ``issues``; data of the wrong shape
+    raises :class:`~fritzexporter.reply.DataError`.
     """
-    connections: list[ConnectionInfo] = [
-        {
-            "uid": str(entry.get("UID") or ""),
-            "name": str(entry.get("name") or ""),
-            "media_type": str(entry.get("media_type") or ""),
-            "ip4_connstatus": str(entry.get("ip4_connstatus") or ""),
-            "ip6_connstatus": str(entry.get("ip6_connstatus") or ""),
-            "ip4_uptime": _to_int(entry.get("ip4_uptime")),
-            "ip6_uptime": _to_int(entry.get("ip6_uptime")),
-            "ip4_addr": str(entry.get("ip4_masqaddr") or ""),
-            "ip6_addr": str(entry.get("ip6_addr") or ""),
-        }
-        for entry in raw
-    ]
+    issues = issues if issues is not None else Issues()
+    connections: list[ConnectionInfo] = []
+    for index, entry in issues.objects(Reply(raw, "connections"), "connection"):
+        with issues.item(f"connection {index}"):
+            connections.append(_connection(entry, issues))
     return connections
 
 

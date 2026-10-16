@@ -108,6 +108,16 @@ class TestParseDocsisResponse:
         assert us31["standard"] == "DOCSIS 3.1"
         assert us31["power_dbmv"] == pytest.approx(4.0)
 
+    def test_empty_channel_list_sent_as_object_is_no_channels(self):
+        # A box without DOCSIS 3.1 channels may send "docsis31": {} (empty Lua table).
+        raw = {"data": {"channelDs": {"docsis31": {}, "docsis30": [{"channelID": "7"}]},
+                        "channelUs": {"docsis31": {}, "docsis30": []}}}
+
+        data = parse_docsis_response(raw)
+
+        assert [ch["channel_id"] for ch in data["downstream"]] == [7]
+        assert data["upstream"] == []
+
     def test_handles_missing_sections(self):
         data = parse_docsis_response({"data": {}})
         assert data["ready_state"] == "unknown"

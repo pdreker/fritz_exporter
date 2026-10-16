@@ -2,6 +2,14 @@ class FritzDeviceHasNoCapabilitiesError(Exception):
     pass
 
 
+class FritzDeviceSerialUnknownError(Exception):
+    """The serial number of a device cannot be read.
+
+    The serial is the label that tells devices apart in Prometheus (names may
+    repeat), so a device without one is not collected.
+    """
+
+
 # Copyright 2019-2026 Patrick Dreker <patrick@dreker.de>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

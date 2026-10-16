@@ -7,6 +7,7 @@ import pytest
 
 from fritzexporter.fritz_fiber import parse_fiber_stats_response
 from fritzexporter.fritz_webui import FritzWebUiError
+from fritzexporter.reply import DataError, Issues
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
 from .fc_services_mock import call_action_mock, create_fc_services, fc_services_capabilities
@@ -17,10 +18,32 @@ class TestParseFiberStats:
         raw = {"data": {"opt_ds": [["sa", 9, -65], ["sa", 8, -66]], "opt_us": [["sa", 9, -54]]}}
         assert parse_fiber_stats_response(raw) == {"receive_dbm": -6.5, "transmit_dbm": -5.4}
 
-    def test_missing_or_malformed_series_give_none(self):
+    def test_missing_series_give_none(self):
         assert parse_fiber_stats_response({}) == {"receive_dbm": None, "transmit_dbm": None}
-        raw = {"data": {"opt_ds": [], "opt_us": [["sa", 9, "n/a"]]}}
+        raw = {"data": {"opt_ds": [], "opt_us": [["sa", 9, ""]]}}
         assert parse_fiber_stats_response(raw) == {"receive_dbm": None, "transmit_dbm": None}
+
+    @pytest.mark.parametrize(
+        ("raw", "message"),
+        [
+            ({"data": {"opt_us": [["sa", 9, "n/a"]]}}, "fiberStats opt_us[0] value: expected a number"),
+            ({"data": {"opt_us": [["sa", 9]]}}, "fiberStats opt_us[0]: expected [weekday, hour, value]"),
+            ({"data": {"opt_us": "not a list"}}, "fiberStats data opt_us: expected a list"),
+        ],
+    )
+    def test_defective_series_gives_none_and_is_recorded(self, raw, message):
+        raw["data"]["opt_ds"] = [["sa", 9, -65]]
+        issues = Issues()
+
+        levels = parse_fiber_stats_response(raw, issues)
+
+        assert levels == {"receive_dbm": -6.5, "transmit_dbm": None}
+        assert [m.split(", got")[0] for m in issues.messages] == [message]
+
+    @pytest.mark.parametrize("raw", [{"data": "not an object"}, []])
+    def test_reply_of_the_wrong_shape_raises(self, raw):
+        with pytest.raises(DataError):
+            parse_fiber_stats_response(raw)
 
 
 FIBER_RAW = {"data": {"opt_ds": [["sa", 9, -65], ["sa", 8, -66]], "opt_us": [["sa", 9, -54]]}}
@@ -97,7 +120,16 @@ class TestWanFiberWebUiFallback:
         with caplog.at_level(logging.WARNING):
             levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
         assert levels == {"receive": 0, "transmit": 0}
-        assert "Failed to fetch fibre levels" in caplog.text
+        assert "Could not read fibre levels from the web UI of somehost: login failed" in caplog.text
+
+    def test_malformed_web_ui_data_keeps_tr064_values(self, mock_fritzconnection: MagicMock, caplog):
+        client = MagicMock()
+        client.fetch_page.return_value = {"data": {"opt_ds": [["sa", 9, "n/a"]]}}
+        with caplog.at_level(logging.WARNING):
+            levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
+        assert levels == {"receive": 0, "transmit": 0}
+        assert "Skipped part of the WanFiberInterfaceConfig data from somehost: " in caplog.text
+        assert "fiberStats opt_ds[0] value: expected a number, got str" in caplog.text
 
     @patch("fritzexporter.fritzdevice.FritzWebUiClient")
     def test_fiber_alone_creates_web_ui_client(
