@@ -1502,7 +1502,7 @@ class TestMeshTopologyParsing:
                 id="rate-text",
             ),
             pytest.param(
-                _mesh_link(max_data_rate_rx={}),
+                _mesh_link(max_data_rate_rx={"not": "a number"}),
                 'fritz_mesh_link_max_data_rate_kbps{direction="rx"',
                 id="rate-dict",
             ),

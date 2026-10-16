@@ -97,6 +97,61 @@ def _describe(exc: BaseException) -> str:
     return f"{type(exc).__name__} at {_origin(exc)}"
 
 
+class ProblemState:
+    """Holds the current problem of one source of data on one device."""
+
+    def __init__(self) -> None:
+        self.problem: _Problem | None = None
+
+
+def report_problem(  # noqa: PLR0913
+    state: ProblemState | FritzCapability,
+    name: str,
+    host: str,
+    *,
+    level: str | None,
+    headline: str = "",
+    details: str = "",
+) -> None:
+    """Record the problem of the last scrape in ``state`` and log it.
+
+    A problem is logged as a warning when it appears or changes level, reminded of
+    every ``PROBLEM_REMINDER_INTERVAL`` while it lasts, logged at debug level on the
+    other scrapes, and with an info line when it is gone (``level`` is ``None``). A
+    bug (``ProblemLevel.ERROR``) is logged by the caller on every scrape.
+    """
+    if level is None:
+        if state.problem is not None:
+            logger.info(
+                "Reading %s data from %s works again (problem since %s, %d scrapes)",
+                name,
+                host,
+                _since(state.problem),
+                state.problem.scrapes,
+            )
+        state.problem = None
+        return
+    if state.problem is None or state.problem.level != level:
+        state.problem = _Problem(level)
+        if level != ProblemLevel.ERROR:
+            logger.warning("%s: %s", headline, details)
+    elif (
+        level != ProblemLevel.ERROR
+        and time.monotonic() - state.problem.reminded >= PROBLEM_REMINDER_INTERVAL
+    ):
+        state.problem.reminded = time.monotonic()
+        logger.warning(
+            "%s, still since %s (%d scrapes): %s",
+            headline,
+            _since(state.problem),
+            state.problem.scrapes + 1,
+            details,
+        )
+    else:
+        logger.debug("%s: %s", headline, details)
+    state.problem.scrapes += 1
+
+
 def _url_host(url: str, what: str) -> str | None:
     """The host name of ``url``; a malformed URL is a :class:`DataError`."""
     try:
@@ -238,6 +293,8 @@ class FritzCapability(ABC):
         """
         counts = self._sample_counts()
         self.issues = Issues()
+        # The problem state lives on the device's own instance of this capability.
+        state = device.capabilities[name]
         try:
             self._generate_metric_values(device)
             _check_samples(self.metrics, counts)
@@ -251,12 +308,13 @@ class FritzCapability(ABC):
             device.available = False
         except (FritzWebUiError, DataError) as e:
             self._rollback(counts)
-            self._report(
-                device,
+            report_problem(
+                state,
                 name,
-                ProblemLevel.SKIPPED,
-                f"Could not read {name} data from {device.host}, skipping it",
-                _describe(e),
+                device.host,
+                level=ProblemLevel.SKIPPED,
+                headline=f"Could not read {name} data from {device.host}, skipping it",
+                details=_describe(e),
             )
         except _BUG_ERRORS:
             self._rollback(counts)
@@ -266,58 +324,19 @@ class FritzCapability(ABC):
                 name,
                 device.host,
             )
-            self._report(device, name, ProblemLevel.ERROR, "", "")
+            report_problem(state, name, device.host, level=ProblemLevel.ERROR)
         else:
             if self.issues.messages:
-                self._report(
-                    device,
-                    name,
-                    ProblemLevel.PARTIAL,
-                    f"Skipped part of the {name} data from {device.host}",
-                    "; ".join(self.issues.messages),
-                )
-            else:
-                self._report(device, name, None, "", "")
-
-    @staticmethod
-    def _report(
-        device: FritzDevice, name: str, level: str | None, headline: str, details: str
-    ) -> None:
-        """Log a problem when it appears or changes level, remind of it while it lasts.
-
-        A bug (``ProblemLevel.ERROR``) is logged by the caller on every scrape.
-        """
-        state = device.capabilities[name]
-        if level is None:
-            if state.problem is not None:
-                logger.info(
-                    "Reading %s data from %s works again (problem since %s, %d scrapes)",
+                report_problem(
+                    state,
                     name,
                     device.host,
-                    _since(state.problem),
-                    state.problem.scrapes,
+                    level=ProblemLevel.PARTIAL,
+                    headline=f"Skipped part of the {name} data from {device.host}",
+                    details="; ".join(self.issues.messages),
                 )
-            state.problem = None
-            return
-        if state.problem is None or state.problem.level != level:
-            state.problem = _Problem(level)
-            if level != ProblemLevel.ERROR:
-                logger.warning("%s: %s", headline, details)
-        elif (
-            level != ProblemLevel.ERROR
-            and time.monotonic() - state.problem.reminded >= PROBLEM_REMINDER_INTERVAL
-        ):
-            state.problem.reminded = time.monotonic()
-            logger.warning(
-                "%s, still since %s (%d scrapes): %s",
-                headline,
-                _since(state.problem),
-                state.problem.scrapes + 1,
-                details,
-            )
-        else:
-            logger.debug("%s: %s", headline, details)
-        state.problem.scrapes += 1
+            else:
+                report_problem(state, name, device.host, level=None)
 
     def _sample_counts(self) -> dict[str, int]:
         return {key: len(family.samples) for key, family in self.metrics.items()}
@@ -399,7 +418,7 @@ class DeviceInfo(FritzCapability):
         labels = [
             info.text("NewModelName", "n/a"),
             info.text("NewSoftwareVersion", "n/a"),
-            info.text("NewSerialNumber"),
+            device.serial,
             device.friendly_name,
         ]
         self._add("uptime", labels, self.issues.num(info, "NewUpTime"))
@@ -918,7 +937,7 @@ class WanCommonInterfaceConfig(FritzCapability):
     def _generate_metric_values(self, device: FritzDevice) -> None:
         result = read_action(device, "WANCommonInterfaceConfig1", "GetCommonLinkProperties")
         # The access type is a label of every sample here, so it is read strictly.
-        labels = [device.serial, device.friendly_name, result.text("NewWANAccessType")]
+        labels = [device.serial, device.friendly_name, result.text("NewWANAccessType", "")]
         self._add(
             "wanconfig", [*labels, "tx"], self.issues.num(result, "NewLayer1UpstreamMaxBitRate")
         )

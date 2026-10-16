@@ -5,8 +5,11 @@ object from ``data.lua`` or the REST API, an element of the AHA XML - is read
 through the helpers in this module, never by indexing the raw data. One rule
 applies everywhere:
 
-* A value that is missing, ``None`` or ``""`` is *absent*. Required reads raise
-  :class:`DataError`, optional reads (``opt_*``) return ``None``.
+* A value that is missing, ``None``, ``""``, ``[]`` or ``{}`` is *absent*.
+  Required reads raise :class:`DataError`, optional reads (``opt_*``) return
+  ``None``. Empty containers count as absent because JSON encoders for Lua
+  (which the web interface is written in) cannot tell an empty list from an
+  empty object and send either.
 * A value that is present but cannot be read as the requested type raises
   :class:`DataError`.
 
@@ -55,6 +58,8 @@ class DataError(ValueError):
 
 
 def _is_absent(value: object) -> bool:
+    if isinstance(value, list | dict):
+        return not value
     return value is None or value == ""
 
 
@@ -247,9 +252,9 @@ class Issues:
         return self.value(lambda: convert(value, what))
 
     def objects(self, reply: Reply, key: str) -> Iterator[tuple[int, Reply]]:
-        """Like :meth:`Reply.objects`, but an element that is no object is skipped.
+        """The objects of the list at ``key``; an element that is no object is skipped.
 
-        A value at ``key`` that is no list at all still raises.
+        An absent list is empty; a value at ``key`` that is no list at all raises.
         """
         for index, element in enumerate(reply.items(key)):
             what = f"{reply.where(key)}[{index}]"

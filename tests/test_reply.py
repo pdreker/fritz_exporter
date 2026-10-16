@@ -20,7 +20,7 @@ SECRET = "192.0.2.77"
 
 
 class TestConverters:
-    @pytest.mark.parametrize("absent", [None, ""])
+    @pytest.mark.parametrize("absent", [None, "", [], {}])
     @pytest.mark.parametrize("convert", [to_float, to_int, to_bool, to_str])
     def test_absent_values_are_none(self, convert, absent):
         assert convert(absent, "x") is None
@@ -37,7 +37,7 @@ class TestConverters:
         assert math.isnan(nan)
         assert to_float("1e999", "x") == math.inf
 
-    @pytest.mark.parametrize("value", ["abc", True, [], {}, object()])
+    @pytest.mark.parametrize("value", ["abc", True, [1], {"a": 1}, object()])
     def test_to_float_rejects(self, value):
         with pytest.raises(DataError, match="x: expected a number"):
             to_float(value, "x")
@@ -59,7 +59,7 @@ class TestConverters:
     def test_to_bool(self, value, expected):
         assert to_bool(value, "x") is expected
 
-    @pytest.mark.parametrize("value", [2, -1, "maybe", 1.0, []])
+    @pytest.mark.parametrize("value", [2, -1, "maybe", 1.0, [1]])
     def test_to_bool_rejects(self, value):
         with pytest.raises(DataError, match="x: expected a flag"):
             to_bool(value, "x")
@@ -70,7 +70,7 @@ class TestConverters:
     def test_to_str(self, value, expected):
         assert to_str(value, "x") == expected
 
-    @pytest.mark.parametrize("value", [[], {}, object()])
+    @pytest.mark.parametrize("value", [[1], {"a": 1}, object()])
     def test_to_str_rejects(self, value):
         with pytest.raises(DataError, match="x: expected text"):
             to_str(value, "x")
@@ -142,6 +142,14 @@ class TestReply:
             self.reply.opt_text("nested")
         with pytest.raises(DataError, match="Svc.Action name: expected an object"):
             self.reply.opt_obj("name")
+
+    def test_empty_containers_of_the_other_kind_are_absent(self):
+        # Lua JSON encoders send an empty list as {} or an empty object as [].
+        reply = Reply({"rows": {}, "nested": []}, "S.A")
+
+        assert reply.items("rows") == []
+        assert reply.opt_obj("nested") is None
+        assert list(Issues().objects(reply, "rows")) == []
 
     def test_lists(self):
         assert self.reply.items("samples") == [1, None, "2"]

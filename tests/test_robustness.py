@@ -16,7 +16,7 @@ from prometheus_client.core import GaugeMetricFamily
 from fritzexporter.__main__ import _register_device
 from fritzexporter.config import DeviceConfig
 from fritzexporter.fritzcapabilities import LanInterfaceConfigStatistics, _check_samples
-from fritzexporter.fritzdevice import FritzCollector
+from fritzexporter.fritzdevice import SERIAL_RETRIES, FritzCollector
 from fritzexporter.reply import DataError
 
 from .fc_services_mock import call_action_mock, create_fc_services, fc_services_devices
@@ -42,7 +42,7 @@ def wlan1_info(**fields):
 
 
 class Scenario:
-    """Two devices; "bad" answers ``overrides`` instead of the mock data."""
+    """Two devices; "bad" answers ``overrides`` (raising exceptions) instead of the mock data."""
 
     def __init__(self, overrides: dict | None = None):
         self.overrides = {"good": {}, "bad": dict(overrides or {})}
@@ -61,7 +61,10 @@ class Scenario:
     def _fake_fc(self, host: str) -> MagicMock:
         def call_action(service, action, **kwargs):
             if (service, action) in self.overrides[host]:
-                return self.overrides[host][(service, action)]
+                override = self.overrides[host][(service, action)]
+                if isinstance(override, Exception):
+                    raise override
+                return override
             result = call_action_mock(service, action, **kwargs)
             if (service, action) == ("DeviceInfo1", "GetInfo"):
                 result = {**result, "NewSerialNumber": host.upper()}
@@ -178,6 +181,31 @@ class TestSingleCases:
         assert samples(output, "fritz_tr069_acs_info", "GOOD")
         assert "ACS host skipped: ManagementServer1.GetInfo NewURL: not a valid URL" in caplog.text
 
+    def test_empty_access_type_keeps_the_wan_metrics(self):
+        props = {
+            **call_action_mock("WANCommonInterfaceConfig1", "GetCommonLinkProperties"),
+            "NewWANAccessType": "",
+        }
+        scenario = Scenario({("WANCommonInterfaceConfig1", "GetCommonLinkProperties"): props})
+
+        output = scenario.scrape()
+
+        [status] = samples(output, "fritz_wan_phys_link_status", "BAD")
+        assert 'wantype=""' in status
+        assert len(samples(output, "fritz_wan_max_bitrate_bps", "BAD")) == 2
+
+    def test_uptime_uses_the_device_serial(self):
+        scenario = Scenario()
+        # A later GetInfo reply with an odd serial does not change the label.
+        scenario.overrides["bad"][("DeviceInfo1", "GetInfo")] = {
+            **call_action_mock("DeviceInfo1", "GetInfo"),
+            "NewSerialNumber": "",
+        }
+
+        output = scenario.scrape()
+
+        assert len(samples(output, "fritz_uptime_seconds_total", "BAD")) == 1
+
     def test_empty_model_name_keeps_the_uptime_metric(self):
         info = {**call_action_mock("DeviceInfo1", "GetInfo"), "NewSerialNumber": "BAD", "NewModelName": ""}
         scenario = Scenario({("DeviceInfo1", "GetInfo"): info})
@@ -271,6 +299,60 @@ class TestDeviceLevel:
         assert reachable(output, "BAD", "BAD") == 1.0
         assert samples(output, "fritz_lan_status", "BAD")
 
+    def test_device_without_serial_is_given_up_after_the_retries(self, caplog):
+        caplog.set_level(logging.DEBUG)
+        scenario = Scenario({("DeviceInfo1", "GetInfo"): {"NewModelName": "Fritz!Box"}})
+        bad_fc = scenario.fcs["bad"]
+
+        for _ in range(SERIAL_RETRIES + 1):
+            scenario.scrape()
+        output = scenario.scrape()
+
+        [offline] = scenario.collector.offline_devices
+        assert offline.given_up
+        assert offline.serial_failures == SERIAL_RETRIES + 1
+        assert reachable(output, "BAD", "n/a") == 0.0
+        giving_up = [r for r in caplog.records if r.getMessage().startswith("Giving up on device bad")]
+        assert len(giving_up) == 1
+        assert giving_up[0].levelno == logging.ERROR
+
+        # No further attempts once given up, even if the serial would work now.
+        del scenario.overrides["bad"][("DeviceInfo1", "GetInfo")]
+        calls = bad_fc.call_action.call_count
+        scenario.scrape()
+        assert bad_fc.call_action.call_count == calls
+        assert [d.friendly_name for d in scenario.collector.devices] == ["GOOD"]
+
+    def test_connection_failures_are_retried_without_limit(self):
+        scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzConnectionException("down")})
+
+        for _ in range(SERIAL_RETRIES + 3):
+            scenario.scrape()
+
+        [offline] = scenario.collector.offline_devices
+        assert not offline.given_up
+        assert offline.serial_failures == 0
+
+        del scenario.overrides["bad"][("DeviceInfo1", "GetInfo")]
+        scenario.scrape()
+        assert [d.friendly_name for d in scenario.collector.devices] == ["GOOD", "BAD"]
+
+    def test_new_reason_for_staying_offline_is_logged(self, caplog):
+        caplog.set_level(logging.DEBUG)
+        # Unreachable at startup ...
+        scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzConnectionException("down")})
+        caplog.clear()
+
+        # ... reachable later, but without a serial: that must show at warning level.
+        scenario.overrides["bad"][("DeviceInfo1", "GetInfo")] = {"NewModelName": "Fritz!Box"}
+        scenario.scrape()
+        scenario.scrape()
+
+        warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+        reasons = [m for m in warnings if m.startswith("Device bad is still offline, now because:")]
+        assert len(reasons) == 1
+        assert "could not read the serial number of bad" in reasons[0]
+
     def test_connection_errors_still_mark_the_device_unreachable(self):
         scenario = Scenario()
         original = scenario.fcs["bad"].call_action.side_effect
@@ -319,6 +401,46 @@ class TestProblemMetric:
         scenario.overrides["bad"][LAN_STATS] = lan_stats()
 
         assert problems(scenario.scrape(), "BAD") == []
+
+
+class TestProblemMetricMore:
+    def test_problems_of_an_unreachable_device_are_not_exported(self):
+        scenario = Scenario({LAN_STATS: "garbage"})
+        assert problems(scenario.scrape(), "BAD") == [("LanInterfaceConfigStatistics", "skipped")]
+
+        original = scenario.fcs["bad"].call_action.side_effect
+
+        def down(service, action, **kwargs):
+            if (service, action) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
+                raise FritzConnectionException("down")
+            return original(service, action, **kwargs)
+
+        scenario.fcs["bad"].call_action.side_effect = down
+        output = scenario.scrape()
+
+        assert reachable(output, "BAD", "BAD") == 0.0
+        assert problems(output, "BAD") == []
+
+    def test_connection_mode_problem_is_reported_like_a_capability(self, caplog):
+        caplog.set_level(logging.DEBUG)
+        scenario = Scenario(
+            {("WANCommonInterfaceConfig", "GetCommonLinkProperties"): {"NewPhysicalLinkStatus": ["Up"]}}
+        )
+
+        for _ in range(3):
+            output = scenario.scrape()
+
+        assert problems(output, "BAD") == [("ConnectionMode", "skipped")]
+        warnings = [
+            r.getMessage()
+            for r in caplog.records
+            if r.levelno == logging.WARNING and "connection mode" in r.getMessage()
+        ]
+        assert warnings == [
+            "Could not read the connection mode of bad: "
+            "WANCommonInterfaceConfig.GetCommonLinkProperties NewPhysicalLinkStatus: "
+            "expected text, got list"
+        ]
 
 
 class TestLogging:

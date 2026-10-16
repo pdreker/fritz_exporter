@@ -75,7 +75,7 @@ def _channels(section: Reply | None, issues: Issues) -> list[tuple[str, Reply]]:
     ]
 
 
-def _downstream(ch: Reply, standard: str, issues: Issues) -> DownstreamChannel:
+def _upstream(ch: Reply, standard: str, issues: Issues) -> UpstreamChannel:
     return {
         # Every metric of a channel carries its id, so it is read strictly.
         "channel_id": ch.opt_integer("channelID") or 0,
@@ -83,22 +83,19 @@ def _downstream(ch: Reply, standard: str, issues: Issues) -> DownstreamChannel:
         "modulation": issues.text(ch, "modulation", ""),
         "frequency": issues.text(ch, "frequency", ""),
         "power_dbmv": issues.opt_num(ch, "powerLevel"),
+    }
+
+
+def _downstream(ch: Reply, standard: str, issues: Issues) -> DownstreamChannel:
+    """The upstream fields plus the downstream quality fields."""
+    return {
+        **_upstream(ch, standard, issues),
         "mer_db": issues.opt_num(ch, "mer"),
         "mse_db": issues.opt_num(ch, "mse"),
         "corrected_errors": issues.opt_integer(ch, "corrErrors"),
         "uncorrected_errors": issues.opt_integer(ch, "nonCorrErrors"),
         "latency_ms": issues.opt_num(ch, "latency"),
         "fft": issues.text(ch, "fft", ""),
-    }
-
-
-def _upstream(ch: Reply, standard: str, issues: Issues) -> UpstreamChannel:
-    return {
-        "channel_id": ch.opt_integer("channelID") or 0,
-        "standard": standard,
-        "modulation": issues.text(ch, "modulation", ""),
-        "frequency": issues.text(ch, "frequency", ""),
-        "power_dbmv": issues.opt_num(ch, "powerLevel"),
     }
 
 

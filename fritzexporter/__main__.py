@@ -108,7 +108,7 @@ def _register_device(
         FritzDeviceHasNoCapabilitiesError,
         FritzDeviceSerialUnknownError,
         RequestException,
-    ):
+    ) as e:
         logger.exception(
             "Failed to initialize device %s (%s), it will be reported as down",
             dev.hostname,
@@ -120,6 +120,7 @@ def _register_device(
             host_info=dev.host_info,
             wifi_client_info=dev.wifi_client_info,
             connection=connection,
+            failure=e,
         )
         return
 
