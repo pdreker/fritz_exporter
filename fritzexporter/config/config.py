@@ -184,14 +184,6 @@ class ExporterConfig:
             raise ConfigError(msg)
         settings = {key: value for key, value in config.items() if key != "devices"}
 
-        listen_address = settings.get("listen_address")
-        if listen_address in ["0.0.0.0", "::"]:  # noqa: S104
-            logger.warning(
-                "Binding to all interfaces (listen_address=%s). "
-                "Note: the default changed to 127.0.0.1 in v3.0.0 — "
-                "set listen_address explicitly if binding to all interfaces is intentional.",
-                listen_address,
-            )
         device_configs = [
             DeviceConfig.from_config(device, f"device {index + 1}")
             for index, device in enumerate(devices)

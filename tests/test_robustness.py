@@ -4,7 +4,6 @@ Every test runs two devices, "good" and "bad", and renders the scrape the way
 Prometheus gets it, so a failure that would only show while rendering is caught.
 """
 
-import argparse
 import logging
 import threading
 from unittest.mock import MagicMock, patch
@@ -54,7 +53,6 @@ class Scenario:
             for host in ("good", "bad"):
                 _register_device(
                     DeviceConfig(hostname=host, username="user", password="pw", name=host.upper()),
-                    argparse.Namespace(donate_data=None),
                     self.collector,
                 )
         self.registry = CollectorRegistry()

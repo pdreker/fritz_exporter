@@ -3,6 +3,7 @@
 # Declare variables to be passed into your templates.
 
 # Use this to specify your config file. You can just put the YAMl for the config here.
+# listen_address defaults to 0.0.0.0 here, so the service reaches the pod.
 config: {}
 # exporter_port: 9787 # optional
 # log_level: DEBUG # optional
@@ -24,6 +25,7 @@ config: {}
 
 # Set to false if you wish to bring your own secret.
 # Default: a secret with the contents of the above "config" will be created.
+# Your own secret must set listen_address: 0.0.0.0, or the service cannot reach the pod.
 createConfigSecret: true
 
 # The name of the secret supplied by you.

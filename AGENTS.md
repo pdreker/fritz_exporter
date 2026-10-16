@@ -184,8 +184,6 @@ fritzexporter/
   fritz_fiber.py        # Fibre optical level parser (fiberStats web UI page)
   tr064_remote.py       # TR-064/web UI ports, WAN remote TR-064 (/tr064) rewriting
   reply.py              # Typed reading of device replies (Reply, read_action, Issues, DataError)
-  action_blacklists.py  # TR-064 actions that must never be called
-  data_donation.py      # --donate-data / --sanitize: collect + upload anonymized device data
   exceptions.py         # Project-level exceptions
   config/
     __init__.py
@@ -337,6 +335,8 @@ For every pull request, review the following areas in addition to the Python cod
 
 - Check whether the base Python image version, build dependencies, or the install/entrypoint commands need updating to match changes in `pyproject.toml`, `uv.lock`, or the package itself.
 - Verify that no unnecessary files are copied into the image and that the multi-stage build remains clean.
+- The image installs the versions from `uv.lock` (`uv export` with hashes, then `pip install --require-hashes`); the uv build image tag pins the uv version.
+- The image runs as `nobody` (65534), like the Helm chart; files it reads must be readable by that user.
 - Commit Dockerfile changes with the `build` type: `build: ...`.
 
 ### Helm chart (`helm/fritz-exporter/`)

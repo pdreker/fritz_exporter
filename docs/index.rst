@@ -15,7 +15,6 @@ Welcome to fritz-exporter's documentation!
    configuration
    running
    docker-images
-   helping_out
    contributing
    building
    coding

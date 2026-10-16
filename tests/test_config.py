@@ -346,23 +346,19 @@ class TestEnvEmptyVsUnsetValues:
 
 
 class TestConfigEdgeCases:
-    def test_bind_all_interfaces_logs_warning_for_ipv6(self, caplog):
-        caplog.set_level(logging.WARNING)
+    def test_bind_all_interfaces_is_accepted_quietly(self, caplog):
+        # The image and the Helm chart listen on all interfaces by default.
+        caplog.set_level(logging.DEBUG)
 
-        ExporterConfig.from_config(
+        config = ExporterConfig.from_config(
             {
                 "listen_address": "::",
-                "devices": [
-                    {
-                        "hostname": "fritz.box",
-                        "username": "user",
-                        "password": "password",
-                    }
-                ],
+                "devices": [{"hostname": "fritz.box", "username": "user", "password": "password"}],
             }
         )
 
-        assert "Binding to all interfaces" in caplog.text
+        assert config.listen_address == "::"
+        assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
 
     def test_duplicate_device_names_are_an_error(self):
         from fritzexporter.config import DeviceNamesNotUniqueError

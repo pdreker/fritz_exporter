@@ -13,7 +13,10 @@ To run simply use
   docker run -d -e FRITZ_USERNAME="prometheus" -e FRITZ_PASSWORD="monitoring" -p 9787:9787 --name fritz_exporter pdreker/fritz_exporter
 
 
-This will use the default hostname of ``fritz.box`` for the device and use the default name of `Fritz!Box`
+This will use the default hostname of ``fritz.box`` for the device and name it after the hostname.
+
+The image runs as user ``nobody`` (65534) and sets ``FRITZ_LISTEN_ADDRESS=0.0.0.0``,
+so the published port reaches the exporter.
 
 If you are monitoring multiple device you must use the config file method like this:
 
@@ -22,6 +25,9 @@ If you are monitoring multiple device you must use the config file method like t
   docker run -d -v /path/to/fritz-exporter.yaml:/app/fritz-exporter.yaml -p 9787:9787 --name fritz_exporter pdreker/fritz_exporter --config /app/fritz-exporter.yaml
 
 ``/path/to/fritz-exporter.yaml`` is your local copy of the configuration, which will be mounted into the container.
+It must be readable by user ``nobody`` (65534), like a ``password_file``, and it must
+set ``listen_address: 0.0.0.0``: the environment variables do not apply when a config
+file is used, and the default ``127.0.0.1`` is not reachable from outside the container.
 
 See the example config file provided at :ref:`config-file`.
 

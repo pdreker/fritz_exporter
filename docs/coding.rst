@@ -27,8 +27,6 @@ A quick orientation before diving in:
       fritz_docsis.py       – Parser for the DOCSIS cable channel page (docInfo)
       fritz_fiber.py        – Parser for the fibre optical level page (fiberStats)
       fritz_rest_generic.py – Parsers for REST API connections and segment monitor
-      action_blacklists.py  – TR-064 service/action pairs that must never be called
-      data_donation.py      – "donate-data" CLI mode: collect & upload device data
       exceptions.py         – Top-level exceptions
       config/
         config.py           – ExporterConfig, DeviceConfig (attrs @define classes)
@@ -331,14 +329,6 @@ Adding a New Metric / Capability
 Supporting Modules
 ------------------
 
-**action_blacklists.py**
-
-Defines ``call_blacklist``, a list of ``BlacklistItem(service, action)`` tuples
-representing TR-064 calls that must *never* be made by the exporter.  These include
-calls that retrieve persistent configuration data, security keys, WEP keys, phone
-book entries, and other sensitive or potentially destructive operations.  The blacklist
-is used exclusively by the *data donation* feature.
-
 **reply.py**
 
 Typed reading of every device reply and the ``Issues`` collector for the value and item
@@ -372,16 +362,6 @@ the DOCSIS channel page, the fibre optical level history and the REST API connec
 and segment monitor endpoints.  Each turns a raw reply into typed data through
 ``reply.py`` and takes an ``Issues`` collector, so a defective value or item is
 skipped and recorded instead of failing the whole capability.
-
-**data_donation.py**
-
-Implements the ``--donate-data`` / ``--upload-data`` CLI mode.  When active, the
-exporter connects to the device, iterates over *all* services and ``Get*`` actions
-(excluding per-index/per-IP lookups), calls each one, sanitises sensitive fields
-using a built-in blacklist plus any user-specified ``--sanitize`` arguments, and either
-prints or uploads the resulting JSON blob to the project's collection endpoint.  This
-data helps the project discover which TR-064 actions are available on different device
-models.
 
 **exceptions.py**
 

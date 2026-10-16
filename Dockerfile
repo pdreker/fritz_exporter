@@ -1,28 +1,40 @@
-# Build .whl in a separate build container
-FROM python:3.14.7-alpine AS build
+# The requirements and the wheel are the same on every platform: build them once,
+# on the build host, with the versions and hashes from uv.lock.
+FROM --platform=$BUILDPLATFORM ghcr.io/astral-sh/uv:0.11.18 AS uv
+
+FROM --platform=$BUILDPLATFORM python:3.14.7-alpine AS build
+COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /app
 
-RUN apk add build-base libffi-dev openssl-dev rust cargo && \
-    pip install --upgrade pip build
-
-COPY README.md pyproject.toml /app/
+COPY README.md pyproject.toml uv.lock /app/
 COPY fritzexporter /app/fritzexporter
 
-RUN python -m build --wheel
+RUN uv export --frozen --no-dev --no-emit-project --format requirements.txt \
+        --output-file requirements.txt && \
+    uv build --wheel
 
 # Build the actual runner
 FROM python:3.14.7-alpine
 
 LABEL Name=fritzbox_exporter
 EXPOSE 9787
-ENV PIP_NO_CACHE_DIR="true"
+ENV PIP_NO_CACHE_DIR="true" \
+    PIP_DISABLE_PIP_VERSION_CHECK="true" \
+    # Inside a container the exporter listens on the container's own address;
+    # the published port decides who can reach it. Applies to the env
+    # configuration; a config file sets listen_address itself.
+    FRITZ_LISTEN_ADDRESS="0.0.0.0"
 
 WORKDIR /app
 
-COPY --from=build /app/dist/*.whl /
+COPY --from=build /app/requirements.txt /app/dist/*.whl /tmp/install/
 
-RUN pip install /fritz_exporter-*.whl && \
-    mkdir /etc/fritz && \
-    rm /fritz_exporter-*.whl
+RUN pip install --require-hashes --requirement /tmp/install/requirements.txt && \
+    pip install --no-deps /tmp/install/*.whl && \
+    rm -r /tmp/install && \
+    mkdir /etc/fritz
+
+# nobody, as in the Helm chart
+USER 65534:65534
 
 ENTRYPOINT ["python", "-m", "fritzexporter"]
