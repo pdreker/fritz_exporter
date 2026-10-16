@@ -13,6 +13,7 @@ import urllib3.connection
 import urllib3.exceptions
 
 from fritzexporter.fritz_webui import (
+    LOGIN_RETRY_DELAY,
     FritzWebUiClient,
     FritzWebUiError,
     FritzWebUiMd5DisabledError,
@@ -36,10 +37,16 @@ class TestFritzWebUiClientAuth:
     def test_pbkdf2_response(self):
         challenge = "2$9000$00112233445566778899aabbccddeeff$1000$ffeeddccbbaa99887766554433221100"
         response = FritzWebUiClient._pbkdf2_response(challenge, "test")
+        # AVM expects "<salt2>$<hash2>", not the whole challenge.
         assert response == (
-            "2$9000$00112233445566778899aabbccddeeff$1000$ffeeddccbbaa99887766554433221100$"
+            "ffeeddccbbaa99887766554433221100$"
             "d7328ff621925c1094730e3784cf1c7eb3782c989e1eab4a56c9b426c55b57c8"
         )
+
+    def test_pbkdf2_response_matches_avm_example(self):
+        # The worked example from AVM's technical note on session IDs.
+        response = FritzWebUiClient._pbkdf2_response("2$10000$5A1711$2000$5A1722", "1example!")
+        assert response == "5A1722$1798a1672bca7c6463d6b245f82b53703b0f50813401b03e4045a5861e689adb"
 
     def test_pbkdf2_response_rejects_bad_challenge(self):
         with pytest.raises(FritzWebUiError):
@@ -50,7 +57,7 @@ class TestFritzWebUiClientAuth:
         challenge = f"2$60000${salt1.hex()}$6000${salt2.hex()}"
         hash1 = hashlib.pbkdf2_hmac("sha256", b"test", salt1, 60000, 32)
         hash2 = hashlib.pbkdf2_hmac("sha256", hash1, salt2, 6000, 32)
-        assert FritzWebUiClient._pbkdf2_response(challenge, "test") == f"{challenge}${hash2.hex()}"
+        assert FritzWebUiClient._pbkdf2_response(challenge, "test") == f"{challenge.split('$')[4]}${hash2.hex()}"
 
     @pytest.mark.parametrize(
         ("iter1", "iter2", "ok"),
@@ -76,7 +83,7 @@ class TestFritzWebUiClientAuth:
         monkeypatch.setattr(hashlib, "pbkdf2_hmac", lambda *a: calls.append(a) or b"\0" * 32)
         challenge = f"2${iter1}$aabb${iter2}$ccdd"
         if ok:
-            assert FritzWebUiClient._pbkdf2_response(challenge, "test").startswith(challenge)
+            assert FritzWebUiClient._pbkdf2_response(challenge, "test").startswith("ccdd$")
             assert len(calls) == 2
         else:
             with pytest.raises(FritzWebUiError):
@@ -123,19 +130,21 @@ class TestFritzWebUiClientAuth:
         challenge = "2$10000$5A1711$2000$2ca9a9b1"
         hash1 = hashlib.pbkdf2_hmac("sha256", b"test", salt1, 10000, 32)
         hash2 = hashlib.pbkdf2_hmac("sha256", hash1, salt2, 2000, 32)
-        assert FritzWebUiClient._pbkdf2_response(challenge, "test") == f"{challenge}${hash2.hex()}"
+        assert FritzWebUiClient._pbkdf2_response(challenge, "test") == f"{challenge.split('$')[4]}${hash2.hex()}"
 
     def test_pbkdf2_accepts_salt_of_64_hex_chars(self):
         challenge = "2$60000$" + "ab" * 32 + "$6000$" + "cd" * 32
-        assert FritzWebUiClient._pbkdf2_response(challenge, "test").startswith(challenge + "$")
+        assert FritzWebUiClient._pbkdf2_response(challenge, "test").startswith("cd" * 32 + "$")
 
     def test_pbkdf2_accepts_salt_of_64_bytes(self):
         challenge = "2$60000$" + "ab" * 64 + "$6000$" + "cd" * 64
-        assert FritzWebUiClient._pbkdf2_response(challenge, "test").startswith(challenge + "$")
+        assert FritzWebUiClient._pbkdf2_response(challenge, "test").startswith("cd" * 64 + "$")
 
     def test_pbkdf2_accepts_real_shaped_challenge(self):
         challenge = "2$60000$0123456789abcdef0123456789abcdef$6000$fedcba9876543210fedcba9876543210"
-        assert FritzWebUiClient._pbkdf2_response(challenge, "test").startswith(challenge + "$")
+        assert FritzWebUiClient._pbkdf2_response(challenge, "test").startswith(
+            "fedcba9876543210fedcba9876543210$"
+        )
 
     @pytest.mark.parametrize(
         "challenge",
@@ -241,9 +250,9 @@ class TestFritzWebUiClientAuth:
         sid = client._login()
 
         assert sid == "0123456789abcdef"
-        # The POST must carry the PBKDF2 response
+        # The POST must carry the PBKDF2 response: "<salt2>$<hash2>"
         posted_data = session.post.call_args.kwargs["data"]
-        assert posted_data["response"].startswith("2$")
+        assert posted_data["response"].startswith("ffeeddccbbaa99887766554433221100$")
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_login_asks_for_the_pbkdf2_challenge(self, mock_session_cls: MagicMock):
@@ -854,3 +863,66 @@ class TestHttpErrorText:
         text = _http_error_text(resp)
         assert _SID not in text
         assert text == "HTTP 500 Internal Server Error"
+
+
+class TestLoginBackOff:
+    """A refused login is not retried at once: each attempt makes the box block longer."""
+
+    CHALLENGE = (
+        "<SessionInfo><SID>0000000000000000</SID>"
+        "<Challenge>2$60000$aabb$6000$ccdd</Challenge><BlockTime>{block}</BlockTime></SessionInfo>"
+    )
+    REFUSED = "<SessionInfo><SID>0000000000000000</SID></SessionInfo>"
+    ACCEPTED = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
+
+    @pytest.fixture
+    def clock(self, monkeypatch):
+        now = [1000.0]
+        monkeypatch.setattr("fritzexporter.fritz_webui.time.monotonic", lambda: now[0])
+        return now
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_refused_login_is_not_retried_within_the_delay(self, mock_session_cls, clock):
+        session = mock_session_cls.return_value
+        session.get.return_value = MagicMock(text=self.CHALLENGE.format(block=0))
+        session.post.return_value = MagicMock(text=self.REFUSED)
+        client = FritzWebUiClient("fritz.box", "user", "wrong")
+
+        with pytest.raises(FritzWebUiError, match="wrong password"):
+            client._ensure_sid()
+        clock[0] += LOGIN_RETRY_DELAY - 1
+        with pytest.raises(FritzWebUiError, match="login not retried for 1 seconds after: login failed"):
+            client._ensure_sid()
+        assert session.post.call_count == 1
+
+        clock[0] += 1
+        session.post.return_value = MagicMock(text=self.ACCEPTED)
+        assert client._ensure_sid() == "0123456789abcdef"
+        assert session.post.call_count == 2
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_longer_block_time_of_the_box_is_respected(self, mock_session_cls, clock):
+        session = mock_session_cls.return_value
+        session.get.return_value = MagicMock(text=self.CHALLENGE.format(block=300))
+        client = FritzWebUiClient("fritz.box", "user", "pw")
+
+        with pytest.raises(FritzWebUiError, match="blocked for 300 seconds"):
+            client._ensure_sid()
+        clock[0] += 299
+        with pytest.raises(FritzWebUiError, match="login not retried"):
+            client._ensure_sid()
+        assert session.get.call_count == 1
+
+    @patch("fritzexporter.fritz_webui.requests.Session")
+    def test_transport_errors_do_not_delay_the_next_login(self, mock_session_cls, clock):
+        session = mock_session_cls.return_value
+        session.get.side_effect = [
+            requests.ConnectionError("refused"),
+            MagicMock(text=self.CHALLENGE.format(block=0)),
+        ]
+        session.post.return_value = MagicMock(text=self.ACCEPTED)
+        client = FritzWebUiClient("fritz.box", "user", "pw")
+
+        with pytest.raises(FritzWebUiError, match="request failed"):
+            client._ensure_sid()
+        assert client._ensure_sid() == "0123456789abcdef"

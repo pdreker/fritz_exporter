@@ -33,8 +33,13 @@ logger = logging.getLogger("fritzexporter.fritz_webui")
 __all__ = [
     "FritzWebUiClient",
     "FritzWebUiError",
+    "FritzWebUiLoginError",
     "FritzWebUiMd5DisabledError",
 ]
+
+# Seconds to wait after a refused login before the next attempt (longer if the
+# device says it blocks logins for longer).
+LOGIN_RETRY_DELAY: float = 60.0
 
 # Fritz!OS 7.24 and later only offer the PBKDF2 challenge when asked for it with
 # version=2; without it they keep sending the MD5 challenge, for older clients.
@@ -66,6 +71,17 @@ _HTML_RESPONSE_HINT = "(SID invalid or no permission)"
 
 class FritzWebUiError(Exception):
     """Raised when data cannot be retrieved from the Fritz!Box web interface."""
+
+
+class FritzWebUiLoginError(FritzWebUiError):
+    """The device refused the login: wrong credentials, or blocked after failures.
+
+    ``block_time`` is how long the device says it blocks logins, in seconds.
+    """
+
+    def __init__(self, msg: str, block_time: int = 0) -> None:
+        super().__init__(msg)
+        self.block_time = block_time
 
 
 class FritzWebUiMd5DisabledError(Exception):
@@ -158,6 +174,9 @@ class FritzWebUiClient:
         self.session.verify = False
         self._sid: str | None = None
         self._sid_expiry: float = 0.0
+        # The last refused login, and when the next attempt may be made.
+        self._login_refused: str | None = None
+        self._login_retry_at: float = 0.0
 
     # ------------------------------------------------------------------
     # Authentication
@@ -195,7 +214,8 @@ class FritzWebUiClient:
 
         hash1 = hashlib.pbkdf2_hmac("sha256", password.encode(), salt1, iter1, 32)
         hash2 = hashlib.pbkdf2_hmac("sha256", hash1, salt2, iter2, 32)
-        return f"{challenge}${hash2.hex()}"
+        # AVM expects "<salt2>$<hash2>", not the whole challenge.
+        return f"{salt2_hex}${hash2.hex()}"
 
     def _challenge_response(self, challenge: str) -> str:
         """Pick the login scheme from the challenge and compute the response."""
@@ -249,10 +269,10 @@ class FritzWebUiClient:
             return
         if not _BLOCK_TIME_RE.fullmatch(block_time):
             msg = "login blocked (too many failed attempts)"
-            raise FritzWebUiError(msg)
+            raise FritzWebUiLoginError(msg)
         if int(block_time) > 0:
             msg = f"login blocked for {int(block_time)} seconds (too many failed attempts)"
-            raise FritzWebUiError(msg)
+            raise FritzWebUiLoginError(msg, int(block_time))
 
     def _login(self) -> str:
         """Perform the challenge-response login and return a valid SID."""
@@ -304,16 +324,33 @@ class FritzWebUiClient:
         sid = sid_elem.text if sid_elem is not None else ""
         if not sid or sid == "0000000000000000":
             msg = "login failed: wrong password or username"
-            raise FritzWebUiError(msg)
+            raise FritzWebUiLoginError(msg)
 
         logger.debug("Fritz!Box web login successful, SID obtained")
         return sid
 
     def _ensure_sid(self) -> str:
-        """Return a cached valid SID, logging in if necessary."""
+        """Return a cached valid SID, logging in if necessary.
+
+        After a refused login, no new attempt is made for ``LOGIN_RETRY_DELAY``
+        seconds, or as long as the device blocks logins: every failed attempt
+        makes the device block logins longer, for the web interface too.
+        """
         if self._sid and time.monotonic() < self._sid_expiry:
             return self._sid
-        self._sid = self._login()
+        if self._login_refused is not None and time.monotonic() < self._login_retry_at:
+            msg = (
+                f"login not retried for {self._login_retry_at - time.monotonic():.0f} seconds "
+                f"after: {self._login_refused}"
+            )
+            raise FritzWebUiError(msg)
+        try:
+            self._sid = self._login()
+        except FritzWebUiLoginError as e:
+            self._login_refused = str(e)
+            self._login_retry_at = time.monotonic() + max(LOGIN_RETRY_DELAY, e.block_time)
+            raise
+        self._login_refused = None
         # SIDs are valid for ~18 minutes on the box; refresh well before that.
         self._sid_expiry = time.monotonic() + 15 * 60
         return self._sid
