@@ -177,6 +177,17 @@ class Reply:
             return default
         return self._required(value, key)
 
+    def require_key(self, key: str) -> Reply:
+        """Raise unless ``key`` is in the reply; its value may be empty.
+
+        For the container of a reply's data: an empty one means "no data", a
+        missing one a reply the exporter does not understand.
+        """
+        if key not in self._data:
+            msg = f"{self.where(key)}: missing"
+            raise DataError(msg)
+        return self
+
     def opt_obj(self, key: str) -> Reply | None:
         value = self._data.get(key)
         if _is_absent(value):

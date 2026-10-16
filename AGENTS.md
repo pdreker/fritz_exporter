@@ -197,9 +197,10 @@ fritzexporter/
 
 - **`FritzCapability`** (abstract base class in `fritzcapabilities.py`): Each subclass represents one group of metrics that a Fritz device may or may not support. Subclasses are auto-registered via `__init_subclass__`. Each capability:
   - Declares `requirements`: list of `(service, action)` tuples that must exist and be callable on the device.
-  - Implements `create_metrics()` — instantiates Prometheus metric families.
-  - Implements `_generate_metric_values(device)` — queries the device and populates metrics.
-  - Implements `_get_metric_values()` — yields the populated metric families.
+  - Implements `create_metrics()` — creates its metric families with `self._gauge(key, name, help, *labels, unit=...)` / `self._counter(...)` (labels `serial`, `friendly_name` come first).
+  - Implements `_generate_metric_values(device)` — queries the device and populates metrics. Tables read by index go through `self._enumerate(...)`.
+  - Sets `uses_webui = True` if it reads from the web interface, and gets the client with `self._webui(device)`.
+  - Overrides `enabled(device)` if a config option switches it on (`host_info`, `wifi_client_info`), and `_probe()` if a requirement needs arguments to be called.
 
 - **`FritzCapabilities`** (container): holds one instance of every `FritzCapability` subclass, keyed by class name. Each device has its own (with `present` flags and the current read problem per capability); the collector has one without a device that drives the collect loop.
 
@@ -224,13 +225,13 @@ fritzexporter/
 - Capability: strict reads outside an item — use them only for what the whole capability depends on (shared labels, loop counts, reply structure).
 - Device: an unreadable serial raises `FritzDeviceSerialUnknownError`; the device is registered offline and given up after `SERIAL_RETRIES` (3) retries.
 
-`FritzCapability.get_metrics` handles the rest centrally: it exports `fritz_read_problem{capability, level}` while a problem lasts and logs it when it appears, hourly while it lasts and when it is gone (`report_problem()`; also used for the connection mode). Errors other than `DataError`/`FritzWebUiError` are treated as bugs (traceback on every scrape). **Do not add `try/except` in a capability just to log and return** — only where it can do better than skipping (e.g. a fallback).
+`FritzCapability.get_metrics` handles the rest centrally: it exports `fritz_read_problem{capability, level}` while a problem lasts and logs it when it appears, hourly while it lasts and when it is gone (`report_problem()`; also used for the connection mode). An error reply to a TR-064 request skips the item (inside `_item`) or the capability; only a device that does not answer (`TRANSPORT_ERRORS`) is unreachable. Other errors are treated as bugs (traceback on every scrape). **Do not add `try/except` in a capability just to log and return** — only where it can do better than skipping (e.g. a fallback).
 
 ### Adding a new metric/capability
 
 1. Add a new subclass of `FritzCapability` in `fritzcapabilities.py`.
 2. Set `self.requirements` in `__init__` with the required TR-064 `(service, action)` pairs.
-3. Implement `create_metrics()`, `_generate_metric_values()` (reading data as described above), and `_get_metric_values()`.
+3. Implement `create_metrics()` and `_generate_metric_values()` (reading data as described above).
 4. The subclass is automatically discovered — no registration needed.
 5. Add corresponding tests in `tests/test_fritzcapabilities.py`, using the mock infrastructure in `tests/fc_services_mock.py`.
 

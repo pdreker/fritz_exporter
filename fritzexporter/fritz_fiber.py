@@ -46,15 +46,16 @@ def _newest(data: Reply, key: str) -> float | None:
     return None if value is None else value / 10
 
 
-def parse_fiber_stats_response(raw: object, issues: Issues | None = None) -> FiberLevels:
+def parse_fiber_stats_response(raw: object, issues: Issues) -> FiberLevels:
     """Extract the newest receive (``opt_ds``) and transmit (``opt_us``) level.
 
     A missing series gives ``None``; a defective one too, recorded in
-    ``issues``. A reply of the wrong shape raises
+    ``issues``. A reply of the wrong shape, or without ``data``, raises
     :class:`~fritzexporter.reply.DataError`.
     """
-    issues = issues if issues is not None else Issues()
-    data = Reply(raw, "fiberStats").opt_obj("data") or Reply({}, "fiberStats data")
+    data = Reply(raw, "fiberStats").require_key("data").opt_obj("data") or Reply(
+        {}, "fiberStats data"
+    )
     return {
         "receive_dbm": issues.value(lambda: _newest(data, "opt_ds")),
         "transmit_dbm": issues.value(lambda: _newest(data, "opt_us")),

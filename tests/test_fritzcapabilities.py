@@ -249,7 +249,7 @@ class TestHostInfoCapability:
 
         # Check - benign shrink path is logged and no unreachable error is emitted
         assert any(
-            "Host table shrank during scan of FritzMock (somehost)" in record.message
+            "Hosts1.GetGenericHostEntry on FritzMock (somehost): the table shrank to 2 entries" in record.message
             for record in caplog.records
             if record.levelno == logging.DEBUG
         )
@@ -501,7 +501,8 @@ class TestHomeAutomationCapability:
         assert len(valve_set[0].samples) == 0
 
         assert any(
-            "Could not fetch HKR valve state" in record.message for record in caplog.records
+            "Could not fetch the valve state of smart home device 0" in record.message
+            for record in caplog.records
         )
 
     def test_homeautomation_multiple_devices_in_one_response(self, mock_fritzconnection: MagicMock):
@@ -992,3 +993,80 @@ class TestWanIPv6Prefix:
         )
 
         assert by_name["fritz_wan_ipv6_prefix_info"].samples == []
+
+
+def _argument(kwargs: dict, name: str):
+    """An action argument, given as keyword (reads) or in ``arguments`` (probes)."""
+    return kwargs.get(name, kwargs.get("arguments", {}).get(name))
+
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+class TestProbing:
+    @pytest.mark.parametrize("hosts", [0, 1])
+    def test_host_info_works_with_a_small_host_table(self, mock_fritzconnection: MagicMock, hosts):
+        # The probe used index 1, which a table of 0 or 1 hosts does not have:
+        # the device never came up.
+        def host_table(service, action, **kwargs):
+            if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
+                return {"NewHostNumberOfEntries": hosts}
+            if (service, action) == ("Hosts1", "GetGenericHostEntry"):
+                if _argument(kwargs, "NewIndex") >= hosts:
+                    raise FritzArrayIndexError
+                return {"NewIPAddress": "", "NewMACAddress": "AA:BB:CC:DD:EE:00", "NewHostName": "h", "NewActive": 1}
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = host_table
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        device = FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock", host_info=True)
+        collector = FritzCollector()
+        collector.register(device)
+        by_name = {m.name: m for m in collector.collect()}
+
+        assert device.capabilities["HostInfo"].present
+        assert len(by_name["fritz_host_active"].samples) == hosts
+
+    def test_device_not_answering_a_probe_fails_the_setup(self, mock_fritzconnection: MagicMock):
+        # A timeout must not disable a capability until restart: the device is
+        # set up again later instead.
+        from fritzexporter.tr064_remote import FritzUnreachableError
+
+        def timing_out(service, action, **kwargs):
+            if (service, action) == ("LANEthernetInterfaceConfig1", "GetStatistics"):
+                raise FritzUnreachableError("Fritz device did not answer (ReadTimeout)")
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = timing_out
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+
+        with pytest.raises(FritzUnreachableError):
+            FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock")
+
+    def test_error_reply_to_an_item_skips_only_that_item(self, mock_fritzconnection: MagicMock):
+        def one_bad_host(service, action, **kwargs):
+            if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
+                return {"NewHostNumberOfEntries": 2}
+            if (service, action) == ("Hosts1", "GetGenericHostEntry"):
+                index = _argument(kwargs, "NewIndex")
+                return {"NewIPAddress": f"192.0.2.{index + 1}", "NewMACAddress": f"AA:BB:CC:DD:EE:0{index}", "NewHostName": "h", "NewActive": 1}
+            if (service, action) == ("Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP"):
+                if _argument(kwargs, "NewIPAddress") == "192.0.2.1":
+                    raise FritzInternalError("820")
+            return call_action_mock(service, action, **kwargs)
+
+        fc = mock_fritzconnection.return_value
+        fc.call_action.side_effect = one_bad_host
+        fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+        device = FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock", host_info=True)
+        collector = FritzCollector()
+        collector.register(device)
+
+        by_name = {m.name: m for m in collector.collect()}
+
+        hosts = [s.labels["mac_address"] for s in by_name["fritz_host_active"].samples]
+        assert hosts == ["AA:BB:CC:DD:EE:01"]
+        problems = {(s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples}
+        assert ("HostInfo", "partial") in problems
+        assert by_name["fritz_device_reachable"].samples[0].value == 1.0

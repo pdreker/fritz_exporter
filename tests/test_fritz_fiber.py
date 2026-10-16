@@ -16,12 +16,12 @@ from .fc_services_mock import call_action_mock, create_fc_services, fc_services_
 class TestParseFiberStats:
     def test_newest_entry_of_each_series_in_dbm(self):
         raw = {"data": {"opt_ds": [["sa", 9, -65], ["sa", 8, -66]], "opt_us": [["sa", 9, -54]]}}
-        assert parse_fiber_stats_response(raw) == {"receive_dbm": -6.5, "transmit_dbm": -5.4}
+        assert parse_fiber_stats_response(raw, Issues()) == {"receive_dbm": -6.5, "transmit_dbm": -5.4}
 
     def test_missing_series_give_none(self):
-        assert parse_fiber_stats_response({}) == {"receive_dbm": None, "transmit_dbm": None}
+        assert parse_fiber_stats_response({"data": []}, Issues()) == {"receive_dbm": None, "transmit_dbm": None}
         raw = {"data": {"opt_ds": [], "opt_us": [["sa", 9, ""]]}}
-        assert parse_fiber_stats_response(raw) == {"receive_dbm": None, "transmit_dbm": None}
+        assert parse_fiber_stats_response(raw, Issues()) == {"receive_dbm": None, "transmit_dbm": None}
 
     @pytest.mark.parametrize(
         ("raw", "message"),
@@ -43,7 +43,7 @@ class TestParseFiberStats:
     @pytest.mark.parametrize("raw", [{"data": "not an object"}, []])
     def test_reply_of_the_wrong_shape_raises(self, raw):
         with pytest.raises(DataError):
-            parse_fiber_stats_response(raw)
+            parse_fiber_stats_response(raw, Issues())
 
 
 FIBER_RAW = {"data": {"opt_ds": [["sa", 9, -65], ["sa", 8, -66]], "opt_us": [["sa", 9, -54]]}}
@@ -59,7 +59,8 @@ class TestWanFiberWebUiFallback:
         *,
         tr064_levels: tuple[int, int],
         webui_client: MagicMock | None,
-    ) -> dict[str, float]:
+        scrapes: int = 1,
+    ) -> dict[str, float | None]:
         fc = mock_fritzconnection.return_value
 
         def fiber_call_action_mock(service, action, **kwargs):
@@ -86,17 +87,29 @@ class TestWanFiberWebUiFallback:
         )
         device.webui_client = webui_client
         collector.register(device)
+        for _ in range(scrapes - 1):
+            list(collector.collect())
         by_name = {m.name: m for m in collector.collect()}
+
+        def level(name: str) -> float | None:
+            samples = by_name[name].samples
+            return samples[0].value if samples else None
+
         return {
-            "receive": by_name["fritz_fiber_optical_signal_level_dBm"].samples[0].value,
-            "transmit": by_name["fritz_fiber_transmit_optical_level_dBm"].samples[0].value,
+            "receive": level("fritz_fiber_optical_signal_level_dBm"),
+            "transmit": level("fritz_fiber_transmit_optical_level_dBm"),
+            "threshold samples": len(by_name["fritz_fiber_optical_threshold_dBm"].samples),
         }
 
     def test_zero_from_tr064_uses_web_ui_levels(self, mock_fritzconnection: MagicMock):
         client = MagicMock()
         client.fetch_page.return_value = FIBER_RAW
         levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
-        assert levels == {"receive": pytest.approx(-6.5), "transmit": pytest.approx(-5.4)}
+        assert levels == {
+            "receive": pytest.approx(-6.5),
+            "transmit": pytest.approx(-5.4),
+            "threshold samples": 2,
+        }
         client.fetch_page.assert_called_once_with("fiberStats")
 
     def test_non_zero_tr064_does_not_call_web_ui(self, mock_fritzconnection: MagicMock):
@@ -105,29 +118,42 @@ class TestWanFiberWebUiFallback:
         levels = self._collect(
             mock_fritzconnection, tr064_levels=(-15600, -2500), webui_client=client
         )
-        assert levels == {"receive": pytest.approx(-15.6), "transmit": pytest.approx(-2.5)}
+        assert levels == {
+            "receive": pytest.approx(-15.6),
+            "transmit": pytest.approx(-2.5),
+            "threshold samples": 2,
+        }
         client.fetch_page.assert_not_called()
 
-    def test_zero_without_web_ui_client_stays_zero(self, mock_fritzconnection: MagicMock):
-        levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=None)
-        assert levels == {"receive": 0, "transmit": 0}
+    def test_web_ui_error_exports_no_level_and_reports_it(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
+        # 0 from TR-064 means unknown here, not 0 dBm; the other fibre metrics stay.
+        client = MagicMock()
+        client.fetch_page.side_effect = FritzWebUiError("login failed")
+        with caplog.at_level(logging.WARNING):
+            levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
+        assert levels == {"receive": None, "transmit": None, "threshold samples": 2}
+        assert (
+            "Skipped part of the WanFiberInterfaceConfig data from FritzFiber (somehost): "
+            "optical levels from the web interface skipped: login failed"
+        ) in caplog.text
 
-    def test_web_ui_error_keeps_zero_and_logs_warning(
+    def test_web_ui_failure_is_not_logged_on_every_scrape(
         self, mock_fritzconnection: MagicMock, caplog
     ):
         client = MagicMock()
         client.fetch_page.side_effect = FritzWebUiError("login failed")
         with caplog.at_level(logging.WARNING):
-            levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
-        assert levels == {"receive": 0, "transmit": 0}
-        assert "Could not read fibre levels from the web UI of FritzFiber (somehost): login failed" in caplog.text
+            self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client, scrapes=3)
+        assert caplog.text.count("optical levels from the web interface skipped") == 1
 
-    def test_malformed_web_ui_data_keeps_tr064_values(self, mock_fritzconnection: MagicMock, caplog):
+    def test_malformed_web_ui_data_exports_no_level(self, mock_fritzconnection: MagicMock, caplog):
         client = MagicMock()
         client.fetch_page.return_value = {"data": {"opt_ds": [["sa", 9, "n/a"]]}}
         with caplog.at_level(logging.WARNING):
             levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
-        assert levels == {"receive": 0, "transmit": 0}
+        assert levels["receive"] is None
         assert "Skipped part of the WanFiberInterfaceConfig data from FritzFiber (somehost): " in caplog.text
         assert "fiberStats opt_ds[0] value: expected a number, got str" in caplog.text
 

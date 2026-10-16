@@ -77,7 +77,7 @@ def _segment_series(entry: Reply, issues: Issues) -> SegmentSeries:
     }
 
 
-def parse_monitor_segment(raw: object, issues: Issues | None = None) -> MonitorSegmentData:
+def parse_monitor_segment(raw: object, issues: Issues) -> MonitorSegmentData:
     """Parse a ``/api/v0/monitor/segment/<n>`` response into normalized data.
 
     The response has a top-level ``lastSampleTime`` (Unix epoch seconds of the
@@ -89,10 +89,10 @@ def parse_monitor_segment(raw: object, issues: Issues | None = None) -> MonitorS
 
     Empty samples become ``None``. A defective sample also becomes ``None`` and
     a defective series is left out, both recorded in ``issues``; data of the
-    wrong shape raises :class:`~fritzexporter.reply.DataError`.
+    wrong shape, or without ``data``, raises :class:`~fritzexporter.reply.DataError`.
+    An empty ``data`` (a box on a medium that is not shared) gives no series.
     """
-    issues = issues if issues is not None else Issues()
-    reply = Reply(raw, "monitor segment")
+    reply = Reply(raw, "monitor segment").require_key("data")
     series: list[SegmentSeries] = []
     for index, entry in issues.objects(reply, "data"):
         with issues.item(f"monitor segment series {index}"):
@@ -118,18 +118,18 @@ def _connection(entry: Reply, issues: Issues) -> ConnectionInfo:
     }
 
 
-def parse_connections_response(raw: object, issues: Issues | None = None) -> list[ConnectionInfo]:
+def parse_connections_response(raw: object, issues: Issues) -> list[ConnectionInfo]:
     """Parse the ``connection`` list of an ``/api/v0/generic/connections`` response.
 
     Uptime fields are numeric strings in seconds; empty or missing values
     (reported for disabled connections) become ``None`` so callers can skip them.
     A defective uptime also becomes ``None`` and a connection with defective
-    labels is left out, both recorded in ``issues``; data of the wrong shape
-    raises :class:`~fritzexporter.reply.DataError`.
+    labels is left out, both recorded in ``issues``; data of the wrong shape, or
+    without ``connection``, raises :class:`~fritzexporter.reply.DataError`.
     """
-    issues = issues if issues is not None else Issues()
     connections: list[ConnectionInfo] = []
-    for index, entry in issues.objects(Reply(raw, "connections"), "connection"):
+    reply = Reply(raw, "connections").require_key("connection")
+    for index, entry in issues.objects(reply, "connection"):
         with issues.item(f"connection {index}"):
             connections.append(_connection(entry, issues))
     return connections

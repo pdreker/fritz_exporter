@@ -185,19 +185,9 @@ class FritzDevice:
                 "Ensure prometheus is configured appropriately.",
                 self.log_name,
             )
-        # The web UI client is shared by every capability that reads data from
-        # the Fritz!Box web interface (AHA smart home data, DOCSIS channel data,
-        # fibre optical levels, REST API endpoints).
-        # Create it if any of them is present, so a DSL/fiber box can still use
-        # the technology-agnostic REST capabilities.
-        webui_capabilities = (
-            "HomeAutomation",
-            "WanDocsisCable",
-            "WanFiberInterfaceConfig",
-            "WanSegmentUtilization",
-            "WanConnectionStatus",
-        )
-        if any(self.capabilities[name].present for name in webui_capabilities):
+        # One web client, shared by every capability that reads data from the web
+        # interface (smart home, DOCSIS, fibre levels, REST API).
+        if any(cap.present and cap.uses_webui for _, cap in self.capabilities.items()):
             logger.info(
                 "Web interface collector enabled on device %s. Reading web-interface data.",
                 self.log_name,

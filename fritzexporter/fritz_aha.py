@@ -6,12 +6,54 @@ recorded in the :class:`~fritzexporter.reply.Issues` passed in. A document that
 is not XML raises :class:`~fritzexporter.reply.DataError`.
 """
 
-from typing import Any
+from typing import TypedDict
 from xml.etree.ElementTree import Element
 
 from defusedxml import DefusedXmlException, ElementTree
 
 from fritzexporter.reply import DataError, Issues, to_int
+
+
+class AhaSwitch(TypedDict):
+    state: str | None
+    mode: str | None
+    lock: str | None
+
+
+class AhaPowermeter(TypedDict):
+    power: int | None  # mW
+    energy: int | None  # Wh
+
+
+class AhaTemperature(TypedDict):
+    celsius: int | None  # tenths of a degree
+    offset: int | None
+
+
+class AhaHeater(TypedDict):
+    """Temperatures in half degrees (253/254 mean off/on)."""
+
+    tist: int | None
+    tsoll: int | None
+    absenk: int | None
+    komfort: int | None
+    battery_level: int | None
+    battery_low: str | None
+
+
+class AhaDevice(TypedDict):
+    ain: str
+    device_id: str
+    manufacturer: str
+    productname: str
+    device_name: str
+    present: bool
+    battery_level: int | None
+    battery_low: str | None
+    switch: AhaSwitch | None
+    powermeter: AhaPowermeter | None
+    temperature: AhaTemperature | None
+    hkr: AhaHeater | None
 
 
 def _findtext(elem: Element, tag: str) -> str | None:
@@ -25,7 +67,7 @@ def _find_int(elem: Element, tag: str, issues: Issues) -> int | None:
     return issues.convert(_findtext(elem, tag), to_int, f"AHA {elem.tag} {tag}")
 
 
-def _parse_switch(device: Element) -> dict[str, Any] | None:
+def _parse_switch(device: Element) -> AhaSwitch | None:
     switch = device.find("switch")
     if switch is None:
         return None
@@ -36,7 +78,7 @@ def _parse_switch(device: Element) -> dict[str, Any] | None:
     }
 
 
-def _parse_powermeter(device: Element, issues: Issues) -> dict[str, Any] | None:
+def _parse_powermeter(device: Element, issues: Issues) -> AhaPowermeter | None:
     powermeter = device.find("powermeter")
     if powermeter is None:
         return None
@@ -46,7 +88,7 @@ def _parse_powermeter(device: Element, issues: Issues) -> dict[str, Any] | None:
     }
 
 
-def _parse_temperature(device: Element, issues: Issues) -> dict[str, Any] | None:
+def _parse_temperature(device: Element, issues: Issues) -> AhaTemperature | None:
     temperature = device.find("temperature")
     if temperature is None:
         return None
@@ -56,7 +98,7 @@ def _parse_temperature(device: Element, issues: Issues) -> dict[str, Any] | None
     }
 
 
-def _parse_hkr(device: Element, issues: Issues) -> dict[str, Any] | None:
+def _parse_hkr(device: Element, issues: Issues) -> AhaHeater | None:
     hkr = device.find("hkr")
     if hkr is None:
         return None
@@ -70,15 +112,17 @@ def _parse_hkr(device: Element, issues: Issues) -> dict[str, Any] | None:
     }
 
 
-def parse_aha_devicelist_xml(content: str, issues: Issues | None = None) -> list[dict[str, Any]]:
-    issues = issues if issues is not None else Issues()
+def parse_aha_devicelist_xml(content: str, issues: Issues) -> list[AhaDevice]:
     try:
         devicelist: Element = ElementTree.fromstring(content)
     except ElementTree.ParseError, DefusedXmlException:
         msg = "AHA device list: not valid XML"
         raise DataError(msg) from None
+    if devicelist.tag != "devicelist":
+        msg = "AHA device list: no <devicelist> element"
+        raise DataError(msg)
 
-    devices = []
+    devices: list[AhaDevice] = []
     for device in devicelist.findall("device"):
         hkr = _parse_hkr(device, issues)
         # On some firmware versions battery data is only reported nested

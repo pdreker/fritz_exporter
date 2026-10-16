@@ -255,3 +255,12 @@ class TestIssues:
     def test_item_lets_other_errors_through(self):
         with pytest.raises(KeyError), Issues().item("item"):
             raise KeyError("x")
+
+
+class TestRequireKey:
+    def test_missing_container_is_an_error_an_empty_one_is_not(self):
+        from fritzexporter.reply import Reply
+
+        assert Reply({"data": []}, "x").require_key("data").items("data") == []
+        with pytest.raises(DataError, match=r"^x data: missing$"):
+            Reply({}, "x").require_key("data")

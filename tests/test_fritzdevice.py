@@ -278,7 +278,7 @@ class TestFritzDevice:
         </devicelist>
         """
         # Act
-        devices = parse_aha_devicelist_xml(deviceinfo)
+        devices = parse_aha_devicelist_xml(deviceinfo, Issues())
 
         # Check
         assert len(devices) == 1
@@ -292,7 +292,7 @@ class TestFritzDevice:
         </devicelist>
         """
         # Act
-        devices = parse_aha_devicelist_xml(deviceinfo)
+        devices = parse_aha_devicelist_xml(deviceinfo, Issues())
 
         # Check
         assert devices == []
@@ -1483,7 +1483,7 @@ class TestMeshTopologyParsing:
         [
             pytest.param(
                 _mesh_topology(node_interfaces=5),
-                "mesh node n1 skipped: mesh topology nodes[0] node_interfaces: expected a list",
+                "mesh node 0 skipped: mesh topology nodes[0] node_interfaces: expected a list",
                 id="interfaces-not-a-list",
             ),
             pytest.param(
@@ -1494,7 +1494,7 @@ class TestMeshTopologyParsing:
             ),
             pytest.param(
                 _mesh_topology(_mesh_link(uid=["x"])),
-                "mesh link n1/0/0 skipped:",
+                "mesh link 0/0/0 skipped:",
                 id="unhashable-uid",
             ),
         ],
@@ -1902,12 +1902,16 @@ class TestFritzDeviceAuthError:
 class TestParseAhaDevicelistXml:
     def test_should_raise_data_error_on_parse_error(self):
         with pytest.raises(DataError, match="not valid XML"):
-            parse_aha_devicelist_xml("this is not valid xml <<<")
+            parse_aha_devicelist_xml("this is not valid xml <<<", Issues())
+
+    def test_should_raise_data_error_without_a_devicelist(self):
+        with pytest.raises(DataError, match="no <devicelist> element"):
+            parse_aha_devicelist_xml("<html><body>login</body></html>", Issues())
 
     def test_should_raise_data_error_on_forbidden_xml(self):
         # defusedxml refuses entities; that is bad device data, not a bug.
         with pytest.raises(DataError, match="not valid XML"):
-            parse_aha_devicelist_xml('<!DOCTYPE x [<!ENTITY a "b">]><devicelist>&a;</devicelist>')
+            parse_aha_devicelist_xml('<!DOCTYPE x [<!ENTITY a "b">]><devicelist>&a;</devicelist>', Issues())
 
     def test_should_record_non_numeric_int_fields_and_skip_the_value(self):
         # Prepare
@@ -1938,10 +1942,11 @@ class TestParseAhaDevicelistXml:
             <switch><state>1</state><mode>manuell</mode><lock></lock></switch>
         </device></devicelist>"""
 
-        [device] = parse_aha_devicelist_xml(deviceinfo)
+        [device] = parse_aha_devicelist_xml(deviceinfo, Issues())
 
         assert device["battery_level"] == 80
         assert device["battery_low"] is None
+        assert device["switch"] is not None
         assert device["switch"]["lock"] is None
 
     def test_should_treat_empty_int_fields_as_absent(self):
@@ -1950,7 +1955,7 @@ class TestParseAhaDevicelistXml:
             <present>1</present><name>x</name><battery></battery>
         </device></devicelist>"""
 
-        assert parse_aha_devicelist_xml(deviceinfo)[0]["battery_level"] is None
+        assert parse_aha_devicelist_xml(deviceinfo, Issues())[0]["battery_level"] is None
 
     def test_should_fall_back_to_hkr_battery_when_missing_on_device(self):
         # Prepare - some firmware versions only report battery data nested
@@ -1973,7 +1978,7 @@ class TestParseAhaDevicelistXml:
         </devicelist>
         """
         # Act
-        devices = parse_aha_devicelist_xml(deviceinfo)
+        devices = parse_aha_devicelist_xml(deviceinfo, Issues())
 
         # Check
         assert devices[0]["battery_level"] == 80
