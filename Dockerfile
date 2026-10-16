@@ -2,7 +2,7 @@
 # on the build host, with the versions and hashes from uv.lock.
 FROM --platform=$BUILDPLATFORM ghcr.io/astral-sh/uv:0.11.18 AS uv
 
-FROM --platform=$BUILDPLATFORM python:3.14.7-alpine AS build
+FROM --platform=$BUILDPLATFORM python:3.14.8-alpine AS build
 COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN uv export --frozen --no-dev --no-emit-project --format requirements.txt \
     uv build --wheel
 
 # Build the actual runner
-FROM python:3.14.7-alpine
+FROM python:3.14.8-alpine
 
 LABEL Name=fritzbox_exporter
 EXPOSE 9787
