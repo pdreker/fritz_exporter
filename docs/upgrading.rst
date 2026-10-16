@@ -14,6 +14,11 @@ To keep scraping such a device, upgrade Fritz!OS or set
 ``allow_unsafe_md5_password: true`` (env: ``FRITZ_ALLOW_UNSAFE_MD5_PASSWORD``) for
 it. See :ref:`md5-login`.
 
+Earlier versions did not ask the device for the PBKDF2 login, which Fritz!OS 7.24 and
+later only offer on request, and so used the MD5 login on every firmware. They now ask
+for it, so devices on Fritz!OS 7.24 and later log in with PBKDF2 without any change
+on your side.
+
 v3.5.0
 ------
 

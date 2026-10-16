@@ -36,6 +36,10 @@ __all__ = [
     "FritzWebUiMd5DisabledError",
 ]
 
+# Fritz!OS 7.24 and later only offer the PBKDF2 challenge when asked for it with
+# version=2; without it they keep sending the MD5 challenge, for older clients.
+_LOGIN_VERSION = {"version": "2"}
+
 # The login_sid.lua challenge-response scheme changed in Fritz!OS 7.24.
 # Newer firmware uses PBKDF2-SHA256 ("2$iter1$salt1$iter2$salt2"), older
 # firmware uses a simple MD5 over the UTF-16LE encoded challenge-password.
@@ -209,7 +213,7 @@ class FritzWebUiClient:
 
     def _get_session_info(self) -> dict[str, str]:
         """Fetch the login challenge / SID from login_sid.lua."""
-        params = {"username": self.username} if self.username else {}
+        params = {**_LOGIN_VERSION, "username": self.username} if self.username else _LOGIN_VERSION
         try:
             resp = self.session.get(
                 f"{self.base_url}/login_sid.lua", params=params, timeout=self.timeout
@@ -278,6 +282,7 @@ class FritzWebUiClient:
         try:
             resp = self.session.post(
                 f"{self.base_url}/login_sid.lua",
+                params=_LOGIN_VERSION,
                 data={"username": self.username, "response": response},
                 timeout=self.timeout,
             )
