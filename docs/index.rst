@@ -107,7 +107,9 @@ its own operation:
 * ``fritz_read_problem`` -- ``1`` while the exporter skips data of a capability
   (labels ``capability`` and ``level``): ``partial`` (some values or items could not
   be read), ``skipped`` (the whole capability), or ``error`` (a bug in the exporter,
-  please report it). The series disappears when the problem is gone. Use it to
+  please report it). ``capability="ConnectionMode"`` stands for the
+  ``fritz_connection_mode`` metric. The series disappears when the problem is gone,
+  and is not exported while the device is unreachable. Use it to
   explain gaps in other metrics, or to alert on them; the log has the details: a
   warning when a problem appears, an hourly reminder while it lasts (with the time
   it started) and an info line when it is gone.

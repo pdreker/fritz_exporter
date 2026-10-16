@@ -52,7 +52,10 @@ The entry point is ``fritzexporter/__main__.py`` → ``main()``.
    that could not be set up — unreachable, wrong credentials, no capabilities, or no
    readable serial number — is registered with ``register_offline()`` instead: it is
    reported as ``fritz_device_reachable 0`` and set up again on every scrape until it
-   works.
+   works.  A device that answers but gives no readable serial number is given up after
+   ``SERIAL_RETRIES`` (3) retries, with an error in the log; it stays reported as
+   unreachable until the exporter is restarted.  A warning is logged whenever the
+   reason an offline device fails changes.
 5. The ``FritzCollector`` is registered with the Prometheus ``REGISTRY``.
 6. An HTTP server is started (``prometheus_client.start_http_server``), and the main
    thread waits on ``fritzcollector.fatal_error``.  Scrapes run in the HTTP server's
@@ -200,7 +203,9 @@ never by indexing the raw data:
   ``to_float``/``to_int``/``to_bool``/``to_str`` do the same for single values, e.g.
   list items or XML text.
 
-One rule applies everywhere: a value that is missing, ``None`` or ``""`` is *absent*
+One rule applies everywhere: a value that is missing, ``None``, ``""``, ``[]`` or ``{}``
+is *absent* (empty containers, because JSON encoders for Lua — which the web interface
+is written in — send an empty list as ``{}`` and vice versa)
 (required reads raise, optional reads return ``None``); a value that is present but
 not of the requested type raises ``DataError``.  Numbers come back as ``int``/``float``
 and labels as ``str``.  A ``DataError`` names the source and field, never the value.
@@ -227,8 +232,9 @@ in a graph can be matched to a log line.
 | Capability | a bug in the exporter (``KeyError``,   | as above, logged with a traceback |
 |            | ``TypeError``, ...)                    | on every scrape                   |
 +------------+----------------------------------------+-----------------------------------+
-| Device     | the serial number cannot be read       | the device is registered offline  |
-|            |                                        | and retried                       |
+| Device     | the device answers, but its serial     | registered offline; given up      |
+|            | number cannot be read                  | after ``SERIAL_RETRIES`` (3)      |
+|            |                                        | retries                           |
 +------------+----------------------------------------+-----------------------------------+
 | Device     | the device does not answer             | unreachable for this scrape       |
 +------------+----------------------------------------+-----------------------------------+
@@ -269,7 +275,10 @@ scrape.
 (``partial``, ``skipped`` or ``error``):
 
 * ``fritz_read_problem{capability, level}`` is ``1`` while a problem lasts, so a gap in
-  a graph can be explained from Prometheus alone, even weeks later;
+  a graph can be explained from Prometheus alone, even weeks later.  It is exported only
+  for reachable devices (for the others, nothing was read).  ``get_connection_mode``
+  reports its problems the same way, as ``capability="ConnectionMode"``;
+  ``report_problem()`` does the bookkeeping for both;
 * a warning is logged when a problem appears or changes level, a reminder with the
   start time every hour (``PROBLEM_REMINDER_INTERVAL``) while it lasts, the details at
   debug level on the other scrapes, and an info line when it is gone. Comparing the

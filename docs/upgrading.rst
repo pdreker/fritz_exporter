@@ -28,10 +28,11 @@ Devices without a readable serial number are not collected
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The serial number is the label that tells devices apart (names may repeat). A
-device whose serial cannot be read is now reported as unreachable
-(``fritz_device_reachable 0``) and set up again on every scrape, with one error in
-the log, instead of being collected with ``serial="n/a"``. A missing serial in the
-device's reply used to stop the exporter at startup.
+device that answers but gives no readable serial number is now reported as
+unreachable (``fritz_device_reachable 0``) instead of being collected with
+``serial="n/a"``. The exporter retries it three times, then gives up with an error
+in the log until it is restarted. A missing serial in the device's reply used to stop
+the exporter at startup.
 
 Unreadable data is skipped and reported
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

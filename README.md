@@ -2,7 +2,7 @@
 
 > **⚠️ v4.0.0 breaking changes — action may be required**
 > - **Legacy MD5 web login refused by default.** Devices on Fritz!OS before 7.24 only offer an MD5 login to the web interface, which the smart home, DOCSIS and REST API metrics use. For such a device the exporter now stops with a critical log message at the first scrape. Upgrade Fritz!OS, or set `allow_unsafe_md5_password: true` (env: `FRITZ_ALLOW_UNSAFE_MD5_PASSWORD=true`) for that device to accept the risk.
-> - **Devices without a readable serial number are not collected.** They are reported as unreachable and retried, instead of being collected with `serial="n/a"`.
+> - **Devices without a readable serial number are not collected.** They are reported as unreachable and, after three retries, given up until restart, instead of being collected with `serial="n/a"`.
 > - Unreadable data is now skipped and reported in the new `fritz_read_problem` metric, and some log messages changed.
 >
 > See the [upgrade notes](https://fritz-exporter.readthedocs.io/en/latest/upgrading.html) for details.

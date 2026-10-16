@@ -215,16 +215,16 @@ fritzexporter/
 
 - `read_action(device, service, action, **arguments)` returns a `Reply`; `Reply(raw, "source")` wraps JSON objects.
 - `num()`, `integer()`, `flag()`, `text(key, default)` for strict reads; `opt_*` for optional ones; `opt_obj()`, `items()` and `issues.objects()` for nesting; `to_float`/`to_int`/`to_bool`/`to_str` for single values.
-- Rule: missing/`None`/`""` is absent; present but wrong type raises `DataError`. `DataError` messages name the field, never the value.
+- Rule: missing/`None`/`""`/`[]`/`{}` is absent; present but wrong type raises `DataError`. `DataError` messages name the field, never the value.
 
 **Keep failures at the level they affect** (see "Reading Device Data" in `docs/coding.rst`):
 
 - Value: `self._add(key, labels, self.issues.num(reply, field))` — a defective value costs only its sample.
 - Item (host, channel, WLAN band, ...): `with self._item("host 3"):` — a defective label costs only that item.
 - Capability: strict reads outside an item — use them only for what the whole capability depends on (shared labels, loop counts, reply structure).
-- Device: an unreadable serial raises `FritzDeviceSerialUnknownError`; the device is registered offline and retried.
+- Device: an unreadable serial raises `FritzDeviceSerialUnknownError`; the device is registered offline and given up after `SERIAL_RETRIES` (3) retries.
 
-`FritzCapability.get_metrics` handles the rest centrally: it exports `fritz_read_problem{capability, level}` while a problem lasts and logs it when it appears, hourly while it lasts and when it is gone. Errors other than `DataError`/`FritzWebUiError` are treated as bugs (traceback on every scrape). **Do not add `try/except` in a capability just to log and return** — only where it can do better than skipping (e.g. a fallback).
+`FritzCapability.get_metrics` handles the rest centrally: it exports `fritz_read_problem{capability, level}` while a problem lasts and logs it when it appears, hourly while it lasts and when it is gone (`report_problem()`; also used for the connection mode). Errors other than `DataError`/`FritzWebUiError` are treated as bugs (traceback on every scrape). **Do not add `try/except` in a capability just to log and return** — only where it can do better than skipping (e.g. a fallback).
 
 ### Adding a new metric/capability
 
