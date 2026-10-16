@@ -55,7 +55,7 @@ def device_log_name(friendly_name: str, host: str) -> str:
 
 
 # Errors that keep a device from being set up; it is then reported as unreachable
-# and set up again on every scrape. FritzAuthorizationError is a
+# and set up again in the background (see _start_offline_retry). FritzAuthorizationError is a
 # FritzConnectionException.
 _SETUP_ERRORS: tuple[type[Exception], ...] = (
     FritzConnectionException,
@@ -334,7 +334,9 @@ class FritzCollector(Collector):
         """Nothing up front: without describe(), registering runs a whole scrape.
 
         That scrape logged in to every device before the HTTP server started, was
-        counted in fritz_scrapes_total, and an error in it stopped the start.
+        counted in fritz_scrapes_total, and an error in it stopped the start. In
+        return, a request filtered by name (``/metrics?name[]=…``) gets no fritz
+        metrics; Prometheus does not send such requests.
         """
         return []
 

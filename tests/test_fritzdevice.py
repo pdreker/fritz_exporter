@@ -1917,6 +1917,13 @@ class TestMeshListFetch:
         assert reachable == 1.0
         assert "mesh list request failed: Fritz device did not answer" in caplog.text
 
+    def test_error_status_from_the_master_is_a_read_problem(self, mock_fritzconnection, caplog):
+        # Only 404 means "not the mesh master"; a failing master must not look like one.
+        _, problems, reachable = self._scrape(mock_fritzconnection, reply=web_reply(status=503))
+        assert ("MeshTopology", "skipped") in problems
+        assert reachable == 1.0
+        assert "mesh list request failed: HTTP 503" in caplog.text
+
     def test_bad_json_is_a_read_problem_not_a_missing_answer(self, mock_fritzconnection, caplog):
         _, problems, reachable = self._scrape(mock_fritzconnection, reply=web_reply("{oops"))
         assert ("MeshTopology", "skipped") in problems
@@ -1992,3 +1999,27 @@ def test_wifi_client_read_twice_during_a_scan_is_kept_once(mock_fritzconnection:
     problems = {s.labels["capability"] for s in by_name["fritz_read_problem"].samples}
     assert "WlanAssociatedDevices" not in problems
 
+
+@patch("fritzexporter.tr064_remote.FritzConnection")
+def test_wifi_client_count_that_cannot_be_read_skips_that_wlan_and_says_so(
+    mock_fritzconnection: MagicMock,
+):
+    def assoc(service, action, **kwargs):
+        if action == "GetTotalAssociations" and service == "WLANConfiguration1":
+            return {"NewTotalAssociations": ""}
+        return call_action_mock(service, action, **kwargs)
+
+    fc = mock_fritzconnection.return_value
+    fc.call_action.side_effect = assoc
+    fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
+    collector = FritzCollector()
+    collector.register(
+        FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock", wifi_client_info=True)
+    )
+
+    by_name = {m.name: m for m in collector.collect()}
+
+    problems = {
+        (s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples
+    }
+    assert ("WlanAssociatedDevices", "partial") in problems

@@ -7,6 +7,7 @@ from collections.abc import Generator, ItemsView, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from enum import StrEnum
+from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 from urllib.parse import urlparse
@@ -1167,11 +1168,9 @@ class WlanAssociatedDevices(FritzCapability):
 
     def _collect_clients(self, device: FritzDevice, index: int, seen: set[str]) -> None:
         service = f"WLANConfiguration{index + 1}"
-        # The loop depends on the count, so a defect skips this WLAN.
-        total = (
-            read_action(device, service, "GetTotalAssociations").opt_integer("NewTotalAssociations")
-            or 0
-        )
+        # The loop depends on the count: it is read strictly, and a defect skips
+        # this WLAN.
+        total = read_action(device, service, "GetTotalAssociations").integer("NewTotalAssociations")
         clients = self._enumerate(
             device,
             service,
@@ -1354,7 +1353,12 @@ class MeshTopology(FritzCapability):
             with device.fc.session.get(url) as response:
                 # Only the mesh master serves the topology; other nodes answer
                 # 404 ("Device has no access to topology information").
-                return response.json() if response.ok else None
+                if response.status_code == HTTPStatus.NOT_FOUND:
+                    return None
+                if not response.ok:
+                    msg = f"mesh list request failed: HTTP {response.status_code}"
+                    raise FritzWebUiError(msg)
+                return response.json()
         except ValueError, RecursionError:
             # Before TRANSPORT_ERRORS: requests' JSONDecodeError is a RequestException.
             msg = "mesh list: not valid JSON"
@@ -1914,8 +1918,8 @@ class WanConnectionStatus(FritzCapability):
     Uptimes are exposed as counters (they reset on each reconnect, like the
     PPP uptime metric), and the state as a gauge whose value is ``1`` when the
     stack reports ``"connected"`` and ``0`` for any other state
-    (``"disabled"``, ``"connecting"``, ...). The state string is kept as the
-    ``state`` label so callers can disambiguate the non-connected cases.
+    (``"disabled"``, ``"connecting"``, ...). The state string is the ``state``
+    label of ``fritz_wan_connection_info``, which tells the other cases apart.
 
     Auto-detected on any box exposing the common WAN interface service (the
     REST API requires Fritz!OS 7+); the data is fetched through the shared
