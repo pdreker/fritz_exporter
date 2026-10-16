@@ -19,6 +19,11 @@ later only offer on request, and so used the MD5 login on every firmware. They n
 for it, so devices on Fritz!OS 7.24 and later log in with PBKDF2 without any change
 on your side.
 
+After a refused web login (wrong credentials, or logins blocked by the device) the
+exporter now waits at least a minute, or as long as the device blocks logins, before
+the next attempt. It used to try again for every web interface metric group, which
+made the device block logins longer, also for the browser.
+
 v3.5.0
 ------
 
