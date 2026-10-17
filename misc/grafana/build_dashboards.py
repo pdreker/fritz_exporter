@@ -23,10 +23,11 @@ HERE = Path(__file__).parent
 DS = {"type": "prometheus", "uid": "${datasource}"}
 DEV = 'friendly_name="$device"'
 GRID_WIDTH = 24
-# Min interval for panels with rate(). Grafana derives $__rate_interval from the
-# scrape interval set in the data source (15 s unless changed): a 1m window, which
-# holds one sample when the exporter is scraped every 60 s, as in the docs, and
-# rate() returns nothing. With a min interval Grafana takes four times it: 4m.
+# Min step of queries with rate(). Grafana derives $__rate_interval from the
+# query's min step, else from the scrape interval set in the data source (15 s
+# unless changed): a window of about 1m, which holds one sample when the exporter
+# is scraped every 60 s, as in the docs, and rate() returns nothing. With a min
+# step of 1m the window is 4m. A panel's min interval does not count here.
 RATE_MIN_INTERVAL = "1m"
 
 Panel = dict[str, Any]
@@ -132,8 +133,12 @@ def panel(  # noqa: PLR0913
     }
     if transformations:
         result["transformations"] = transformations
-    if any("$__rate_interval" in query.get("expr", "") for query in queries):
-        result["interval"] = RATE_MIN_INTERVAL
+    result["targets"] = [
+        {**query, "interval": RATE_MIN_INTERVAL}
+        if "$__rate_interval" in query.get("expr", "")
+        else query
+        for query in queries
+    ]
     return result
 
 
