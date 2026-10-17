@@ -1,6 +1,6 @@
 # The requirements and the wheel are the same on every platform: build them once,
 # on the build host, with the versions and hashes from uv.lock.
-FROM --platform=$BUILDPLATFORM ghcr.io/astral-sh/uv:0.11.18 AS uv
+FROM --platform=$BUILDPLATFORM ghcr.io/astral-sh/uv:0.13.1 AS uv
 
 FROM --platform=$BUILDPLATFORM python:3.14.8-alpine AS build
 COPY --from=uv /uv /usr/local/bin/uv
