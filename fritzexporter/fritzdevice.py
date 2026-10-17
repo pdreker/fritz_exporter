@@ -534,16 +534,18 @@ class FritzCollector(Collector):
             yield timeouts_total
             yield failures_total
 
-            # Yield device availability metric for all known devices
+            # Keyed by name only, unique in the config: the serial number is not
+            # known until a device was set up, and as a label it started a new
+            # series when the device came online. It is in fritz_device_info.
             device_up = GaugeMetricFamily(
                 "fritz_device_reachable",
                 "Fritz device reachability (1=reachable, 0=unreachable)",
-                labels=["serial", "friendly_name"],
+                labels=["friendly_name"],
             )
             for dev in self.devices:
-                device_up.add_metric([dev.serial, dev.friendly_name], 1.0 if dev.available else 0.0)
+                device_up.add_metric([dev.friendly_name], 1.0 if dev.available else 0.0)
             for offline in offline_devices:
-                device_up.add_metric(["n/a", offline.friendly_name], 0.0)
+                device_up.add_metric([offline.friendly_name], 0.0)
             yield device_up
             yield self._build_problem_metric()
 

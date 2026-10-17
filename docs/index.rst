@@ -99,6 +99,7 @@ In addition to the Fritz device data above, the exporter reports metrics about
 its own operation:
 
 * ``fritz_device_reachable`` -- whether a device was reachable during the last scrape
+  (labelled by ``friendly_name`` only)
 * ``fritz_scrapes_total`` -- number of completed scrape cycles per device
 * ``fritz_scrapes_timeouts_total`` -- scrapes skipped because a previous scrape
   was still in progress when the collector lock deadline was reached
