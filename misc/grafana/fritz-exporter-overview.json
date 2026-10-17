@@ -106,7 +106,9 @@
           },
           "expr": "fritz_device_reachable{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "__auto"
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -541,7 +543,9 @@
           },
           "expr": "count(fritz_read_problem{friendly_name=\"$device\"}) or vector(0)",
           "refId": "A",
-          "legendFormat": "__auto"
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -871,7 +875,9 @@
           },
           "expr": "fritz_telephony_numbers{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "__auto"
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -1269,7 +1275,9 @@
           },
           "expr": "fritz_wan_phys_link_status{friendly_name=\"$device\"} * on (serial) group_left (access_type) fritz_wan_access_type_info{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "{{access_type}}"
+          "legendFormat": "{{access_type}}",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -1427,7 +1435,9 @@
           },
           "expr": "fritz_ppp_connection_uptime_seconds_total{friendly_name=\"$device\"}",
           "refId": "A",
-          "legendFormat": "__auto"
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false
         }
       ],
       "fieldConfig": {
@@ -1794,7 +1804,9 @@
               },
               "expr": "fritz_dsl_status_enabled{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -1872,7 +1884,9 @@
               },
               "expr": "fritz_dsl_status{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -2815,7 +2829,9 @@
               },
               "expr": "time() - fritz_cable_segment_sample_timestamp_seconds{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -3170,7 +3186,9 @@
               },
               "expr": "fritz_fiber_connection_rate{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "{{direction}}"
+              "legendFormat": "{{direction}}",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -3232,7 +3250,9 @@
               },
               "expr": "fritz_fiber_tx_wavelength_nm{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -3294,7 +3314,9 @@
               },
               "expr": "fritz_fiber_gpon_onu_id{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -3356,7 +3378,9 @@
               },
               "expr": "fritz_fiber_gpon_gem_port_count{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -3574,7 +3598,9 @@
               },
               "expr": "fritz_lan_status_enabled{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -3652,7 +3678,9 @@
               },
               "expr": "fritz_lan_status{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -5714,7 +5742,9 @@
               },
               "expr": "fritz_tr069_periodic_inform_enabled{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -5792,7 +5822,9 @@
               },
               "expr": "fritz_tr069_periodic_inform_interval_seconds{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -5854,7 +5886,9 @@
               },
               "expr": "fritz_tr069_upgrades_managed{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "__auto"
+              "legendFormat": "__auto",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {
@@ -5932,7 +5966,9 @@
               },
               "expr": "fritz_usp_controller_enabled{friendly_name=\"$device\"}",
               "refId": "A",
-              "legendFormat": "controller {{index}}"
+              "legendFormat": "controller {{index}}",
+              "instant": true,
+              "range": false
             },
             {
               "datasource": {
@@ -5941,7 +5977,9 @@
               },
               "expr": "fritz_usp_myfritz_enabled{friendly_name=\"$device\"}",
               "refId": "B",
-              "legendFormat": "MyFRITZ"
+              "legendFormat": "MyFRITZ",
+              "instant": true,
+              "range": false
             }
           ],
           "fieldConfig": {

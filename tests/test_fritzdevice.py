@@ -634,8 +634,9 @@ class TestFritzCollector:
             if m.name in {"fritz_scrapes_timeouts", "fritz_scrapes_failed"}:
                 continue
             for s in m.samples:
-                assert "serial" in s.labels
-                assert s.labels["serial"] == "1234567890"
+                # fritz_device_reachable is keyed by name only.
+                if m.name != "fritz_device_reachable":
+                    assert s.labels["serial"] == "1234567890"
                 assert "friendly_name" in s.labels
                 assert s.labels["friendly_name"] == "FritzMock"
 
@@ -742,8 +743,7 @@ class TestFritzCollector:
         device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
         assert len(device_reachable_metrics) == 1
         assert device_reachable_metrics[0].samples[0].value == 1.0
-        assert device_reachable_metrics[0].samples[0].labels["serial"] == "1234567890"
-        assert device_reachable_metrics[0].samples[0].labels["friendly_name"] == "FritzMock"
+        assert device_reachable_metrics[0].samples[0].labels == {"friendly_name": "FritzMock"}
 
     def test_should_emit_device_up_0_when_device_unreachable_during_collection(
         self, mock_fritzconnection: MagicMock, caplog
@@ -857,8 +857,8 @@ class TestFritzCollector:
         device_reachable_metrics = [m for m in metrics if m.name == "fritz_device_reachable"]
         assert len(device_reachable_metrics) == 1
         assert device_reachable_metrics[0].samples[0].value == 0.0
-        assert device_reachable_metrics[0].samples[0].labels["serial"] == "n/a"
-        assert device_reachable_metrics[0].samples[0].labels["friendly_name"] == "OfflineDevice"
+        # No "n/a" serial: the series stays the same when the device comes back.
+        assert device_reachable_metrics[0].samples[0].labels == {"friendly_name": "OfflineDevice"}
 
     def test_offline_device_promoted_when_it_comes_back_online(
         self, mock_fritzconnection: MagicMock, caplog
@@ -888,8 +888,8 @@ class TestFritzCollector:
         metrics_round2: list[Metric] = _scrape(collector)
         reachable_round2 = [m for m in metrics_round2 if m.name == "fritz_device_reachable"]
         assert reachable_round2[0].samples[0].value == 1.0
-        assert reachable_round2[0].samples[0].labels["serial"] == "1234567890"
-        assert reachable_round2[0].samples[0].labels["friendly_name"] == "FritzMock"
+        # The same series as while it was offline.
+        assert reachable_round2[0].samples[0].labels == {"friendly_name": "FritzMock"}
         assert len(collector.devices) == 1
         assert len(collector.offline_devices) == 0
 
@@ -1410,7 +1410,7 @@ class TestMeshTopologyParsing:
         # fails here, not in collect().
         return generate_latest(registry).decode()
 
-    REACHABLE = 'fritz_device_reachable{friendly_name="FritzMock",serial="1234567890"} 1.0'
+    REACHABLE = 'fritz_device_reachable{friendly_name="FritzMock"} 1.0'
 
     @pytest.mark.parametrize(
         "topology",

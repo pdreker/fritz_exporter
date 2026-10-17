@@ -17,6 +17,10 @@ separate metric with the value ``1``, which you can join on its key labels.
 
 * **Device:** ``fritz_uptime_seconds_total`` loses ``modelname`` and
   ``softwareversion``; they are in the new ``fritz_device_info``.
+* **Reachability:** ``fritz_device_reachable`` is keyed by ``friendly_name`` only and
+  loses ``serial``. A device that was not reachable at startup was reported with
+  ``serial="n/a"`` and got a new series once it came online. The serial number is in
+  ``fritz_device_info``.
 * **Fritz!OS update:** ``fritz_update_available`` loses ``newsoftwareversion``; the
   new ``fritz_update_info{newsoftwareversion}`` has a series only while an update is
   available.

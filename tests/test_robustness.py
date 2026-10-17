@@ -121,8 +121,8 @@ def problems(output: str, serial: str) -> list[tuple[str, str]]:
     return sorted(found)
 
 
-def reachable(output: str, name: str, serial: str) -> float:
-    prefix = f'fritz_device_reachable{{friendly_name="{name}",serial="{serial}"}} '
+def reachable(output: str, name: str) -> float:
+    prefix = f'fritz_device_reachable{{friendly_name="{name}"}} '
     return float(
         next(line for line in output.splitlines() if line.startswith(prefix))[len(prefix) :]
     )
@@ -245,7 +245,7 @@ class TestCapabilityLevel:
         assert samples(output, "fritz_lan_data_bytes_total", "BAD") == []
         assert samples(output, "fritz_lan_packet_count_total", "BAD") == []
         assert samples(output, "fritz_lan_status", "BAD")
-        assert reachable(output, "BAD", "BAD") == 1.0
+        assert reachable(output, "BAD") == 1.0
         assert (
             "Could not read LanInterfaceConfigStatistics data from BAD (bad), skipping it: "
             "LANEthernetInterfaceConfig1.GetStatistics: expected an object, got str"
@@ -286,7 +286,7 @@ class TestCapabilityLevel:
         scenario.fcs["bad"].call_action.side_effect = failing
         output = scenario.scrape()
 
-        assert reachable(output, "BAD", "BAD") == 0.0
+        assert reachable(output, "BAD") == 0.0
         assert samples(output, "fritz_wifi_status", "BAD") == []
         assert len(samples(output, "fritz_wifi_status", "GOOD")) == 3
 
@@ -299,8 +299,8 @@ class TestDeviceLevel:
         output = scenario.scrape()
 
         assert [d.friendly_name for d in scenario.collector.devices] == ["GOOD"]
-        assert reachable(output, "BAD", "n/a") == 0.0
-        assert reachable(output, "GOOD", "GOOD") == 1.0
+        assert reachable(output, "BAD") == 0.0
+        assert reachable(output, "GOOD") == 1.0
         assert samples(output, "fritz_lan_status", "GOOD")
         # Logged once at registration, quiet while retrying.
         def errors():
@@ -317,7 +317,7 @@ class TestDeviceLevel:
         scenario.scrape()
         output = scenario.scrape()
 
-        assert reachable(output, "BAD", "BAD") == 1.0
+        assert reachable(output, "BAD") == 1.0
         assert samples(output, "fritz_lan_status", "BAD")
 
     def test_device_without_serial_is_given_up_after_the_retries(self, caplog):
@@ -332,7 +332,7 @@ class TestDeviceLevel:
         [offline] = scenario.collector.offline_devices
         assert offline.given_up
         assert offline.serial_failures == SERIAL_RETRIES + 1
-        assert reachable(output, "BAD", "n/a") == 0.0
+        assert reachable(output, "BAD") == 0.0
         giving_up = [r for r in caplog.records if r.getMessage().startswith("Giving up on device BAD (bad)")]
         assert len(giving_up) == 1
         assert giving_up[0].levelno == logging.ERROR
@@ -387,8 +387,8 @@ class TestDeviceLevel:
         scenario.fcs["bad"].call_action.side_effect = failing
         output = scenario.scrape()
 
-        assert reachable(output, "BAD", "BAD") == 0.0
-        assert reachable(output, "GOOD", "GOOD") == 1.0
+        assert reachable(output, "BAD") == 0.0
+        assert reachable(output, "GOOD") == 1.0
 
     @pytest.mark.parametrize("error", [FritzActionError("820"), FritzConnectionException("HTML reply")])
     def test_an_error_the_device_answers_with_skips_only_the_capability(self, error):
@@ -397,7 +397,7 @@ class TestDeviceLevel:
 
         output = scenario.scrape()
 
-        assert reachable(output, "BAD", "BAD") == 1.0
+        assert reachable(output, "BAD") == 1.0
         assert ("LanInterfaceConfigStatistics", "skipped") in problems(output, "BAD")
         assert not samples(output, "fritz_lan_data_bytes_total", "BAD")
         assert samples(output, "fritz_lan_status", "BAD")
@@ -427,7 +427,7 @@ class TestOfflineRetries:
         scenario.collector._collect_lock = threading.RLock()
         output = scenario.scrape()
 
-        assert reachable(output, "BAD", "BAD") == 1.0
+        assert reachable(output, "BAD") == 1.0
         assert samples(output, "fritz_lan_status", "BAD")
 
     def test_scrapes_do_not_wait_for_the_retry_and_start_it_once(self, monkeypatch):
@@ -448,8 +448,8 @@ class TestOfflineRetries:
         # Three scrapes went through while one retry was still running.
         assert calls == [1]
         for output in outputs:
-            assert reachable(output, "GOOD", "GOOD") == 1.0
-            assert reachable(output, "BAD", "n/a") == 0.0
+            assert reachable(output, "GOOD") == 1.0
+            assert reachable(output, "BAD") == 0.0
 
     def test_no_retry_when_every_offline_device_is_given_up(self):
         scenario = Scenario()
@@ -467,8 +467,8 @@ class TestUnexpectedSetupErrors:
 
         output = scenario.scrape()
 
-        assert reachable(output, "BAD", "n/a") == 0.0
-        assert reachable(output, "GOOD", "GOOD") == 1.0
+        assert reachable(output, "BAD") == 0.0
+        assert reachable(output, "GOOD") == 1.0
         [error] = [r for r in caplog.records if "Failed to initialize device BAD" in r.getMessage()]
         assert "unexpected; please report this" in error.getMessage()
         assert error.exc_info is not None
@@ -482,8 +482,8 @@ class TestUnexpectedSetupErrors:
         second = scenario.scrape()
 
         for output in (first, second):
-            assert reachable(output, "GOOD", "GOOD") == 1.0
-            assert reachable(output, "BAD", "n/a") == 0.0
+            assert reachable(output, "GOOD") == 1.0
+            assert reachable(output, "BAD") == 0.0
         # Logged with its traceback once, when the reason changed.
         changed = [r for r in caplog.records if "is still offline, now because" in r.getMessage()]
         assert len(changed) == 1
@@ -539,7 +539,7 @@ class TestProblemMetricMore:
         scenario.fcs["bad"].call_action.side_effect = down
         output = scenario.scrape()
 
-        assert reachable(output, "BAD", "BAD") == 0.0
+        assert reachable(output, "BAD") == 0.0
         assert problems(output, "BAD") == []
 
     def test_connection_mode_problem_is_reported_like_a_capability(self, caplog):

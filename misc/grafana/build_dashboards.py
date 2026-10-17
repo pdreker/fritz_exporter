@@ -222,7 +222,10 @@ def stat(  # noqa: PLR0913
     return panel(
         "stat",
         title,
-        queries,
+        # A stat shows the value now; over the dashboard's range it would also
+        # show series that ended, e.g. after a label changed. A sparkline needs
+        # the range.
+        queries if graph else now_only(queries),
         description=description,
         unit=unit,
         defaults=defaults,
