@@ -728,7 +728,7 @@
     {
       "type": "timeseries",
       "title": "Exporter: timed out and failed scrapes",
-      "description": "For the whole exporter, not per device.",
+      "description": "Per minute, for the whole exporter, not per device.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -739,7 +739,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "increase(fritz_scrapes_timeouts_total[$__rate_interval])",
+          "expr": "rate(fritz_scrapes_timeouts_total[$__rate_interval]) * 60",
           "refId": "A",
           "legendFormat": "timed out {{instance}}",
           "interval": "1m"
@@ -749,7 +749,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "increase(fritz_scrapes_failed_total[$__rate_interval])",
+          "expr": "rate(fritz_scrapes_failed_total[$__rate_interval]) * 60",
           "refId": "B",
           "legendFormat": "failed {{instance}}",
           "interval": "1m"
@@ -758,9 +758,9 @@
       "fieldConfig": {
         "defaults": {
           "custom": {
-            "drawStyle": "bars",
-            "lineWidth": 1,
-            "fillOpacity": 80,
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
             "gradientMode": "opacity",
             "showPoints": "never",
             "spanNulls": true,
@@ -773,7 +773,7 @@
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "short"
+          "unit": "cpm"
         },
         "overrides": []
       },
@@ -2270,8 +2270,8 @@
         },
         {
           "type": "timeseries",
-          "title": "Errors",
-          "description": "",
+          "title": "FEC errors (corrected)",
+          "description": "Errors the line corrected itself. Many per minute are normal; a sharp rise means a worse line.",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -2282,28 +2282,18 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "increase(fritz_dsl_fec_errors_count_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "expr": "rate(fritz_dsl_fec_errors_count_total{friendly_name=\"$device\"}[$__rate_interval]) * 60",
               "refId": "A",
-              "legendFormat": "FEC (corrected)",
-              "interval": "1m"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "expr": "increase(fritz_dsl_crc_errors_count_total{friendly_name=\"$device\"}[$__rate_interval])",
-              "refId": "B",
-              "legendFormat": "CRC",
+              "legendFormat": "FEC",
               "interval": "1m"
             }
           ],
           "fieldConfig": {
             "defaults": {
               "custom": {
-                "drawStyle": "bars",
-                "lineWidth": 1,
-                "fillOpacity": 80,
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
                 "gradientMode": "opacity",
                 "showPoints": "never",
                 "spanNulls": true,
@@ -2316,7 +2306,7 @@
               "color": {
                 "mode": "palette-classic"
               },
-              "unit": "short"
+              "unit": "cpm"
             },
             "overrides": []
           },
@@ -2335,9 +2325,71 @@
           "id": 33,
           "gridPos": {
             "h": 5,
-            "w": 24,
+            "w": 12,
+            "x": 12,
+            "y": 52
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "CRC errors",
+          "description": "Errors the line could not correct: the data had to be sent again.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "rate(fritz_dsl_crc_errors_count_total{friendly_name=\"$device\"}[$__rate_interval]) * 60",
+              "refId": "A",
+              "legendFormat": "CRC",
+              "interval": "1m"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "cpm"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 34,
+          "gridPos": {
+            "h": 5,
+            "w": 12,
             "x": 0,
-            "y": 56
+            "y": 57
           }
         }
       ]
@@ -2346,12 +2398,12 @@
       "type": "row",
       "title": "Cable (DOCSIS)",
       "collapsed": true,
-      "id": 34,
+      "id": 35,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 61
+        "y": 62
       },
       "panels": [
         {
@@ -2407,12 +2459,12 @@
               "sort": "desc"
             }
           },
-          "id": 35,
+          "id": 36,
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 62
+            "y": 63
           }
         },
         {
@@ -2468,12 +2520,12 @@
               "sort": "desc"
             }
           },
-          "id": 36,
+          "id": 37,
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 62
+            "y": 63
           }
         },
         {
@@ -2529,12 +2581,12 @@
               "sort": "desc"
             }
           },
-          "id": 37,
+          "id": 38,
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 62
+            "y": 63
           }
         },
         {
@@ -2599,18 +2651,18 @@
               "sort": "desc"
             }
           },
-          "id": 38,
+          "id": 39,
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 69
+            "y": 70
           }
         },
         {
           "type": "timeseries",
-          "title": "Codeword errors",
-          "description": "",
+          "title": "Corrected codewords",
+          "description": "Codeword errors the modem corrected itself, per channel.",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -2621,41 +2673,31 @@
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "increase(fritz_docsis_corrected_errors_total{friendly_name=\"$device\"}[$__rate_interval])",
+              "expr": "rate(fritz_docsis_corrected_errors_total{friendly_name=\"$device\"}[$__rate_interval]) * 60",
               "refId": "A",
-              "legendFormat": "corrected ch {{channel_id}}",
-              "interval": "1m"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "expr": "increase(fritz_docsis_uncorrected_errors_total{friendly_name=\"$device\"}[$__rate_interval])",
-              "refId": "B",
-              "legendFormat": "uncorrected ch {{channel_id}}",
+              "legendFormat": "ch {{channel_id}}",
               "interval": "1m"
             }
           ],
           "fieldConfig": {
             "defaults": {
               "custom": {
-                "drawStyle": "bars",
-                "lineWidth": 1,
-                "fillOpacity": 80,
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
                 "gradientMode": "opacity",
                 "showPoints": "never",
                 "spanNulls": true,
                 "axisSoftMin": null,
                 "stacking": {
-                  "mode": "normal",
+                  "mode": "none",
                   "group": "A"
                 }
               },
               "color": {
                 "mode": "palette-classic"
               },
-              "unit": "short"
+              "unit": "cpm"
             },
             "overrides": []
           },
@@ -2671,12 +2713,74 @@
               "sort": "desc"
             }
           },
-          "id": 39,
+          "id": 40,
           "gridPos": {
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 69
+            "y": 70
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Uncorrected codewords",
+          "description": "Codeword errors the modem could not correct: lost data, per channel.",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "expr": "rate(fritz_docsis_uncorrected_errors_total{friendly_name=\"$device\"}[$__rate_interval]) * 60",
+              "refId": "A",
+              "legendFormat": "ch {{channel_id}}",
+              "interval": "1m"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "opacity",
+                "showPoints": "never",
+                "spanNulls": true,
+                "axisSoftMin": null,
+                "stacking": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              "color": {
+                "mode": "palette-classic"
+              },
+              "unit": "cpm"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "calcs": [],
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "id": 41,
+          "gridPos": {
+            "h": 7,
+            "w": 8,
+            "x": 16,
+            "y": 70
           }
         },
         {
@@ -2732,12 +2836,12 @@
               "sort": "desc"
             }
           },
-          "id": 40,
+          "id": 42,
           "gridPos": {
             "h": 7,
             "w": 8,
-            "x": 16,
-            "y": 69
+            "x": 0,
+            "y": 77
           }
         },
         {
@@ -2805,12 +2909,12 @@
               }
             }
           ],
-          "id": 41,
+          "id": 43,
           "gridPos": {
             "h": 7,
             "w": 16,
-            "x": 0,
-            "y": 76
+            "x": 8,
+            "y": 77
           }
         },
         {
@@ -2877,12 +2981,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 42,
+          "id": 44,
           "gridPos": {
             "h": 7,
             "w": 8,
-            "x": 16,
-            "y": 76
+            "x": 0,
+            "y": 84
           }
         }
       ]
@@ -2891,12 +2995,12 @@
       "type": "row",
       "title": "Fibre",
       "collapsed": true,
-      "id": 43,
+      "id": 45,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 83
+        "y": 91
       },
       "panels": [
         {
@@ -3005,12 +3109,12 @@
               "sort": "desc"
             }
           },
-          "id": 44,
+          "id": 46,
           "gridPos": {
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 84
+            "y": 92
           }
         },
         {
@@ -3080,12 +3184,12 @@
               "sort": "desc"
             }
           },
-          "id": 45,
+          "id": 47,
           "gridPos": {
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 84
+            "y": 92
           }
         },
         {
@@ -3162,12 +3266,12 @@
               "sort": "desc"
             }
           },
-          "id": 46,
+          "id": 48,
           "gridPos": {
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 92
+            "y": 100
           }
         },
         {
@@ -3226,12 +3330,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 47,
+          "id": 49,
           "gridPos": {
             "h": 6,
             "w": 4,
             "x": 12,
-            "y": 92
+            "y": 100
           }
         },
         {
@@ -3290,12 +3394,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 48,
+          "id": 50,
           "gridPos": {
             "h": 3,
             "w": 4,
             "x": 16,
-            "y": 92
+            "y": 100
           }
         },
         {
@@ -3354,12 +3458,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 49,
+          "id": 51,
           "gridPos": {
             "h": 3,
             "w": 2,
             "x": 20,
-            "y": 92
+            "y": 100
           }
         },
         {
@@ -3418,12 +3522,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 50,
+          "id": 52,
           "gridPos": {
             "h": 3,
             "w": 2,
             "x": 22,
-            "y": 92
+            "y": 100
           }
         },
         {
@@ -3491,12 +3595,12 @@
               }
             }
           ],
-          "id": 51,
+          "id": 53,
           "gridPos": {
             "h": 4,
             "w": 12,
             "x": 0,
-            "y": 98
+            "y": 106
           }
         },
         {
@@ -3560,12 +3664,12 @@
               }
             }
           ],
-          "id": 52,
+          "id": 54,
           "gridPos": {
             "h": 4,
             "w": 12,
             "x": 12,
-            "y": 98
+            "y": 106
           }
         }
       ]
@@ -3574,12 +3678,12 @@
       "type": "row",
       "title": "LAN",
       "collapsed": true,
-      "id": 53,
+      "id": 55,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 102
+        "y": 110
       },
       "panels": [
         {
@@ -3654,12 +3758,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 54,
+          "id": 56,
           "gridPos": {
             "h": 6,
             "w": 4,
             "x": 0,
-            "y": 103
+            "y": 111
           }
         },
         {
@@ -3734,12 +3838,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 55,
+          "id": 57,
           "gridPos": {
             "h": 6,
             "w": 4,
             "x": 4,
-            "y": 103
+            "y": 111
           }
         },
         {
@@ -3809,12 +3913,12 @@
               "sort": "desc"
             }
           },
-          "id": 56,
+          "id": 58,
           "gridPos": {
             "h": 6,
             "w": 8,
             "x": 8,
-            "y": 103
+            "y": 111
           }
         },
         {
@@ -3884,12 +3988,12 @@
               "sort": "desc"
             }
           },
-          "id": 57,
+          "id": 59,
           "gridPos": {
             "h": 6,
             "w": 8,
             "x": 16,
-            "y": 103
+            "y": 111
           }
         }
       ]
@@ -3898,12 +4002,12 @@
       "type": "row",
       "title": "WiFi",
       "collapsed": true,
-      "id": 58,
+      "id": 60,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 109
+        "y": 117
       },
       "panels": [
         {
@@ -4106,12 +4210,12 @@
               }
             }
           ],
-          "id": 59,
+          "id": 61,
           "gridPos": {
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 110
+            "y": 118
           }
         },
         {
@@ -4168,12 +4272,12 @@
               "sort": "desc"
             }
           },
-          "id": 60,
+          "id": 62,
           "gridPos": {
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 110
+            "y": 118
           }
         },
         {
@@ -4243,12 +4347,12 @@
               "sort": "desc"
             }
           },
-          "id": 61,
+          "id": 63,
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 116
+            "y": 124
           }
         },
         {
@@ -4408,12 +4512,12 @@
               }
             }
           ],
-          "id": 62,
+          "id": 64,
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 116
+            "y": 124
           }
         }
       ]
@@ -4422,12 +4526,12 @@
       "type": "row",
       "title": "Mesh",
       "collapsed": true,
-      "id": 63,
+      "id": 65,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 123
+        "y": 131
       },
       "panels": [
         {
@@ -4483,12 +4587,12 @@
               "showLegend": false
             }
           },
-          "id": 64,
+          "id": 66,
           "gridPos": {
             "h": 5,
             "w": 24,
             "x": 0,
-            "y": 124
+            "y": 132
           }
         },
         {
@@ -4579,12 +4683,12 @@
               "sort": "desc"
             }
           },
-          "id": 65,
+          "id": 67,
           "gridPos": {
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 129
+            "y": 137
           }
         }
       ]
@@ -4593,12 +4697,12 @@
       "type": "row",
       "title": "Hosts (host_info)",
       "collapsed": true,
-      "id": 66,
+      "id": 68,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 137
+        "y": 145
       },
       "panels": [
         {
@@ -4656,12 +4760,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 67,
+          "id": 69,
           "gridPos": {
             "h": 8,
             "w": 4,
             "x": 0,
-            "y": 138
+            "y": 146
           }
         },
         {
@@ -4718,12 +4822,12 @@
               "sort": "desc"
             }
           },
-          "id": 68,
+          "id": 70,
           "gridPos": {
             "h": 8,
             "w": 20,
             "x": 4,
-            "y": 138
+            "y": 146
           }
         },
         {
@@ -4876,12 +4980,12 @@
               }
             }
           ],
-          "id": 69,
+          "id": 71,
           "gridPos": {
             "h": 10,
             "w": 24,
             "x": 0,
-            "y": 146
+            "y": 154
           }
         }
       ]
@@ -4890,12 +4994,12 @@
       "type": "row",
       "title": "Smart home",
       "collapsed": true,
-      "id": 70,
+      "id": 72,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 156
+        "y": 164
       },
       "panels": [
         {
@@ -4961,12 +5065,12 @@
               "sort": "desc"
             }
           },
-          "id": 71,
+          "id": 73,
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 157
+            "y": 165
           }
         },
         {
@@ -5072,12 +5176,12 @@
               "sort": "desc"
             }
           },
-          "id": 72,
+          "id": 74,
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 157
+            "y": 165
           }
         },
         {
@@ -5133,12 +5237,12 @@
               "sort": "desc"
             }
           },
-          "id": 73,
+          "id": 75,
           "gridPos": {
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 164
+            "y": 172
           }
         },
         {
@@ -5196,12 +5300,12 @@
             "namePlacement": "auto",
             "sizing": "auto"
           },
-          "id": 74,
+          "id": 76,
           "gridPos": {
             "h": 7,
             "w": 6,
             "x": 12,
-            "y": 164
+            "y": 172
           }
         },
         {
@@ -5268,12 +5372,12 @@
             "namePlacement": "auto",
             "sizing": "auto"
           },
-          "id": 75,
+          "id": 77,
           "gridPos": {
             "h": 7,
             "w": 6,
             "x": 18,
-            "y": 164
+            "y": 172
           }
         },
         {
@@ -5352,12 +5456,12 @@
               "showLegend": false
             }
           },
-          "id": 76,
+          "id": 78,
           "gridPos": {
             "h": 6,
             "w": 12,
             "x": 0,
-            "y": 171
+            "y": 179
           }
         },
         {
@@ -5639,12 +5743,12 @@
               }
             }
           ],
-          "id": 77,
+          "id": 79,
           "gridPos": {
             "h": 6,
             "w": 12,
             "x": 12,
-            "y": 171
+            "y": 179
           }
         }
       ]
@@ -5653,12 +5757,12 @@
       "type": "row",
       "title": "Provider management (TR-069, USP)",
       "collapsed": true,
-      "id": 78,
+      "id": 80,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 177
+        "y": 185
       },
       "panels": [
         {
@@ -5718,12 +5822,12 @@
               }
             }
           ],
-          "id": 79,
+          "id": 81,
           "gridPos": {
             "h": 4,
             "w": 8,
             "x": 0,
-            "y": 178
+            "y": 186
           }
         },
         {
@@ -5798,12 +5902,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 80,
+          "id": 82,
           "gridPos": {
             "h": 4,
             "w": 4,
             "x": 8,
-            "y": 178
+            "y": 186
           }
         },
         {
@@ -5862,12 +5966,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 81,
+          "id": 83,
           "gridPos": {
             "h": 4,
             "w": 4,
             "x": 12,
-            "y": 178
+            "y": 186
           }
         },
         {
@@ -5942,12 +6046,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 82,
+          "id": 84,
           "gridPos": {
             "h": 4,
             "w": 4,
             "x": 16,
-            "y": 178
+            "y": 186
           }
         },
         {
@@ -6033,12 +6137,12 @@
             "orientation": "auto",
             "wideLayout": true
           },
-          "id": 83,
+          "id": 85,
           "gridPos": {
             "h": 4,
             "w": 4,
             "x": 20,
-            "y": 178
+            "y": 186
           }
         }
       ]
