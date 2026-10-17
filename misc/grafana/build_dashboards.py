@@ -23,6 +23,11 @@ HERE = Path(__file__).parent
 DS = {"type": "prometheus", "uid": "${datasource}"}
 DEV = 'friendly_name="$device"'
 GRID_WIDTH = 24
+# Min interval for panels with rate(). Grafana derives $__rate_interval from the
+# scrape interval set in the data source (15 s unless changed): a 1m window, which
+# holds one sample when the exporter is scraped every 60 s, as in the docs, and
+# rate() returns nothing. With a min interval Grafana takes four times it: 4m.
+RATE_MIN_INTERVAL = "1m"
 
 Panel = dict[str, Any]
 
@@ -127,6 +132,8 @@ def panel(  # noqa: PLR0913
     }
     if transformations:
         result["transformations"] = transformations
+    if any("$__rate_interval" in query.get("expr", "") for query in queries):
+        result["interval"] = RATE_MIN_INTERVAL
     return result
 
 
@@ -323,6 +330,7 @@ def table(  # noqa: PLR0913
     overrides: list | None = None,
     sort: str | None = None,
     hide: list[str] | None = None,
+    no_value: str | None = None,
 ) -> Panel:
     """A table of current values; ``rename`` also gives the column order."""
     transformations: list[dict] = []
@@ -350,7 +358,8 @@ def table(  # noqa: PLR0913
         title,
         queries,
         description=description,
-        defaults={"custom": {"align": "auto", "filterable": True}},
+        defaults={"custom": {"align": "auto", "filterable": True}}
+        | ({"noValue": no_value} if no_value else {}),
         overrides=overrides,
         options=options,
         transformations=transformations,
@@ -631,6 +640,7 @@ def overview() -> dict:  # noqa: PLR0915
             [target(q("fritz_read_problem"), table=True)],
             rename={"capability": "Metric group", "level": "Level"},
             hide=["Value"],
+            no_value="No read problems",
             description="partial = some values or items, skipped = the whole group, "
             "error = a bug in the exporter. The log has the details.",
         ),
