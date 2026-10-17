@@ -675,7 +675,8 @@
           },
           "expr": "rate(fritz_scrapes_total{friendly_name=\"$device\"}[$__rate_interval]) * 60",
           "refId": "A",
-          "legendFormat": "per minute"
+          "legendFormat": "per minute",
+          "interval": "1m"
         }
       ],
       "fieldConfig": {
@@ -712,7 +713,6 @@
           "sort": "desc"
         }
       },
-      "interval": "1m",
       "id": 10,
       "gridPos": {
         "h": 6,
@@ -737,7 +737,8 @@
           },
           "expr": "increase(fritz_scrapes_timeouts_total[$__rate_interval])",
           "refId": "A",
-          "legendFormat": "timed out {{instance}}"
+          "legendFormat": "timed out {{instance}}",
+          "interval": "1m"
         },
         {
           "datasource": {
@@ -746,7 +747,8 @@
           },
           "expr": "increase(fritz_scrapes_failed_total[$__rate_interval])",
           "refId": "B",
-          "legendFormat": "failed {{instance}}"
+          "legendFormat": "failed {{instance}}",
+          "interval": "1m"
         }
       ],
       "fieldConfig": {
@@ -783,7 +785,6 @@
           "sort": "desc"
         }
       },
-      "interval": "1m",
       "id": 11,
       "gridPos": {
         "h": 6,
@@ -1031,7 +1032,8 @@
           },
           "expr": "rate(fritz_wan_data_bytes_total{friendly_name=\"$device\",direction=\"rx\"}[$__rate_interval]) * 8",
           "refId": "A",
-          "legendFormat": "download"
+          "legendFormat": "download",
+          "interval": "1m"
         },
         {
           "datasource": {
@@ -1040,7 +1042,8 @@
           },
           "expr": "rate(fritz_wan_data_bytes_total{friendly_name=\"$device\",direction=\"tx\"}[$__rate_interval]) * 8",
           "refId": "B",
-          "legendFormat": "upload"
+          "legendFormat": "upload",
+          "interval": "1m"
         }
       ],
       "fieldConfig": {
@@ -1093,7 +1096,6 @@
           "sort": "desc"
         }
       },
-      "interval": "1m",
       "id": 16,
       "gridPos": {
         "h": 8,
@@ -1118,7 +1120,8 @@
           },
           "expr": "rate(fritz_wan_data_packets_count_total{friendly_name=\"$device\"}[$__rate_interval])",
           "refId": "A",
-          "legendFormat": "{{direction}}"
+          "legendFormat": "{{direction}}",
+          "interval": "1m"
         }
       ],
       "fieldConfig": {
@@ -1168,7 +1171,6 @@
           "sort": "desc"
         }
       },
-      "interval": "1m",
       "id": 17,
       "gridPos": {
         "h": 6,
@@ -2268,7 +2270,8 @@
               },
               "expr": "increase(fritz_dsl_fec_errors_count_total{friendly_name=\"$device\"}[$__rate_interval])",
               "refId": "A",
-              "legendFormat": "FEC (corrected)"
+              "legendFormat": "FEC (corrected)",
+              "interval": "1m"
             },
             {
               "datasource": {
@@ -2277,7 +2280,8 @@
               },
               "expr": "increase(fritz_dsl_crc_errors_count_total{friendly_name=\"$device\"}[$__rate_interval])",
               "refId": "B",
-              "legendFormat": "CRC"
+              "legendFormat": "CRC",
+              "interval": "1m"
             }
           ],
           "fieldConfig": {
@@ -2314,7 +2318,6 @@
               "sort": "desc"
             }
           },
-          "interval": "1m",
           "id": 33,
           "gridPos": {
             "h": 5,
@@ -2606,7 +2609,8 @@
               },
               "expr": "increase(fritz_docsis_corrected_errors_total{friendly_name=\"$device\"}[$__rate_interval])",
               "refId": "A",
-              "legendFormat": "corrected ch {{channel_id}}"
+              "legendFormat": "corrected ch {{channel_id}}",
+              "interval": "1m"
             },
             {
               "datasource": {
@@ -2615,7 +2619,8 @@
               },
               "expr": "increase(fritz_docsis_uncorrected_errors_total{friendly_name=\"$device\"}[$__rate_interval])",
               "refId": "B",
-              "legendFormat": "uncorrected ch {{channel_id}}"
+              "legendFormat": "uncorrected ch {{channel_id}}",
+              "interval": "1m"
             }
           ],
           "fieldConfig": {
@@ -2652,7 +2657,6 @@
               "sort": "desc"
             }
           },
-          "interval": "1m",
           "id": 39,
           "gridPos": {
             "h": 7,
@@ -3009,7 +3013,8 @@
               },
               "expr": "rate(fritz_fiber_data_bytes_total{friendly_name=\"$device\"}[$__rate_interval]) * 8",
               "refId": "A",
-              "legendFormat": "{{direction}}"
+              "legendFormat": "{{direction}}",
+              "interval": "1m"
             }
           ],
           "fieldConfig": {
@@ -3059,7 +3064,6 @@
               "sort": "desc"
             }
           },
-          "interval": "1m",
           "id": 45,
           "gridPos": {
             "h": 8,
@@ -3084,7 +3088,8 @@
               },
               "expr": "rate(fritz_fiber_data_packets_total{friendly_name=\"$device\"}[$__rate_interval])",
               "refId": "A",
-              "legendFormat": "packets {{direction}}"
+              "legendFormat": "packets {{direction}}",
+              "interval": "1m"
             },
             {
               "datasource": {
@@ -3093,7 +3098,8 @@
               },
               "expr": "rate(fritz_fiber_packets_multicast_total{friendly_name=\"$device\"}[$__rate_interval])",
               "refId": "B",
-              "legendFormat": "multicast"
+              "legendFormat": "multicast",
+              "interval": "1m"
             },
             {
               "datasource": {
@@ -3102,7 +3108,8 @@
               },
               "expr": "rate(fritz_fiber_packet_errors_total{friendly_name=\"$device\"}[$__rate_interval])",
               "refId": "C",
-              "legendFormat": "errors {{direction}}"
+              "legendFormat": "errors {{direction}}",
+              "interval": "1m"
             }
           ],
           "fieldConfig": {
@@ -3139,7 +3146,6 @@
               "sort": "desc"
             }
           },
-          "interval": "1m",
           "id": 46,
           "gridPos": {
             "h": 6,
@@ -3724,7 +3730,8 @@
               },
               "expr": "rate(fritz_lan_data_bytes_total{friendly_name=\"$device\"}[$__rate_interval]) * 8",
               "refId": "A",
-              "legendFormat": "{{direction}}"
+              "legendFormat": "{{direction}}",
+              "interval": "1m"
             }
           ],
           "fieldConfig": {
@@ -3774,7 +3781,6 @@
               "sort": "desc"
             }
           },
-          "interval": "1m",
           "id": 56,
           "gridPos": {
             "h": 6,
@@ -3799,7 +3805,8 @@
               },
               "expr": "rate(fritz_lan_packet_count_total{friendly_name=\"$device\"}[$__rate_interval])",
               "refId": "A",
-              "legendFormat": "{{direction}}"
+              "legendFormat": "{{direction}}",
+              "interval": "1m"
             }
           ],
           "fieldConfig": {
@@ -3849,7 +3856,6 @@
               "sort": "desc"
             }
           },
-          "interval": "1m",
           "id": 57,
           "gridPos": {
             "h": 6,
@@ -4158,7 +4164,8 @@
               },
               "expr": "rate(fritz_wifi_packets_count_total{friendly_name=\"$device\"}[$__rate_interval])",
               "refId": "A",
-              "legendFormat": "{{wifi_name}} {{direction}}"
+              "legendFormat": "{{wifi_name}} {{direction}}",
+              "interval": "1m"
             }
           ],
           "fieldConfig": {
@@ -4208,7 +4215,6 @@
               "sort": "desc"
             }
           },
-          "interval": "1m",
           "id": 61,
           "gridPos": {
             "h": 7,

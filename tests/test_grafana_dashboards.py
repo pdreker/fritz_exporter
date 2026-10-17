@@ -113,13 +113,16 @@ def test_queries_use_labels_and_values_the_exporter_sends(name):
 
 
 @pytest.mark.parametrize("name", list(BUILDER.DASHBOARDS))
-def test_rate_panels_work_with_a_60s_scrape_interval(name):
-    # Without a min interval, $__rate_interval follows the data source's scrape
-    # interval (15 s by default): a 1m window, one sample of a 60 s scrape.
+def test_rate_queries_work_with_a_60s_scrape_interval(name):
+    # $__rate_interval follows the query's min step, else the data source's scrape
+    # interval (15 s by default): a window of about 1m, one sample of a 60 s
+    # scrape. A panel's min interval does not count for it.
     board = BUILDER.DASHBOARDS[name]()
     for panel in _panels(board["panels"]):
-        if any("$__rate_interval" in t["expr"] for t in panel.get("targets", [])):
-            assert panel.get("interval") == "1m", panel["title"]
+        for query in panel.get("targets", []):
+            if "$__rate_interval" in query["expr"]:
+                assert query.get("interval") == "1m", panel["title"]
+        assert "interval" not in panel, panel["title"]
 
 
 @pytest.mark.parametrize("name", list(BUILDER.DASHBOARDS))
