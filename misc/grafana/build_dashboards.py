@@ -586,6 +586,12 @@ def rate(metric: str, **labels: str) -> str:
     return f"rate({q(metric, **labels)}[$__rate_interval])"
 
 
+def per_minute(selector: str) -> str:
+    """Events per minute from a counter. increase() over $__rate_interval as bars
+    counted each event in several bars, more the further out one zooms."""
+    return f"rate({selector}[$__rate_interval]) * 60"
+
+
 # ---------------------------------------------------------------------------
 # Overview: every metric, grouped by topic
 # ---------------------------------------------------------------------------
@@ -670,14 +676,16 @@ def overview() -> dict:  # noqa: PLR0915
             "Exporter: timed out and failed scrapes",
             targets(
                 (
-                    "increase(fritz_scrapes_timeouts_total[$__rate_interval])",
+                    "rate(fritz_scrapes_timeouts_total[$__rate_interval]) * 60",
                     "timed out {{instance}}",
                 ),
-                ("increase(fritz_scrapes_failed_total[$__rate_interval])", "failed {{instance}}"),
+                (
+                    "rate(fritz_scrapes_failed_total[$__rate_interval]) * 60",
+                    "failed {{instance}}",
+                ),
             ),
-            draw="bars",
-            fill=80,
-            description="For the whole exporter, not per device.",
+            unit="cpm",
+            description="Per minute, for the whole exporter, not per device.",
         ),
         8,
         6,
@@ -920,18 +928,23 @@ def overview() -> dict:  # noqa: PLR0915
     )
     lay.add(
         timeseries(
-            "Errors",
-            targets(
-                (
-                    f"increase({q('fritz_dsl_fec_errors_count_total')}[$__rate_interval])",
-                    "FEC (corrected)",
-                ),
-                (f"increase({q('fritz_dsl_crc_errors_count_total')}[$__rate_interval])", "CRC"),
-            ),
-            draw="bars",
-            fill=80,
+            "FEC errors (corrected)",
+            targets((per_minute(q("fritz_dsl_fec_errors_count_total")), "FEC")),
+            unit="cpm",
+            description="Errors the line corrected itself. Many per minute are normal; "
+            "a sharp rise means a worse line.",
         ),
-        24,
+        12,
+        5,
+    )
+    lay.add(
+        timeseries(
+            "CRC errors",
+            targets((per_minute(q("fritz_dsl_crc_errors_count_total")), "CRC")),
+            unit="cpm",
+            description="Errors the line could not correct: the data had to be sent again.",
+        ),
+        12,
         5,
     )
 
@@ -975,20 +988,20 @@ def overview() -> dict:  # noqa: PLR0915
     )
     lay.add(
         timeseries(
-            "Codeword errors",
-            targets(
-                (
-                    f"increase({q('fritz_docsis_corrected_errors_total')}[$__rate_interval])",
-                    "corrected ch {{channel_id}}",
-                ),
-                (
-                    f"increase({q('fritz_docsis_uncorrected_errors_total')}[$__rate_interval])",
-                    "uncorrected ch {{channel_id}}",
-                ),
-            ),
-            draw="bars",
-            fill=80,
-            stack=True,
+            "Corrected codewords",
+            targets((per_minute(q("fritz_docsis_corrected_errors_total")), "ch {{channel_id}}")),
+            unit="cpm",
+            description="Codeword errors the modem corrected itself, per channel.",
+        ),
+        8,
+        7,
+    )
+    lay.add(
+        timeseries(
+            "Uncorrected codewords",
+            targets((per_minute(q("fritz_docsis_uncorrected_errors_total")), "ch {{channel_id}}")),
+            unit="cpm",
+            description="Codeword errors the modem could not correct: lost data, per channel.",
         ),
         8,
         7,
