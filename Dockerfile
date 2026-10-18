@@ -1,8 +1,8 @@
 # The requirements and the wheel are the same on every platform: build them once,
 # on the build host, with the versions and hashes from uv.lock.
-FROM --platform=$BUILDPLATFORM ghcr.io/astral-sh/uv:0.13.1 AS uv
+FROM --platform=$BUILDPLATFORM ghcr.io/astral-sh/uv:0.13.1@sha256:4a1f3666816dafadd20ceb71eac9a7d56d7ef30279f7d64048519ab901ada336 AS uv
 
-FROM --platform=$BUILDPLATFORM python:3.14.8-alpine AS build
+FROM --platform=$BUILDPLATFORM python:3.14.8-alpine@sha256:f6a589d43c42b9e7f7dc67a12d37132491f362859a5d750607710cc56da3bc72 AS build
 COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /app
 
@@ -14,7 +14,7 @@ RUN uv export --frozen --no-dev --no-emit-project --format requirements.txt \
     uv build --wheel
 
 # Build the actual runner
-FROM python:3.14.8-alpine
+FROM python:3.14.8-alpine@sha256:f6a589d43c42b9e7f7dc67a12d37132491f362859a5d750607710cc56da3bc72
 
 LABEL Name=fritzbox_exporter
 EXPOSE 9787
