@@ -15,6 +15,63 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [4.0.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.5.1...fritzexporter-v4.0.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* fritz_device_reachable no longer has a serial label.
+* the labels above are gone from the data series; join the new _info metrics to get them (see the upgrade notes).
+* the image runs as user 65534; mounted config and password files must be readable by it. --donate-data, --upload-data and --sanitize are gone.
+* **config:** unknown config keys, a device without password or password_file, and duplicate device names stop the exporter at startup. A device without name is now named after its hostname, which changes the friendly_name label of its series; set name (FRITZ_NAME) to keep it.
+* ip_address is no longer a label of fritz_wan_connection_uptime_seconds_total and fritz_wan_connection_status; ip_address, hostname, interface, port and model are no longer labels of fritz_host_active and fritz_host_speed. Join fritz_wan_connection_info / fritz_host_info instead.
+* **webui:** devices on Fritz!OS before 7.24 that use web UI metrics (smart home, DOCSIS, REST API) now stop the exporter unless allow_unsafe_md5_password is set.
+
+### Features
+
+* **config:** refuse unknown keys, missing passwords and duplicate names; name defaults to the hostname ([#750](https://github.com/pdreker/fritz_exporter/issues/750)) ([e4a108e](https://github.com/pdreker/fritz_exporter/commit/e4a108e118dcf5601b4aca773f52e3b254ea6717))
+* **fiber:** read optical levels from the web UI when TR-064 reports zero ([#730](https://github.com/pdreker/fritz_exporter/issues/730)) ([d917f4b](https://github.com/pdreker/fritz_exporter/commit/d917f4b7392144aee4a4b575b4bfa6e2bc224816))
+* **grafana:** generated Overview and Home dashboards replace the three old ones ([#755](https://github.com/pdreker/fritz_exporter/issues/755)) ([b770ac4](https://github.com/pdreker/fritz_exporter/commit/b770ac4b792183e7bee1e6a5fc6bec0c95d3b591))
+* image runs as nobody from uv.lock, listens on 0.0.0.0 in containers; remove --donate-data ([#751](https://github.com/pdreker/fritz_exporter/issues/751)) ([b5a6473](https://github.com/pdreker/fritz_exporter/commit/b5a6473286fe9e7cd793e75f59dc73a5cac2a9a0))
+* move addresses and host names to fritz_wan_connection_info and fritz_host_info ([#749](https://github.com/pdreker/fritz_exporter/issues/749)) ([9abbc76](https://github.com/pdreker/fritz_exporter/commit/9abbc76b2c9cf0e2211d6ba976489739cd21103d))
+* move the remaining changing labels to _info metrics ([#758](https://github.com/pdreker/fritz_exporter/issues/758)) ([e36466f](https://github.com/pdreker/fritz_exporter/commit/e36466fea054b21099dab438b193477a5a89dc2d))
+
+
+### Bug Fixes
+
+* 64-bit WAN byte totals; hide DSL line quality while DSL is off ([#764](https://github.com/pdreker/fritz_exporter/issues/764)) ([433a696](https://github.com/pdreker/fritz_exporter/commit/433a69649f5ed618ec65fdbb67ee5f9220fd6381))
+* bound the login challenge parameters ([046fb6e](https://github.com/pdreker/fritz_exporter/commit/046fb6e4c1197ca75f8a4dd3d82bdf9bbabb9040))
+* contain setup errors and unreadable replies, fix thermostat off/on, duplicates and web logins ([#757](https://github.com/pdreker/fritz_exporter/issues/757)) ([73fa882](https://github.com/pdreker/fritz_exporter/commit/73fa88237a39f6b2227d877db6394481db89df1a))
+* **device:** only an unanswered request makes a device unreachable; set up devices in one place ([#747](https://github.com/pdreker/fritz_exporter/issues/747)) ([16af5c0](https://github.com/pdreker/fritz_exporter/commit/16af5c0c1033a8561b41bf78ed78b6014f2365e6))
+* fritz_device_reachable keyed by name; stat panels show values now ([#770](https://github.com/pdreker/fritz_exporter/issues/770)) ([6ec6232](https://github.com/pdreker/fritz_exporter/commit/6ec6232ed0e9f13d5203202cc4abde427e9fb59b))
+* **grafana:** cable line rate, USP colours, unknown interfaces; test gaps ([#760](https://github.com/pdreker/fritz_exporter/issues/760)) ([424a95b](https://github.com/pdreker/fritz_exporter/commit/424a95b7c0e199577c5a4218c7556650e610c1d5))
+* **grafana:** correct switch mode and problem level labels, current values for changing labels ([#756](https://github.com/pdreker/fritz_exporter/issues/756)) ([97a98ed](https://github.com/pdreker/fritz_exporter/commit/97a98eddf3666be69a7a111b399b6ff35218cda3))
+* **grafana:** error panels show events per minute as lines ([#772](https://github.com/pdreker/fritz_exporter/issues/772)) ([068fc1d](https://github.com/pdreker/fritz_exporter/commit/068fc1d1cf914e3e050f1aee7885a02fbe91ac08))
+* **grafana:** rate() panels work with a 60 s scrape interval ([#769](https://github.com/pdreker/fritz_exporter/issues/769)) ([fc31d20](https://github.com/pdreker/fritz_exporter/commit/fc31d20b9deb4ab6a9d5576cf3353550dfef7f8e))
+* **grafana:** set the min step on rate() queries, not on the panel ([#771](https://github.com/pdreker/fritz_exporter/issues/771)) ([6dec6df](https://github.com/pdreker/fritz_exporter/commit/6dec6df7c0263343bb755a810456f09b2b5c6377))
+* keep the session id and user name out of web UI error messages ([#721](https://github.com/pdreker/fritz_exporter/issues/721)) ([e199a13](https://github.com/pdreker/fritz_exporter/commit/e199a13613438ea1248e2622a0db63c7d34dd8a2))
+* last review findings ([#763](https://github.com/pdreker/fritz_exporter/issues/763)) ([91987bc](https://github.com/pdreker/fritz_exporter/commit/91987bc4c7bacc9192f036d939a3c1d0fbe65ca9))
+* **mesh:** skip mesh metrics on bad topology data instead of failing the scrape ([#737](https://github.com/pdreker/fritz_exporter/issues/737)) ([469a64b](https://github.com/pdreker/fritz_exporter/commit/469a64b24a02f614dac88f454b9828660c8ac0ad))
+* name the device the same way in every log message ([#743](https://github.com/pdreker/fritz_exporter/issues/743)) ([a65eda7](https://github.com/pdreker/fritz_exporter/commit/a65eda7d5fa2704408f6cdcba917d851b394e26b))
+* read device data through typed accessors and contain bad replies ([#740](https://github.com/pdreker/fritz_exporter/issues/740)) ([f8a553f](https://github.com/pdreker/fritz_exporter/commit/f8a553f9e7b24735d6b7aa1264018cc32ca6df45))
+* report the installed version instead of "develop" ([#739](https://github.com/pdreker/fritz_exporter/issues/739)) ([5a277d1](https://github.com/pdreker/fritz_exporter/commit/5a277d1c2425ffd9449e811e2d8a2f5f50b72e0e))
+* retry offline devices in the background, no scrape at registration, Helm ports ([#759](https://github.com/pdreker/fritz_exporter/issues/759)) ([45b2b0a](https://github.com/pdreker/fritz_exporter/commit/45b2b0a6be1414998d0e1bb0bb9057b997e0b9f2))
+* **types:** annotate context managers as Generator ([#753](https://github.com/pdreker/fritz_exporter/issues/753)) ([05c0fcd](https://github.com/pdreker/fritz_exporter/commit/05c0fcda343d8c3ac370e81d47380a52c760885f))
+* **webui:** ask for the PBKDF2 login challenge ([#741](https://github.com/pdreker/fritz_exporter/issues/741)) ([e1e8b6f](https://github.com/pdreker/fritz_exporter/commit/e1e8b6fdbe9d7caaa90d57edae5e80cbd3ea8c5f))
+* **webui:** one request path, re-login only on a rejected session, MD5 refusal per device ([#746](https://github.com/pdreker/fritz_exporter/issues/746)) ([b3a1725](https://github.com/pdreker/fritz_exporter/commit/b3a172538da12f148a2d99e95e89f719df0dde51))
+* **webui:** refuse the legacy MD5 web login unless allowed ([765402b](https://github.com/pdreker/fritz_exporter/commit/765402bc188096ca38575dd3c5962b096b0c7df0))
+* **webui:** send the PBKDF2 response AVM expects and back off after a refused login ([#742](https://github.com/pdreker/fritz_exporter/issues/742)) ([5b1e48f](https://github.com/pdreker/fritz_exporter/commit/5b1e48fd967e706ca7be172b0f0dd044e8564368))
+* **webui:** tighten and clarify login challenge checks ([fdb78c7](https://github.com/pdreker/fritz_exporter/commit/fdb78c75ccc836f0b0b37e9f6dc06f91e7674d17))
+
+
+### Documentation
+
+* advise a separate exporter user with a long random password ([18173be](https://github.com/pdreker/fritz_exporter/commit/18173bea7fa0e314447fd2113489bbd7018a0ca3))
+* describe allow_unsafe_md5_password and the MD5 login ([e28f332](https://github.com/pdreker/fritz_exporter/commit/e28f332112ef6f9fe967d84486908d7378c28356))
+* examples use image tag 4 ([#754](https://github.com/pdreker/fritz_exporter/issues/754)) ([ec83d36](https://github.com/pdreker/fritz_exporter/commit/ec83d36c4beaf6a143f5ec0d9fda00e554e10111))
+* fix stale and misleading passages from the exit review ([#761](https://github.com/pdreker/fritz_exporter/issues/761)) ([4ed4cc3](https://github.com/pdreker/fritz_exporter/commit/4ed4cc3ae4b04f4bf29af6e54785f015f84a93e4))
+* naming rules for new metrics; existing names stay ([#745](https://github.com/pdreker/fritz_exporter/issues/745)) ([2aa7456](https://github.com/pdreker/fritz_exporter/commit/2aa74567eccb3ea0b971d56a3b26f8b0240009e8))
+
 ## [3.5.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.5.0...fritzexporter-v3.5.1) (2026-10-02)
 
 
