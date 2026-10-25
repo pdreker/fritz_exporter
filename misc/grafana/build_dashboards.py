@@ -1712,7 +1712,6 @@ def home() -> dict:
             targets((q("fritz_ha_multimeter_power_W"), "{{device_name}}")),
             unit="watt",
             fill=40,
-            stack=True,
         ),
         10,
         7,

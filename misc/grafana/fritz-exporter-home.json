@@ -1182,7 +1182,7 @@
             "spanNulls": true,
             "axisSoftMin": null,
             "stacking": {
-              "mode": "normal",
+              "mode": "none",
               "group": "A"
             }
           },
