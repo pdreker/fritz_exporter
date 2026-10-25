@@ -1186,7 +1186,7 @@
             "drawStyle": "line",
             "lineWidth": 0,
             "fillOpacity": 70,
-            "gradientMode": "opacity",
+            "gradientMode": "none",
             "showPoints": "never",
             "spanNulls": true,
             "axisSoftMin": null,

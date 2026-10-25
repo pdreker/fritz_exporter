@@ -161,12 +161,13 @@ def timeseries(  # noqa: PLR0913
     decimals: int | None = None,
     soft_min: float | None = None,
     line_width: int | None = None,
+    gradient: str = "opacity",
 ) -> Panel:
     custom: dict[str, Any] = {
         "drawStyle": draw,
         "lineWidth": line_width if line_width is not None else 2 if draw == "line" else 1,
         "fillOpacity": fill,
-        "gradientMode": "opacity",
+        "gradientMode": gradient,
         "showPoints": "never",
         "spanNulls": True,
         "axisSoftMin": soft_min,
@@ -1731,6 +1732,7 @@ def home() -> dict:
             fill=70,
             stack=True,
             line_width=0,
+            gradient="none",
             overrides=[total_line()],
             description="Each band is one device; the line on top is the total.",
         ),
