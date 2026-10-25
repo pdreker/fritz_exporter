@@ -160,10 +160,11 @@ def timeseries(  # noqa: PLR0913
     draw: str = "line",
     decimals: int | None = None,
     soft_min: float | None = None,
+    line_width: int | None = None,
 ) -> Panel:
     custom: dict[str, Any] = {
         "drawStyle": draw,
-        "lineWidth": 2 if draw == "line" else 1,
+        "lineWidth": line_width if line_width is not None else 2 if draw == "line" else 1,
         "fillOpacity": fill,
         "gradientMode": "opacity",
         "showPoints": "never",
@@ -427,6 +428,19 @@ def dashed(pattern: str, dash: tuple[int, int] = (10, 10)) -> dict:
     return series_regex(
         pattern,
         **{"custom.lineStyle": {"fill": "dash", "dash": list(dash)}, "custom.fillOpacity": 0},
+    )
+
+
+def total_line(name: str = "Total") -> dict:
+    """Draw the sum over stacked bands as a plain line, outside the stack."""
+    return column(
+        name,
+        color={"mode": "fixed", "fixedColor": "text"},
+        **{
+            "custom.stacking": {"mode": "none", "group": "A"},
+            "custom.fillOpacity": 0,
+            "custom.lineWidth": 2,
+        },
     )
 
 
@@ -1709,10 +1723,16 @@ def home() -> dict:
     lay.add(
         timeseries(
             "Power",
-            targets((q("fritz_ha_multimeter_power_W"), "{{device_name}}")),
+            targets(
+                (q("fritz_ha_multimeter_power_W"), "{{device_name}}"),
+                (f"sum({q('fritz_ha_multimeter_power_W')})", "Total"),
+            ),
             unit="watt",
-            fill=40,
+            fill=70,
             stack=True,
+            line_width=0,
+            overrides=[total_line()],
+            description="Each band is one device; the line on top is the total.",
         ),
         10,
         7,
