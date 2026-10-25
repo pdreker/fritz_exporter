@@ -1155,7 +1155,7 @@
     {
       "type": "timeseries",
       "title": "Power",
-      "description": "",
+      "description": "Each band is one device; the line on top is the total.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1169,15 +1169,24 @@
           "expr": "fritz_ha_multimeter_power_W{friendly_name=\"$device\"}",
           "refId": "A",
           "legendFormat": "{{device_name}}"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(fritz_ha_multimeter_power_W{friendly_name=\"$device\"})",
+          "refId": "B",
+          "legendFormat": "Total"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "custom": {
             "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 40,
-            "gradientMode": "opacity",
+            "lineWidth": 0,
+            "fillOpacity": 70,
+            "gradientMode": "none",
             "showPoints": "never",
             "spanNulls": true,
             "axisSoftMin": null,
@@ -1191,7 +1200,38 @@
           },
           "unit": "watt"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              },
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none",
+                  "group": "A"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
