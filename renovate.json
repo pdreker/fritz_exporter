@@ -1,6 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "local>pdreker/renovate-config"
+  "extends": ["local>pdreker/renovate-config"],
+  "packageRules": [
+    {
+      "description": "Python base image: only patch updates; minor/major interpreter bumps are done by hand (as before with Dependabot)",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["python"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    }
   ]
 }
