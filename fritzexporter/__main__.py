@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import signal
 import sys
 import threading
 
@@ -61,6 +62,26 @@ def _register_device(dev: DeviceConfig, fritzcollector: FritzCollector) -> None:
     fritzcollector.add_device(spec)
 
 
+def wait_for_shutdown() -> str:
+    """Block until SIGTERM or SIGINT arrives and return the signal's name.
+
+    Python ignores SIGTERM when it runs as PID 1 in a container unless it
+    installs a handler, so the runtime would wait and then kill it.
+    """
+    stop = threading.Event()
+    received: list[str] = []
+
+    def _handle(signum: int, _frame: object) -> None:
+        received.append(signal.Signals(signum).name)
+        stop.set()
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, _handle)
+
+    stop.wait()
+    return received[0]
+
+
 def main() -> None:
     fritzcollector = FritzCollector()
 
@@ -94,7 +115,8 @@ def main() -> None:
 
     # Avoid blocking forever when running tests
     if not os.getenv("FRITZ_EXPORTER_UNDER_TEST"):
-        threading.Event().wait()
+        name = wait_for_shutdown()
+        logger.info("Received %s, shutting down", name)
 
 
 if __name__ == "__main__":
