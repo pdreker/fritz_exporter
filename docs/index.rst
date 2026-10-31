@@ -119,6 +119,16 @@ The standard ``prometheus_client`` process and interpreter metrics
 
 If there is any information missing or not displayed on your specific device, please open an issue on GitHub.
 
+Event log
+^^^^^^^^^
+
+The exporter reads metrics, not the device's event log ("Ereignisse"). For that there is a
+companion tool, `fritz_logextractor <https://github.com/pdreker/fritz_logextractor>`_
+(`documentation <https://pdreker.github.io/fritz_logextractor/>`_): it reads the event log and
+writes each new entry once as a JSON line, so a log stack such as Loki or Elasticsearch can keep
+it across reboots of the box. It brings a Grafana dashboard and example configs for common log
+collectors.
+
 Known Problems
 --------------
 
