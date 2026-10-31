@@ -15,6 +15,18 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [4.0.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v4.0.0...fritzexporter-v4.0.1) (2026-10-31)
+
+
+### Bug Fixes
+
+* **grafana:** Home power as stacked bands with a total line ([#781](https://github.com/pdreker/fritz_exporter/issues/781)) ([51cde2f](https://github.com/pdreker/fritz_exporter/commit/51cde2fb924c09320b047d3fed665c1a8fd43f06))
+
+
+### Documentation
+
+* point to fritz_logextractor for the event log ([#789](https://github.com/pdreker/fritz_exporter/issues/789)) ([99721fd](https://github.com/pdreker/fritz_exporter/commit/99721fd8b4ff196f9100a659efcae07f5f44cf37))
+
 ## [4.0.0](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v3.5.1...fritzexporter-v4.0.0) (2026-10-24)
 
 
