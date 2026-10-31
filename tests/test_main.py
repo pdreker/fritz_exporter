@@ -1,16 +1,40 @@
 import logging
-from pathlib import Path
-from importlib.metadata import version
+import os
+import signal
+import threading
 from http.client import RemoteDisconnected
+from importlib.metadata import version
+from pathlib import Path
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 from fritzconnection.core.exceptions import FritzConnectionException
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
-from fritzexporter.__main__ import main, parse_cmdline
+from fritzexporter.__main__ import main, parse_cmdline, wait_for_shutdown
 
 from .fc_services_mock import call_action_mock, create_fc_services, fc_services_devices
+
+
+@pytest.fixture
+def restore_signal_handlers():
+    saved = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)}
+    yield
+    for sig, handler in saved.items():
+        signal.signal(sig, handler)
+
+
+@pytest.mark.usefixtures("restore_signal_handlers")
+@pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGINT])
+def test_wait_for_shutdown_returns_on_signal(sig):
+    # Container runtimes stop the exporter with SIGTERM; it must return
+    # instead of waiting to be killed.
+    timer = threading.Timer(0.1, os.kill, (os.getpid(), sig))
+    timer.start()
+    try:
+        assert wait_for_shutdown() == sig.name
+    finally:
+        timer.cancel()
 
 
 class Test_Main:
