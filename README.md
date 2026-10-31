@@ -32,6 +32,15 @@ It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Box 5690 (fibre)
 
 Check out the full documentation at [ReadTheDocs](https://fritz-exporter.readthedocs.io/)
 
+## Event log: fritz_logextractor
+
+The exporter reads metrics, not the device's event log ("Ereignisse"). For that there is a
+companion tool, [fritz_logextractor](https://github.com/pdreker/fritz_logextractor)
+([documentation](https://pdreker.github.io/fritz_logextractor/)): it reads the event log and
+writes each new entry once as a JSON line, so a log stack such as Loki or Elasticsearch can keep
+it across reboots of the box. It brings a Grafana dashboard and example configs for common log
+collectors.
+
 ## Attention - Prometheus required
 
 As the scope of this exporter lies on a typical home device, this also means that there are a lot of people interested in it, who may not have had any contact with [Prometheus](https://prometheus.io/). As a result if this there have been some misunderstandings in the past, how this all works.
