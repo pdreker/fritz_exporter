@@ -50,6 +50,11 @@ test = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+# Cooling-off: resolve only releases that are at least a week old.
+# Renovate cannot check lock file maintenance, so uv enforces the week.
+exclude-newer = "1 week"
+
 [tool.hatch.build.targets.wheel]
 packages = ["fritzexporter"]
 
