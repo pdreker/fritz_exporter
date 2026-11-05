@@ -71,9 +71,13 @@ class TestFritzDevice:
 
         # Act
         if capability == "HostInfo":
-            fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True)
+            fd = FritzDevice(
+                FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True
+            )
         else:
-            fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+            fd = FritzDevice(
+                FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+            )
 
         # Check
         print(caplog.text)
@@ -165,7 +169,9 @@ class TestFritzDevice:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         # Act
-        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        fd = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
 
         # Check
         assert fd.model == "Fritz!MockBox 9790"
@@ -198,7 +204,9 @@ class TestFritzDevice:
         # Check
         assert str(exc.value) == "FritzMock (somehost) has no detected capabilities"
 
-    def test_should_not_collect_a_device_without_serial(self, mock_fritzconnection: MagicMock, caplog):
+    def test_should_not_collect_a_device_without_serial(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
         # The serial tells devices apart in Prometheus; without it the device is skipped.
         caplog.set_level(logging.DEBUG)
 
@@ -207,7 +215,10 @@ class TestFritzDevice:
         fc.services = create_fc_services(fc_services_no_basic_info)
 
         creds = FritzCredentials("somehost", "someuser", "password")
-        with pytest.raises(FritzDeviceSerialUnknownError, match=r"could not read the serial number of FritzMock \(somehost\)"):
+        with pytest.raises(
+            FritzDeviceSerialUnknownError,
+            match=r"could not read the serial number of FritzMock \(somehost\)",
+        ):
             FritzDevice(creds, "FritzMock")
 
     @pytest.mark.parametrize(
@@ -219,7 +230,9 @@ class TestFritzDevice:
             "not an object",
         ],
     )
-    def test_unreadable_serial_skips_the_device(self, mock_fritzconnection: MagicMock, caplog, info):
+    def test_unreadable_serial_skips_the_device(
+        self, mock_fritzconnection: MagicMock, caplog, info
+    ):
         def call_action(service, action, **kwargs):
             if (service, action) == ("DeviceInfo1", "GetInfo"):
                 return info
@@ -248,7 +261,9 @@ class TestFritzDevice:
         assert device.serial == "1234567890"
         assert device.model == "n/a"
 
-    def test_connection_timeout_passed_to_fritzconnection(self, mock_fritzconnection: MagicMock, caplog):
+    def test_connection_timeout_passed_to_fritzconnection(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
         # Prepare
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
@@ -271,7 +286,9 @@ class TestFritzDevice:
             port=None,
         )
 
-    def test_connection_timeout_defaults_to_the_config_default(self, mock_fritzconnection: MagicMock, caplog):
+    def test_connection_timeout_defaults_to_the_config_default(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
         # Prepare
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
@@ -397,7 +414,8 @@ class TestFritzDevice:
         reachable = metrics["fritz_device_reachable"].samples
         assert [s.value for s in reachable] == [1.0]
         problems = {
-            (s.labels["capability"], s.labels["level"]) for s in metrics["fritz_read_problem"].samples
+            (s.labels["capability"], s.labels["level"])
+            for s in metrics["fritz_read_problem"].samples
         }
         assert problems == {("HomeAutomation", "skipped")}
 
@@ -510,13 +528,14 @@ class TestFritzDevice:
 
         # Act / Check: the reason names the kind of failure, not the request URL
         collector = FritzCollector()
-        collector.add_device(DeviceSpec(FritzCredentials("somehost", "someuser", "password"), "FritzMock"))
+        collector.add_device(
+            DeviceSpec(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+        )
 
         assert [r.getMessage() for r in caplog.records if r.levelno == logging.ERROR] == [
             "Failed to initialize device FritzMock (somehost), it will be reported as down: "
             "Fritz device did not answer (ConnectionError)"
         ]
-
 
 
 def _scrape(collector: FritzCollector) -> list[Metric]:
@@ -603,7 +622,9 @@ class TestFritzCollector:
 
         # Act
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         collector.register(device)
 
         # Check
@@ -621,7 +642,9 @@ class TestFritzCollector:
 
         # Act
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         collector.register(device)
         metrics: list[Metric] = list(collector.collect())
 
@@ -658,7 +681,9 @@ class TestFritzCollector:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         collector.register(device)
 
         registry = CollectorRegistry()
@@ -679,7 +704,9 @@ class TestFritzCollector:
 
         # Act
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True
+        )
         collector.register(device)
         metrics: list[Metric] = list(collector.collect())
 
@@ -704,9 +731,15 @@ class TestFritzCollector:
 
         # Act
         collector = FritzCollector()
-        device1 = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock1", host_info=True)
-        device2 = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock2", host_info=True)
-        device3 = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock3", host_info=True)
+        device1 = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock1", host_info=True
+        )
+        device2 = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock2", host_info=True
+        )
+        device3 = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock3", host_info=True
+        )
         collector.register(device1)
         collector.register(device2)
         collector.register(device3)
@@ -734,7 +767,9 @@ class TestFritzCollector:
 
         # Act
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         collector.register(device)
         metrics: list[Metric] = list(collector.collect())
 
@@ -755,7 +790,9 @@ class TestFritzCollector:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         collector.register(device)
 
         # Simulate device becoming unreachable after registration
@@ -781,7 +818,9 @@ class TestFritzCollector:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         collector.register(device)
 
         # Simulate connection failure during metric collection (only after setup)
@@ -817,7 +856,9 @@ class TestFritzCollector:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         collector.register(device)
 
         # First collection: device is reachable
@@ -845,8 +886,8 @@ class TestFritzCollector:
         caplog.set_level(logging.DEBUG)
 
         collector = FritzCollector()
-        _register_offline(collector,
-            FritzCredentials("offlinehost", "user", "pass"), "OfflineDevice"
+        _register_offline(
+            collector, FritzCredentials("offlinehost", "user", "pass"), "OfflineDevice"
         )
 
         # Act: collect() should not sys.exit
@@ -898,15 +939,17 @@ class TestFritzCollector:
         creds = FritzCredentials("offlinehost", "user", "pass")
 
         # Act
-        _register_offline(collector,
-            creds, "OfflineDevice", connection=ConnectionOptions(connection_timeout=15)
+        _register_offline(
+            collector, creds, "OfflineDevice", connection=ConnectionOptions(connection_timeout=15)
         )
 
         # Check: timeout stored so that retry uses the same bound
         assert len(collector.offline_devices) == 1
         assert collector.offline_devices[0].spec.connection.connection_timeout == 15
 
-    def test_retry_offline_devices_uses_connection_timeout(self, mock_fritzconnection: MagicMock, caplog):
+    def test_retry_offline_devices_uses_connection_timeout(
+        self, mock_fritzconnection: MagicMock, caplog
+    ):
         # Prepare: register device offline with a specific timeout
         caplog.set_level(logging.DEBUG)
 
@@ -916,8 +959,8 @@ class TestFritzCollector:
 
         collector = FritzCollector()
         creds = FritzCredentials("somehost", "someuser", "password")
-        _register_offline(collector,
-            creds, "FritzMock", connection=ConnectionOptions(connection_timeout=7)
+        _register_offline(
+            collector, creds, "FritzMock", connection=ConnectionOptions(connection_timeout=7)
         )
 
         # Device comes back during retry
@@ -942,7 +985,8 @@ class TestFritzCollector:
         collector = FritzCollector()
         creds = FritzCredentials("offlinehost", "user", "pass")
 
-        _register_offline(collector,
+        _register_offline(
+            collector,
             creds,
             "OfflineDevice",
             connection=ConnectionOptions(use_tls=True, port=49443, remote_access=True),
@@ -964,7 +1008,8 @@ class TestFritzCollector:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        _register_offline(collector,
+        _register_offline(
+            collector,
             FritzCredentials("somehost", "someuser", "password"),
             "FritzMock",
             connection=ConnectionOptions(allow_unsafe_md5_password=True),
@@ -985,7 +1030,8 @@ class TestFritzCollector:
 
         collector = FritzCollector()
         creds = FritzCredentials("somehost", "someuser", "password")
-        _register_offline(collector,
+        _register_offline(
+            collector,
             creds,
             "FritzMock",
             connection=ConnectionOptions(use_tls=True, port=49443, remote_access=True),
@@ -1017,7 +1063,9 @@ class TestFritzCollector:
 
         # Act
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         collector.register(device)
 
         # The device answers the connection mode request with an error
@@ -1035,7 +1083,10 @@ class TestFritzCollector:
         # Check: no connection mode sample, reported as a read problem, device reachable
         by_name = {m.name: m for m in metrics}
         assert by_name["fritz_connection_mode"].samples == []
-        problems = {(s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples}
+        problems = {
+            (s.labels["capability"], s.labels["level"])
+            for s in by_name["fritz_read_problem"].samples
+        }
         assert ("ConnectionMode", "skipped") in problems
         assert by_name["fritz_device_reachable"].samples[0].value == 1.0
 
@@ -1183,16 +1234,24 @@ class TestFritzCollector:
                             "name": "AP:2G:0",
                             "node_links": [
                                 {
-                                    "uid": "l1", "node_1_uid": "n1", "node_2_uid": "n2",
+                                    "uid": "l1",
+                                    "node_1_uid": "n1",
+                                    "node_2_uid": "n2",
                                     "state": "CONNECTED",
-                                    "cur_data_rate_rx": 71800, "cur_data_rate_tx": 72200,
-                                    "max_data_rate_rx": 144400, "max_data_rate_tx": 144400,
+                                    "cur_data_rate_rx": 71800,
+                                    "cur_data_rate_tx": 72200,
+                                    "max_data_rate_rx": 144400,
+                                    "max_data_rate_tx": 144400,
                                 },
                                 {
-                                    "uid": "l2", "node_1_uid": "n1", "node_2_uid": "c1",
+                                    "uid": "l2",
+                                    "node_1_uid": "n1",
+                                    "node_2_uid": "c1",
                                     "state": "CONNECTED",
-                                    "cur_data_rate_rx": 100, "cur_data_rate_tx": 100,
-                                    "max_data_rate_rx": 200, "max_data_rate_tx": 200,
+                                    "cur_data_rate_rx": 100,
+                                    "cur_data_rate_tx": 100,
+                                    "max_data_rate_rx": 200,
+                                    "max_data_rate_tx": 200,
                                 },
                             ],
                         },
@@ -1205,10 +1264,14 @@ class TestFritzCollector:
                                     # AVM reports node_1_uid/node_2_uid reversed here
                                     # relative to l1, matching what was observed on
                                     # real hardware.
-                                    "uid": "l3", "node_1_uid": "n2", "node_2_uid": "n1",
+                                    "uid": "l3",
+                                    "node_1_uid": "n2",
+                                    "node_2_uid": "n1",
                                     "state": "CONNECTED",
-                                    "cur_data_rate_rx": 288200, "cur_data_rate_tx": 864000,
-                                    "max_data_rate_rx": 2401000, "max_data_rate_tx": 2401000,
+                                    "cur_data_rate_rx": 288200,
+                                    "cur_data_rate_tx": 864000,
+                                    "max_data_rate_rx": 2401000,
+                                    "max_data_rate_tx": 2401000,
                                 },
                             ],
                         },
@@ -1224,10 +1287,14 @@ class TestFritzCollector:
                             "name": "UPLINK:2G:0",
                             "node_links": [
                                 {
-                                    "uid": "l1", "node_1_uid": "n1", "node_2_uid": "n2",
+                                    "uid": "l1",
+                                    "node_1_uid": "n1",
+                                    "node_2_uid": "n2",
                                     "state": "CONNECTED",
-                                    "cur_data_rate_rx": 71800, "cur_data_rate_tx": 72200,
-                                    "max_data_rate_rx": 144400, "max_data_rate_tx": 144400,
+                                    "cur_data_rate_rx": 71800,
+                                    "cur_data_rate_tx": 72200,
+                                    "max_data_rate_rx": 144400,
+                                    "max_data_rate_tx": 144400,
                                 }
                             ],
                         },
@@ -1236,10 +1303,14 @@ class TestFritzCollector:
                             "name": "UPLINK:5G:0",
                             "node_links": [
                                 {
-                                    "uid": "l3", "node_1_uid": "n2", "node_2_uid": "n1",
+                                    "uid": "l3",
+                                    "node_1_uid": "n2",
+                                    "node_2_uid": "n1",
                                     "state": "CONNECTED",
-                                    "cur_data_rate_rx": 288200, "cur_data_rate_tx": 864000,
-                                    "max_data_rate_rx": 2401000, "max_data_rate_tx": 2401000,
+                                    "cur_data_rate_rx": 288200,
+                                    "cur_data_rate_tx": 864000,
+                                    "max_data_rate_rx": 2401000,
+                                    "max_data_rate_tx": 2401000,
                                 },
                             ],
                         },
@@ -1286,7 +1357,9 @@ class TestFritzCollector:
 
         collector = FritzCollector()
         with patch("fritzexporter.fritz_webui.requests.Session") as mock_session_cls:
-            device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+            device = FritzDevice(
+                FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+            )
         collector.register(device)
 
         mock_session_cls.return_value.get.side_effect = RequestsConnectionError(
@@ -1321,7 +1394,9 @@ class TestFritzCollector:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         collector.register(device)
 
         fc.call_action.side_effect = RequestsConnectionError(
@@ -1348,7 +1423,9 @@ class TestFritzCollector:
         )
 
         collector = FritzCollector()
-        _register_offline(collector, FritzCredentials("offlinehost", "user", "pass"), "OfflineDevice")
+        _register_offline(
+            collector, FritzCredentials("offlinehost", "user", "pass"), "OfflineDevice"
+        )
 
         # Act: the failed retry must not abort the whole collection cycle
         metrics: list[Metric] = list(collector.collect())
@@ -1363,9 +1440,14 @@ class TestFritzCollector:
 
 def _mesh_link(**overrides):
     link = {
-        "uid": "l1", "node_1_uid": "n1", "node_2_uid": "n2", "state": "CONNECTED",
-        "cur_data_rate_rx": 1000, "cur_data_rate_tx": 2000,
-        "max_data_rate_rx": 3000, "max_data_rate_tx": 4000,
+        "uid": "l1",
+        "node_1_uid": "n1",
+        "node_2_uid": "n2",
+        "state": "CONNECTED",
+        "cur_data_rate_rx": 1000,
+        "cur_data_rate_tx": 2000,
+        "max_data_rate_rx": 3000,
+        "max_data_rate_tx": 4000,
     }
     link.update(overrides)
     return link
@@ -1373,7 +1455,9 @@ def _mesh_link(**overrides):
 
 def _mesh_topology(link=None, **node_overrides):
     master = {
-        "uid": "n1", "device_name": "fritzbox", "is_meshed": True,
+        "uid": "n1",
+        "device_name": "fritzbox",
+        "is_meshed": True,
         "node_interfaces": [
             {"type": "WLAN", "name": "AP:5G:0", "node_links": [link or _mesh_link()]}
         ],
@@ -1496,12 +1580,18 @@ class TestMeshTopologyParsing:
         topology = {
             "nodes": [
                 {
-                    "uid": "z-master", "device_name": "fritzbox", "is_meshed": True,
+                    "uid": "z-master",
+                    "device_name": "fritzbox",
+                    "is_meshed": True,
                     "node_interfaces": [{"type": "WLAN", "name": "AP:5G:0", "node_links": [link]}],
                 },
                 {
-                    "uid": "a-rep", "device_name": "repeater", "is_meshed": True,
-                    "node_interfaces": [{"type": "WLAN", "name": "UPLINK:5G:0", "node_links": [link]}],
+                    "uid": "a-rep",
+                    "device_name": "repeater",
+                    "is_meshed": True,
+                    "node_interfaces": [
+                        {"type": "WLAN", "name": "UPLINK:5G:0", "node_links": [link]}
+                    ],
                 },
             ]
         }
@@ -1660,7 +1750,9 @@ class TestGetConnectionMode:
         fc = mock_fc.return_value
         fc.call_action.side_effect = call_action_mock
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         return device, fc
 
     def test_get_connection_mode_dsl(self, mock_fc: MagicMock):
@@ -1768,7 +1860,9 @@ class TestGetConnectionMode:
         assert metric.samples[0].value == 0
 
     @pytest.mark.parametrize("exc", [FritzServiceError, FritzActionError])
-    def test_get_connection_mode_keeps_device_available_on_missing_wan(self, mock_fc: MagicMock, exc):
+    def test_get_connection_mode_keeps_device_available_on_missing_wan(
+        self, mock_fc: MagicMock, exc
+    ):
         # A device without a WAN interface (e.g. a mesh repeater) reports no
         # connection mode, but must NOT be marked unavailable — otherwise the
         # collect loop would skip all its other capabilities every scrape.
@@ -1838,7 +1932,9 @@ class TestFritzDeviceAuthError:
             FritzDevice(creds, "FritzMock", host_info=False)
 
         collector = FritzCollector()
-        collector.add_device(DeviceSpec(FritzCredentials("somehost", "someuser", "password"), "FritzMock"))
+        collector.add_device(
+            DeviceSpec(FritzCredentials("somehost", "someuser", "password"), "FritzMock")
+        )
 
         # Check: one error, with the hint
         assert [r.getMessage() for r in caplog.records if r.levelno >= logging.ERROR] == [
@@ -1857,7 +1953,9 @@ class TestNoPasswordInRepr:
     def test_device_config(self):
         from fritzexporter.config import DeviceConfig
 
-        config = DeviceConfig(hostname="fritz.box", username="user", password="s3cret-pw", name="Box")
+        config = DeviceConfig(
+            hostname="fritz.box", username="user", password="s3cret-pw", name="Box"
+        )
         assert "s3cret-pw" not in repr(config)
 
 
@@ -1886,7 +1984,8 @@ class TestMeshListFetch:
         device_ready = True
         by_name = {m.name: m for m in collector.collect()}
         problems = {
-            (s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples
+            (s.labels["capability"], s.labels["level"])
+            for s in by_name["fritz_read_problem"].samples
         }
         reachable = by_name["fritz_device_reachable"].samples[0].value
         return by_name, problems, reachable
@@ -1946,14 +2045,23 @@ class TestDuplicateSeries:
 
         def node(uid, name, links=()):
             interfaces = [{"type": "WLAN", "name": "AP:5G:0", "node_links": list(links)}]
-            return {"uid": uid, "device_name": name, "is_meshed": True, "node_interfaces": interfaces}
+            return {
+                "uid": uid,
+                "device_name": name,
+                "is_meshed": True,
+                "node_interfaces": interfaces,
+            }
 
         topology = {
             "nodes": [
-                node("box", "FRITZ!Box", [
-                    _mesh_link(uid="l1", node_1_uid="box", node_2_uid="r1"),
-                    _mesh_link(uid="l2", node_1_uid="box", node_2_uid="r2"),
-                ]),
+                node(
+                    "box",
+                    "FRITZ!Box",
+                    [
+                        _mesh_link(uid="l1", node_1_uid="box", node_2_uid="r1"),
+                        _mesh_link(uid="l2", node_1_uid="box", node_2_uid="r2"),
+                    ],
+                ),
                 node("r1", "FRITZ!Repeater"),
                 node("r2", "FRITZ!Repeater"),
             ]
@@ -1962,7 +2070,9 @@ class TestDuplicateSeries:
 
         links = _MeshParser(topology, issues).links()
 
-        assert [link.labels for link in links] == [["FRITZ!Box", "FRITZ!Repeater", "WLAN", "AP:5G:0"]]
+        assert [link.labels for link in links] == [
+            ["FRITZ!Box", "FRITZ!Repeater", "WLAN", "AP:5G:0"]
+        ]
         assert issues.messages == [
             "mesh link 0/0/1 skipped: same node names and interface as another link "
             "(give the mesh nodes different names)"

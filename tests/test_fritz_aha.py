@@ -21,7 +21,9 @@ class TestParseAhaDevicelistXml:
         # defusedxml refuses entities; that is bad device data, not a bug.
         issues = Issues()
         with pytest.raises(DataError, match="not valid XML"):
-            parse_aha_devicelist_xml('<!DOCTYPE x [<!ENTITY a "b">]><devicelist>&a;</devicelist>', issues)
+            parse_aha_devicelist_xml(
+                '<!DOCTYPE x [<!ENTITY a "b">]><devicelist>&a;</devicelist>', issues
+            )
 
     def test_should_record_non_numeric_int_fields_and_skip_the_value(self):
         # Prepare
@@ -52,7 +54,9 @@ class TestParseAhaDevicelistXml:
 
         parse_aha_devicelist_xml(deviceinfo, issues)
 
-        assert issues.messages == ["smart home device 0 hkr tsoll: expected a whole number, got str"]
+        assert issues.messages == [
+            "smart home device 0 hkr tsoll: expected a whole number, got str"
+        ]
 
     def test_battery_values_fall_back_to_hkr_one_by_one(self):
         # A device-level batterylow must not be dropped because the level

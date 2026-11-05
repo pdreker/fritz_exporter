@@ -183,7 +183,9 @@ class TestItemLevel:
 
         enabled = samples(output, "fritz_wifi_enabled", "BAD")
         assert not any('wifi_index="1"' in line for line in enabled)
-        assert any('wifi_index="1"' in line for line in samples(output, "fritz_wifi_channel", "BAD"))
+        assert any(
+            'wifi_index="1"' in line for line in samples(output, "fritz_wifi_channel", "BAD")
+        )
 
 
 class TestSingleCases:
@@ -225,7 +227,11 @@ class TestSingleCases:
         assert len(samples(output, "fritz_uptime_seconds_total", "BAD")) == 1
 
     def test_empty_model_name_keeps_the_uptime_metric(self):
-        info = {**call_action_mock("DeviceInfo1", "GetInfo"), "NewSerialNumber": "BAD", "NewModelName": ""}
+        info = {
+            **call_action_mock("DeviceInfo1", "GetInfo"),
+            "NewSerialNumber": "BAD",
+            "NewModelName": "",
+        }
         scenario = Scenario({("DeviceInfo1", "GetInfo"): info})
 
         output = scenario.scrape()
@@ -302,6 +308,7 @@ class TestDeviceLevel:
         assert reachable(output, "BAD") == 0.0
         assert reachable(output, "GOOD") == 1.0
         assert samples(output, "fritz_lan_status", "GOOD")
+
         # Logged once at registration, quiet while retrying.
         def errors():
             return [r for r in caplog.records if r.levelno >= logging.ERROR]
@@ -333,7 +340,9 @@ class TestDeviceLevel:
         assert offline.given_up
         assert offline.serial_failures == SERIAL_RETRIES + 1
         assert reachable(output, "BAD") == 0.0
-        giving_up = [r for r in caplog.records if r.getMessage().startswith("Giving up on device BAD (bad)")]
+        giving_up = [
+            r for r in caplog.records if r.getMessage().startswith("Giving up on device BAD (bad)")
+        ]
         assert len(giving_up) == 1
         assert giving_up[0].levelno == logging.ERROR
 
@@ -371,7 +380,9 @@ class TestDeviceLevel:
         scenario.scrape()
 
         warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
-        reasons = [m for m in warnings if m.startswith("Device BAD (bad) is still offline, now because:")]
+        reasons = [
+            m for m in warnings if m.startswith("Device BAD (bad) is still offline, now because:")
+        ]
         assert len(reasons) == 1
         assert "could not read the serial number of BAD (bad)" in reasons[0]
 
@@ -390,7 +401,9 @@ class TestDeviceLevel:
         assert reachable(output, "BAD") == 0.0
         assert reachable(output, "GOOD") == 1.0
 
-    @pytest.mark.parametrize("error", [FritzActionError("820"), FritzConnectionException("HTML reply")])
+    @pytest.mark.parametrize(
+        "error", [FritzActionError("820"), FritzConnectionException("HTML reply")]
+    )
     def test_an_error_the_device_answers_with_skips_only_the_capability(self, error):
         scenario = Scenario()
         scenario.overrides["bad"][LAN_STATS] = error
@@ -545,7 +558,11 @@ class TestProblemMetricMore:
     def test_connection_mode_problem_is_reported_like_a_capability(self, caplog):
         caplog.set_level(logging.DEBUG)
         scenario = Scenario(
-            {("WANCommonInterfaceConfig", "GetCommonLinkProperties"): {"NewPhysicalLinkStatus": ["Up"]}}
+            {
+                ("WANCommonInterfaceConfig", "GetCommonLinkProperties"): {
+                    "NewPhysicalLinkStatus": ["Up"]
+                }
+            }
         )
 
         for _ in range(3):
@@ -690,7 +707,9 @@ class TestDeviceNamesInLogs:
         scenario.scrape()
 
         for record in caplog.records:
-            if not record.name.startswith(("fritzexporter.fritzcapability", "fritzexporter.fritzdevice")):
+            if not record.name.startswith(
+                ("fritzexporter.fritzcapability", "fritzexporter.fritzdevice")
+            ):
                 continue
             message = record.getMessage()
             if "WLAN" in message or "Capability" in message or "Fetching" in message:

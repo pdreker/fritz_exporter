@@ -104,7 +104,9 @@ def test_queries_use_labels_and_values_the_exporter_sends(name):
             known |= set(re.findall(r'"(\w+)",\s*"[^"]*",\s*"\w+",\s*"[^"]*"\)', expr))
             used = [
                 label.strip()
-                for group in re.findall(r"\b(?:on|by|ignoring|group_left|without)\s*\(([^)]*)\)", expr)
+                for group in re.findall(
+                    r"\b(?:on|by|ignoring|group_left|without)\s*\(([^)]*)\)", expr
+                )
                 for label in group.split(",")
             ]
             used += re.findall(r"\{\{\s*(\w+)\s*\}\}", target.get("legendFormat", ""))

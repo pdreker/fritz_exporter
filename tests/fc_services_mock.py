@@ -17,6 +17,7 @@ def create_fc_services(services_mock):
         services[svc] = FCService(actions)
     return services
 
+
 def call_http_mock(action, ain=None, **_):
     return {
         "content": """<?xml version="1.0" encoding="utf-8"?>
@@ -30,8 +31,9 @@ def call_http_mock(action, ain=None, **_):
         </device>
         </devicelist>""",
         "content-type": "text/xml",
-        "encoding": "utf-8"
+        "encoding": "utf-8",
     }
+
 
 def call_action_mock(service, action, **kwargs):
     _ = kwargs

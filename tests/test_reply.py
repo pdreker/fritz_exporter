@@ -53,8 +53,17 @@ class TestConverters:
 
     @pytest.mark.parametrize(
         ("value", "expected"),
-        [(True, True), (False, False), (1, True), (0, False), ("1", True), ("0", False),
-         ("true", True), ("False", False), (" on ", True)],
+        [
+            (True, True),
+            (False, False),
+            (1, True),
+            (0, False),
+            ("1", True),
+            ("0", False),
+            ("true", True),
+            ("False", False),
+            (" on ", True),
+        ],
     )
     def test_to_bool(self, value, expected):
         assert to_bool(value, "x") is expected
@@ -177,7 +186,9 @@ class TestReadAction:
         device = MagicMock()
         device.fc.call_action.return_value = None
 
-        with pytest.raises(DataError, match="DeviceInfo1.GetInfo: expected an object, got NoneType"):
+        with pytest.raises(
+            DataError, match="DeviceInfo1.GetInfo: expected an object, got NoneType"
+        ):
             read_action(device, "DeviceInfo1", "GetInfo")
 
 
@@ -284,4 +295,3 @@ class TestNumbersASampleCannotHold:
         issues = Issues()
         assert issues.opt_num(Reply({"v": 10**400}, "S"), "v") is None
         assert issues.messages == ["S v: expected a number, got int"]
-

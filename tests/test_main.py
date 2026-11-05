@@ -87,7 +87,9 @@ class Test_Main:
 
     @patch("fritzexporter.__main__.start_http_server")
     @patch("fritzexporter.tr064_remote.FritzConnection")
-    def test_valid_args_run_clean(self, mock_fc: MagicMock, mock_http: MagicMock, monkeypatch, caplog):
+    def test_valid_args_run_clean(
+        self, mock_fc: MagicMock, mock_http: MagicMock, monkeypatch, caplog
+    ):
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -119,8 +121,12 @@ class Test_Main:
     @patch("fritzexporter.__main__.start_http_server")
     @patch("fritzexporter.__main__.FritzCollector")
     def test_every_configured_device_is_added_to_the_collector(
-        self, mock_collector_cls: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
-        monkeypatch, caplog
+        self,
+        mock_collector_cls: MagicMock,
+        mock_http: MagicMock,
+        mock_registry: MagicMock,
+        monkeypatch,
+        caplog,
     ):
         monkeypatch.setattr(
             "sys.argv",
@@ -148,8 +154,12 @@ class Test_Main:
     @patch("fritzexporter.__main__.start_http_server")
     @patch("fritzexporter.tr064_remote.FritzConnection")
     def test_password_file_reading(
-        self, mock_fc: MagicMock, mock_http: MagicMock, mock_registry: MagicMock,
-        monkeypatch, caplog
+        self,
+        mock_fc: MagicMock,
+        mock_http: MagicMock,
+        mock_registry: MagicMock,
+        monkeypatch,
+        caplog,
     ):
         monkeypatch.setattr(
             "sys.argv",

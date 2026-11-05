@@ -86,7 +86,7 @@ class TestFileConfigs:
                     "Repeater Wohnzimmer",
                     False,
                 ),
-            ]
+            ],
         )
 
         config = get_config(testfile)
@@ -109,6 +109,7 @@ class TestFileConfigs:
         )
         config = get_config(testfile)
         assert config == expected
+
 
 class TestEnvConfig:
     def test_env_config(self, monkeypatch):
@@ -140,9 +141,7 @@ class TestEnvConfig:
 
         config = get_config(None)
         devices: list[DeviceConfig] = [
-            DeviceConfig(
-                "fritz.box", "SomeUserName", "AnInterestingPassword", None, "fritz.box"
-            )
+            DeviceConfig("fritz.box", "SomeUserName", "AnInterestingPassword", None, "fritz.box")
         ]
         expected: ExporterConfig = ExporterConfig(9787, "INFO", devices)
 
@@ -567,16 +566,26 @@ class TestConfigChecks:
     DEVICE = "devices:\n  - hostname: fritz.box\n    username: u\n    password: p\n"
 
     def test_unknown_device_key_is_an_error_with_a_suggestion(self, tmp_path):
-        with pytest.raises(ConfigError, match=r"^device 1 \(fritz.box\): unknown key 'pasword', did you mean 'password'\?$"):
-            self._load(tmp_path, "devices:\n  - hostname: fritz.box\n    username: u\n    pasword: p\n")
+        with pytest.raises(
+            ConfigError,
+            match=r"^device 1 \(fritz.box\): unknown key 'pasword', did you mean 'password'\?$",
+        ):
+            self._load(
+                tmp_path, "devices:\n  - hostname: fritz.box\n    username: u\n    pasword: p\n"
+            )
 
     def test_unknown_top_level_key_is_an_error(self, tmp_path):
-        with pytest.raises(ConfigError, match=r"^config: unknown key 'exporterport', did you mean 'exporter_port'\?$"):
+        with pytest.raises(
+            ConfigError,
+            match=r"^config: unknown key 'exporterport', did you mean 'exporter_port'\?$",
+        ):
             self._load(tmp_path, "exporterport: 9000\n" + self.DEVICE)
 
     def test_invalid_yaml_names_the_position_but_not_the_line(self, tmp_path):
         with pytest.raises(ConfigFileUnreadableError) as exc:
-            self._load(tmp_path, 'devices:\n  - hostname: fritz.box\n    password: "s3cret\n  - x: [\n')
+            self._load(
+                tmp_path, 'devices:\n  - hostname: fritz.box\n    password: "s3cret\n  - x: [\n'
+            )
         assert "line" in str(exc.value)
         assert "s3cret" not in str(exc.value)
 
@@ -593,11 +602,15 @@ class TestConfigChecks:
             self._load(tmp_path, text)
 
     def test_missing_password_is_an_error(self, tmp_path):
-        with pytest.raises(ConfigError, match=r"^device 1 \(fritz.box\): password or password_file is required$"):
+        with pytest.raises(
+            ConfigError, match=r"^device 1 \(fritz.box\): password or password_file is required$"
+        ):
             self._load(tmp_path, "devices:\n  - hostname: fritz.box\n    username: u\n")
 
     def test_invalid_choice_is_one_line_without_attrs_details(self, tmp_path):
-        with pytest.raises(ConfigError, match=r"^config 'log_level' must be in \(.*\) \(got 'LOUD'\)$"):
+        with pytest.raises(
+            ConfigError, match=r"^config 'log_level' must be in \(.*\) \(got 'LOUD'\)$"
+        ):
             self._load(tmp_path, "log_level: LOUD\n" + self.DEVICE)
 
     @pytest.mark.parametrize(
@@ -606,14 +619,19 @@ class TestConfigChecks:
     )
     def test_numbers_are_not_cut_or_taken_from_booleans(self, tmp_path, line, value):
         key = line.split(":")[0].strip()
-        with pytest.raises(ConfigError, match=rf"^device 1 \(fritz.box\): {key}: expected a whole number, got {value}$"):
+        with pytest.raises(
+            ConfigError,
+            match=rf"^device 1 \(fritz.box\): {key}: expected a whole number, got {value}$",
+        ):
             self._load(tmp_path, self.DEVICE + line)
 
     def test_whole_float_is_taken(self, tmp_path):
         assert self._load(tmp_path, "exporter_port: 9000.0\n" + self.DEVICE).exporter_port == 9000
 
     def test_invalid_value_names_the_device_and_the_key(self, tmp_path):
-        with pytest.raises(ValueError, match=r"^device 1 \(fritz.box\): connection_timeout: invalid literal"):
+        with pytest.raises(
+            ValueError, match=r"^device 1 \(fritz.box\): connection_timeout: invalid literal"
+        ):
             self._load(tmp_path, self.DEVICE + "    connection_timeout: soon\n")
 
     def test_invalid_exporter_value_names_the_key(self, tmp_path):
@@ -634,19 +652,29 @@ class TestConfigChecks:
         from fritzexporter.config import DeviceNamesNotUniqueError
 
         with pytest.raises(DeviceNamesNotUniqueError, match="fritz.box"):
-            self._load(tmp_path, self.DEVICE + "  - hostname: fritz.box\n    username: v\n    password: q\n")
+            self._load(
+                tmp_path,
+                self.DEVICE + "  - hostname: fritz.box\n    username: v\n    password: q\n",
+            )
 
 
 class TestTextValues:
     """Text keys take YAML numbers as written; other types and unreadable files are refused."""
 
     def test_number_name_and_password_are_text(self):
-        dev = DeviceConfig.from_config({"hostname": "fb", "username": 1234, "password": 12345678, "name": 7590})
+        dev = DeviceConfig.from_config(
+            {"hostname": "fb", "username": 1234, "password": 12345678, "name": 7590}
+        )
         assert (dev.username, dev.password, dev.name) == ("1234", "12345678", "7590")
 
     def test_other_types_are_refused_with_the_key(self):
-        with pytest.raises(ValueError, match=r"device \(fb\): name: expected text, got bool \(put the value in quotes\)"):
-            DeviceConfig.from_config({"hostname": "fb", "username": "u", "password": "p", "name": True})
+        with pytest.raises(
+            ValueError,
+            match=r"device \(fb\): name: expected text, got bool \(put the value in quotes\)",
+        ):
+            DeviceConfig.from_config(
+                {"hostname": "fb", "username": "u", "password": "p", "name": True}
+            )
 
     @pytest.mark.skipif(os.geteuid() == 0, reason="root reads any file")
     def test_unreadable_password_file_is_refused(self, tmp_path):
@@ -673,4 +701,3 @@ class TestTextValues:
             get_config(str(path))
         assert "Geheim123" not in str(exc.value)
         assert "line 4" in str(exc.value)
-

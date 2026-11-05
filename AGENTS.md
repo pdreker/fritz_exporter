@@ -20,6 +20,7 @@ This document describes project conventions, architecture, and tooling for contr
 - Use `TYPE_CHECKING` guards for imports that are only needed for type hints to avoid circular imports:
   ```python
   from typing import TYPE_CHECKING
+
   if TYPE_CHECKING:
       from fritzexporter.fritzdevice import FritzDevice
   ```
@@ -57,12 +58,14 @@ attrs validators and converters are the **primary defence against bad config inp
 ```python
 DEFAULT_CONNECTION_TIMEOUT: int = 10
 
+
 def _zero_is_none(value: int | str | None) -> int | None:
     """An int, where ``0`` (or ``None``) means "not set"."""
     if value is None:
         return None
-    number = int(value)        # coerce str from env vars
+    number = int(value)  # coerce str from env vars
     return None if number == 0 else number
+
 
 @define
 class DeviceConfig:

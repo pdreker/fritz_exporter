@@ -178,15 +178,17 @@ class TestWanSegmentUtilization:
         device = fake_device(mock_fritzconnection, WAN_SERVICES, overrides=CABLE, name="FritzCable")
         assert device.capabilities["WanSegmentUtilization"].present is True
 
-    def test_fetch_error_does_not_break_collection(
-        self, mock_fritzconnection: MagicMock, caplog
-    ):
+    def test_fetch_error_does_not_break_collection(self, mock_fritzconnection: MagicMock, caplog):
         client = MagicMock()
         client.fetch_page.return_value = {}
         client.fetch_api.side_effect = FritzWebUiError("boom")
         with caplog.at_level(logging.ERROR):
             by_name = collect_device(
-                mock_fritzconnection, WAN_SERVICES, overrides=CABLE, webui_client=client, name="FritzCable"
+                mock_fritzconnection,
+                WAN_SERVICES,
+                overrides=CABLE,
+                webui_client=client,
+                name="FritzCable",
             )
         assert by_name["fritz_cable_segment_utilization_percent"].samples == []
         assert "fritz_device_reachable" in by_name
@@ -300,7 +302,9 @@ class TestWanConnectionStatus:
     def _collect(self, mock_fritzconnection: MagicMock, connections_raw: list | None = None):
         client = MagicMock()
         client.fetch_page.return_value = {}
-        client.fetch_api.return_value = connections_raw if connections_raw is not None else CONNECTIONS_RAW
+        client.fetch_api.return_value = (
+            connections_raw if connections_raw is not None else CONNECTIONS_RAW
+        )
         return collect_device(
             mock_fritzconnection,
             WAN_SERVICES,
@@ -353,7 +357,9 @@ class TestWanConnectionStatus:
             ("connection0001", "Cable"),
             ("connection0002", "LTE"),
         }
-        assert all("ip_address" not in s.labels for s in by_name["fritz_wan_connection_status"].samples)
+        assert all(
+            "ip_address" not in s.labels for s in by_name["fritz_wan_connection_status"].samples
+        )
 
     def test_state_and_address_are_in_the_info_metric(self, mock_fritzconnection: MagicMock):
         by_name = self._collect(mock_fritzconnection)
@@ -370,7 +376,10 @@ class TestWanConnectionStatus:
             ("connection0002", "ipv6", "disabled", ""),
         }
         sample = by_name["fritz_wan_connection_info"].samples[0]
-        assert (sample.labels["connection_name"], sample.labels["media_type"]) == ("internet", "Cable")
+        assert (sample.labels["connection_name"], sample.labels["media_type"]) == (
+            "internet",
+            "Cable",
+        )
 
     def test_no_client_no_samples(self, mock_fritzconnection: MagicMock):
         """Disabled capability (no web UI client) yields empty metric families."""
@@ -395,9 +404,7 @@ class TestWanConnectionStatus:
         assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
         assert by_name["fritz_wan_connection_status"].samples == []
 
-    def test_fetches_connection_status(
-        self, mock_fritzconnection: MagicMock
-    ):
+    def test_fetches_connection_status(self, mock_fritzconnection: MagicMock):
         """The REST connection status is technology-independent: it is fetched
         and emitted regardless of the WAN access type."""
         # Plain call_action_mock reports NewWANAccessType "PPPoE"; the
@@ -425,9 +432,7 @@ class TestWanConnectionStatus:
         # was among the calls.
         mock_client.fetch_api.assert_any_call("/api/v0/generic/connections")
 
-    def test_fetch_error_does_not_break_collection(
-        self, mock_fritzconnection: MagicMock, caplog
-    ):
+    def test_fetch_error_does_not_break_collection(self, mock_fritzconnection: MagicMock, caplog):
         mock_client = MagicMock()
         mock_client.fetch_page.return_value = {}
         mock_client.fetch_api.side_effect = FritzWebUiError("boom")

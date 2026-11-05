@@ -102,8 +102,12 @@ class TestParseDocsisResponse:
 
     def test_empty_channel_list_sent_as_object_is_no_channels(self):
         # A box without DOCSIS 3.1 channels may send "docsis31": {} (empty Lua table).
-        raw = {"data": {"channelDs": {"docsis31": {}, "docsis30": [{"channelID": "7"}]},
-                        "channelUs": {"docsis31": {}, "docsis30": []}}}
+        raw = {
+            "data": {
+                "channelDs": {"docsis31": {}, "docsis30": [{"channelID": "7"}]},
+                "channelUs": {"docsis31": {}, "docsis30": []},
+            }
+        }
 
         data = parse_docsis_response(raw, Issues())
 
@@ -233,24 +237,30 @@ class TestWanDocsisCable:
         by_name = self._collect_docsis_metrics(mock_fritzconnection)
 
         corr = sample_map(by_name["fritz_docsis_corrected_errors"])
-        assert corr[
-            (
-                ("channel_id", "33"),
-                ("friendly_name", "FritzCable"),
-                ("serial", "1234567890"),
-                ("standard", "DOCSIS 3.1"),
-            )
-        ] == 12345
+        assert (
+            corr[
+                (
+                    ("channel_id", "33"),
+                    ("friendly_name", "FritzCable"),
+                    ("serial", "1234567890"),
+                    ("standard", "DOCSIS 3.1"),
+                )
+            ]
+            == 12345
+        )
 
         uncorr = sample_map(by_name["fritz_docsis_uncorrected_errors"])
-        assert uncorr[
-            (
-                ("channel_id", "33"),
-                ("friendly_name", "FritzCable"),
-                ("serial", "1234567890"),
-                ("standard", "DOCSIS 3.1"),
-            )
-        ] == 3
+        assert (
+            uncorr[
+                (
+                    ("channel_id", "33"),
+                    ("friendly_name", "FritzCable"),
+                    ("serial", "1234567890"),
+                    ("standard", "DOCSIS 3.1"),
+                )
+            ]
+            == 3
+        )
 
         latency = sample_map(by_name["fritz_docsis_latency_ms"])
         assert latency[
@@ -282,25 +292,36 @@ class TestWanDocsisCable:
 
     def test_docsis_disabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
         """On a non-cable box (WAN access type != Cable), no DOCSIS samples."""
-        by_name = collect_device(mock_fritzconnection, services("DeviceInfo", "WanCommonInterfaceByteRate"), name="FritzCable")
+        by_name = collect_device(
+            mock_fritzconnection,
+            services("DeviceInfo", "WanCommonInterfaceByteRate"),
+            name="FritzCable",
+        )
         # Metric families are always yielded (matching other capabilities),
         # but with no samples when the collector is disabled.
         assert "fritz_docsis_power_dBmV" in by_name
         assert by_name["fritz_docsis_power_dBmV"].samples == []
         assert by_name["fritz_docsis_channel_info"].samples == []
 
-    def test_docsis_check_capability_disabled_on_non_cable(
-        self, mock_fritzconnection: MagicMock
-    ):
+    def test_docsis_check_capability_disabled_on_non_cable(self, mock_fritzconnection: MagicMock):
         """check_capability must not enable DOCSIS on a non-cable box."""
-        device = fake_device(mock_fritzconnection, services("DeviceInfo", "WanCommonInterfaceByteRate"), name="FritzCable")
+        device = fake_device(
+            mock_fritzconnection,
+            services("DeviceInfo", "WanCommonInterfaceByteRate"),
+            name="FritzCable",
+        )
 
         # The mock returns NewWANAccessType "PPPoE", so DOCSIS must stay disabled.
         assert device.capabilities["WanDocsisCable"].present is False
 
     def test_docsis_check_capability_enabled_on_cable(self, mock_fritzconnection: MagicMock):
         """check_capability auto-enables DOCSIS when WAN access type is Cable."""
-        device = fake_device(mock_fritzconnection, services("DeviceInfo", "WanCommonInterfaceByteRate"), overrides=CABLE, name="FritzCable")
+        device = fake_device(
+            mock_fritzconnection,
+            services("DeviceInfo", "WanCommonInterfaceByteRate"),
+            overrides=CABLE,
+            name="FritzCable",
+        )
 
         assert device.capabilities["WanDocsisCable"].present is True
         # The web UI client should be created for the web-interface login.
@@ -314,14 +335,17 @@ class TestWanDocsisCable:
         client.fetch_page.side_effect = FritzWebUiError("boom")
         with caplog.at_level(logging.ERROR):
             by_name = collect_device(
-                mock_fritzconnection, services("DeviceInfo", "WanCommonInterfaceByteRate"), overrides=CABLE, webui_client=client, name="FritzCable"
+                mock_fritzconnection,
+                services("DeviceInfo", "WanCommonInterfaceByteRate"),
+                overrides=CABLE,
+                webui_client=client,
+                name="FritzCable",
             )
 
         # DOCSIS metric families present but empty (fetch failed), and device
         # reachability still collected
         assert by_name["fritz_docsis_power_dBmV"].samples == []
         assert "fritz_device_reachable" in by_name
-
 
 
 class TestDocsisChannelId:

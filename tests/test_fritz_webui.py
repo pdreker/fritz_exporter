@@ -1014,7 +1014,9 @@ class TestRequestHandling:
         big = _resp("x" * 1000)
         read = []
         chunks = big.iter_content
-        monkeypatch.setattr(big, "iter_content", lambda size: (read.append(c) or c for c in chunks(size)))
+        monkeypatch.setattr(
+            big, "iter_content", lambda size: (read.append(c) or c for c in chunks(size))
+        )
         session.get.side_effect = [_resp(self.LOGIN), big]
         client = FritzWebUiClient("fritz.box", "user", "pass")
 
@@ -1128,4 +1130,3 @@ class TestNoPermission:
 
         logins = [c for c in session.get.call_args_list if c.args[0].endswith("/login_sid.lua")]
         assert len(logins) == 1
-

@@ -15,18 +15,33 @@ from .collect import collect_device, fake_device, services
 class TestParseFiberStats:
     def test_newest_entry_of_each_series_in_dbm(self):
         raw = {"data": {"opt_ds": [["sa", 9, -65], ["sa", 8, -66]], "opt_us": [["sa", 9, -54]]}}
-        assert parse_fiber_stats_response(raw, Issues()) == {"receive_dbm": -6.5, "transmit_dbm": -5.4}
+        assert parse_fiber_stats_response(raw, Issues()) == {
+            "receive_dbm": -6.5,
+            "transmit_dbm": -5.4,
+        }
 
     def test_missing_series_give_none(self):
-        assert parse_fiber_stats_response({"data": []}, Issues()) == {"receive_dbm": None, "transmit_dbm": None}
+        assert parse_fiber_stats_response({"data": []}, Issues()) == {
+            "receive_dbm": None,
+            "transmit_dbm": None,
+        }
         raw = {"data": {"opt_ds": [], "opt_us": [["sa", 9, ""]]}}
-        assert parse_fiber_stats_response(raw, Issues()) == {"receive_dbm": None, "transmit_dbm": None}
+        assert parse_fiber_stats_response(raw, Issues()) == {
+            "receive_dbm": None,
+            "transmit_dbm": None,
+        }
 
     @pytest.mark.parametrize(
         ("raw", "message"),
         [
-            ({"data": {"opt_us": [["sa", 9, "n/a"]]}}, "fiberStats opt_us[0] value: expected a number"),
-            ({"data": {"opt_us": [["sa", 9]]}}, "fiberStats opt_us[0]: expected [weekday, hour, value]"),
+            (
+                {"data": {"opt_us": [["sa", 9, "n/a"]]}},
+                "fiberStats opt_us[0] value: expected a number",
+            ),
+            (
+                {"data": {"opt_us": [["sa", 9]]}},
+                "fiberStats opt_us[0]: expected [weekday, hour, value]",
+            ),
             ({"data": {"opt_us": "not a list"}}, "fiberStats data opt_us: expected a list"),
         ],
     )
@@ -143,7 +158,10 @@ class TestWanFiberWebUiFallback:
         with caplog.at_level(logging.WARNING):
             levels = self._collect(mock_fritzconnection, tr064_levels=(0, 0), webui_client=client)
         assert levels["receive"] is None
-        assert "Skipped part of the WanFiberInterfaceConfig data from FritzFiber (somehost): " in caplog.text
+        assert (
+            "Skipped part of the WanFiberInterfaceConfig data from FritzFiber (somehost): "
+            in caplog.text
+        )
         assert "fiberStats opt_ds[0] value: expected a number, got str" in caplog.text
 
     @patch("fritzexporter.fritzdevice.FritzWebUiClient")
