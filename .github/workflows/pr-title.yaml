@@ -1,0 +1,15 @@
+name: PR Title
+
+# We squash-merge, so the PR title becomes the commit on main that release-please
+# reads.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  title:
+    uses: pdreker/github-workflows/.github/workflows/pr-title.yaml@335ab9f615d4a0cf3d29b86e7bebf44a727ab5ab # v1.0.0

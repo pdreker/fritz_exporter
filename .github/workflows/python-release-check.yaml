@@ -1,13 +1,12 @@
 name: Check for new stable Python release
 
-# Dependabot ignores minor/major bumps of the python base image (its prerelease
-# detection fails on "-alpine" variant tags and would propose betas). This job
-# restores the heads-up for new *stable* minor/major releases by opening a
-# tracking issue. Patch updates still come through Dependabot.
+# Renovate only proposes patch updates of the python base image (renovate.json);
+# minor and major interpreter bumps are done by hand. This job gives the heads-up
+# for a new *stable* minor/major release by opening a tracking issue.
 
 on:
   schedule:
-    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC (matches dependabot cadence)
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
   workflow_dispatch:
 
 permissions:
@@ -20,6 +19,8 @@ jobs:
     name: Check Python release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Check for newer stable Python
         run: python3 .github/scripts/check_python_release.py
         env:
