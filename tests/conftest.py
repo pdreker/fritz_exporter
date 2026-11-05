@@ -1,14 +1,14 @@
 """Shared test setup."""
 
 import threading
-from typing import Never
+from typing import Any, Never
 
 import pytest
 import requests
 
 
 @pytest.fixture(autouse=True)
-def _no_network(monkeypatch) -> None:
+def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fail every real HTTP request.
 
     Test configs use host names such as ``fritz.box``, which resolve on a real
@@ -17,7 +17,7 @@ def _no_network(monkeypatch) -> None:
     Tests that replace ``requests.Session`` with a mock are not affected.
     """
 
-    def refuse(self, request, **kwargs) -> Never:
+    def refuse(self: requests.Session, request: requests.PreparedRequest, **kwargs: Any) -> Never:
         msg = f"network access in tests: {request.method} {request.url}"
         raise requests.ConnectionError(msg)
 

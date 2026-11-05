@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 import pytest
 
@@ -22,7 +23,7 @@ class TestReadConfig:
         with pytest.raises(ConfigFileUnreadableError):
             get_config(testfile)
 
-    def test_no_config(self, monkeypatch) -> None:
+    def test_no_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         testfile = None
 
         monkeypatch.delenv("FRITZ_HOSTNAME", raising=False)
@@ -112,7 +113,7 @@ class TestFileConfigs:
 
 
 class TestEnvConfig:
-    def test_env_config(self, monkeypatch) -> None:
+    def test_env_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_HOSTNAME", "hostname.local")
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
@@ -135,7 +136,7 @@ class TestEnvConfig:
 
         assert config == expected
 
-    def test_minimal_env_config(self, monkeypatch) -> None:
+    def test_minimal_env_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
 
@@ -147,7 +148,7 @@ class TestEnvConfig:
 
         assert config == expected
 
-    def test_password_file_env_config(self, monkeypatch) -> None:
+    def test_password_file_env_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD_FILE", "tests/conffiles/password.txt")
 
@@ -161,7 +162,7 @@ class TestEnvConfig:
 
         assert config == expected
 
-    def test_connection_timeout_env_config(self, monkeypatch) -> None:
+    def test_connection_timeout_env_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
         monkeypatch.setenv("FRITZ_CONNECTION_TIMEOUT", "15")
@@ -170,7 +171,7 @@ class TestEnvConfig:
 
         assert config.devices[0].connection_timeout == 15
 
-    def test_connection_timeout_unset_uses_default(self, monkeypatch) -> None:
+    def test_connection_timeout_unset_uses_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
 
@@ -178,7 +179,9 @@ class TestEnvConfig:
 
         assert config.devices[0].connection_timeout == 10
 
-    def test_connection_timeout_env_zero_disables_timeout(self, monkeypatch) -> None:
+    def test_connection_timeout_env_zero_disables_timeout(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
         monkeypatch.setenv("FRITZ_CONNECTION_TIMEOUT", "0")
@@ -187,7 +190,7 @@ class TestEnvConfig:
 
         assert config.devices[0].connection_timeout is None
 
-    def test_use_tls_and_port_env_config(self, monkeypatch) -> None:
+    def test_use_tls_and_port_env_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
         monkeypatch.setenv("FRITZ_USE_TLS", "true")
@@ -198,7 +201,9 @@ class TestEnvConfig:
         assert config.devices[0].use_tls is True
         assert config.devices[0].port == 49443
 
-    def test_use_tls_env_defaults_false_and_port_none(self, monkeypatch) -> None:
+    def test_use_tls_env_defaults_false_and_port_none(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
 
@@ -208,7 +213,7 @@ class TestEnvConfig:
         assert config.devices[0].port is None
         assert config.devices[0].remote_access is False
 
-    def test_remote_access_env_config(self, monkeypatch) -> None:
+    def test_remote_access_env_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
         monkeypatch.setenv("FRITZ_USE_TLS", "true")
@@ -221,7 +226,9 @@ class TestEnvConfig:
         assert config.devices[0].use_tls is True
         assert config.devices[0].port == 11243
 
-    def test_allow_unsafe_md5_password_env_defaults_false(self, monkeypatch) -> None:
+    def test_allow_unsafe_md5_password_env_defaults_false(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
 
@@ -229,7 +236,7 @@ class TestEnvConfig:
 
         assert config.devices[0].allow_unsafe_md5_password is False
 
-    def test_allow_unsafe_md5_password_env_config(self, monkeypatch) -> None:
+    def test_allow_unsafe_md5_password_env_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
         monkeypatch.setenv("FRITZ_ALLOW_UNSAFE_MD5_PASSWORD", "true")
@@ -238,7 +245,7 @@ class TestEnvConfig:
 
         assert config.devices[0].allow_unsafe_md5_password is True
 
-    def test_remote_access_env_without_tls_raises(self, monkeypatch) -> None:
+    def test_remote_access_env_without_tls_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
         monkeypatch.setenv("FRITZ_REMOTE_ACCESS", "true")
@@ -252,93 +259,93 @@ class TestEnvEmptyVsUnsetValues:
     behave like an unset one falling back to the default."""
 
     @pytest.fixture(autouse=True)
-    def _required_vars(self, monkeypatch) -> None:
+    def _required_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "SomeUserName")
         monkeypatch.setenv("FRITZ_PASSWORD", "AnInterestingPassword")
 
-    def test_port_unset_uses_default(self, monkeypatch) -> None:
+    def test_port_unset_uses_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("FRITZ_PORT", raising=False)
 
         config = get_config(None)
 
         assert config.exporter_port == 9787
 
-    def test_port_empty_raises(self, monkeypatch) -> None:
+    def test_port_empty_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_PORT", "")
 
         with pytest.raises(ValueError, match="invalid literal for int"):
             get_config(None)
 
-    def test_log_level_unset_uses_default(self, monkeypatch) -> None:
+    def test_log_level_unset_uses_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("FRITZ_LOG_LEVEL", raising=False)
 
         config = get_config(None)
 
         assert config.log_level == "INFO"
 
-    def test_log_level_empty_raises(self, monkeypatch) -> None:
+    def test_log_level_empty_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_LOG_LEVEL", "")
 
         with pytest.raises(ValueError, match="must be in"):
             get_config(None)
 
-    def test_listen_address_unset_uses_default(self, monkeypatch) -> None:
+    def test_listen_address_unset_uses_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("FRITZ_LISTEN_ADDRESS", raising=False)
 
         config = get_config(None)
 
         assert config.listen_address == "127.0.0.1"
 
-    def test_listen_address_empty_raises(self, monkeypatch) -> None:
+    def test_listen_address_empty_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_LISTEN_ADDRESS", "")
 
         with pytest.raises(ValueError, match="does not appear to be"):
             get_config(None)
 
-    def test_hostname_unset_uses_default(self, monkeypatch) -> None:
+    def test_hostname_unset_uses_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("FRITZ_HOSTNAME", raising=False)
 
         config = get_config(None)
 
         assert config.devices[0].hostname == "fritz.box"
 
-    def test_hostname_empty_raises(self, monkeypatch) -> None:
+    def test_hostname_empty_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_HOSTNAME", "")
 
         with pytest.raises(ValueError, match="Length of 'hostname'"):
             get_config(None)
 
-    def test_connection_timeout_empty_raises(self, monkeypatch) -> None:
+    def test_connection_timeout_empty_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_CONNECTION_TIMEOUT", "")
 
         with pytest.raises(ValueError, match="invalid literal for int"):
             get_config(None)
 
-    def test_device_port_empty_raises(self, monkeypatch) -> None:
+    def test_device_port_empty_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_DEVICE_PORT", "")
 
         with pytest.raises(ValueError, match="invalid literal for int"):
             get_config(None)
 
-    def test_host_info_empty_raises(self, monkeypatch) -> None:
+    def test_host_info_empty_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_HOST_INFO", "")
 
         with pytest.raises(ValueError, match="Cannot convert value to bool"):
             get_config(None)
 
-    def test_wifi_client_info_empty_raises(self, monkeypatch) -> None:
+    def test_wifi_client_info_empty_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_WIFI_CLIENT_INFO", "")
 
         with pytest.raises(ValueError, match="Cannot convert value to bool"):
             get_config(None)
 
-    def test_use_tls_empty_raises(self, monkeypatch) -> None:
+    def test_use_tls_empty_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USE_TLS", "")
 
         with pytest.raises(ValueError, match="Cannot convert value to bool"):
             get_config(None)
 
-    def test_remote_access_empty_raises(self, monkeypatch) -> None:
+    def test_remote_access_empty_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_REMOTE_ACCESS", "")
 
         with pytest.raises(ValueError, match="Cannot convert value to bool"):
@@ -346,7 +353,9 @@ class TestEnvEmptyVsUnsetValues:
 
 
 class TestConfigEdgeCases:
-    def test_bind_all_interfaces_is_accepted_quietly(self, caplog) -> None:
+    def test_bind_all_interfaces_is_accepted_quietly(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         # The image and the Helm chart listen on all interfaces by default.
         caplog.set_level(logging.DEBUG)
 
@@ -545,7 +554,7 @@ class TestWifiClientInfoConfig:
         )
         assert dev.wifi_client_info is False
 
-    def test_wifi_client_info_from_env(self, monkeypatch) -> None:
+    def test_wifi_client_info_from_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # Env path: FRITZ_WIFI_CLIENT_INFO -> DeviceConfig
         monkeypatch.setenv("FRITZ_USERNAME", "user")
         monkeypatch.setenv("FRITZ_PASSWORD", "password")
@@ -558,14 +567,14 @@ class TestConfigChecks:
     """Mistakes in the config file are refused with a message that says where."""
 
     @staticmethod
-    def _load(tmp_path, text: str):
+    def _load(tmp_path: Path, text: str):
         path = tmp_path / "config.yaml"
         path.write_text(text)
         return get_config(str(path))
 
     DEVICE = "devices:\n  - hostname: fritz.box\n    username: u\n    password: p\n"
 
-    def test_unknown_device_key_is_an_error_with_a_suggestion(self, tmp_path) -> None:
+    def test_unknown_device_key_is_an_error_with_a_suggestion(self, tmp_path: Path) -> None:
         with pytest.raises(
             ConfigError,
             match=r"^device 1 \(fritz.box\): unknown key 'pasword', did you mean 'password'\?$",
@@ -574,14 +583,14 @@ class TestConfigChecks:
                 tmp_path, "devices:\n  - hostname: fritz.box\n    username: u\n    pasword: p\n"
             )
 
-    def test_unknown_top_level_key_is_an_error(self, tmp_path) -> None:
+    def test_unknown_top_level_key_is_an_error(self, tmp_path: Path) -> None:
         with pytest.raises(
             ConfigError,
             match=r"^config: unknown key 'exporterport', did you mean 'exporter_port'\?$",
         ):
             self._load(tmp_path, "exporterport: 9000\n" + self.DEVICE)
 
-    def test_invalid_yaml_names_the_position_but_not_the_line(self, tmp_path) -> None:
+    def test_invalid_yaml_names_the_position_but_not_the_line(self, tmp_path: Path) -> None:
         with pytest.raises(ConfigFileUnreadableError) as exc:
             self._load(
                 tmp_path, 'devices:\n  - hostname: fritz.box\n    password: "s3cret\n  - x: [\n'
@@ -597,17 +606,17 @@ class TestConfigChecks:
             ("devices:\n  - fritz.box\n", "device 1: expected keys and values"),
         ],
     )
-    def test_wrong_shape_is_an_error(self, tmp_path, text, message) -> None:
+    def test_wrong_shape_is_an_error(self, tmp_path: Path, text, message) -> None:
         with pytest.raises(ConfigError, match=f"^{message}$"):
             self._load(tmp_path, text)
 
-    def test_missing_password_is_an_error(self, tmp_path) -> None:
+    def test_missing_password_is_an_error(self, tmp_path: Path) -> None:
         with pytest.raises(
             ConfigError, match=r"^device 1 \(fritz.box\): password or password_file is required$"
         ):
             self._load(tmp_path, "devices:\n  - hostname: fritz.box\n    username: u\n")
 
-    def test_invalid_choice_is_one_line_without_attrs_details(self, tmp_path) -> None:
+    def test_invalid_choice_is_one_line_without_attrs_details(self, tmp_path: Path) -> None:
         with pytest.raises(
             ConfigError, match=r"^config 'log_level' must be in \(.*\) \(got 'LOUD'\)$"
         ):
@@ -617,7 +626,7 @@ class TestConfigChecks:
         ("line", "value"),
         [("    connection_timeout: 2.7\n", "2.7"), ("    port: true\n", "True")],
     )
-    def test_numbers_are_not_cut_or_taken_from_booleans(self, tmp_path, line, value) -> None:
+    def test_numbers_are_not_cut_or_taken_from_booleans(self, tmp_path: Path, line, value) -> None:
         key = line.split(":")[0].strip()
         with pytest.raises(
             ConfigError,
@@ -625,30 +634,30 @@ class TestConfigChecks:
         ):
             self._load(tmp_path, self.DEVICE + line)
 
-    def test_whole_float_is_taken(self, tmp_path) -> None:
+    def test_whole_float_is_taken(self, tmp_path: Path) -> None:
         assert self._load(tmp_path, "exporter_port: 9000.0\n" + self.DEVICE).exporter_port == 9000
 
-    def test_invalid_value_names_the_device_and_the_key(self, tmp_path) -> None:
+    def test_invalid_value_names_the_device_and_the_key(self, tmp_path: Path) -> None:
         with pytest.raises(
             ValueError, match=r"^device 1 \(fritz.box\): connection_timeout: invalid literal"
         ):
             self._load(tmp_path, self.DEVICE + "    connection_timeout: soon\n")
 
-    def test_invalid_exporter_value_names_the_key(self, tmp_path) -> None:
+    def test_invalid_exporter_value_names_the_key(self, tmp_path: Path) -> None:
         with pytest.raises(ConfigError, match=r"^config listen_address: "):
             self._load(tmp_path, "listen_address: everywhere\n" + self.DEVICE)
 
-    def test_name_defaults_to_the_hostname(self, tmp_path) -> None:
+    def test_name_defaults_to_the_hostname(self, tmp_path: Path) -> None:
         config = self._load(tmp_path, self.DEVICE.replace("fritz.box", "Fritz.Box"))
         assert config.devices[0].name == "fritz.box"
 
-    def test_name_defaults_to_the_hostname_in_env(self, monkeypatch) -> None:
+    def test_name_defaults_to_the_hostname_in_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("FRITZ_USERNAME", "u")
         monkeypatch.setenv("FRITZ_PASSWORD", "p")
         monkeypatch.setenv("FRITZ_HOSTNAME", "box.lan")
         assert get_config(None).devices[0].name == "box.lan"
 
-    def test_two_devices_without_name_on_one_host_are_an_error(self, tmp_path) -> None:
+    def test_two_devices_without_name_on_one_host_are_an_error(self, tmp_path: Path) -> None:
         from fritzexporter.config import DeviceNamesNotUniqueError
 
         with pytest.raises(DeviceNamesNotUniqueError, match="fritz.box"):
@@ -677,7 +686,7 @@ class TestTextValues:
             )
 
     @pytest.mark.skipif(os.geteuid() == 0, reason="root reads any file")
-    def test_unreadable_password_file_is_refused(self, tmp_path) -> None:
+    def test_unreadable_password_file_is_refused(self, tmp_path: Path) -> None:
         from fritzexporter.config.exceptions import FritzPasswordFileDoesNotExistError
 
         secret = tmp_path / "pw"
@@ -686,7 +695,9 @@ class TestTextValues:
         with pytest.raises(FritzPasswordFileDoesNotExistError, match="cannot be read"):
             DeviceConfig(hostname="fb", username="u", password_file=str(secret))
 
-    def test_too_long_password_in_a_file_is_refused_like_in_the_config(self, tmp_path) -> None:
+    def test_too_long_password_in_a_file_is_refused_like_in_the_config(
+        self, tmp_path: Path
+    ) -> None:
         from fritzexporter.config.exceptions import FritzPasswordTooLongError
 
         secret = tmp_path / "pw"
@@ -694,7 +705,7 @@ class TestTextValues:
         with pytest.raises(FritzPasswordTooLongError):
             DeviceConfig(hostname="fb", username="u", password_file=str(secret))
 
-    def test_yaml_error_does_not_quote_values(self, tmp_path) -> None:
+    def test_yaml_error_does_not_quote_values(self, tmp_path: Path) -> None:
         path = tmp_path / "c.yaml"
         path.write_text("devices:\n  - hostname: fb\n    username: u\n    password: !Geheim123\n")
         with pytest.raises(ConfigFileUnreadableError) as exc:

@@ -35,7 +35,7 @@ def test_wait_for_shutdown_returns_on_signal(sig) -> None:
 
 
 class Test_Main:
-    def test_cli_args_log_level(self, monkeypatch) -> None:
+    def test_cli_args_log_level(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--log-level", "DEBUG"])
 
         args = parse_cmdline()
@@ -43,7 +43,7 @@ class Test_Main:
         assert "log_level" in args
         assert args.log_level == "DEBUG"
 
-    def test_cli_args_config(self, monkeypatch) -> None:
+    def test_cli_args_config(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--config", "/some/file.yaml"])
 
         args = parse_cmdline()
@@ -51,14 +51,16 @@ class Test_Main:
         assert "config" in args
         assert args.config == "/some/file.yaml"
 
-    def test_cli_args_version(self, monkeypatch) -> None:
+    def test_cli_args_version(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--version"])
 
         args = parse_cmdline()
 
         assert "version" in args
 
-    def test_if_version_prints_version_and_stops(self, monkeypatch, capsys) -> None:
+    def test_if_version_prints_version_and_stops(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--version"])
 
         with pytest.raises(SystemExit) as pytest_wrapped_exit:
@@ -73,7 +75,9 @@ class Test_Main:
         assert pytest_wrapped_exit.type == SystemExit
         assert pytest_wrapped_exit.value.code == 0
 
-    def test_invalid_config_exits_with_code(self, monkeypatch, caplog) -> None:
+    def test_invalid_config_exits_with_code(
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--config", "/does/not/exist"])
 
         with pytest.raises(SystemExit) as pytest_wrapped_exit:
@@ -88,7 +92,11 @@ class Test_Main:
     @patch("fritzexporter.__main__.start_http_server")
     @patch("fritzexporter.tr064_remote.FritzConnection")
     def test_valid_args_run_clean(
-        self, mock_fc: MagicMock, mock_http: MagicMock, monkeypatch, caplog
+        self,
+        mock_fc: MagicMock,
+        mock_http: MagicMock,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         monkeypatch.setattr(
             "sys.argv",
@@ -125,8 +133,8 @@ class Test_Main:
         mock_collector_cls: MagicMock,
         mock_http: MagicMock,
         mock_registry: MagicMock,
-        monkeypatch,
-        caplog,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         monkeypatch.setattr(
             "sys.argv",
@@ -158,8 +166,8 @@ class Test_Main:
         mock_fc: MagicMock,
         mock_http: MagicMock,
         mock_registry: MagicMock,
-        monkeypatch,
-        caplog,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         monkeypatch.setattr(
             "sys.argv",

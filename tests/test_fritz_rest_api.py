@@ -179,7 +179,7 @@ class TestWanSegmentUtilization:
         assert device.capabilities["WanSegmentUtilization"].present is True
 
     def test_fetch_error_does_not_break_collection(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         client = MagicMock()
         client.fetch_page.return_value = {}
@@ -437,7 +437,7 @@ class TestWanConnectionStatus:
         mock_client.fetch_api.assert_any_call("/api/v0/generic/connections")
 
     def test_fetch_error_does_not_break_collection(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         mock_client = MagicMock()
         mock_client.fetch_page.return_value = {}

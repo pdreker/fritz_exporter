@@ -84,7 +84,9 @@ class TestFritzWebUiClientAuth:
             (60000, 0, False),
         ],
     )
-    def test_pbkdf2_iteration_bounds(self, monkeypatch, iter1, iter2, ok) -> None:
+    def test_pbkdf2_iteration_bounds(
+        self, monkeypatch: pytest.MonkeyPatch, iter1, iter2, ok
+    ) -> None:
         calls = []
         monkeypatch.setattr(hashlib, "pbkdf2_hmac", lambda *a: calls.append(a) or b"\0" * 32)
         challenge = f"2${iter1}$aabb${iter2}$ccdd"
@@ -96,7 +98,9 @@ class TestFritzWebUiClientAuth:
                 FritzWebUiClient._pbkdf2_response(challenge, "test")
             assert not calls
 
-    def test_pbkdf2_huge_iterations_rejected_without_hashing(self, monkeypatch) -> None:
+    def test_pbkdf2_huge_iterations_rejected_without_hashing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         def fail(*_args) -> Never:
             msg = "pbkdf2_hmac must not run"
             raise AssertionError(msg)
@@ -289,7 +293,9 @@ class TestFritzWebUiClientAuth:
         assert session.get.call_args.kwargs["params"] == {"version": "2"}
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_login_refuses_md5_by_default(self, mock_session_cls: MagicMock, caplog) -> None:
+    def test_login_refuses_md5_by_default(
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         session = mock_session_cls.return_value
         session.get.return_value = _resp(
             "<SessionInfo><SID>0000000000000000</SID>"
@@ -310,7 +316,7 @@ class TestFritzWebUiClientAuth:
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_refused_md5_login_is_not_tried_again(
-        self, mock_session_cls: MagicMock, caplog
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         session = mock_session_cls.return_value
         session.get.return_value = _resp(
@@ -345,7 +351,9 @@ class TestFritzWebUiClientAuth:
             client._login()
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_login_uses_md5_for_legacy_firmware(self, mock_session_cls: MagicMock, caplog) -> None:
+    def test_login_uses_md5_for_legacy_firmware(
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         session = mock_session_cls.return_value
 
         get_resp = _resp(
@@ -444,7 +452,9 @@ class TestFritzWebUiClientChallenge:
         assert str(exc.value) == "login blocked for 60 seconds (too many failed attempts)"
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_rejected_challenge_logged_at_debug(self, mock_session_cls: MagicMock, caplog) -> None:
+    def test_rejected_challenge_logged_at_debug(
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         caplog.set_level(logging.DEBUG, logger="fritzexporter.fritz_webui")
         client, _ = self._client(mock_session_cls, "2$500$aabb$500$ccdd")
         with pytest.raises(FritzWebUiError):
@@ -453,7 +463,7 @@ class TestFritzWebUiClientChallenge:
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_rejected_challenge_log_is_truncated_and_escaped(
-        self, mock_session_cls: MagicMock, caplog
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         caplog.set_level(logging.DEBUG, logger="fritzexporter.fritz_webui")
         client, _ = self._client(mock_session_cls, "x" * 10000 + "\nINJECT")
@@ -684,7 +694,9 @@ class TestFritzWebUiErrorTextHasNoUrl:
         return 1
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_login_challenge(self, mock_session_cls, caplog, failure, expected) -> None:
+    def test_login_challenge(
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture, failure, expected
+    ) -> None:
         session = mock_session_cls.return_value
         session.get.side_effect = [self._failing(failure)] * 4
         client = FritzWebUiClient("fritz.box", "exporter", "pass")
@@ -696,7 +708,9 @@ class TestFritzWebUiErrorTextHasNoUrl:
         _assert_clean(caplog, info.value, expected)
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_login_post(self, mock_session_cls, caplog, failure, expected) -> None:
+    def test_login_post(
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture, failure, expected
+    ) -> None:
         session = mock_session_cls.return_value
         challenge = _resp(
             "<SessionInfo><SID>0000000000000000</SID>"
@@ -713,7 +727,9 @@ class TestFritzWebUiErrorTextHasNoUrl:
         _assert_clean(caplog, info.value, expected)
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_data_lua(self, mock_session_cls, caplog, failure, expected) -> None:
+    def test_data_lua(
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture, failure, expected
+    ) -> None:
         session = mock_session_cls.return_value
         session.get.return_value = _login_ok()
         session.post.side_effect = [self._failing(failure)] * 2
@@ -727,7 +743,9 @@ class TestFritzWebUiErrorTextHasNoUrl:
         _assert_clean(caplog, info.value, expected)
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_aha(self, mock_session_cls, caplog, failure, expected) -> None:
+    def test_aha(
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture, failure, expected
+    ) -> None:
         session = mock_session_cls.return_value
         session.get.side_effect = [
             _login_ok(),
@@ -745,7 +763,9 @@ class TestFritzWebUiErrorTextHasNoUrl:
         _assert_clean(caplog, info.value, expected)
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_rest_api(self, mock_session_cls, caplog, failure, expected) -> None:
+    def test_rest_api(
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture, failure, expected
+    ) -> None:
         session = mock_session_cls.return_value
         session.get.side_effect = [
             _login_ok(),
@@ -824,7 +844,9 @@ _TRANSPORT = [
 class TestTransportFailuresKeepTheirKind:
     @pytest.mark.parametrize(("make", "suffix"), _TRANSPORT)
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_kind_is_named_and_nothing_else(self, mock_session_cls, caplog, make, suffix) -> None:
+    def test_kind_is_named_and_nothing_else(
+        self, mock_session_cls: MagicMock, caplog: pytest.LogCaptureFixture, make, suffix
+    ) -> None:
         caplog.set_level(logging.DEBUG)
         session = mock_session_cls.return_value
         session.get.side_effect = [_login_ok(), make(), _login_ok(), make()]
@@ -894,13 +916,15 @@ class TestLoginBackOff:
     ACCEPTED = "<SessionInfo><SID>0123456789abcdef</SID></SessionInfo>"
 
     @pytest.fixture
-    def clock(self, monkeypatch):
+    def clock(self, monkeypatch: pytest.MonkeyPatch):
         now = [1000.0]
         monkeypatch.setattr("fritzexporter.fritz_webui.time.monotonic", lambda: now[0])
         return now
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_refused_login_is_not_retried_within_the_delay(self, mock_session_cls, clock) -> None:
+    def test_refused_login_is_not_retried_within_the_delay(
+        self, mock_session_cls: MagicMock, clock
+    ) -> None:
         session = mock_session_cls.return_value
         session.get.return_value = _resp(self.CHALLENGE.format(block=0))
         session.post.return_value = _resp(self.REFUSED)
@@ -921,7 +945,9 @@ class TestLoginBackOff:
         assert session.post.call_count == 2
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_longer_block_time_of_the_box_is_respected(self, mock_session_cls, clock) -> None:
+    def test_longer_block_time_of_the_box_is_respected(
+        self, mock_session_cls: MagicMock, clock
+    ) -> None:
         session = mock_session_cls.return_value
         session.get.return_value = _resp(self.CHALLENGE.format(block=300))
         client = FritzWebUiClient("fritz.box", "user", "pw")
@@ -934,7 +960,9 @@ class TestLoginBackOff:
         assert session.get.call_count == 1
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_transport_errors_do_not_delay_the_next_login(self, mock_session_cls, clock) -> None:
+    def test_transport_errors_do_not_delay_the_next_login(
+        self, mock_session_cls: MagicMock, clock
+    ) -> None:
         session = mock_session_cls.return_value
         session.get.side_effect = [
             requests.ConnectionError("refused"),
@@ -966,7 +994,7 @@ class TestRequestHandling:
         ids=["404", "500", "bad-json"],
     )
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_other_errors_do_not_log_in_again(self, mock_session_cls, reply) -> None:
+    def test_other_errors_do_not_log_in_again(self, mock_session_cls: MagicMock, reply) -> None:
         session = mock_session_cls.return_value
         session.get.side_effect = [_resp(self.LOGIN), reply]
         client = FritzWebUiClient("fritz.box", "user", "pass")
@@ -978,7 +1006,7 @@ class TestRequestHandling:
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_device_not_answering_fails_the_rest_of_the_scrape_at_once(
-        self, mock_session_cls
+        self, mock_session_cls: MagicMock
     ) -> None:
         session = mock_session_cls.return_value
         session.get.side_effect = [_resp(self.LOGIN), requests.ReadTimeout("timed out")]
@@ -997,14 +1025,16 @@ class TestRequestHandling:
         assert client.fetch_page("docInfo") == {"data": {}}
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_reply_is_streamed(self, mock_session_cls) -> None:
+    def test_reply_is_streamed(self, mock_session_cls: MagicMock) -> None:
         session = mock_session_cls.return_value
         session.get.return_value = _resp(self.LOGIN)
         FritzWebUiClient("fritz.box", "user", "pass")._login()
         assert session.get.call_args.kwargs["stream"] is True
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_announced_large_reply_is_refused(self, mock_session_cls, monkeypatch) -> None:
+    def test_announced_large_reply_is_refused(
+        self, mock_session_cls: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr("fritzexporter.fritz_webui.MAX_RESPONSE_BYTES", 100)
         session = mock_session_cls.return_value
         session.get.side_effect = [
@@ -1017,7 +1047,9 @@ class TestRequestHandling:
             client.fetch_api("/api/v0/x")
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_large_reply_is_cut_off_while_reading(self, mock_session_cls, monkeypatch) -> None:
+    def test_large_reply_is_cut_off_while_reading(
+        self, mock_session_cls: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setattr("fritzexporter.fritz_webui.MAX_RESPONSE_BYTES", 100)
         monkeypatch.setattr("fritzexporter.fritz_webui._READ_CHUNK_BYTES", 10)
         session = mock_session_cls.return_value
@@ -1035,7 +1067,7 @@ class TestRequestHandling:
         assert len(read) == 11
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_forbidden_xml_is_a_web_interface_error(self, mock_session_cls) -> None:
+    def test_forbidden_xml_is_a_web_interface_error(self, mock_session_cls: MagicMock) -> None:
         session = mock_session_cls.return_value
         session.get.return_value = _resp(self.ENTITY_BOMB)
 
@@ -1068,7 +1100,7 @@ class TestNoPermission:
     LOGIN = f"<SessionInfo><SID>{_SID}</SID></SessionInfo>"
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_refused_page_costs_no_login_per_scrape(self, mock_session_cls) -> None:
+    def test_refused_page_costs_no_login_per_scrape(self, mock_session_cls: MagicMock) -> None:
         session = mock_session_cls.return_value
         replies = {"/login_sid.lua": _resp(self.LOGIN), "/api/v0/x": _resp(status=403)}
         session.get.side_effect = lambda url, **_k: replies[url.removeprefix("http://fritz.box")]
@@ -1083,7 +1115,7 @@ class TestNoPermission:
         assert len(logins) == 1
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_page_works_again_once_permitted(self, mock_session_cls) -> None:
+    def test_page_works_again_once_permitted(self, mock_session_cls: MagicMock) -> None:
         session = mock_session_cls.return_value
         replies = {"/login_sid.lua": _resp(self.LOGIN), "/api/v0/x": _resp(status=403)}
         session.get.side_effect = lambda url, **_k: replies[url.removeprefix("http://fritz.box")]
@@ -1097,7 +1129,7 @@ class TestNoPermission:
 
     @patch("fritzexporter.fritz_webui.requests.Session")
     def test_refused_page_gets_a_fresh_login_now_and_then(
-        self, mock_session_cls, monkeypatch
+        self, mock_session_cls: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         # Rights granted later only apply to a new session.
         now = [1000.0]
@@ -1128,7 +1160,9 @@ class TestNoPermission:
         assert logins() == 2
 
     @patch("fritzexporter.fritz_webui.requests.Session")
-    def test_session_is_kept_while_it_works(self, mock_session_cls, monkeypatch) -> None:
+    def test_session_is_kept_while_it_works(
+        self, mock_session_cls: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         now = [1000.0]
         monkeypatch.setattr("fritzexporter.fritz_webui.time.monotonic", lambda: now[0])
         session = mock_session_cls.return_value

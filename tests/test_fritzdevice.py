@@ -59,7 +59,7 @@ FRITZDEVICE_LOG_SOURCE = "fritzexporter.fritzdevice"
 class TestFritzDevice:
     @pytest.mark.parametrize("capability", fc_services_capabilities.keys())
     def test_should_create_a_device_with_presented_capability(
-        self, mock_fritzconnection, capability, caplog
+        self, mock_fritzconnection: MagicMock, capability, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -111,7 +111,7 @@ class TestFritzDevice:
             ) in caplog.record_tuples
 
     def test_should_raise_fritz_connection_exception(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -138,7 +138,7 @@ class TestFritzDevice:
         assert [o.spec for o in collector.offline_devices] == [spec]
 
     def test_should_invalidate_presented_service(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -164,7 +164,7 @@ class TestFritzDevice:
             FritzDevice(creds, "FritzMock", host_info=True)
 
     def test_should_create_fritz_device_with_correct_capabilities(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -192,7 +192,9 @@ class TestFritzDevice:
             port=None,
         )
 
-    def test_should_find_no_capabilities(self, mock_fritzconnection: MagicMock, caplog) -> None:
+    def test_should_find_no_capabilities(
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
         password: str = "123456789012345678901234567890123"
@@ -210,7 +212,7 @@ class TestFritzDevice:
         assert str(exc.value) == "FritzMock (somehost) has no detected capabilities"
 
     def test_should_not_collect_a_device_without_serial(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # The serial tells devices apart in Prometheus; without it the device is skipped.
         caplog.set_level(logging.DEBUG)
@@ -236,7 +238,7 @@ class TestFritzDevice:
         ],
     )
     def test_unreadable_serial_skips_the_device(
-        self, mock_fritzconnection: MagicMock, caplog, info
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture, info
     ) -> None:
         def call_action(service, action, **kwargs):
             if (service, action) == ("DeviceInfo1", "GetInfo"):
@@ -267,7 +269,7 @@ class TestFritzDevice:
         assert device.model == "n/a"
 
     def test_connection_timeout_passed_to_fritzconnection(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         fc = mock_fritzconnection.return_value
@@ -292,7 +294,7 @@ class TestFritzDevice:
         )
 
     def test_connection_timeout_defaults_to_the_config_default(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         fc = mock_fritzconnection.return_value
@@ -392,7 +394,7 @@ class TestFritzDevice:
         assert mock_webui_client.call_args.kwargs["allow_unsafe_md5_password"] is True
 
     def test_md5_refusal_disables_only_the_web_interface(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
@@ -526,7 +528,7 @@ class TestFritzDevice:
         assert reachable[0].samples[0].value == 1.0
 
     def test_transport_error_on_connect_is_logged_without_url(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare: the connection fails at transport level, not at protocol level
         caplog.set_level(logging.DEBUG)
@@ -559,7 +561,7 @@ def _scrape(collector: FritzCollector) -> list[Metric]:
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestFritzCollector:
-    def test_should_instantiate_empty_collector(self, caplog) -> None:
+    def test_should_instantiate_empty_collector(self, caplog: pytest.LogCaptureFixture) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
 
@@ -624,7 +626,7 @@ class TestFritzCollector:
             assert calls[0] == "start_scrape", calls
 
     def test_should_register_device_to_collector(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -645,7 +647,7 @@ class TestFritzCollector:
         assert device is collector.devices[0]
 
     def test_should_collect_metrics_from_device(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -678,7 +680,7 @@ class TestFritzCollector:
                 assert s.labels["friendly_name"] == "FritzMock"
 
     def test_should_render_full_exposition_without_raising(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare - a full-fixture device exercising every capability, fed
         # through the actual Prometheus text-exposition formatter. Unlike
@@ -710,7 +712,7 @@ class TestFritzCollector:
         assert b"fritz_uptime_seconds" in output
 
     def test_should_collect_host_info_from_device(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -736,7 +738,7 @@ class TestFritzCollector:
         assert "fritz_host_active" in prom_metrics
 
     def test_should_only_expose_one_metric_for_multiple_devices(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -771,7 +773,7 @@ class TestFritzCollector:
         assert len(metrics[0].samples) == 3
 
     def test_should_emit_device_up_metric_for_working_device(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -796,7 +798,7 @@ class TestFritzCollector:
         assert device_reachable_metrics[0].samples[0].labels == {"friendly_name": "FritzMock"}
 
     def test_should_emit_device_up_0_when_device_unreachable_during_collection(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -824,7 +826,7 @@ class TestFritzCollector:
         assert device_reachable_metrics[0].samples[0].labels["friendly_name"] == "FritzMock"
 
     def test_should_skip_capability_metrics_when_device_goes_down_mid_collection(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare: register device, then have it fail on DeviceInfo calls
         caplog.set_level(logging.DEBUG)
@@ -862,7 +864,7 @@ class TestFritzCollector:
         assert device_reachable_metrics[0].samples[0].value == 0.0
 
     def test_should_report_offline_device_on_second_collection_cycle(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare: device works on first collection, fails on second
         caplog.set_level(logging.DEBUG)
@@ -897,7 +899,7 @@ class TestFritzCollector:
         assert device_reachable_round3[0].samples[0].value == 1.0
 
     def test_should_not_exit_when_only_offline_devices_registered(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare: no online devices, only offline
         caplog.set_level(logging.DEBUG)
@@ -918,7 +920,7 @@ class TestFritzCollector:
         assert device_reachable_metrics[0].samples[0].labels == {"friendly_name": "OfflineDevice"}
 
     def test_offline_device_promoted_when_it_comes_back_online(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare: device is offline at startup
         caplog.set_level(logging.DEBUG)
@@ -967,7 +969,7 @@ class TestFritzCollector:
         assert collector.offline_devices[0].spec.connection.connection_timeout == 15
 
     def test_retry_offline_devices_uses_connection_timeout(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare: register device offline with a specific timeout
         caplog.set_level(logging.DEBUG)
@@ -1072,7 +1074,7 @@ class TestFritzCollector:
         assert len(collector.offline_devices) == 0
 
     def test_connection_mode_error_is_a_read_problem(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -1113,7 +1115,7 @@ class TestFritzCollector:
         assert by_name["fritz_device_reachable"].samples[0].value == 1.0
 
     def test_should_collect_capabilities_from_wanless_repeater(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Regression: a WAN-less mesh repeater must still export its capabilities
         # (uptime, WLAN, ...) and report reachable=1. The WAN-based connection-mode
@@ -1156,7 +1158,7 @@ class TestFritzCollector:
         assert len(uptime.samples) == 1
 
     def test_should_collect_wifi_client_info_when_enabled(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Opt-in per-station metrics: with wifi_client_info=True the exporter emits
         # one signal/speed sample per associated client per detected radio.
@@ -1202,7 +1204,7 @@ class TestFritzCollector:
         assert {"2.4GHz", "5GHz"} <= {s.labels["wifi_name"] for s in info.samples}
 
     def test_should_not_collect_wifi_client_info_by_default(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Without the opt-in flag the capability stays disabled (no per-client samples).
         caplog.set_level(logging.DEBUG)
@@ -1225,7 +1227,10 @@ class TestFritzCollector:
 
     @patch("fritzexporter.fritzcapabilities.MeshTopology._mesh_list")
     def test_should_collect_mesh_backhaul_links(
-        self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, caplog
+        self,
+        mock_fritzhosts: MagicMock,
+        mock_fritzconnection: MagicMock,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         # The mesh master exports one series per backhaul link between mesh nodes;
         # client links (to non-meshed devices) are excluded. A node pair can have
@@ -1369,7 +1374,7 @@ class TestFritzCollector:
         assert len(datarate[0].samples) == 4
 
     def test_should_survive_transport_error_from_the_aha_interface(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare: TR-064 works, but the AHA HTTP interface fails at transport level
         caplog.set_level(logging.DEBUG)
@@ -1407,7 +1412,7 @@ class TestFritzCollector:
             assert f"Could not read {capability} data from FritzMock (somehost)" in caplog.text
 
     def test_should_survive_transport_error_on_connection_mode(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare: the very first TR-064 call of a cycle fails at transport level
         caplog.set_level(logging.DEBUG)
@@ -1436,7 +1441,7 @@ class TestFritzCollector:
         assert device_reachable_metrics[0].samples[0].value == 0.0
 
     def test_offline_device_stays_offline_on_transport_error(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare: retrying an offline device fails at transport level
         caplog.set_level(logging.DEBUG)
@@ -1495,7 +1500,7 @@ def _mesh_topology(link=None, **node_overrides):
 class TestMeshTopologyParsing:
     """Bad mesh data costs only what it affects, and never the scrape."""
 
-    def _scrape(self, mock_fritzhosts, mock_fritzconnection, topology):
+    def _scrape(self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, topology):
         def call_with_mesh(service, action, **kwargs):
             if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
                 return {"NewX_AVM-DE_MeshListPath": "/meshlist.lua"}
@@ -1526,7 +1531,11 @@ class TestMeshTopologyParsing:
         ],
     )
     def test_topology_of_the_wrong_shape_skips_mesh_metrics(
-        self, mock_fritzhosts, mock_fritzconnection, caplog, topology
+        self,
+        mock_fritzhosts: MagicMock,
+        mock_fritzconnection: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+        topology,
     ) -> None:
         output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
 
@@ -1556,7 +1565,12 @@ class TestMeshTopologyParsing:
         ],
     )
     def test_unreadable_node_or_link_is_skipped(
-        self, mock_fritzhosts, mock_fritzconnection, caplog, topology, skipped
+        self,
+        mock_fritzhosts: MagicMock,
+        mock_fritzconnection: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+        topology,
+        skipped,
     ) -> None:
         output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
 
@@ -1581,7 +1595,12 @@ class TestMeshTopologyParsing:
         ],
     )
     def test_unreadable_rate_skips_only_that_sample(
-        self, mock_fritzhosts, mock_fritzconnection, caplog, link, missing
+        self,
+        mock_fritzhosts: MagicMock,
+        mock_fritzconnection: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+        link,
+        missing,
     ) -> None:
         output = self._scrape(mock_fritzhosts, mock_fritzconnection, _mesh_topology(link))
 
@@ -1594,7 +1613,7 @@ class TestMeshTopologyParsing:
         assert "Skipped part of the MeshTopology data from FritzMock (somehost)" in caplog.text
 
     def test_link_labels_come_from_the_first_endpoint_in_device_order(
-        self, mock_fritzhosts, mock_fritzconnection
+        self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock
     ) -> None:
         # Each link is listed under both endpoints, with each side's own interface.
         # The master comes first in the topology, although its uid sorts last; its
@@ -1626,7 +1645,10 @@ class TestMeshTopologyParsing:
         assert 'node="fritzbox"' in available
 
     def test_numeric_strings_and_non_string_names_are_accepted(
-        self, mock_fritzhosts, mock_fritzconnection, caplog
+        self,
+        mock_fritzhosts: MagicMock,
+        mock_fritzconnection: MagicMock,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         topology = _mesh_topology(
             _mesh_link(cur_data_rate_rx="1500", max_data_rate_tx=4000.5), device_name=7590
@@ -1672,7 +1694,7 @@ class TestConcurrentScrapes:
         return collector
 
     def test_second_parallel_scrape_returns_when_first_scrape_is_wedged(
-        self, mock_fritzconnection: MagicMock, monkeypatch
+        self, mock_fritzconnection: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         # Shrink the lock deadline so the test does not wait the real 30s.
         monkeypatch.setattr("fritzexporter.fritzdevice.SCRAPE_LOCK_TIMEOUT", 0.2)
@@ -1909,7 +1931,7 @@ class TestGetConnectionMode:
         assert device.available is True
 
     def test_get_connection_mode_returns_none_on_exception(
-        self, mock_fc: MagicMock, caplog
+        self, mock_fc: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -1939,7 +1961,7 @@ class TestGetConnectionMode:
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestFritzDeviceAuthError:
     def test_should_raise_authorization_error_on_get_device_info(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -1996,7 +2018,9 @@ class TestMeshListFetch:
 
     TOPOLOGY = '{"nodes": []}'
 
-    def _scrape(self, mock_fritzconnection, *, path_error=None, reply=None, get_error=None):
+    def _scrape(
+        self, mock_fritzconnection: MagicMock, *, path_error=None, reply=None, get_error=None
+    ):
         def call_with_mesh(service, action, **kwargs):
             if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
                 if path_error is not None and device_ready:
@@ -2021,14 +2045,14 @@ class TestMeshListFetch:
         reachable = by_name["fritz_device_reachable"].samples[0].value
         return by_name, problems, reachable
 
-    def test_topology_from_the_mesh_master(self, mock_fritzconnection) -> None:
+    def test_topology_from_the_mesh_master(self, mock_fritzconnection: MagicMock) -> None:
         topology = json.dumps(_mesh_topology())
         by_name, problems, reachable = self._scrape(mock_fritzconnection, reply=web_reply(topology))
         assert len(by_name["fritz_mesh_link_available"].samples) == 1
         assert ("MeshTopology", "skipped") not in problems
         assert reachable == 1.0
 
-    def test_other_nodes_answer_404_quietly(self, mock_fritzconnection) -> None:
+    def test_other_nodes_answer_404_quietly(self, mock_fritzconnection: MagicMock) -> None:
         by_name, problems, _ = self._scrape(mock_fritzconnection, reply=web_reply(status=404))
         assert by_name["fritz_mesh_link_available"].samples == []
         assert not any(capability == "MeshTopology" for capability, _ in problems)
@@ -2041,7 +2065,7 @@ class TestMeshListFetch:
         ],
     )
     def test_list_not_answering_skips_only_the_mesh(
-        self, mock_fritzconnection, caplog, error
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture, error
     ) -> None:
         _, problems, reachable = self._scrape(mock_fritzconnection, get_error=error)
         assert ("MeshTopology", "skipped") in problems
@@ -2049,7 +2073,7 @@ class TestMeshListFetch:
         assert "mesh list request failed: Fritz device did not answer" in caplog.text
 
     def test_error_status_from_the_master_is_a_read_problem(
-        self, mock_fritzconnection, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Only 404 means "not the mesh master"; a failing master must not look like one.
         _, problems, reachable = self._scrape(mock_fritzconnection, reply=web_reply(status=503))
@@ -2058,7 +2082,7 @@ class TestMeshListFetch:
         assert "mesh list request failed: HTTP 503" in caplog.text
 
     def test_bad_json_is_a_read_problem_not_a_missing_answer(
-        self, mock_fritzconnection, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         _, problems, reachable = self._scrape(mock_fritzconnection, reply=web_reply("{oops"))
         assert ("MeshTopology", "skipped") in problems
@@ -2066,7 +2090,9 @@ class TestMeshListFetch:
         assert "mesh list: not valid JSON" in caplog.text
         assert "mesh list request failed" not in caplog.text
 
-    def test_path_not_answering_makes_the_device_unreachable(self, mock_fritzconnection) -> None:
+    def test_path_not_answering_makes_the_device_unreachable(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         _, _, reachable = self._scrape(
             mock_fritzconnection,
             path_error=FritzUnreachableError("Fritz device did not answer (ReadTimeout)"),

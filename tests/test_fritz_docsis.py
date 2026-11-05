@@ -332,7 +332,7 @@ class TestWanDocsisCable:
         assert device.webui_client is not None
 
     def test_docsis_fetch_error_does_not_break_collection(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         """If the DOCSIS fetch fails, other metrics still collect."""
         client = MagicMock()

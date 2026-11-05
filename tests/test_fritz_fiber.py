@@ -130,7 +130,7 @@ class TestWanFiberWebUiFallback:
         client.fetch_page.assert_not_called()
 
     def test_web_ui_error_exports_no_level_and_reports_it(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # 0 from TR-064 means unknown here, not 0 dBm; the other fibre metrics stay.
         client = MagicMock()
@@ -144,7 +144,7 @@ class TestWanFiberWebUiFallback:
         ) in caplog.text
 
     def test_web_ui_failure_is_not_logged_on_every_scrape(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         client = MagicMock()
         client.fetch_page.side_effect = FritzWebUiError("login failed")
@@ -153,7 +153,7 @@ class TestWanFiberWebUiFallback:
         assert caplog.text.count("optical levels from the web interface skipped") == 1
 
     def test_malformed_web_ui_data_exports_no_level(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         client = MagicMock()
         client.fetch_page.return_value = {"data": {"opt_ds": [["sa", 9, "n/a"]]}}

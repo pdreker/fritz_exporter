@@ -104,7 +104,12 @@ class TestFritzCapabilitiesMethods:
         ],
     )
     def test_capability_check_disables_when_call_action_raises(
-        self, mock_fritzconnection: MagicMock, caplog, error, level, message
+        self,
+        mock_fritzconnection: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+        error,
+        level,
+        message,
     ) -> None:
         # Prepare - service is present in services dict but call_action raises
         caplog.set_level(logging.DEBUG)
@@ -140,7 +145,7 @@ class TestUserInterfaceCapability:
     """Tests for UserInterface capability edge cases."""
 
     def test_user_interface_no_update_available(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare - return no upgrade available
         caplog.set_level(logging.DEBUG)
@@ -178,7 +183,9 @@ class TestUserInterfaceCapability:
 class TestHostInfoCapability:
     """Tests for HostInfo capability edge cases."""
 
-    def test_host_info_with_empty_ip(self, mock_fritzconnection: MagicMock, caplog) -> None:
+    def test_host_info_with_empty_ip(
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         # Prepare - host has empty IP address
         caplog.set_level(logging.DEBUG)
 
@@ -218,7 +225,7 @@ class TestHostInfoCapability:
         assert sample.labels["model"] == "n/a"
 
     def test_host_table_shrinking_mid_scan_keeps_device_reachable(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # A host leaving mid-scan makes GetGenericHostEntry raise FritzArrayIndexError
         # (UPnP errorCode 713, SpecifiedArrayIndexInvalid). This is a benign race on the
@@ -285,7 +292,7 @@ class TestHostInfoCapability:
         )
 
     def test_host_leaving_mid_scan_keeps_device_reachable(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # A host leaving mid-scan makes X_AVM-DE_GetSpecificHostEntryByIP raise
         # FritzLookUpError (UPnP errorCode 714, NoSuchEntryInArray): the host's IP
@@ -509,7 +516,7 @@ class TestHomeAutomationCapability:
         assert valve_set[0].samples[0].value == 1  # OPEN
 
     def test_homeautomation_valve_state_lookup_failure_skips_only_the_valve_state(
-        self, mock_fritzconnection: MagicMock, caplog
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare - GetSpecificDeviceInfos can fail for a device (e.g. it
         # disappeared between the two calls); the heater temperatures from
@@ -563,7 +570,9 @@ class TestHomeAutomationCapability:
         ains = {s.labels["ain"] for s in device_present[0].samples}
         assert ains == {"111111111111", "222222222222"}
 
-    def test_homeautomation_with_webui_error(self, mock_fritzconnection: MagicMock, caplog) -> None:
+    def test_homeautomation_with_webui_error(
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
         xml = self._make_devicelist_xml(self._make_device_xml())
@@ -1221,7 +1230,7 @@ class TestWanDataBytes:
 
     ADDON = ("WANCommonIFC1", "GetAddonInfos")
 
-    def _totals(self, mock_fritzconnection, capabilities, overrides=None):
+    def _totals(self, mock_fritzconnection: MagicMock, capabilities, overrides=None):
         by_name = collect_device(mock_fritzconnection, services(*capabilities), overrides=overrides)
         return {s.labels["direction"]: s.value for s in by_name["fritz_wan_data_bytes"].samples}
 
