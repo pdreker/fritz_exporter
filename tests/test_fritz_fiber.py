@@ -1,6 +1,7 @@
 """Tests for the fibre level fallback (fritz_fiber.py)."""
 
 import logging
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -45,7 +46,9 @@ class TestParseFiberStats:
             ({"data": {"opt_us": "not a list"}}, "fiberStats data opt_us: expected a list"),
         ],
     )
-    def test_defective_series_gives_none_and_is_recorded(self, raw, message) -> None:
+    def test_defective_series_gives_none_and_is_recorded(
+        self, raw: dict[str, Any], message: str
+    ) -> None:
         raw["data"]["opt_ds"] = [["sa", 9, -65]]
         issues = Issues()
 
@@ -55,7 +58,7 @@ class TestParseFiberStats:
         assert [m.split(", got")[0] for m in issues.messages] == [message]
 
     @pytest.mark.parametrize("raw", [{"data": "not an object"}, []])
-    def test_reply_of_the_wrong_shape_raises(self, raw) -> None:
+    def test_reply_of_the_wrong_shape_raises(self, raw: dict[str, Any] | list[Any]) -> None:
         issues = Issues()
         with pytest.raises(DataError):
             parse_fiber_stats_response(raw, issues)

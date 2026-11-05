@@ -85,7 +85,7 @@ class TestFritzWebUiClientAuth:
         ],
     )
     def test_pbkdf2_iteration_bounds(
-        self, monkeypatch: pytest.MonkeyPatch, iter1, iter2, ok
+        self, monkeypatch: pytest.MonkeyPatch, iter1: int, iter2: int, ok: bool
     ) -> None:
         calls = []
         monkeypatch.setattr(hashlib, "pbkdf2_hmac", lambda *a: calls.append(a) or b"\0" * 32)
@@ -890,10 +890,12 @@ class TestHttpErrorText:
             (599, "Whatever", "HTTP 599"),
         ],
     )
-    def test_standard_phrase_replaces_server_reason(self, code, reason, expected) -> None:
+    def test_standard_phrase_replaces_server_reason(
+        self, code: int, reason: str | None, expected: str
+    ) -> None:
         resp = requests.Response()
         resp.status_code = code
-        resp.reason = reason
+        resp.reason = reason  # ty: ignore[invalid-assignment]
         assert _http_error_text(resp) == expected
 
     def test_secret_in_server_reason_is_not_used(self) -> None:
@@ -1086,7 +1088,7 @@ class TestJsonReplies:
         ],
         ids=["deep-nesting", "bad-encoding", "bad-json"],
     )
-    def test_unreadable_json_is_a_web_interface_error(self, body, expected) -> None:
+    def test_unreadable_json_is_a_web_interface_error(self, body, expected: str) -> None:
         from fritzexporter.fritz_webui import _Reply
 
         with pytest.raises(FritzWebUiError) as exc:

@@ -109,7 +109,7 @@ class TestFritzCapabilitiesMethods:
         caplog: pytest.LogCaptureFixture,
         error,
         level,
-        message,
+        message: str,
     ) -> None:
         # Prepare - service is present in services dict but call_action raises
         caplog.set_level(logging.DEBUG)
@@ -890,7 +890,7 @@ class TestUspControllers:
         ("error", "present"), [(FritzArrayIndexError, True), (FritzActionError, False)]
     )
     def test_controller_lookup_is_probed(
-        self, mock_fritzconnection: MagicMock, error, present
+        self, mock_fritzconnection: MagicMock, error, present: bool
     ) -> None:
         # No controller at index 0 still shows the action works; an error
         # reply means the device only advertises it.
@@ -1003,7 +1003,7 @@ def _argument(kwargs: dict, name: str):
 class TestProbing:
     @pytest.mark.parametrize("hosts", [0, 1])
     def test_host_info_works_with_a_small_host_table(
-        self, mock_fritzconnection: MagicMock, hosts
+        self, mock_fritzconnection: MagicMock, hosts: int
     ) -> None:
         # The probe used index 1, which a table of 0 or 1 hosts does not have:
         # the device never came up.

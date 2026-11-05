@@ -421,7 +421,9 @@ class TestDeviceLevel:
     @pytest.mark.parametrize(
         "error", [FritzActionError("820"), FritzConnectionException("HTML reply")]
     )
-    def test_an_error_the_device_answers_with_skips_only_the_capability(self, error) -> None:
+    def test_an_error_the_device_answers_with_skips_only_the_capability(
+        self, error: FritzActionError | FritzConnectionException
+    ) -> None:
         scenario = Scenario()
         scenario.overrides["bad"][LAN_STATS] = error
 
@@ -713,9 +715,9 @@ class TestCheckSamples:
         _check_samples({"m": family}, {"m": 1})
 
     @pytest.mark.parametrize(("labels", "value"), [(["x"], "1"), (["x"], None), ([5], 1)])
-    def test_unrenderable_samples_raise(self, labels, value) -> None:
+    def test_unrenderable_samples_raise(self, labels: list[Any], value: str | int | None) -> None:
         family = GaugeMetricFamily("m", "h", labels=["a"])
-        family.add_metric(labels, value)
+        family.add_metric(labels, value)  # ty: ignore[invalid-argument-type]
 
         with pytest.raises(DataError, match="metric m:"):
             _check_samples({"m": family}, {"m": 0})
@@ -730,7 +732,7 @@ class TestDeviceNamesInLogs:
             ("fritz.box", "fritz.box", "fritz.box"),
         ],
     )
-    def test_device_log_name(self, friendly_name, host, expected) -> None:
+    def test_device_log_name(self, friendly_name: str, host: str, expected: str) -> None:
         assert device_log_name(friendly_name, host) == expected
 
     def test_every_device_related_message_names_its_device(

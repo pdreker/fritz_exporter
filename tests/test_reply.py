@@ -1,7 +1,7 @@
 """Typed reading of device replies (fritzexporter/reply.py)."""
 
 import math
-from typing import Never
+from typing import Any, Never
 from unittest.mock import MagicMock
 
 import pytest
@@ -23,13 +23,15 @@ SECRET = "192.0.2.77"
 class TestConverters:
     @pytest.mark.parametrize("absent", [None, "", [], {}])
     @pytest.mark.parametrize("convert", [to_float, to_int, to_bool, to_str])
-    def test_absent_values_are_none(self, convert, absent) -> None:
+    def test_absent_values_are_none(
+        self, convert, absent: str | list[Any] | dict[str, Any] | None
+    ) -> None:
         assert convert(absent, "x") is None
 
     @pytest.mark.parametrize(
         ("value", "expected"), [(1, 1.0), (2.5, 2.5), ("-3.5", -3.5), (" 7 ", 7.0), ("1e3", 1000.0)]
     )
-    def test_to_float(self, value, expected) -> None:
+    def test_to_float(self, value: int | float | str, expected: float) -> None:
         assert to_float(value, "x") == expected
 
     def test_to_float_keeps_nan_and_inf(self) -> None:
@@ -44,7 +46,7 @@ class TestConverters:
             to_float(value, "x")
 
     @pytest.mark.parametrize(("value", "expected"), [(3, 3), (" 42 ", 42), (5.0, 5), ("-1", -1)])
-    def test_to_int(self, value, expected) -> None:
+    def test_to_int(self, value: int | str | float, expected: int) -> None:
         assert to_int(value, "x") == expected
 
     @pytest.mark.parametrize("value", ["4.5", 4.5, math.inf, math.nan, "1e999", False, "abc"])
@@ -66,18 +68,18 @@ class TestConverters:
             (" on ", True),
         ],
     )
-    def test_to_bool(self, value, expected) -> None:
+    def test_to_bool(self, value: bool | int | str, expected: bool) -> None:
         assert to_bool(value, "x") is expected
 
     @pytest.mark.parametrize("value", [2, -1, "maybe", 1.0, [1]])
-    def test_to_bool_rejects(self, value) -> None:
+    def test_to_bool_rejects(self, value: int | str | float | list[Any]) -> None:
         with pytest.raises(DataError, match="x: expected a flag"):
             to_bool(value, "x")
 
     @pytest.mark.parametrize(
         ("value", "expected"), [("a", "a"), (5, "5"), (1.5, "1.5"), (True, "1"), (False, "0")]
     )
-    def test_to_str(self, value, expected) -> None:
+    def test_to_str(self, value: str | int | float | bool, expected: str) -> None:
         assert to_str(value, "x") == expected
 
     @pytest.mark.parametrize("value", [[1], {"a": 1}, object()])
@@ -125,13 +127,13 @@ class TestReply:
         assert nested.integer("inner") == 1
 
     @pytest.mark.parametrize("key", ["empty", "none", "missing"])
-    def test_required_read_of_absent_value_raises(self, key) -> None:
+    def test_required_read_of_absent_value_raises(self, key: str) -> None:
         for read in (self.reply.num, self.reply.integer, self.reply.flag, self.reply.text):
             with pytest.raises(DataError, match=f"Svc.Action {key}: missing"):
                 read(key)
 
     @pytest.mark.parametrize("key", ["empty", "none", "missing"])
-    def test_optional_read_of_absent_value_is_none(self, key) -> None:
+    def test_optional_read_of_absent_value_is_none(self, key: str) -> None:
         assert self.reply.opt_num(key) is None
         assert self.reply.opt_integer(key) is None
         assert self.reply.opt_flag(key) is None

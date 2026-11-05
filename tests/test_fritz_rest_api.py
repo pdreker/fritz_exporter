@@ -263,7 +263,7 @@ class TestParseConnectionsResponse:
         assert parse_connections_response({"connection": []}, Issues()) == []
 
     @pytest.mark.parametrize("raw", [[], {"connection": "not a list"}])
-    def test_reply_of_the_wrong_shape_raises(self, raw) -> None:
+    def test_reply_of_the_wrong_shape_raises(self, raw: list[Any] | dict[str, Any]) -> None:
         issues = Issues()
         with pytest.raises(DataError):
             parse_connections_response(raw, issues)
@@ -462,7 +462,7 @@ class TestWanConnectionStatus:
         (parse_connections_response, {"other": []}),
     ],
 )
-def test_reply_without_its_data_container_raises(parse, raw) -> None:
+def test_reply_without_its_data_container_raises(parse, raw: dict[str, Any]) -> None:
     # An empty container means "no data"; a missing one a reply not understood.
     issues = Issues()
     with pytest.raises(DataError, match="missing"):

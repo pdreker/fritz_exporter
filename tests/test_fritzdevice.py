@@ -239,9 +239,12 @@ class TestFritzDevice:
         ],
     )
     def test_unreadable_serial_skips_the_device(
-        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture, info
+        self,
+        mock_fritzconnection: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+        info: dict[str, Any] | str,
     ) -> None:
-        def call_action(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
+        def call_action(service: str, action: str, **kwargs: Any) -> dict[str, Any] | str:
             if (service, action) == ("DeviceInfo1", "GetInfo"):
                 return info
             return call_action_mock(service, action, **kwargs)
@@ -1536,7 +1539,7 @@ class TestMeshTopologyParsing:
         mock_fritzhosts: MagicMock,
         mock_fritzconnection: MagicMock,
         caplog: pytest.LogCaptureFixture,
-        topology,
+        topology: list[Any] | dict[str, Any],
     ) -> None:
         output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
 
@@ -1571,7 +1574,7 @@ class TestMeshTopologyParsing:
         mock_fritzconnection: MagicMock,
         caplog: pytest.LogCaptureFixture,
         topology,
-        skipped,
+        skipped: str,
     ) -> None:
         output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
 
@@ -1601,7 +1604,7 @@ class TestMeshTopologyParsing:
         mock_fritzconnection: MagicMock,
         caplog: pytest.LogCaptureFixture,
         link,
-        missing,
+        missing: str,
     ) -> None:
         output = self._scrape(mock_fritzhosts, mock_fritzconnection, _mesh_topology(link))
 
@@ -2066,7 +2069,10 @@ class TestMeshListFetch:
         ],
     )
     def test_list_not_answering_skips_only_the_mesh(
-        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture, error
+        self,
+        mock_fritzconnection: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+        error: RequestsConnectionError | FritzUnreachableError,
     ) -> None:
         _, problems, reachable = self._scrape(mock_fritzconnection, get_error=error)
         assert ("MeshTopology", "skipped") in problems

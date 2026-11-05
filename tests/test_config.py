@@ -606,7 +606,7 @@ class TestConfigChecks:
             ("devices:\n  - fritz.box\n", "device 1: expected keys and values"),
         ],
     )
-    def test_wrong_shape_is_an_error(self, tmp_path: Path, text, message) -> None:
+    def test_wrong_shape_is_an_error(self, tmp_path: Path, text: str, message: str) -> None:
         with pytest.raises(ConfigError, match=f"^{message}$"):
             self._load(tmp_path, text)
 
@@ -626,7 +626,9 @@ class TestConfigChecks:
         ("line", "value"),
         [("    connection_timeout: 2.7\n", "2.7"), ("    port: true\n", "True")],
     )
-    def test_numbers_are_not_cut_or_taken_from_booleans(self, tmp_path: Path, line, value) -> None:
+    def test_numbers_are_not_cut_or_taken_from_booleans(
+        self, tmp_path: Path, line: str, value: str
+    ) -> None:
         key = line.split(":")[0].strip()
         with pytest.raises(
             ConfigError,
