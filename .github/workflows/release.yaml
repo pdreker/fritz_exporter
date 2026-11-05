@@ -1,68 +1,53 @@
+name: release-please
+
+# release-please maintains a release PR; merging it creates release and tag in the
+# same run, which then publishes the versioned artifacts. The checks on the release
+# PR wait for approval ("Approve workflows to run") because it is opened with
+# GITHUB_TOKEN.
+
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
-name: release-please
+permissions:
+  contents: read
+
 jobs:
   release:
-    runs-on: ubuntu-latest
-    outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      major: ${{ steps.release.outputs.major }}
-      minor: ${{ steps.release.outputs.minor }}
-      patch: ${{ steps.release.outputs.patch }}
-    steps:
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
-        id: release
-        with:
-          token: ${{ secrets.MASTER_PUSH_TOKEN }}
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: pdreker/github-workflows/.github/workflows/release-please.yaml@335ab9f615d4a0cf3d29b86e7bebf44a727ab5ab # v1.0.0
 
-  build-docker-release:
+  image:
     needs: release
-    if: needs.release.outputs.release_created
+    if: ${{ needs.release.outputs.release_created == 'true' }}
+    uses: pdreker/github-workflows/.github/workflows/docker-image.yaml@335ab9f615d4a0cf3d29b86e7bebf44a727ab5ab # v1.0.0
+    with:
+      registry: ${{ vars.DOCKER_REGISTRY_HOST }}
+      registry-username: ${{ vars.DOCKER_REGISTRY_USERNAME }}
+      image: ${{ vars.DOCKER_REGISTRY_HOST }}/${{ vars.DOCKER_REGISTRY_REPO }}/${{ vars.DOCKER_REGISTRY_IMAGE }}
+      platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/arm64
+      version: ${{ needs.release.outputs.version }}
+    secrets:
+      registry-password: ${{ secrets.DOCKER_HUB }}
+
+  pypi:
+    needs: release
+    if: ${{ needs.release.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
+    name: Build & publish to PyPI
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Login to Registry
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
-          registry: ${{ vars.DOCKER_REGISTRY_HOST }}
-          username: ${{ vars.DOCKER_REGISTRY_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB }}
-
-      - name: generate docker tags
-        id: meta
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
-        with:
-          images: |
-            ${{ vars.DOCKER_REGISTRY_HOST }}/${{ vars.DOCKER_REGISTRY_REPO }}/${{ vars.DOCKER_REGISTRY_IMAGE }}
-          tags: |
-            type=semver,pattern={{version}},value=${{ needs.release.outputs.major }}.${{ needs.release.outputs.minor }}.${{ needs.release.outputs.patch }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ needs.release.outputs.major }}.${{ needs.release.outputs.minor }}.${{ needs.release.outputs.patch }}
-            type=semver,pattern={{major}},value=${{ needs.release.outputs.major }}.${{ needs.release.outputs.minor }}.${{ needs.release.outputs.patch }}
-      # Build Docker Images (amd64 and arm64)
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Build and push
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          push: true
-          context: .
-          platforms: linux/arm/v6,linux/arm/v7,linux/amd64,linux/aarch64
-          tags: ${{ steps.meta.outputs.tags }}
-
-  build-pypi-release:
-    needs: release
-    if: needs.release.outputs.release_created
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.14"
-      - name: Build and publish to PyPI
-        run: uv build && uv publish --token ${{ secrets.PYPI_TOKEN }}
+      - name: Build and publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: uv build && uv publish
