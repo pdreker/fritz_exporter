@@ -1,6 +1,7 @@
 """Typed reading of device replies (fritzexporter/reply.py)."""
 
 import math
+from collections.abc import Callable
 from typing import Any, Never
 from unittest.mock import MagicMock
 
@@ -24,7 +25,7 @@ class TestConverters:
     @pytest.mark.parametrize("absent", [None, "", [], {}])
     @pytest.mark.parametrize("convert", [to_float, to_int, to_bool, to_str])
     def test_absent_values_are_none(
-        self, convert, absent: str | list[Any] | dict[str, Any] | None
+        self, convert: Callable[[Any, str], object], absent: str | list[Any] | dict[str, Any] | None
     ) -> None:
         assert convert(absent, "x") is None
 
@@ -41,7 +42,7 @@ class TestConverters:
         assert to_float("1e999", "x") == math.inf
 
     @pytest.mark.parametrize("value", ["abc", True, [1], {"a": 1}, object()])
-    def test_to_float_rejects(self, value) -> None:
+    def test_to_float_rejects(self, value: object) -> None:
         with pytest.raises(DataError, match="x: expected a number"):
             to_float(value, "x")
 
@@ -50,7 +51,7 @@ class TestConverters:
         assert to_int(value, "x") == expected
 
     @pytest.mark.parametrize("value", ["4.5", 4.5, math.inf, math.nan, "1e999", False, "abc"])
-    def test_to_int_rejects(self, value) -> None:
+    def test_to_int_rejects(self, value: object) -> None:
         with pytest.raises(DataError, match="x: expected a whole number"):
             to_int(value, "x")
 
@@ -83,7 +84,7 @@ class TestConverters:
         assert to_str(value, "x") == expected
 
     @pytest.mark.parametrize("value", [[1], {"a": 1}, object()])
-    def test_to_str_rejects(self, value) -> None:
+    def test_to_str_rejects(self, value: object) -> None:
         with pytest.raises(DataError, match="x: expected text"):
             to_str(value, "x")
 

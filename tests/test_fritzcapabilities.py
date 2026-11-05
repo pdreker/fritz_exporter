@@ -13,6 +13,7 @@ from fritzconnection.core.exceptions import (
 )
 from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import Metric
+from prometheus_client.metrics_core import Metric
 
 from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiError
 from fritzexporter.fritzcapabilities import (
@@ -107,8 +108,8 @@ class TestFritzCapabilitiesMethods:
         self,
         mock_fritzconnection: MagicMock,
         caplog: pytest.LogCaptureFixture,
-        error,
-        level,
+        error: type[Exception],
+        level: int,
         message: str,
     ) -> None:
         # Prepare - service is present in services dict but call_action raises
@@ -421,7 +422,7 @@ class TestHomeAutomationCapability:
     def _make_devicelist_xml(self, *device_xml: str) -> str:
         return f'<devicelist version="1">{"".join(device_xml)}</devicelist>'
 
-    def _setup_ha_device(self, mock_fc, devicelist_xml: str) -> tuple:
+    def _setup_ha_device(self, mock_fc: MagicMock, devicelist_xml: str) -> tuple:
         fc = mock_fc.return_value
 
         fc.call_action.side_effect = call_action_mock
@@ -822,7 +823,9 @@ class TestWanCommonInterfaceByteRateCableWan:
 class TestManagementServer:
     """Tests for the TR-069 management server metrics."""
 
-    def _collect(self, mock_fritzconnection: MagicMock, overrides=None):
+    def _collect(
+        self, mock_fritzconnection: MagicMock, overrides: dict[tuple[str, str], Any] | None = None
+    ) -> dict[str, Metric]:
         return collect_device(
             mock_fritzconnection,
             services("DeviceInfo", "ManagementServerInfo"),
@@ -881,7 +884,9 @@ class TestManagementServer:
 class TestUspControllers:
     """Tests for the USP controller metrics."""
 
-    def _collect(self, mock_fritzconnection: MagicMock, overrides=None):
+    def _collect(
+        self, mock_fritzconnection: MagicMock, overrides: dict[tuple[str, str], Any] | None = None
+    ) -> dict[str, Metric]:
         return collect_device(
             mock_fritzconnection, services("DeviceInfo", "UspControllers"), overrides=overrides
         )
@@ -890,7 +895,7 @@ class TestUspControllers:
         ("error", "present"), [(FritzArrayIndexError, True), (FritzActionError, False)]
     )
     def test_controller_lookup_is_probed(
-        self, mock_fritzconnection: MagicMock, error, present: bool
+        self, mock_fritzconnection: MagicMock, error: type[Exception], present: bool
     ) -> None:
         # No controller at index 0 still shows the action works; an error
         # reply means the device only advertises it.
@@ -940,7 +945,9 @@ class TestUspControllers:
 class TestTelephonyNumbers:
     """Tests for the telephony number count metric."""
 
-    def _collect_numbers_metric(self, mock_fritzconnection: MagicMock, count: int | None):
+    def _collect_numbers_metric(
+        self, mock_fritzconnection: MagicMock, count: int | None
+    ) -> dict[str, Metric]:
         reply = {"NewNumberOfNumbers": count}
         overrides = {("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers"): reply} if count is not None else {}
         return collect_device(
@@ -967,7 +974,9 @@ class TestTelephonyNumbers:
 class TestWanIPv6Prefix:
     """Tests for the delegated IPv6 prefix info metric."""
 
-    def _collect_prefix_metric(self, mock_fritzconnection: MagicMock, prefix_result: dict | None):
+    def _collect_prefix_metric(
+        self, mock_fritzconnection: MagicMock, prefix_result: dict | None
+    ) -> dict[str, Metric]:
         overrides = (
             {("WANIPConn1", "X_AVM_DE_GetIPv6Prefix"): lambda **_: prefix_result}
             if prefix_result
@@ -994,7 +1003,7 @@ class TestWanIPv6Prefix:
         assert by_name["fritz_wan_ipv6_prefix_info"].samples == []
 
 
-def _argument(kwargs: dict, name: str):
+def _argument(kwargs: dict, name: str) -> Any:
     """An action argument, given as keyword (reads) or in ``arguments`` (probes)."""
     return kwargs.get(name, kwargs.get("arguments", {}).get(name))
 
@@ -1232,7 +1241,12 @@ class TestWanDataBytes:
 
     ADDON = ("WANCommonIFC1", "GetAddonInfos")
 
-    def _totals(self, mock_fritzconnection: MagicMock, capabilities, overrides=None):
+    def _totals(
+        self,
+        mock_fritzconnection: MagicMock,
+        capabilities: tuple[str, ...],
+        overrides: dict[tuple[str, str], Any] | None = None,
+    ) -> dict[str, float]:
         by_name = collect_device(mock_fritzconnection, services(*capabilities), overrides=overrides)
         return {s.labels["direction"]: s.value for s in by_name["fritz_wan_data_bytes"].samples}
 

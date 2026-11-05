@@ -567,7 +567,7 @@ class TestConfigChecks:
     """Mistakes in the config file are refused with a message that says where."""
 
     @staticmethod
-    def _load(tmp_path: Path, text: str):
+    def _load(tmp_path: Path, text: str) -> ExporterConfig:
         path = tmp_path / "config.yaml"
         path.write_text(text)
         return get_config(str(path))

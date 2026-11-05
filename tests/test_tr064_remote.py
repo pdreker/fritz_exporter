@@ -47,7 +47,7 @@ class TestTr064RemoteAccessSession:
         session = Tr064RemoteAccessSession()
         seen: list[str] = []
 
-        def fake_request(self, method, url, *args: object, **kwargs: Any):  # noqa: ANN001
+        def fake_request(self, method, url, *args: object, **kwargs: Any) -> MagicMock:  # noqa: ANN001
             seen.append(url)
             response = MagicMock()
             response.status_code = 200
@@ -67,7 +67,7 @@ class TestTr064RemoteAccessSession:
         session.mount("https://", HTTPAdapter())  # simulates FritzConnection
         seen: list[str] = []
 
-        def fake_request(self, method, url, *args: object, **kwargs: Any):  # noqa: ANN001
+        def fake_request(self, method, url, *args: object, **kwargs: Any) -> MagicMock:  # noqa: ANN001
             seen.append(url)
             response = MagicMock()
             response.status_code = 200

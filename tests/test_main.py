@@ -2,6 +2,7 @@ import logging
 import os
 import signal
 import threading
+from collections.abc import Iterator
 from importlib.metadata import version
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -14,7 +15,7 @@ from .fc_services_mock import call_action_mock, create_fc_services, fc_services_
 
 
 @pytest.fixture
-def restore_signal_handlers():
+def restore_signal_handlers() -> Iterator[None]:
     saved = {sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)}
     yield
     for sig, handler in saved.items():
@@ -23,7 +24,7 @@ def restore_signal_handlers():
 
 @pytest.mark.usefixtures("restore_signal_handlers")
 @pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGINT])
-def test_wait_for_shutdown_returns_on_signal(sig) -> None:
+def test_wait_for_shutdown_returns_on_signal(sig: signal.Signals) -> None:
     # Container runtimes stop the exporter with SIGTERM; it must return
     # instead of waiting to be killed.
     timer = threading.Timer(0.1, os.kill, (os.getpid(), sig))

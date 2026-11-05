@@ -1,6 +1,7 @@
 import json
 import logging
 import threading
+from collections.abc import Mapping, Sequence
 from http.client import RemoteDisconnected
 from typing import Any
 from unittest.mock import MagicMock, call, patch
@@ -14,6 +15,7 @@ from fritzconnection.core.exceptions import (
 )
 from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import GaugeMetricFamily, Metric
+from prometheus_client.metrics_core import Metric
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from fritzexporter.exceptions import (
@@ -60,7 +62,7 @@ FRITZDEVICE_LOG_SOURCE = "fritzexporter.fritzdevice"
 class TestFritzDevice:
     @pytest.mark.parametrize("capability", fc_services_capabilities.keys())
     def test_should_create_a_device_with_presented_capability(
-        self, mock_fritzconnection: MagicMock, capability, caplog: pytest.LogCaptureFixture
+        self, mock_fritzconnection: MagicMock, capability: str, caplog: pytest.LogCaptureFixture
     ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
@@ -1470,7 +1472,7 @@ class TestFritzCollector:
         assert device_reachable_metrics[0].samples[0].value == 0.0
 
 
-def _mesh_link(**overrides: Any):
+def _mesh_link(**overrides: Any) -> dict[str, Any]:
     link = {
         "uid": "l1",
         "node_1_uid": "n1",
@@ -1485,7 +1487,7 @@ def _mesh_link(**overrides: Any):
     return link
 
 
-def _mesh_topology(link=None, **node_overrides: Any):
+def _mesh_topology(link: object = None, **node_overrides: Any) -> dict[str, Any]:
     master = {
         "uid": "n1",
         "device_name": "fritzbox",
@@ -1504,7 +1506,12 @@ def _mesh_topology(link=None, **node_overrides: Any):
 class TestMeshTopologyParsing:
     """Bad mesh data costs only what it affects, and never the scrape."""
 
-    def _scrape(self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, topology):
+    def _scrape(
+        self,
+        mock_fritzhosts: MagicMock,
+        mock_fritzconnection: MagicMock,
+        topology: dict[str, Any] | list[Any],
+    ) -> str:
         def call_with_mesh(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
                 return {"NewX_AVM-DE_MeshListPath": "/meshlist.lua"}
@@ -1573,7 +1580,7 @@ class TestMeshTopologyParsing:
         mock_fritzhosts: MagicMock,
         mock_fritzconnection: MagicMock,
         caplog: pytest.LogCaptureFixture,
-        topology,
+        topology: dict[str, Any] | list[Any],
         skipped: str,
     ) -> None:
         output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
@@ -1603,7 +1610,7 @@ class TestMeshTopologyParsing:
         mock_fritzhosts: MagicMock,
         mock_fritzconnection: MagicMock,
         caplog: pytest.LogCaptureFixture,
-        link,
+        link: dict[str, Any],
         missing: str,
     ) -> None:
         output = self._scrape(mock_fritzhosts, mock_fritzconnection, _mesh_topology(link))
@@ -1911,7 +1918,7 @@ class TestGetConnectionMode:
 
     @pytest.mark.parametrize("exc", [FritzServiceError, FritzActionError])
     def test_get_connection_mode_keeps_device_available_on_missing_wan(
-        self, mock_fc: MagicMock, exc
+        self, mock_fc: MagicMock, exc: type[Exception]
     ) -> None:
         # A device without a WAN interface (e.g. a mesh repeater) reports no
         # connection mode, but must NOT be marked unavailable — otherwise the
@@ -1919,7 +1926,7 @@ class TestGetConnectionMode:
         # Prepare
         device, fc = self._create_device(mock_fc)
 
-        def raise_missing_service(s, a, **kw: Any):
+        def raise_missing_service(s: str, a: str, **kw: Any) -> dict[str, Any]:
             if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
                 msg = "no WAN service on this device"
                 raise exc(msg)
@@ -1941,7 +1948,7 @@ class TestGetConnectionMode:
         caplog.set_level(logging.DEBUG)
         device, fc = self._create_device(mock_fc)
 
-        def raise_connection_exception(s, a, **kw: Any):
+        def raise_connection_exception(s: str, a: str, **kw: Any) -> dict[str, Any]:
             if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
                 msg = "Connection failed"
                 raise FritzUnreachableError(msg)
@@ -2023,8 +2030,13 @@ class TestMeshListFetch:
     TOPOLOGY = '{"nodes": []}'
 
     def _scrape(
-        self, mock_fritzconnection: MagicMock, *, path_error=None, reply=None, get_error=None
-    ):
+        self,
+        mock_fritzconnection: MagicMock,
+        *,
+        path_error: Exception | None = None,
+        reply: object = None,
+        get_error: Exception | None = None,
+    ) -> tuple[Mapping[str, Metric], set[tuple[str, str]], float]:
         def call_with_mesh(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
                 if path_error is not None and device_ready:
@@ -2113,7 +2125,7 @@ class TestDuplicateSeries:
     def test_mesh_links_to_nodes_of_the_same_name_keep_the_first(self) -> None:
         from fritzexporter.fritzcapabilities import _MeshParser
 
-        def node(uid, name, links=()):
+        def node(uid: str, name: str, links: Sequence[dict[str, Any]] = ()) -> dict[str, Any]:
             interfaces = [{"type": "WLAN", "name": "AP:5G:0", "node_links": list(links)}]
             return {
                 "uid": uid,

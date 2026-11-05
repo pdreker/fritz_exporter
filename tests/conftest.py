@@ -1,6 +1,7 @@
 """Shared test setup."""
 
 import threading
+from collections.abc import Iterator
 from typing import Any, Never
 
 import pytest
@@ -25,7 +26,7 @@ def _no_network(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _offline_retries_finish():
+def _offline_retries_finish() -> Iterator[None]:
     """Wait for the background retries of offline devices a test started.
 
     They run in their own thread; one still running would set up devices with

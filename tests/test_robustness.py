@@ -28,7 +28,7 @@ SECRET = "192.0.2.77"
 LAN_STATS = ("LANEthernetInterfaceConfig1", "GetStatistics")
 
 
-def lan_stats(**fields: Any):
+def lan_stats(**fields: Any) -> dict[str, Any]:
     stats = {
         "NewBytesReceived": 1234,
         "NewBytesSent": 9876,
@@ -39,7 +39,7 @@ def lan_stats(**fields: Any):
     return {k: v for k, v in stats.items() if v is not None}
 
 
-def wlan1_info(**fields: Any):
+def wlan1_info(**fields: Any) -> dict[str, Any]:
     info = call_action_mock("WLANConfiguration1", "GetInfo")
     return {**info, **fields}
 
@@ -47,7 +47,7 @@ def wlan1_info(**fields: Any):
 class Scenario:
     """Two devices; "bad" answers ``overrides`` (raising exceptions) instead of the mock data."""
 
-    def __init__(self, overrides: dict | None = None):
+    def __init__(self, overrides: dict | None = None) -> None:
         self.overrides = {"good": {}, "bad": dict(overrides or {})}
         self.fcs = {host: self._fake_fc(host) for host in ("good", "bad")}
         self.collector = FritzCollector()
@@ -77,7 +77,7 @@ class Scenario:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
         return fc
 
-    def _patched(self):
+    def _patched(self) -> Any:
         # The web UI capabilities are not under test here.
         return patch.multiple(
             "fritzexporter.fritzdevice",
@@ -322,7 +322,7 @@ class TestDeviceLevel:
         assert samples(output, "fritz_lan_status", "GOOD")
 
         # Logged once at registration, quiet while retrying.
-        def errors():
+        def errors() -> list[logging.LogRecord]:
             return [r for r in caplog.records if r.levelno >= logging.ERROR]
 
         assert len(errors()) == 1
@@ -528,7 +528,7 @@ class TestUnexpectedSetupErrors:
         assert changed[0].exc_info is not None
 
 
-def lan_records(caplog: pytest.LogCaptureFixture, level):
+def lan_records(caplog: pytest.LogCaptureFixture, level: int) -> list[str]:
     return [
         r.getMessage()
         for r in caplog.records

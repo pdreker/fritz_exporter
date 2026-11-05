@@ -6,10 +6,12 @@ parsers (``fritz_rest_generic.py``) and the ``WanSegmentUtilization`` /
 """
 
 import logging
+from collections.abc import Callable
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from prometheus_client.metrics_core import Metric
 
 from fritzexporter.fritz_rest_generic import (
     parse_connections_response,
@@ -102,7 +104,9 @@ class TestParseMonitorSegment:
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestWanSegmentUtilization:
-    def _collect(self, mock_fritzconnection: MagicMock, segment_raw: dict | None = None):
+    def _collect(
+        self, mock_fritzconnection: MagicMock, segment_raw: dict | None = None
+    ) -> dict[str, Metric]:
         client = MagicMock()
         client.fetch_page.return_value = {}
         client.fetch_api.return_value = segment_raw or SEGMENT_RAW
@@ -301,7 +305,9 @@ class TestParseConnectionsResponse:
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestWanConnectionStatus:
-    def _collect(self, mock_fritzconnection: MagicMock, connections_raw: list | None = None):
+    def _collect(
+        self, mock_fritzconnection: MagicMock, connections_raw: list | None = None
+    ) -> dict[str, Metric]:
         client = MagicMock()
         client.fetch_page.return_value = {}
         client.fetch_api.return_value = (
@@ -462,7 +468,9 @@ class TestWanConnectionStatus:
         (parse_connections_response, {"other": []}),
     ],
 )
-def test_reply_without_its_data_container_raises(parse, raw: dict[str, Any]) -> None:
+def test_reply_without_its_data_container_raises(
+    parse: Callable[..., object], raw: dict[str, Any]
+) -> None:
     # An empty container means "no data"; a missing one a reply not understood.
     issues = Issues()
     with pytest.raises(DataError, match="missing"):

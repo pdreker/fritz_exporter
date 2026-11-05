@@ -12,14 +12,14 @@ class FCService:
     actions: list[str]
 
 
-def create_fc_services(services_mock):
+def create_fc_services(services_mock: dict[str, Any]) -> dict[str, FCService]:
     services = {}
     for svc, actions in services_mock.items():
         services[svc] = FCService(actions)
     return services
 
 
-def call_http_mock(action, ain=None, **_: Any):
+def call_http_mock(action: str, ain: str | None = None, **_: Any) -> dict[str, Any]:
     return {
         "content": """<?xml version="1.0" encoding="utf-8"?>
         <devicelist version="1">
@@ -233,7 +233,7 @@ def call_action_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]
     return call_action_responses[(service, action)]
 
 
-def call_action_no_basic_mock(service, action, **_: Any):
+def call_action_no_basic_mock(service: str, action: str, **_: Any) -> dict[str, Any]:
 
     if service == "DeviceInfo1" and action == "GetInfo":
         raise FritzServiceError
