@@ -39,7 +39,7 @@ image:
   repository: pdreker/fritz_exporter
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "@sha256:f14f89cbf5cc91cc432bd539be8aba0e79b9571eab4ac645bb04ffd9b1880516"
+  tag: "@sha256:0ec0ff755b6d650fef31839e67b573e0b5d01c18eceb8466466ec3503b1e3b44"
 
 imagePullSecrets: []
 nameOverride: ""
