@@ -12,4 +12,4 @@ permissions:
 
 jobs:
   title:
-    uses: pdreker/github-workflows/.github/workflows/pr-title.yaml@335ab9f615d4a0cf3d29b86e7bebf44a727ab5ab # v1.0.0
+    uses: pdreker/github-workflows/.github/workflows/pr-title.yaml@86c4e71ad830e8a10c9819193ec8b9720b4bd57b # v1.1.0
