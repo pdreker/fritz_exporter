@@ -7,7 +7,7 @@ This document describes project conventions, architecture, and tooling for contr
 **fritz_exporter** is a Prometheus exporter for AVM Fritz! home network devices (routers, repeaters, etc.). It connects to Fritz! devices via the TR-064 API (using the `fritzconnection` Python library), discovers supported capabilities, and exposes metrics in Prometheus format.
 
 - **Entrypoint**: `fritzexporter/__main__.py` → `main()`
-- **Documentation**: MkDocs (Material) in `docs/`, published to [GitHub Pages](https://pdreker.github.io/fritz_exporter/) with mike and to [fritz-exporter.readthedocs.io](https://fritz-exporter.readthedocs.io)
+- **Documentation**: MkDocs (Material) in `docs/`, published to [GitHub Pages](https://pdreker.github.io/fritz_exporter/) with mike (also built on [Read the Docs](https://fritz-exporter.readthedocs.io); links point to GitHub Pages)
 - **Python version**: 3.14+
 
 ---
