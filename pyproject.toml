@@ -147,6 +147,8 @@ ignore = [
 ]
 # Deviation: stand-alone scripts, not part of a package.
 "misc/**" = ["INP001"]
+# Deviation: Sphinx reads docs/conf.py by path and wants a variable named copyright.
+"docs/conf.py" = ["INP001", "A001"]
 
 [tool.ruff.lint.pylint]
 # Pylint's default of 5 flagged UI builders, drawing helpers and filter functions in every
