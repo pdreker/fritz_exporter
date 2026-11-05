@@ -391,7 +391,7 @@ class TestConfigEdgeCases:
     def test_password_too_long_error_message(self) -> None:
 
         with pytest.raises(
-            FritzPasswordTooLongError, match=r"Password\ is\ longer\ than\ 32\ characters"
+            FritzPasswordTooLongError, match=r"Password is longer than 32 characters"
         ):
             DeviceConfig(
                 hostname="fritz.box",
@@ -412,7 +412,7 @@ class TestConfigEdgeCases:
 
         with pytest.raises(
             FritzPasswordFileDoesNotExistError,
-            match=r"password_file\ /this/does/not/exist/password\.txt\ cannot\ be\ read",
+            match=r"password_file /this/does/not/exist/password\.txt cannot be read",
         ):
             DeviceConfig(
                 hostname="fritz.box",
