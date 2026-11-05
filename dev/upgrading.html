@@ -1,0 +1,1637 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Prometheus exporter for AVM Fritz! home network devices">
+      
+      
+      
+        <link rel="canonical" href="https://pdreker.github.io/fritz_exporter/dev/upgrading.html">
+      
+      
+        <link rel="prev" href="quickstart.html">
+      
+      
+        <link rel="next" href="configuration.html">
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Upgrade notes - fritz-exporter</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#upgrade-notes-potentially-breaking-changes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="fritz-exporter" class="md-header__button md-logo" aria-label="fritz-exporter" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            fritz-exporter
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Upgrade notes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/pdreker/fritz_exporter" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    pdreker/fritz_exporter
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="fritz-exporter" class="md-nav__button md-logo" aria-label="fritz-exporter" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    fritz-exporter
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/pdreker/fritz_exporter" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    pdreker/fritz_exporter
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="quickstart.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade notes
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="upgrading.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v400" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v4.0.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v4.0.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changing-labels-moved-to-_info-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changing labels moved to _info metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stricter-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stricter configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-image-and-helm-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker image and Helm chart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-grafana-dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Grafana dashboards
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#legacy-md5-web-login-disabled-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legacy MD5 web login disabled by default
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-donate-data-removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --donate-data removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#devices-without-a-readable-serial-number-are-not-collected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Devices without a readable serial number are not collected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#only-a-device-that-does-not-answer-is-reported-as-unreachable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Only a device that does not answer is reported as unreachable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wan-byte-counters-no-longer-wrap-at-4-gib" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WAN byte counters no longer wrap at 4 GiB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#offline-devices-are-set-up-again-in-the-background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Offline devices are set up again in the background
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unreadable-data-is-skipped-and-reported" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unreadable data is skipped and reported
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown-values-are-no-longer-reported-as-0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown values are no longer reported as 0
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#log-messages-reworked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log messages reworked
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v350" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v3.5.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v3.5.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#remote-access-uses-one-port-for-tr-064-and-the-web-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remote access uses one port for TR-064 and the web interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smart-home-aha-metrics-now-work-over-local-tls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smart home (AHA) metrics now work over local TLS
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v340" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v3.4.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v3.4.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-connection-timeout-added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default connection timeout added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v300" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v3.0.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v3.0.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-listen-address-changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default listen address changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#home-automation-metric-label-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Home automation metric label change
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v200" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.0.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v2.0.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#label-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Label changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wifi-metrics-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WiFi metrics changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v100" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.0.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="configuration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="running.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="docker-images.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="building.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="coding.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v400" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v4.0.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v4.0.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#changing-labels-moved-to-_info-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changing labels moved to _info metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stricter-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stricter configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#docker-image-and-helm-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker image and Helm chart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-grafana-dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Grafana dashboards
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#legacy-md5-web-login-disabled-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legacy MD5 web login disabled by default
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-donate-data-removed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --donate-data removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#devices-without-a-readable-serial-number-are-not-collected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Devices without a readable serial number are not collected
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#only-a-device-that-does-not-answer-is-reported-as-unreachable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Only a device that does not answer is reported as unreachable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wan-byte-counters-no-longer-wrap-at-4-gib" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WAN byte counters no longer wrap at 4 GiB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#offline-devices-are-set-up-again-in-the-background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Offline devices are set up again in the background
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unreadable-data-is-skipped-and-reported" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unreadable data is skipped and reported
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown-values-are-no-longer-reported-as-0" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unknown values are no longer reported as 0
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#log-messages-reworked" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Log messages reworked
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v350" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v3.5.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v3.5.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#remote-access-uses-one-port-for-tr-064-and-the-web-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remote access uses one port for TR-064 and the web interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#smart-home-aha-metrics-now-work-over-local-tls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Smart home (AHA) metrics now work over local TLS
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v340" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v3.4.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v3.4.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-connection-timeout-added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default connection timeout added
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v300" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v3.0.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v3.0.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#default-listen-address-changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Default listen address changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#home-automation-metric-label-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Home automation metric label change
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v200" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v2.0.0
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="v2.0.0">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#label-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Label changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#config-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wifi-metrics-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WiFi metrics changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v100" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        v1.0.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="upgrade-notes-potentially-breaking-changes">Upgrade Notes (potentially breaking changes)<a class="headerlink" href="#upgrade-notes-potentially-breaking-changes" title="Permanent link">&para;</a></h1>
+<h2 id="v400">v4.0.0<a class="headerlink" href="#v400" title="Permanent link">&para;</a></h2>
+<p>The first three sections need action from most users: dashboards and alerts that
+use the moved labels, configs without <code>name</code>, and Docker or Helm setups.</p>
+<h3 id="changing-labels-moved-to-_info-metrics">Changing labels moved to <code>_info</code> metrics<a class="headerlink" href="#changing-labels-moved-to-_info-metrics" title="Permanent link">&para;</a></h3>
+<p>Labels that change while the thing they describe stays the same made a new series
+each time, and for counters a reset: a Fritz!OS update, a reconnect, a mobile
+fallback, a new DHCP lease, a client roaming to the other band. They moved to a
+separate metric with the value <code>1</code>, which you can join on its key labels.</p>
+<ul>
+<li><strong>Device:</strong> <code>fritz_uptime_seconds_total</code> loses <code>modelname</code> and
+  <code>softwareversion</code>; they are in the new <code>fritz_device_info</code>.</li>
+<li><strong>Reachability:</strong> <code>fritz_device_reachable</code> is keyed by <code>friendly_name</code> only and
+  loses <code>serial</code>. A device that was not reachable at startup was reported with
+  <code>serial="n/a"</code> and got a new series once it came online. The serial number is in
+  <code>fritz_device_info</code>.</li>
+<li><strong>Fritz!OS update:</strong> <code>fritz_update_available</code> loses <code>newsoftwareversion</code>; the
+  new <code>fritz_update_info{newsoftwareversion}</code> has a series only while an update is
+  available.</li>
+<li><strong>WAN access type:</strong> <code>fritz_connection_mode</code> loses <code>access_type</code>, and
+  <code>fritz_wan_max_bitrate_bps</code> and <code>fritz_wan_phys_link_status</code> lose <code>wantype</code>
+  (the same value); it is in the new <code>fritz_wan_access_type_info{access_type}</code>.</li>
+<li><strong>PPP:</strong> <code>fritz_ppp_connection_state</code> loses <code>last_error</code>; it is in the new
+  <code>fritz_ppp_connection_info</code>.</li>
+<li><strong>WAN connections:</strong> <code>fritz_wan_connection_uptime_seconds_total</code> and
+  <code>fritz_wan_connection_status</code> lose <code>ip_address</code> and <code>state</code>; both are in the
+  new <code>fritz_wan_connection_info{connection, connection_name, media_type, stack, state, ip_address}</code>.</li>
+<li><strong>WiFi:</strong> <code>fritz_wifi_status</code>, <code>fritz_wifi_channel</code>,
+  <code>fritz_wifi_associations_count</code> and <code>fritz_wifi_packets_count_total</code> are keyed
+  by <code>wifi_index</code> and <code>wifi_name</code> only; <code>ssid</code> and <code>standard</code> are in the new
+  <code>fritz_wifi_info</code>, and the <code>enabled</code> label is the new gauge
+  <code>fritz_wifi_enabled</code>.</li>
+<li><strong>WiFi clients</strong> (<code>wifi_client_info: true</code>): <code>fritz_wifi_client_signal_strength</code>
+  and <code>fritz_wifi_client_speed</code> are keyed by <code>client_mac</code> only; <code>wifi_name</code> and
+  <code>client_ip</code> are in the new <code>fritz_wifi_client_info</code>.</li>
+<li><strong>Hosts</strong> (<code>host_info: true</code>): <code>fritz_host_active</code> and <code>fritz_host_speed</code> are
+  keyed by <code>mac_address</code> only; <code>ip_address</code>, <code>hostname</code>, <code>interface</code>,
+  <code>port</code> and <code>model</code> are in the new <code>fritz_host_info</code>. Hosts without a MAC
+  address (e.g. some VPN clients) are left out, since nothing tells them apart.</li>
+</ul>
+<p>To keep a label in a query, join the <code>_info</code> metric on its key labels, e.g.:</p>
+<div class="highlight"><pre><span></span><code>fritz_host_active * on (serial, mac_address) group_left (hostname) fritz_host_info
+fritz_wifi_associations_count * on (serial, wifi_index) group_left (ssid) fritz_wifi_info
+</code></pre></div>
+<h3 id="stricter-configuration">Stricter configuration<a class="headerlink" href="#stricter-configuration" title="Permanent link">&para;</a></h3>
+<p>The exporter now refuses to start, with one message that names the device and the
+key, on:</p>
+<ul>
+<li>a key it does not know, at the top level or in a device (a typo such as
+  <code>pasword:</code> used to be ignored, and the device then logged in without a
+  password);</li>
+<li>a device without <code>password</code> or <code>password_file</code> in the config file;</li>
+<li>two devices with the same name. <strong>The name now defaults to the hostname</strong>, in the
+  config file and for <code>FRITZ_NAME</code>; it used to be empty in the config file and
+  <code>Fritz!Box</code> from the environment. Without a <code>name</code>, the <code>friendly_name</code>
+  label of your series changes, so set <code>name</code> (or <code>FRITZ_NAME</code>) to keep it.</li>
+<li>a <code>password_file</code> the exporter cannot read, or a password longer than 32
+  characters in it (a long password in <code>password</code> was refused already; from a
+  file it only gave a warning);</li>
+<li>a value of the wrong type for a text key, e.g. <code>name: true</code>. Numbers are taken
+  as written (<code>name: 7590</code> is <code>"7590"</code>); before, a number as <code>name</code> made every
+  scrape fail.</li>
+<li>a number with a fraction or a boolean for a number key, e.g.
+  <code>connection_timeout: 2.5</code> or <code>port: true</code>; these used to be cut to <code>2</code> and
+  taken as <code>1</code>.</li>
+</ul>
+<p>A config file that is not valid YAML, or of the wrong shape, gives that message
+instead of a traceback; it names the line and column, not the text there.</p>
+<h3 id="docker-image-and-helm-chart">Docker image and Helm chart<a class="headerlink" href="#docker-image-and-helm-chart" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The image runs as user <code>nobody</code> (65534) instead of root. <strong>A mounted config
+  file or password file must be readable by that user.</strong> The Helm chart already ran
+  the container as 65534.</li>
+<li>The image sets <code>FRITZ_LISTEN_ADDRESS=0.0.0.0</code>, so a published port reaches the
+  exporter with the environment configuration. With a config file, set
+  <code>listen_address: 0.0.0.0</code> in it.</li>
+<li>The Helm chart puts <code>listen_address: 0.0.0.0</code> into the config secret it creates,
+  unless <code>config</code> sets <code>listen_address</code>. A secret of your own
+  (<code>createConfigSecret: false</code>) must set it.</li>
+<li>The image installs the dependency versions from <code>uv.lock</code>, checked against their
+  hashes.</li>
+<li>The Helm chart takes the container port from <code>config.exporter_port</code> (default
+  9787) and uses <code>service.portName</code> for the container, the service and the
+  ServiceMonitor; both used to be fixed to <code>9787</code> and <code>metrics</code>. A secret of your
+  own that sets <code>exporter_port</code> needs <code>config.exporter_port</code> set to the same value.</li>
+</ul>
+<h3 id="new-grafana-dashboards">New Grafana dashboards<a class="headerlink" href="#new-grafana-dashboards" title="Permanent link">&para;</a></h3>
+<p><code>misc/grafana</code> now holds two dashboards built for 4.0, "Fritz!Exporter Overview" and
+"Fritz!Exporter Home" (see <a href="index.html#grafana-dashboards">Grafana dashboards</a>); the three earlier ones are gone
+from the repository. Dashboards of your own that use the moved labels need the
+<code>_info</code> metrics, see above.</p>
+<h3 id="legacy-md5-web-login-disabled-by-default">Legacy MD5 web login disabled by default<a class="headerlink" href="#legacy-md5-web-login-disabled-by-default" title="Permanent link">&para;</a></h3>
+<p>Devices on Fritz!OS before 7.24 only offer an MD5 login to the web interface,
+which the smart home, DOCSIS, fibre and REST API metrics use. The exporter now refuses
+that login by default: it logs an error and reads no web interface metrics from
+that device until it is restarted; its TR-064 metrics keep working. To get them
+back, upgrade Fritz!OS or set
+<code>allow_unsafe_md5_password: true</code> (env: <code>FRITZ_ALLOW_UNSAFE_MD5_PASSWORD</code>) for
+it. See <a href="configuration.html#md5-login">Legacy MD5 web login</a>.</p>
+<p>Earlier versions did not ask the device for the PBKDF2 login, which Fritz!OS 7.24 and
+later only offer on request, and so used the MD5 login on every firmware. They now ask
+for it, so devices on Fritz!OS 7.24 and later log in with PBKDF2 without any change
+on your side.</p>
+<p>After a refused web login (wrong credentials, or logins blocked by the device) the
+exporter now waits at least a minute, or as long as the device blocks logins, before
+the next attempt. It used to try again for every web interface metric group, which
+made the device block logins longer, also for the browser.</p>
+<p>The exporter now logs in again only when the device rejects the session, not after
+every failed request or every 15 minutes, and it stops sending web interface
+requests for the rest of a scrape once the device does not answer one. A page the
+device refuses right after a login (the exporter's user lacks the right for it) gets
+a new login only every 15 minutes, so a right granted later takes effect; it used to
+cost a login on every scrape, each one an entry in the device's event log. Replies larger than 4 MiB are refused.</p>
+<h3 id="-donate-data-removed"><code>--donate-data</code> removed<a class="headerlink" href="#-donate-data-removed" title="Permanent link">&para;</a></h3>
+<p>The data donation (<code>--donate-data</code>, <code>--upload-data</code>, <code>--sanitize</code>) is gone. To
+help with a device the exporter does not support yet, open an issue.</p>
+<h3 id="devices-without-a-readable-serial-number-are-not-collected">Devices without a readable serial number are not collected<a class="headerlink" href="#devices-without-a-readable-serial-number-are-not-collected" title="Permanent link">&para;</a></h3>
+<p>The serial number is the label that tells devices apart in Prometheus. A
+device that answers but gives no readable serial number is now reported as
+unreachable (<code>fritz_device_reachable 0</code>) instead of being collected with
+<code>serial="n/a"</code>. The exporter retries it three times, then gives up with an error
+in the log until it is restarted. A missing serial in the device's reply used to stop
+the exporter at startup.</p>
+<h3 id="only-a-device-that-does-not-answer-is-reported-as-unreachable">Only a device that does not answer is reported as unreachable<a class="headerlink" href="#only-a-device-that-does-not-answer-is-reported-as-unreachable" title="Permanent link">&para;</a></h3>
+<p>Any TR-064 error used to report the device as unreachable
+(<code>fritz_device_reachable 0</code>) for the scrape and drop the metrics collected after
+it, even when the device answered, e.g. with "action not supported". Now only a
+device that does not answer (refused, timed out, reset) is unreachable; an error
+reply skips the metric group that got it, shown in <code>fritz_read_problem</code>; one for a
+single host, WiFi client or similar skips only that one. A failure to fetch the mesh
+list only skips the mesh metrics. Two mesh links between nodes of the same names on
+the same interface would be two identical series, which made Prometheus refuse the
+whole scrape; the second is now skipped and reported, so give your mesh nodes
+different names.</p>
+<p><code>host_info: true</code> now also works on a device with fewer than two hosts in its host
+table; such a device used to fail its setup and was never collected.</p>
+<h3 id="wan-byte-counters-no-longer-wrap-at-4-gib">WAN byte counters no longer wrap at 4 GiB<a class="headerlink" href="#wan-byte-counters-no-longer-wrap-at-4-gib" title="Permanent link">&para;</a></h3>
+<p>On Fritz!OS 7, <code>fritz_wan_data_bytes_total</code> came from 32-bit totals that wrap
+every 4 GiB, which Prometheus takes as a counter reset: traffic graphs read too low.
+The exporter now takes the 64-bit totals where the device has them (every WAN box
+seen so far). On such a box the counter jumps once after the upgrade, which shows as
+a single spike in rates.</p>
+<h3 id="offline-devices-are-set-up-again-in-the-background">Offline devices are set up again in the background<a class="headerlink" href="#offline-devices-are-set-up-again-in-the-background" title="Permanent link">&para;</a></h3>
+<p>A scrape used to wait while the exporter tried to set up the devices that were
+offline, up to their connection timeout each. A background thread now does that,
+and the scrape returns at once; a device that comes back is collected from the
+next scrape on. The exporter also no longer runs a whole scrape at startup before
+it serves <code>/metrics</code>.</p>
+<h3 id="unreadable-data-is-skipped-and-reported">Unreadable data is skipped and reported<a class="headerlink" href="#unreadable-data-is-skipped-and-reported" title="Permanent link">&para;</a></h3>
+<p>When a value, an item (a host, a channel, ...) or a whole reply cannot be read, the
+exporter skips only that part and reports it in the new <code>fritz_read_problem</code> metric
+and in the log. Before, such a value silently became a gap, or the whole scrape
+failed. See below for the new log messages.</p>
+<h3 id="unknown-values-are-no-longer-reported-as-0">Unknown values are no longer reported as 0<a class="headerlink" href="#unknown-values-are-no-longer-reported-as-0" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Fibre levels:</strong> some fibre boxes answer 0 for both optical levels over TR-064;
+  the exporter then reads them from the web interface. When that fails, it used to
+  export <code>0</code> dBm; now <code>fritz_fiber_optical_signal_level_dBm</code> and
+  <code>fritz_fiber_transmit_optical_level_dBm</code> have no sample, and the failure shows
+  in <code>fritz_read_problem{capability="WanFiberInterfaceConfig",level="partial"}</code>
+  instead of a warning on every scrape.</li>
+<li><strong>DOCSIS channels</strong> without a channel ID used to be exported as channel <code>0</code>,
+  several of them as the same series; they are now skipped and reported.</li>
+<li>A web interface reply without its data part (e.g. a <code>docInfo</code> page without
+  <code>data</code>) used to give no metrics without a word; it is now reported as a read
+  problem. An empty data part still means "no data".</li>
+<li><strong>Smart home:</strong> Fritz!OS leaves an element empty when the value is unknown. An empty
+  <code>&lt;batterylow/&gt;</code> or <code>&lt;lock/&gt;</code> used to be exported as <code>0</code> ("battery fine",
+  "not locked"); it now gives no sample for <code>fritz_ha_battery_low</code> or
+  <code>fritz_ha_switch_lock</code>.</li>
+<li><strong>Thermostats switched off or on:</strong> Fritz!OS reports these as set temperature 253
+  and 254. They used to be exported as 126.5 °C and 127 °C in
+  <code>fritz_ha_heater_set_temperature_C</code> (and the comfort and reduced
+  temperatures); now there is no sample while a thermostat is switched off or on.</li>
+</ul>
+<h3 id="log-messages-reworked">Log messages reworked<a class="headerlink" href="#log-messages-reworked" title="Permanent link">&para;</a></h3>
+<p>Many log messages changed wording, level or frequency. <strong>If you match log messages,
+e.g. for alerts or in a log analysis tool, check your patterns.</strong> For alerting,
+consider the <code>fritz_read_problem</code> and <code>fritz_device_reachable</code> metrics instead,
+which do not depend on wording.</p>
+<ul>
+<li><strong>Device names:</strong> every message about a device names it the same way,
+  "\&lt;name&gt; (\&lt;host&gt;)", e.g. "Fritz!Box 7690 (fritz.box)", or the host alone if the
+  name is the host. Messages used to show the host, the serial number
+  ("device serial …") or no device at all.</li>
+<li><strong>Skipped data</strong> (replaces "Failed to fetch … data from …"):<ul>
+<li>"Could not read \&lt;Capability&gt; data from \&lt;device&gt;, skipping it: \&lt;reason&gt;" — the
+whole capability was skipped for this scrape;</li>
+<li>"Skipped part of the \&lt;Capability&gt; data from \&lt;device&gt;: \&lt;details&gt;" — some values
+or items were skipped;</li>
+<li>"Bug while collecting \&lt;Capability&gt; data from \&lt;device&gt;, …" — an error in the
+exporter, logged at <code>ERROR</code> with a traceback;</li>
+<li>while a problem lasts, the warning is repeated once an hour as
+"…, still since \&lt;time&gt; (\&lt;n&gt; scrapes): …" instead of on every scrape (details at
+<code>DEBUG</code> in between), and "Reading \&lt;Capability&gt; data from \&lt;device&gt; works again"
+is logged at <code>INFO</code> when it is gone.</li>
+</ul>
+</li>
+<li><strong>Devices that stay offline:</strong> "Device \&lt;device&gt; is still offline, now because:
+  \&lt;reason&gt;" at <code>WARNING</code> when the reason changes, and "Giving up on device \&lt;device&gt;:
+  its serial number could not be read \&lt;n&gt; times: …" at <code>ERROR</code>. An
+  unexpected error while setting up a device is logged with its traceback and
+  "(unexpected; please report this)", and keeps only that device offline.</li>
+<li><strong>Web login:</strong> "login not retried for \&lt;n&gt; seconds after: \&lt;reason&gt;" while the
+  exporter waits after a refused login.</li>
+<li><strong>Devices that cannot be set up:</strong> one error, "Failed to initialize device
+  \&lt;device&gt;, it will be reported as down: \&lt;reason&gt;", without a traceback. It replaces
+  "unable to connect to …", "Not authorized to get device info from …" (the reason
+  now ends in "(check username and password)") and "Device \&lt;device&gt; has no detected
+  capabilities." (now a reason, and the exporter keeps running).</li>
+<li><strong>Unreachable during a scrape:</strong> "Device \&lt;device&gt; is unreachable, skipping
+  \&lt;Capability&gt; metrics for this collection cycle: \&lt;reason&gt;" at <code>WARNING</code>, without
+  a traceback.</li>
+</ul>
+<h2 id="v350">v3.5.0<a class="headerlink" href="#v350" title="Permanent link">&para;</a></h2>
+<h3 id="remote-access-uses-one-port-for-tr-064-and-the-web-interface">Remote access uses one port for TR-064 and the web interface<a class="headerlink" href="#remote-access-uses-one-port-for-tr-064-and-the-web-interface" title="Permanent link">&para;</a></h3>
+<p>With <code>remote_access: true</code> (env: <code>FRITZ_REMOTE_ACCESS</code>), <code>port</code> now sets the
+remote HTTPS port for both TR-064 and the web interface (smart home, DOCSIS, fibre and REST
+API metrics). Without <code>port</code> the exporter now uses <code>443</code> for both; it used to
+send TR-064 to <code>49443</code>, which the device does not serve over remote access.</p>
+<p>Local scrapes are not affected: <code>port</code> still sets only the TR-064 port there.
+See <a href="configuration.html#ports">Ports, TLS and remote access</a>.</p>
+<h3 id="smart-home-aha-metrics-now-work-over-local-tls">Smart home (AHA) metrics now work over local TLS<a class="headerlink" href="#smart-home-aha-metrics-now-work-over-local-tls" title="Permanent link">&para;</a></h3>
+<p>With <code>use_tls: true</code> the exporter used to send smart home requests to the
+device's remote access port, which fails on the LAN. When that happened it also
+reported the device as unreachable and skipped the metrics collected after smart
+home. It now sends them to port 443, and a failed smart home fetch no longer marks
+the device unreachable.</p>
+<h2 id="v340">v3.4.0<a class="headerlink" href="#v340" title="Permanent link">&para;</a></h2>
+<h3 id="default-connection-timeout-added">Default connection timeout added<a class="headerlink" href="#default-connection-timeout-added" title="Permanent link">&para;</a></h3>
+<p><code>connection_timeout</code> (env: <code>FRITZ_CONNECTION_TIMEOUT</code>) now defaults to <strong>10
+seconds</strong> instead of no timeout. The timeout is used for the initial TR-064
+connection as well as every HTTP read done during a scrape (including smart-home
+AHA calls), so a slow or wedged device can no longer block the exporter
+indefinitely.</p>
+<p>Setting <code>connection_timeout: 0</code> restores the previous behaviour (no timeout).</p>
+<p><strong>Why:</strong> the exporter used to block a scrape forever on a device that stopped
+responding. Parallel scrapes (e.g. multiple Prometheus instances) would then
+accumulate behind that stuck scrape and all stop receiving metrics until the
+exporter was restarted. The new default bounds this so scrapes complete and
+report the device as unreachable.</p>
+<h2 id="v300">v3.0.0<a class="headerlink" href="#v300" title="Permanent link">&para;</a></h2>
+<h3 id="default-listen-address-changed">Default listen address changed<a class="headerlink" href="#default-listen-address-changed" title="Permanent link">&para;</a></h3>
+<p>The default value of <code>listen_address</code> (env: <code>FRITZ_LISTEN_ADDRESS</code>) has
+changed from <code>0.0.0.0</code> to <code>127.0.0.1</code>.</p>
+<p><strong>Who is affected:</strong> deployments that rely on the old default to expose the
+exporter on all network interfaces — for example, a bare-metal install where
+Prometheus scrapes the exporter over the network without an explicit
+<code>listen_address</code> setting.</p>
+<p><strong>Who is not affected:</strong> Docker/Kubernetes deployments that publish the port
+at the container/pod level; any deployment that already sets
+<code>FRITZ_LISTEN_ADDRESS</code> or <code>listen_address</code> explicitly in the config file.</p>
+<p><strong>What to do:</strong> if you need the exporter to be reachable from another host,
+set <code>listen_address: 0.0.0.0</code> in your config file or
+<code>FRITZ_LISTEN_ADDRESS=0.0.0.0</code> in your environment explicitly. Closes
+<a href="https://github.com/pdreker/fritz_exporter/issues/402">#402</a>.</p>
+<h3 id="home-automation-metric-label-change">Home automation metric label change<a class="headerlink" href="#home-automation-metric-label-change" title="Permanent link">&para;</a></h3>
+<p>All <code>fritz_ha_*</code> Prometheus metrics now include a populated <code>device_id</code>
+label. Previously this label was always emitted as an empty string <code>""</code> due
+to a bug; it now carries the real <code>NewDeviceId</code> value from the Fritz!Box.</p>
+<p><strong>Impact:</strong> Prometheus treats a changed label set as a new time series. On
+the first scrape after upgrading, all existing <code>fritz_ha_*</code> series will be
+replaced by new ones, causing <strong>counter resets</strong>. Any dashboards or alerts
+that filtered on <code>{device_id=""}</code> will stop matching.</p>
+<p><strong>What to do:</strong> update dashboards and alert rules to either remove the
+<code>device_id</code> filter or match the real device ID value. Counter-based panels
+may show a reset spike on the first scrape; this is expected and will
+stabilise on the next collection cycle.</p>
+<h2 id="v200">v2.0.0<a class="headerlink" href="#v200" title="Permanent link">&para;</a></h2>
+<h3 id="label-changes">Label changes<a class="headerlink" href="#label-changes" title="Permanent link">&para;</a></h3>
+<p>Version 2.0.0 changes the <code>direction</code> labels of some metrics to consistently use <code>tx</code> (transmitted, upstream) and <code>rx</code> (received, downstream). Before this change the labels were <code>up</code> and <code>down</code> respectively, while other metrics used <code>tx</code> and <code>rx</code>.</p>
+<p>Affected metrics:</p>
+<ul>
+<li>fritz_wan_data</li>
+<li>fritz_wan_data_packets</li>
+</ul>
+<h3 id="config-changes">Config changes<a class="headerlink" href="#config-changes" title="Permanent link">&para;</a></h3>
+<p>Multi device configuration was dropped from the environment configuration. The <code>FRITZ_EXPORTER_CONFIG</code> environment variable was removed completely. When using environment configuration this exporter now only supports a single device. For multi device support please use the new config file option.</p>
+<h3 id="wifi-metrics-changes">WiFi metrics changes<a class="headerlink" href="#wifi-metrics-changes" title="Permanent link">&para;</a></h3>
+<p>All WiFi metrics have been merged. So e.g. <code>fritz_wifi_2_4GHz_*</code> is changed to <code>fritz_wifi_*</code> and two labels (<code>wifi_index</code> and <code>wifi_name</code>) are added to the metrics.</p>
+<h2 id="v100">v1.0.0<a class="headerlink" href="#v100" title="Permanent link">&para;</a></h2>
+<p>Version 1.0.0 of the exporter has completely reworked how this exports metrics! If you have used this exporter in the past, you will get a completely new set of metrics.</p>
+<ul>
+<li>the metrics prefix has changed from <code>fritzbox_</code> to <code>fritz_</code></li>
+<li>all labels have been converted to lower-case (e.g. <code>Serial</code> -&gt; <code>serial</code>) to be in line with the common usage of labels</li>
+<li>some metrics have been renamed to better reflect their content</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="quickstart.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: Quickstart">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Quickstart
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="configuration.html" class="md-footer__link md-footer__link--next" aria-label="Next: Configuration">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Configuration
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright 2019-2026 Patrick Dreker, Apache License 2.0
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["content.code.copy", "navigation.footer", "search.highlight"], "search": "assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>

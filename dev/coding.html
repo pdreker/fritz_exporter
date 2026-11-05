@@ -1,0 +1,1285 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Prometheus exporter for AVM Fritz! home network devices">
+      
+      
+      
+        <link rel="canonical" href="https://pdreker.github.io/fritz_exporter/dev/coding.html">
+      
+      
+        <link rel="prev" href="building.html">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Code documentation - fritz-exporter</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#code-documentation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="index.html" title="fritz-exporter" class="md-header__button md-logo" aria-label="fritz-exporter" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            fritz-exporter
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Code documentation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/pdreker/fritz_exporter" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    pdreker/fritz_exporter
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="index.html" title="fritz-exporter" class="md-nav__button md-logo" aria-label="fritz-exporter" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    fritz-exporter
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/pdreker/fritz_exporter" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    pdreker/fritz_exporter
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="index.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="quickstart.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="upgrading.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade notes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="configuration.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="running.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="docker-images.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="contributing.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="building.html" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code documentation
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="coding.html" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Code documentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#general-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#module-file-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module / File Map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#startup-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Startup Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration System
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-capability-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Capability System
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tl;dr
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-device-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading Device Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reading Device Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#failures-stay-at-the-level-they-affect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failures stay at the level they affect
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-new-metric-capability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New Metric / Capability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grafana-dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grafana Dashboards
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supporting-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supporting Modules
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#general-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#module-file-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Module / File Map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#startup-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Startup Flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration System
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-capability-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Capability System
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tldr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tl;dr
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-device-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading Device Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reading Device Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#failures-stay-at-the-level-they-affect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failures stay at the level they affect
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-new-metric-capability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New Metric / Capability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#grafana-dashboards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grafana Dashboards
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supporting-modules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supporting Modules
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="code-documentation">Code Documentation<a class="headerlink" href="#code-documentation" title="Permanent link">&para;</a></h1>
+<h2 id="general-structure">General structure<a class="headerlink" href="#general-structure" title="Permanent link">&para;</a></h2>
+<p>fritz_exporter uses some "black magic" (this may be clever, but it makes understanding what's going on a lot harder...) to manage capabilities of devices. This section will try to make some sense of this code... At least for the author...</p>
+<h2 id="module-file-map">Module / File Map<a class="headerlink" href="#module-file-map" title="Permanent link">&para;</a></h2>
+<p>A quick orientation before diving in:</p>
+<div class="highlight"><pre><span></span><code>fritzexporter/
+  __main__.py           – CLI entry point and main loop (parse_cmdline, main)
+  fritzdevice.py        – FritzDevice, FritzCollector, DeviceSpec, FritzCredentials
+  fritzcapabilities.py  – FritzCapability (ABC) + all concrete capability classes
+                          + FritzCapabilities container
+  reply.py              – Typed reading of device replies (Reply, read_action,
+                          Issues, DataError), see &quot;Reading Device Data&quot;
+  tr064_remote.py       – TR-064 connection setup: ports, TLS, timeouts, the
+                          /tr064 prefix for WAN remote access
+  fritz_webui.py        – Web interface client: login, data.lua, REST API, AHA
+  fritz_aha.py          – Parser for the AHA (smart home) device list XML
+  fritz_docsis.py       – Parser for the DOCSIS cable channel page (docInfo)
+  fritz_fiber.py        – Parser for the fibre optical level page (fiberStats)
+  fritz_rest_generic.py – Parsers for REST API connections and segment monitor
+  exceptions.py         – Top-level exceptions
+  config/
+    config.py           – ExporterConfig, DeviceConfig (attrs @define classes)
+                          + get_config() factory
+    exceptions.py       – Config-specific exceptions
+</code></pre></div>
+<h2 id="startup-flow">Startup Flow<a class="headerlink" href="#startup-flow" title="Permanent link">&para;</a></h2>
+<p>The entry point is <code>fritzexporter/__main__.py</code> → <code>main()</code>.</p>
+<ol>
+<li>A <code>FritzCollector</code> is created (empty, no devices yet).</li>
+<li>Configuration is loaded via <code>get_config()</code>, which reads either a YAML file or
+    environment variables and returns an <code>ExporterConfig</code> instance.</li>
+<li>For each <code>DeviceConfig</code> in the config, <code>_register_device()</code> builds a
+    <code>DeviceSpec</code> (credentials, name, options) and hands it to
+    <code>fritzcollector.add_device()</code>, the one place where devices are set up. It
+    instantiates a <code>FritzDevice</code>, which connects to the physical device via
+    <code>fritzconnection</code>, reads its serial number and model, and probes which
+    capabilities it supports (see below).</li>
+<li>A device that was set up is registered. A device that could not be set up —
+    unreachable, wrong credentials, no capabilities, or no readable serial number — is
+    kept as an <code>OfflineDevice</code> with its <code>DeviceSpec</code> instead, logged once without a
+    traceback: it is reported as <code>fritz_device_reachable 0</code> and set up again in the
+    background, started by each scrape, until it works. A device that answers but gives no readable serial number is given up after
+    <code>SERIAL_RETRIES</code> (3) retries, with an error in the log; it stays reported as
+    unreachable until the exporter is restarted. A warning is logged whenever the
+    reason an offline device fails changes.</li>
+<li>The <code>FritzCollector</code> is registered with the Prometheus <code>REGISTRY</code>. Its
+    <code>describe()</code> returns nothing, so registering does not run a scrape to learn the
+    metric names.</li>
+<li>An HTTP server is started (<code>prometheus_client.start_http_server</code>), and the main
+    thread waits forever; scrapes run in the HTTP server's threads.</li>
+</ol>
+<p>When Prometheus scrapes <code>/metrics</code>, <code>FritzCollector.collect()</code> is called. It holds
+a re-entrant lock (<code>threading.RLock</code>) for the whole scrape, so concurrent scrapes do
+not interfere. A scrape that cannot get the lock within <code>SCRAPE_LOCK_TIMEOUT</code>
+(30 s) returns no data and is counted in <code>fritz_scrapes_timeouts_total</code>. Offline
+devices are set up again in one background thread (<code>fritz-offline-retry</code>), which a
+scrape starts unless it is still running; the scrape does not wait for it, so a device
+that takes its connection timeout to fail holds up no scrape.</p>
+<h2 id="configuration-system">Configuration System<a class="headerlink" href="#configuration-system" title="Permanent link">&para;</a></h2>
+<p><code>config/config.py</code> provides two <code>attrs</code> <code>@define</code> classes:</p>
+<p><code>DeviceConfig</code><br />
+Represents one Fritz! device. Fields: <code>hostname</code>, <code>username</code>, <code>password</code>,
+<code>password_file</code>, <code>name</code>, <code>host_info</code>, <code>wifi_client_info</code>,
+<code>connection_timeout</code>, <code>use_tls</code>, <code>port</code>, <code>remote_access</code>,
+<code>allow_unsafe_md5_password</code>. Hostname is
+lowercased automatically via an attrs converter, and the name defaults to it.
+Validators check that a password or password file is given, password length,
+that any password file actually exists, the port range, and that
+<code>remote_access</code> is only set together with <code>use_tls</code>.</p>
+<p><code>ExporterConfig</code><br />
+Top-level exporter configuration. Fields: <code>exporter_port</code> (default 9787),
+<code>log_level</code>, <code>listen_address</code>, <code>devices</code> (list of <code>DeviceConfig</code>).</p>
+<p><code>get_config(path)</code> delegates to either <code>_read_config_file()</code> (YAML) or
+<code>_read_config_from_env()</code> (environment variables) and then calls
+<code>ExporterConfig.from_config(raw_dict)</code>. Both paths hand on only the keys that are
+set, so the defaults live in one place, the field definitions. <code>from_config</code>
+refuses keys the class has no field for, and duplicate device names.</p>
+<p>Both config classes use <code>attrs</code> validators and converters — field values are
+validated and coerced at construction time. Every config problem raises a
+<code>ConfigError</code> (<code>config/exceptions.py</code>) whose message names the device and the
+key; <code>main()</code> logs it as one line and exits.</p>
+<h2 id="the-capability-system">The Capability System<a class="headerlink" href="#the-capability-system" title="Permanent link">&para;</a></h2>
+<p>This is the "black magic" part. Read carefully.</p>
+<p><strong>Auto-registration of subclasses</strong></p>
+<p><code>FritzCapability</code> is an abstract base class (ABC) defined in <code>fritzcapabilities.py</code>.
+Every concrete capability (e.g. <code>DeviceInfo</code>, <code>WanDSLInterfaceConfig</code>) is a
+subclass of it. The <code>__init_subclass__</code> hook fires automatically when Python loads
+each subclass definition and appends the new class to the class-level list
+<code>FritzCapability.subclasses</code>. This means <strong>no manual registration is needed</strong> — just
+define the subclass and it is discovered automatically.</p>
+<p><strong>FritzCapabilities (plural) — the container</strong></p>
+<p><code>FritzCapabilities</code> is a dict-like wrapper around <code>{class_name: instance}</code> for
+every known <code>FritzCapability</code> subclass. It can be constructed in two modes:</p>
+<ul>
+<li><strong>Without a device</strong> — instantiates all subclasses but leaves every instance's
+  <code>present</code> flag as <code>False</code>. Used by <code>FritzCollector</code> to drive the collect loop
+  and hold the metric families.</li>
+<li><strong>With a device</strong> — same construction, then immediately calls <code>check_present()</code>
+  which runs <code>check_capability()</code> on every instance against that specific device.</li>
+</ul>
+<p><strong>Capability probing (check_capability)</strong></p>
+<p><code>FritzCapability.check_capability(device)</code> performs a <em>two-stage</em> check:</p>
+<ol>
+<li><strong>Static check</strong>: each capability declares a <code>self.requirements</code> list of
+    <code>(service, action)</code> tuples. The method verifies that each service exists in
+    <code>device.fc.services</code> and that the action is listed in that service's actions dict.</li>
+<li><strong>Live call check</strong>: even if the static check passes, some Fritz! devices advertise
+    services they do not actually support. The method therefore tries to <em>call</em> each
+    requirement and, if <code>FritzServiceError</code>, <code>FritzActionError</code>, or similar
+    exceptions are raised, it marks the capability <code>present = False</code> again.</li>
+</ol>
+<p>Some capabilities replace this check: <code>HostInfo</code> and <code>WlanAssociatedDevices</code> are
+only present when enabled in the device config (<code>host_info</code>, <code>wifi_client_info</code>),
+<code>WanDocsisCable</code> is detected by the WAN access type, and <code>WlanConfigurationInfo</code>
+checks each WLAN band on its own.</p>
+<p>The <code>present</code> flag of each <code>FritzCapability</code> instance reflects whether <em>that</em>
+device supports <em>that</em> capability.</p>
+<p><strong>The collect loop</strong></p>
+<p>When <code>FritzCollector.collect()</code> runs:</p>
+<ol>
+<li>The background retry of offline devices is started, unless it is still running or
+    every offline device was given up. Devices that the previous retry set up are
+    registered now, so they are collected one scrape after they come back.</li>
+<li><code>FritzDevice.add_connection_mode()</code> adds each device's sample to one
+    <code>fritz_connection_mode</code> gauge (DSL/fibre/mobile/cable/offline).</li>
+<li>The collector holds its own <code>FritzCapabilities</code> instance, built without a device:
+    one instance of every capability class, used only to drive the loop and to hold the
+    metric families. For each capability <code>capa</code> in it, <code>capa.get_metrics(devices, name)</code> is called:<ol>
+<li><code>capa.create_metrics()</code> re-creates the Prometheus metric families, clearing
+    the values of the previous scrape.</li>
+<li>It iterates over <strong>every registered device</strong> and calls
+    <code>capa._generate_metric_values(device)</code> only when
+    <code>device.capabilities[name].present</code> is <code>True</code> for that device. Each call is
+    guarded, see <em>Reading Device Data</em> below.</li>
+<li><code>capa._get_metric_values()</code> yields all its metric families (<code>self.metrics</code>).</li>
+</ol>
+</li>
+<li>The self-monitoring metrics follow: <code>fritz_scrapes_total</code>,
+    <code>fritz_scrapes_timeouts_total</code>, <code>fritz_scrapes_failed_total</code>,
+    <code>fritz_device_reachable</code> and <code>fritz_read_problem</code>.</li>
+</ol>
+<p>All device data is collected before anything is yielded, so the availability reported
+in <code>fritz_device_reachable</code> matches the data of the same scrape.</p>
+<p>The indirection — one capability instance per class drives the loop, the per-device
+capability flags decide whether values are fetched — is the key to understanding the
+flow.</p>
+<h2 id="tldr">tl;dr<a class="headerlink" href="#tldr" title="Permanent link">&para;</a></h2>
+<p><code>FritzCollector</code> has a list of <code>FritzDevice</code>s and its own <code>FritzCapabilities</code>
+collection with one instance of every capability class.</p>
+<p>Each <code>FritzDevice</code> has its <strong>own</strong> <code>FritzCapabilities</code> collection recording which
+capabilities <em>that</em> device actually supports (and, per capability, the current read
+problem, see below).</p>
+<p>During <code>collect()</code>, the collector's set drives iteration; the per-device sets gate
+whether values are fetched from each device.</p>
+<h2 id="reading-device-data">Reading Device Data<a class="headerlink" href="#reading-device-data" title="Permanent link">&para;</a></h2>
+<p>Every value taken from a device — a TR-064 action result, a <code>data.lua</code> or REST API
+JSON object, an element of the AHA XML — is read through <code>fritzexporter/reply.py</code>,
+never by indexing the raw data:</p>
+<ul>
+<li><code>read_action(device, service, action, **arguments)</code> calls a TR-064 action and
+  returns a <code>Reply</code>, a read-only typed view on the result. <code>Reply(raw, source)</code>
+  wraps a JSON object the same way.</li>
+<li><code>reply.num(key)</code>, <code>reply.integer(key)</code>, <code>reply.flag(key)</code> and
+  <code>reply.text(key, default)</code> read a required value; the <code>opt_*</code> variants return
+  <code>None</code> instead. <code>reply.opt_obj(key)</code> and <code>reply.items(key)</code> read nested
+  objects and lists; <code>issues.objects(reply, key)</code> walks a list of objects.
+  <code>to_float</code>/<code>to_int</code>/<code>to_bool</code>/<code>to_str</code> do the same for single values, e.g.
+  list items or XML text.</li>
+</ul>
+<p>One rule applies everywhere: a value that is missing, <code>None</code>, <code>""</code>, <code>[]</code> or <code>{}</code>
+is <em>absent</em> (empty containers, because JSON encoders for Lua — which the web interface
+is written in — send an empty list as <code>{}</code> and vice versa)
+(required reads raise, optional reads return <code>None</code>); a value that is present but
+not of the requested type raises <code>DataError</code>. Numbers come back as <code>int</code>/<code>float</code>
+and labels as <code>str</code>. A <code>DataError</code> names the source and field, never the value.</p>
+<h3 id="failures-stay-at-the-level-they-affect">Failures stay at the level they affect<a class="headerlink" href="#failures-stay-at-the-level-they-affect" title="Permanent link">&para;</a></h3>
+<p>A failure should cost only what depends on it, and must move up a level when that
+level depends on it. Prometheus handles gaps; the exporter logs each one, so a gap
+in a graph can be matched to a log line.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Example</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Value</td>
+<td>the MER of one DOCSIS channel is "abc"</td>
+<td>only the samples built from it</td>
+</tr>
+<tr>
+<td>Item</td>
+<td>a host, channel or WLAN band has an unreadable label</td>
+<td>only that item</td>
+</tr>
+<tr>
+<td>Capability</td>
+<td>the reply is not an object, a list is not a list, or a value the whole capability depends on</td>
+<td>that capability of that device in this scrape (no partial set)</td>
+</tr>
+<tr>
+<td>Capability</td>
+<td>a bug in the exporter (<code>KeyError</code>, <code>TypeError</code>, ...)</td>
+<td>as above, logged with a traceback on every scrape</td>
+</tr>
+<tr>
+<td>Device</td>
+<td>the device answers, but its serial number cannot be read</td>
+<td>registered offline; given up after <code>SERIAL_RETRIES</code> (3) retries</td>
+</tr>
+<tr>
+<td>Capability</td>
+<td>the device answers a TR-064 request with an error (<code>FritzActionError</code>, ...)</td>
+<td>that capability of that device in this scrape</td>
+</tr>
+<tr>
+<td>Device</td>
+<td>the device does not answer (<code>tr064_remote.TRANSPORT_ERRORS</code>)</td>
+<td>unreachable for this scrape</td>
+</tr>
+</tbody>
+</table>
+<p>How the levels are built:</p>
+<ul>
+<li><strong>Value</strong>: read through the <code>Issues</code> collector of the capability, <code>self.issues</code>:
+  <code>self.issues.num(reply, key)</code>, <code>opt_num</code>, <code>num_or</code>, <code>opt_integer</code>, <code>flag</code>,
+  <code>equals</code>, <code>text</code>, <code>convert</code>. They behave like the <code>Reply</code> methods but record a
+  <code>DataError</code> and return <code>None</code>; <code>self._add(metric, labels, value)</code> adds no
+  sample for <code>None</code>.</li>
+<li><strong>Item</strong>: wrap the item in <code>with self._item("host 3"):</code> (in a capability) or
+  <code>with issues.item(...)</code> (in a parser). A <code>DataError</code> inside skips the rest of
+  the block and drops the samples it already added. <code>issues.objects(reply, key)</code>
+  skips list elements that are no objects.</li>
+<li><strong>Capability</strong>: anything read strictly (<code>reply.num()</code>, <code>reply.text()</code> without
+  <code>self.issues</code>) outside an item. Read a value strictly when the capability depends
+  on it, e.g. a label shared by all its samples or a count that drives a loop.</li>
+<li><strong>Device</strong>: <code>FritzDevice.get_device_info</code> raises <code>FritzDeviceSerialUnknownError</code>;
+  the device is not collected, because the serial is the label that tells devices
+  apart (names are unique only among the configured devices).</li>
+</ul>
+<p><code>FritzCapability._collect_device</code>, called by <code>get_metrics</code> for each device, guards
+its <code>_generate_metric_values</code> call.
+In every case below, the samples that device added to the capability are dropped, so
+no partial set is exported:</p>
+<ul>
+<li>a connection error marks the device unavailable for this scrape;</li>
+<li>a <code>FritzWebUiError</code> or <code>DataError</code> skips the capability for this scrape;</li>
+<li>any other error (<code>KeyError</code>, <code>TypeError</code>, ...) is a bug, since all reads go
+  through <code>reply.py</code>: it is contained the same way, so it does not break the scrape,
+  but logged with a traceback on every scrape.</li>
+</ul>
+<p>Before samples are kept, they are checked to be renderable (numeric value, <code>str</code>
+labels), because <code>prometheus_client</code> converts values only while rendering the
+scrape.</p>
+<p><strong>Reporting.</strong> Each device and capability keeps its current problem level
+(<code>partial</code>, <code>skipped</code> or <code>error</code>):</p>
+<ul>
+<li><code>fritz_read_problem{capability, level}</code> is <code>1</code> while a problem lasts, so a gap in
+  a graph can be explained from Prometheus alone, even weeks later. It is exported only
+  for reachable devices (for the others, nothing was read). <code>get_connection_mode</code>
+  reports its problems the same way, as <code>capability="ConnectionMode"</code>;
+  <code>report_problem()</code> does the bookkeeping for both;</li>
+<li>a warning is logged when a problem appears or changes level, a reminder with the
+  start time every hour (<code>PROBLEM_REMINDER_INTERVAL</code>) while it lasts, the details at
+  debug level on the other scrapes, and an info line when it is gone. Comparing the
+  level, not the text, keeps changing item indexes from causing new warnings.</li>
+</ul>
+<p>A capability does not catch errors itself, except where it can do better than skip,
+e.g. when TR-064 answers 0 for both fibre levels, they come from the web interface
+instead, and a failure there leaves them out but keeps the rest of the fibre data.</p>
+<h2 id="adding-a-new-metric-capability">Adding a New Metric / Capability<a class="headerlink" href="#adding-a-new-metric-capability" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Open <code>fritzexporter/fritzcapabilities.py</code>.</li>
+<li>Create a new subclass of <code>FritzCapability</code>. The name of the class becomes the key
+    used to look up the capability in every <code>FritzCapabilities</code> dict.</li>
+<li>In <code>__init__</code>, call <code>super().__init__()</code> and then populate
+    <code>self.requirements</code> with the <code>(service, action)</code> tuples the metric requires.
+    These are TR-064 service/action pairs as exposed by <code>fritzconnection</code>.</li>
+<li>Implement <code>create_metrics(self)</code> — create the metric families with
+    <code>self._gauge(key, name, help, *labels, unit=...)</code> for current values and
+    <code>self._counter(...)</code> for monotonically increasing counters; both put the
+    <code>serial</code> and <code>friendly_name</code> labels first. Name new metrics
+    by the <a href="https://prometheus.io/docs/practices/naming/">Prometheus naming rules</a>
+    (base units as a suffix via <code>unit=</code>, <code>_total</code> for counters, ratios 0–1); existing
+    names are kept as they are for compatibility, even where they predate these rules.</li>
+<li>Implement <code>_generate_metric_values(self, device)</code> — call the TR-064 actions via
+    <code>read_action(device, service, action)</code> and add samples with
+    <code>self._add(key, labels, self.issues.num(reply, field))</code>, keeping failures at
+    their level (see <em>Reading Device Data</em>).</li>
+<li>If the capability reads the web interface, set <code>uses_webui = True</code> and get the
+    client with <code>self._webui(device)</code>; if a config option switches it on, override
+    <code>enabled(device)</code>; if a requirement needs arguments to be probed, override
+    <code>_probe()</code>. Tables read by index go through <code>self._enumerate()</code>.</li>
+<li>Add tests in <code>tests/test_fritzcapabilities.py</code> using the mock infrastructure in
+    <code>tests/fc_services_mock.py</code>; <code>collect_device()</code> in <code>tests/collect.py</code> sets
+    up one fake device and scrapes it. No further registration is needed; the subclass is
+    discovered automatically via <code>__init_subclass__</code>.</li>
+<li>Show the new metrics in the overview dashboard, see <em>Grafana Dashboards</em> below.</li>
+</ol>
+<h2 id="grafana-dashboards">Grafana Dashboards<a class="headerlink" href="#grafana-dashboards" title="Permanent link">&para;</a></h2>
+<p><code>misc/grafana/build_dashboards.py</code> writes the two dashboards in <code>misc/grafana</code>
+(classic dashboard JSON, Grafana 10 and later). Edit the script, never the JSON, and
+run it:</p>
+<div class="highlight"><pre><span></span><code>uv run python misc/grafana/build_dashboards.py
+</code></pre></div>
+<p><code>tests/test_grafana_dashboards.py</code> fails when the JSON is not what the script
+writes, when a metric family of the exporter is missing from the overview, when a
+query does not select the device (<code>friendly_name="$device"</code>), when a query uses a
+label or label value that the demo exporter's boxes do not send, or when panels
+overlap.</p>
+<p>To look at the dashboards, run Prometheus and Grafana (e.g. in containers) and let
+Prometheus scrape your exporter and <code>misc/grafana/demo_exporter.py</code>. The demo
+exporter serves a cable and a fibre box with smart home devices, built from the test
+fixtures, with values that change over time, so the panels for hardware you do not
+have show data:</p>
+<div class="highlight"><pre><span></span><code>uv run python misc/grafana/demo_exporter.py 9788
+</code></pre></div>
+<h2 id="supporting-modules">Supporting Modules<a class="headerlink" href="#supporting-modules" title="Permanent link">&para;</a></h2>
+<p><strong>reply.py</strong></p>
+<p>Typed reading of every device reply and the <code>Issues</code> collector for the value and item
+level; see <em>Reading Device Data</em>.</p>
+<p><strong>tr064_remote.py</strong></p>
+<p>Creates the <code>FritzConnection</code> for a device (<code>create_fritz_connection</code>) from its
+<code>ConnectionOptions</code>: TR-064 and web interface ports, TLS, the per-request timeout
+(fritzconnection's own HTTP calls have none), and, for WAN remote access, a session
+that prefixes TR-064 paths with <code>/tr064</code>.</p>
+<p><strong>fritz_webui.py</strong></p>
+<p><code>FritzWebUiClient</code>, the client for everything only the web interface offers: the
+challenge-response login (PBKDF2; the legacy MD5 login only with
+<code>allow_unsafe_md5_password</code>), <code>data.lua</code> pages, the <code>/api/v0</code> REST API and the
+AHA smart home interface. All requests go through <code>_request</code>, which reads at most
+<code>MAX_RESPONSE_BYTES</code> (4 MiB) of a reply. Errors are raised as <code>FritzWebUiError</code>
+with texts that never contain the session id. The client logs in again only when the
+device rejects the session (HTTP 401/403, or the HTML login page instead of JSON).
+Once a request finds the device not answering, the other web interface requests of
+the scrape fail at once (<code>start_scrape()</code> resets this). A device that offers only
+the MD5 login, which is not allowed for it, gets no web interface requests until the
+exporter is restarted.</p>
+<p><strong>fritz_aha.py, fritz_docsis.py, fritz_fiber.py, fritz_rest_generic.py</strong></p>
+<p>Parsers for the web interface replies: the AHA device list (XML, via <code>defusedxml</code>),
+the DOCSIS channel page, the fibre optical level history and the REST API connection
+and segment monitor endpoints. Each turns a raw reply into typed data through
+<code>reply.py</code> and takes an <code>Issues</code> collector, so a defective value or item is
+skipped and recorded instead of failing the whole capability.</p>
+<p><strong>exceptions.py</strong></p>
+<p>Defines <code>FritzDeviceHasNoCapabilitiesError</code>, raised when a device is connected
+successfully but no capabilities are detected, and <code>FritzDeviceSerialUnknownError</code>,
+raised when its serial number cannot be read. In both cases the device is registered
+offline. Config-specific exceptions are in <code>config/exceptions.py</code>, web interface
+exceptions in <code>fritz_webui.py</code> and <code>DataError</code> in <code>reply.py</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="building.html" class="md-footer__link md-footer__link--prev" aria-label="Previous: Building">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Building
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright 2019-2026 Patrick Dreker, Apache License 2.0
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["content.code.copy", "navigation.footer", "search.highlight"], "search": "assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>
