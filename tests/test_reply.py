@@ -279,7 +279,6 @@ class TestIssues:
 
 class TestRequireKey:
     def test_missing_container_is_an_error_an_empty_one_is_not(self) -> None:
-        from fritzexporter.reply import Reply
 
         assert Reply({"data": []}, "x").require_key("data").items("data") == []
         reply = Reply({}, "x")

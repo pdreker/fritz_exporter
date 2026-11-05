@@ -22,6 +22,7 @@ from fritzexporter.fritz_webui import (
     FritzWebUiMd5DisabledError,
     _failure_text,
     _http_error_text,
+    _Reply,
 )
 
 from .web_replies import web_reply as _resp
@@ -1118,7 +1119,6 @@ class TestJsonReplies:
         ids=["deep-nesting", "bad-encoding", "bad-json"],
     )
     def test_unreadable_json_is_a_web_interface_error(self, body: bytes, expected: str) -> None:
-        from fritzexporter.fritz_webui import _Reply
 
         with pytest.raises(FritzWebUiError) as exc:
             FritzWebUiClient._json(_Reply(body, "application/json"), "x")

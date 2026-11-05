@@ -13,7 +13,6 @@ from fritzconnection.core.exceptions import (
 )
 from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import Metric
-from prometheus_client.metrics_core import Metric
 
 from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiError
 from fritzexporter.fritzcapabilities import (
@@ -23,6 +22,7 @@ from fritzexporter.fritzcapabilities import (
     report_problem,
 )
 from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
+from fritzexporter.tr064_remote import FritzUnreachableError
 
 from .collect import collect_device, fake_device, sample_map, services
 from .fc_services_mock import (
@@ -1047,7 +1047,6 @@ class TestProbing:
     ) -> None:
         # A timeout must not disable a capability until restart: the device is
         # set up again later instead.
-        from fritzexporter.tr064_remote import FritzUnreachableError
 
         def timing_out(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("LANEthernetInterfaceConfig1", "GetStatistics"):

@@ -1,7 +1,10 @@
 from typing import Any
 from unittest.mock import MagicMock, patch
+from xml.etree.ElementTree import ParseError
 
+import pytest
 import requests
+from fritzconnection.core.exceptions import FritzConnectionException
 from requests.adapters import HTTPAdapter
 
 from fritzexporter.tr064_remote import (
@@ -106,8 +109,6 @@ class TestCreateFritzConnection:
 
     @patch("fritzexporter.tr064_remote.FritzConnection")
     def test_request_timeout_becomes_fritz_connection_exception(self, mock_fc: MagicMock) -> None:
-        import pytest
-        from fritzconnection.core.exceptions import FritzConnectionException
 
         captured_sessions: list[requests.Session] = []
 
@@ -164,10 +165,6 @@ class TestCreateFritzConnection:
 
     @patch("fritzexporter.tr064_remote.FritzConnection")
     def test_parse_error_becomes_fritz_connection_exception(self, mock_fc: MagicMock) -> None:
-        from xml.etree.ElementTree import ParseError
-
-        import pytest
-        from fritzconnection.core.exceptions import FritzConnectionException
 
         mock_fc.side_effect = ParseError("not well-formed")
 

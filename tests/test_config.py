@@ -8,11 +8,16 @@ from fritzexporter.config import (
     ConfigError,
     ConfigFileUnreadableError,
     DeviceConfig,
+    DeviceNamesNotUniqueError,
     EmptyConfigError,
     ExporterConfig,
     FritzRemoteAccessRequiresTlsError,
     NoDevicesFoundError,
     get_config,
+)
+from fritzexporter.config.exceptions import (
+    FritzPasswordFileDoesNotExistError,
+    FritzPasswordTooLongError,
 )
 
 
@@ -370,13 +375,11 @@ class TestConfigEdgeCases:
         assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
 
     def test_duplicate_device_names_are_an_error(self) -> None:
-        from fritzexporter.config import DeviceNamesNotUniqueError
 
         with pytest.raises(DeviceNamesNotUniqueError, match="used more than once: Bla"):
             get_config("tests/conffiles/namesnotunique.yaml")
 
     def test_password_too_long_raises_error(self) -> None:
-        from fritzexporter.config.exceptions import FritzPasswordTooLongError
 
         with pytest.raises(FritzPasswordTooLongError):
             DeviceConfig(
@@ -386,7 +389,6 @@ class TestConfigEdgeCases:
             )
 
     def test_password_too_long_error_message(self) -> None:
-        from fritzexporter.config.exceptions import FritzPasswordTooLongError
 
         try:
             DeviceConfig(
@@ -398,7 +400,6 @@ class TestConfigEdgeCases:
             assert "Password is longer than 32 characters" in str(e)
 
     def test_password_file_not_found_raises_error(self) -> None:
-        from fritzexporter.config.exceptions import FritzPasswordFileDoesNotExistError
 
         with pytest.raises(FritzPasswordFileDoesNotExistError):
             DeviceConfig(
@@ -408,7 +409,6 @@ class TestConfigEdgeCases:
             )
 
     def test_password_file_not_found_error_message(self) -> None:
-        from fritzexporter.config.exceptions import FritzPasswordFileDoesNotExistError
 
         try:
             DeviceConfig(
@@ -660,7 +660,6 @@ class TestConfigChecks:
         assert get_config(None).devices[0].name == "box.lan"
 
     def test_two_devices_without_name_on_one_host_are_an_error(self, tmp_path: Path) -> None:
-        from fritzexporter.config import DeviceNamesNotUniqueError
 
         with pytest.raises(DeviceNamesNotUniqueError, match="fritz.box"):
             self._load(
@@ -689,7 +688,6 @@ class TestTextValues:
 
     @pytest.mark.skipif(os.geteuid() == 0, reason="root reads any file")
     def test_unreadable_password_file_is_refused(self, tmp_path: Path) -> None:
-        from fritzexporter.config.exceptions import FritzPasswordFileDoesNotExistError
 
         secret = tmp_path / "pw"
         secret.write_text("secret")
@@ -700,7 +698,6 @@ class TestTextValues:
     def test_too_long_password_in_a_file_is_refused_like_in_the_config(
         self, tmp_path: Path
     ) -> None:
-        from fritzexporter.config.exceptions import FritzPasswordTooLongError
 
         secret = tmp_path / "pw"
         secret.write_text("x" * 33 + "\n")

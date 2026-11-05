@@ -15,13 +15,14 @@ from fritzconnection.core.exceptions import (
 )
 from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import GaugeMetricFamily, Metric
-from prometheus_client.metrics_core import Metric
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
+from fritzexporter.config import DeviceConfig
 from fritzexporter.exceptions import (
     FritzDeviceHasNoCapabilitiesError,
     FritzDeviceSerialUnknownError,
 )
+from fritzexporter.fritzcapabilities import _MeshParser
 from fritzexporter.fritzdevice import (
     DeviceSpec,
     FritzCollector,
@@ -2015,7 +2016,6 @@ class TestNoPasswordInRepr:
             assert "s3cret-pw" not in repr(obj)
 
     def test_device_config(self) -> None:
-        from fritzexporter.config import DeviceConfig
 
         config = DeviceConfig(
             hostname="fritz.box", username="user", password="s3cret-pw", name="Box"
@@ -2123,7 +2123,6 @@ class TestDuplicateSeries:
     """Two samples with the same labels would make Prometheus reject the scrape."""
 
     def test_mesh_links_to_nodes_of_the_same_name_keep_the_first(self) -> None:
-        from fritzexporter.fritzcapabilities import _MeshParser
 
         def node(uid: str, name: str, links: Sequence[dict[str, Any]] = ()) -> dict[str, Any]:
             interfaces = [{"type": "WLAN", "name": "AP:5G:0", "node_links": list(links)}]
