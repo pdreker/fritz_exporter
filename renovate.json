@@ -8,6 +8,12 @@
       "matchPackageNames": ["python"],
       "matchUpdateTypes": ["major", "minor"],
       "enabled": false
+    },
+    {
+      "description": "The chart's own image follows the chart appVersion (release-please); a pinned digest in values.yaml freezes it and breaks the image reference (repository:@sha256:…)",
+      "matchManagers": ["helm-values"],
+      "matchPackageNames": ["pdreker/fritz_exporter"],
+      "enabled": false
     }
   ]
 }
