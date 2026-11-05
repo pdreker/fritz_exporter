@@ -5,9 +5,6 @@ description = "Prometheus exporter for AVM Fritz! Devices"
 authors = [{name = "Patrick Dreker", email = "patrick@dreker.de"}]
 license = "Apache-2.0"
 readme = "README.md"
-homepage = "https://github.com/pdreker/fritz_exporter"
-repository = "https://github.com/pdreker/fritz_exporter"
-documentation = "https://pdreker.github.io/fritz_exporter/"
 keywords = ["prometheus", "fritz", "router", "grafana"]
 classifiers = [
     "Development Status :: 6 - Mature",
