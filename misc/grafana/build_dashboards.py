@@ -255,7 +255,7 @@ def label_stat(title: str, expr: str, legend: str, *, description: str = "") -> 
     )
 
 
-def gauge(  # noqa: PLR0913
+def gauge(
     title: str,
     queries: list[dict],
     *,
@@ -331,7 +331,7 @@ def bars(  # noqa: PLR0913
     )
 
 
-def table(  # noqa: PLR0913
+def table(
     title: str,
     queries: list[dict],
     *,

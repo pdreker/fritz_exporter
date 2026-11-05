@@ -105,8 +105,8 @@ class TestCreateFritzConnection:
 
     @patch("fritzexporter.tr064_remote.FritzConnection")
     def test_request_timeout_becomes_fritz_connection_exception(self, mock_fc: MagicMock):
-        from fritzconnection.core.exceptions import FritzConnectionException
         import pytest
+        from fritzconnection.core.exceptions import FritzConnectionException
 
         captured_sessions: list[requests.Session] = []
 
@@ -165,8 +165,8 @@ class TestCreateFritzConnection:
     def test_parse_error_becomes_fritz_connection_exception(self, mock_fc: MagicMock):
         from xml.etree.ElementTree import ParseError
 
-        from fritzconnection.core.exceptions import FritzConnectionException
         import pytest
+        from fritzconnection.core.exceptions import FritzConnectionException
 
         mock_fc.side_effect = ParseError("not well-formed")
 

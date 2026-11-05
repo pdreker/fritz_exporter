@@ -34,7 +34,7 @@ def fake_actions(overrides: Mapping[tuple[str, str], Override] | None = None) ->
     """``call_action_mock`` with the replies in ``overrides`` replaced."""
     overrides = overrides or {}
 
-    def call_action(service: str, action: str, **kwargs: Any) -> Any:  # noqa: ANN401
+    def call_action(service: str, action: str, **kwargs: Any) -> Any:
         override = overrides.get((service, action))
         if callable(override):
             return override(**kwargs)
@@ -59,7 +59,7 @@ def fake_device(
     return FritzDevice(FritzCredentials("somehost", "someuser", "password"), name, host_info=host_info)
 
 
-def collect_device(  # noqa: PLR0913
+def collect_device(
     mock_fritzconnection: MagicMock,
     device_services: dict[str, list[str]],
     *,

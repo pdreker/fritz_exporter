@@ -16,9 +16,8 @@ from fritzexporter.fritz_rest_generic import (
     parse_monitor_segment,
 )
 from fritzexporter.fritz_webui import FritzWebUiError
-from fritzexporter.reply import DataError, Issues
-
 from fritzexporter.fritzdevice import FritzCollector
+from fritzexporter.reply import DataError, Issues
 
 from .collect import CABLE, collect_device, fake_device, sample_map, services
 

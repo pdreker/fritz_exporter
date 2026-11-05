@@ -5,9 +5,9 @@ Prometheus gets it, so a failure that would only show while rendering is caught.
 """
 
 import logging
-from xml.etree.ElementTree import ParseError
 import threading
 from unittest.mock import MagicMock, patch
+from xml.etree.ElementTree import ParseError
 
 import pytest
 from fritzconnection.core.exceptions import FritzActionError, FritzConnectionException

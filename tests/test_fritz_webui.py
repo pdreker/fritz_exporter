@@ -24,8 +24,6 @@ from fritzexporter.fritz_webui import (
 
 from .web_replies import web_reply as _resp
 
-
-
 # ---------------------------------------------------------------------------
 # FritzWebUiClient authentication
 # ---------------------------------------------------------------------------

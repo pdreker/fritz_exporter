@@ -6,12 +6,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 from prometheus_client.core import Metric
 
-from fritzexporter.reply import DataError, Issues
 from fritzexporter.fritz_docsis import parse_docsis_response
 from fritzexporter.fritz_webui import FritzWebUiError
+from fritzexporter.reply import DataError, Issues
 
 from .collect import CABLE, collect_device, fake_device, sample_map, services
-
 
 # ---------------------------------------------------------------------------
 # Sample data.lua?page=docInfo payload (modeled on the real Fritz!Box response)

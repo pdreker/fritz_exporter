@@ -13,15 +13,16 @@ from fritzconnection.core.exceptions import (
 from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import Metric
 
-from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
+from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiError
 from fritzexporter.fritzcapabilities import (
     FritzCapabilities,
     ProblemLevel,
     ProblemState,
     report_problem,
 )
-from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiError
+from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
 
+from .collect import collect_device, fake_device, sample_map, services
 from .fc_services_mock import (
     call_action_mock,
     call_http_mock,
@@ -29,7 +30,6 @@ from .fc_services_mock import (
     fc_services_capabilities,
     fc_services_devices,
 )
-from .collect import collect_device, fake_device, sample_map, services
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")

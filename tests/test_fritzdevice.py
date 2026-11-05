@@ -1,28 +1,25 @@
 import json
 import logging
 import threading
+from http.client import RemoteDisconnected
 from pprint import pprint
 from unittest.mock import MagicMock, call, patch
 
 import pytest
-from prometheus_client.core import GaugeMetricFamily
 from fritzconnection.core.exceptions import (
     FritzActionError,
     FritzAuthorizationError,
     FritzConnectionException,
     FritzServiceError,
 )
-from http.client import RemoteDisconnected
-
 from prometheus_client import CollectorRegistry, generate_latest
-from prometheus_client.core import Metric
+from prometheus_client.core import GaugeMetricFamily, Metric
 from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from fritzexporter.exceptions import (
     FritzDeviceHasNoCapabilitiesError,
     FritzDeviceSerialUnknownError,
 )
-from fritzexporter.reply import Issues
 from fritzexporter.fritzdevice import (
     DeviceSpec,
     FritzCollector,
@@ -30,9 +27,9 @@ from fritzexporter.fritzdevice import (
     FritzDevice,
     OfflineDevice,
 )
+from fritzexporter.reply import Issues
 from fritzexporter.tr064_remote import ConnectionOptions, FritzUnreachableError
 
-from .web_replies import web_reply
 from .fc_services_mock import (
     call_action_mock,
     call_action_no_basic_mock,
@@ -42,6 +39,8 @@ from .fc_services_mock import (
     fc_services_devices,
     fc_services_no_basic_info,
 )
+from .web_replies import web_reply
+
 
 def _register_offline(
     collector: FritzCollector,
@@ -846,7 +845,7 @@ class TestFritzCollector:
         caplog.set_level(logging.DEBUG)
 
         collector = FritzCollector()
-        _register_offline(collector, 
+        _register_offline(collector,
             FritzCredentials("offlinehost", "user", "pass"), "OfflineDevice"
         )
 
@@ -899,7 +898,7 @@ class TestFritzCollector:
         creds = FritzCredentials("offlinehost", "user", "pass")
 
         # Act
-        _register_offline(collector, 
+        _register_offline(collector,
             creds, "OfflineDevice", connection=ConnectionOptions(connection_timeout=15)
         )
 
@@ -917,7 +916,7 @@ class TestFritzCollector:
 
         collector = FritzCollector()
         creds = FritzCredentials("somehost", "someuser", "password")
-        _register_offline(collector, 
+        _register_offline(collector,
             creds, "FritzMock", connection=ConnectionOptions(connection_timeout=7)
         )
 
@@ -943,7 +942,7 @@ class TestFritzCollector:
         collector = FritzCollector()
         creds = FritzCredentials("offlinehost", "user", "pass")
 
-        _register_offline(collector, 
+        _register_offline(collector,
             creds,
             "OfflineDevice",
             connection=ConnectionOptions(use_tls=True, port=49443, remote_access=True),
@@ -965,7 +964,7 @@ class TestFritzCollector:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        _register_offline(collector, 
+        _register_offline(collector,
             FritzCredentials("somehost", "someuser", "password"),
             "FritzMock",
             connection=ConnectionOptions(allow_unsafe_md5_password=True),
@@ -986,7 +985,7 @@ class TestFritzCollector:
 
         collector = FritzCollector()
         creds = FritzCredentials("somehost", "someuser", "password")
-        _register_offline(collector, 
+        _register_offline(collector,
             creds,
             "FritzMock",
             connection=ConnectionOptions(use_tls=True, port=49443, remote_access=True),

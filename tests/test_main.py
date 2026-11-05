@@ -2,14 +2,11 @@ import logging
 import os
 import signal
 import threading
-from http.client import RemoteDisconnected
 from importlib.metadata import version
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from fritzconnection.core.exceptions import FritzConnectionException
-from requests.exceptions import ConnectionError as RequestsConnectionError
 
 from fritzexporter.__main__ import main, parse_cmdline, wait_for_shutdown
 

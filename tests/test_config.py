@@ -576,7 +576,7 @@ class TestConfigChecks:
 
     def test_invalid_yaml_names_the_position_but_not_the_line(self, tmp_path):
         with pytest.raises(ConfigFileUnreadableError) as exc:
-            self._load(tmp_path, "devices:\n  - hostname: fritz.box\n    password: \"s3cret\n  - x: [\n")
+            self._load(tmp_path, 'devices:\n  - hostname: fritz.box\n    password: "s3cret\n  - x: [\n')
         assert "line" in str(exc.value)
         assert "s3cret" not in str(exc.value)
 
