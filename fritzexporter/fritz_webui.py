@@ -168,7 +168,7 @@ def _failure_text(exc: requests.RequestException) -> str:
 class FritzWebUiClient:
     """Fetches data from a Fritz!Box via its web interface (web login)."""
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         host: str,
         username: str,

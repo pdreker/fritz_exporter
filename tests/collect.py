@@ -14,7 +14,9 @@ from .fc_services_mock import call_action_mock, create_fc_services, fc_services_
 # callable gets the action's arguments and returns the whole reply (or raises).
 Override = Mapping[str, Any] | Callable[..., Any]
 
-CABLE = {("WANCommonInterfaceConfig1", "GetCommonLinkProperties"): {"NewWANAccessType": "X_AVM-DE_Cable"}}
+CABLE = {
+    ("WANCommonInterfaceConfig1", "GetCommonLinkProperties"): {"NewWANAccessType": "X_AVM-DE_Cable"}
+}
 
 
 def sample_map(metric: Metric) -> dict[tuple[tuple[str, str], ...], float]:
@@ -34,7 +36,7 @@ def fake_actions(overrides: Mapping[tuple[str, str], Override] | None = None) ->
     """``call_action_mock`` with the replies in ``overrides`` replaced."""
     overrides = overrides or {}
 
-    def call_action(service: str, action: str, **kwargs: Any) -> Any:  # noqa: ANN401
+    def call_action(service: str, action: str, **kwargs: Any) -> Any:
         override = overrides.get((service, action))
         if callable(override):
             return override(**kwargs)
@@ -56,10 +58,12 @@ def fake_device(
     fc = mock_fritzconnection.return_value
     fc.call_action.side_effect = fake_actions(overrides)
     fc.services = create_fc_services(device_services)
-    return FritzDevice(FritzCredentials("somehost", "someuser", "password"), name, host_info=host_info)
+    return FritzDevice(
+        FritzCredentials("somehost", "someuser", "password"), name, host_info=host_info
+    )
 
 
-def collect_device(  # noqa: PLR0913
+def collect_device(
     mock_fritzconnection: MagicMock,
     device_services: dict[str, list[str]],
     *,

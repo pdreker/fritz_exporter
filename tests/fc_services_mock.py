@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from fritzconnection.core.exceptions import (
     FritzActionError,
@@ -11,13 +12,14 @@ class FCService:
     actions: list[str]
 
 
-def create_fc_services(services_mock):
+def create_fc_services(services_mock: dict[str, Any]) -> dict[str, FCService]:
     services = {}
     for svc, actions in services_mock.items():
         services[svc] = FCService(actions)
     return services
 
-def call_http_mock(action, ain=None, **_):
+
+def call_http_mock(action: str, ain: str | None = None, **_: Any) -> dict[str, Any]:
     return {
         "content": """<?xml version="1.0" encoding="utf-8"?>
         <devicelist version="1">
@@ -30,10 +32,11 @@ def call_http_mock(action, ain=None, **_):
         </device>
         </devicelist>""",
         "content-type": "text/xml",
-        "encoding": "utf-8"
+        "encoding": "utf-8",
     }
 
-def call_action_mock(service, action, **kwargs):
+
+def call_action_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
     _ = kwargs
 
     call_action_responses = {
@@ -225,11 +228,12 @@ def call_action_mock(service, action, **kwargs):
     }
 
     if (service, action) not in call_action_responses:
-        raise FritzServiceError(f"Unknown service/action: {service}/{action}")
+        msg = f"Unknown service/action: {service}/{action}"
+        raise FritzServiceError(msg)
     return call_action_responses[(service, action)]
 
 
-def call_action_no_basic_mock(service, action, **_):
+def call_action_no_basic_mock(service: str, action: str, **_: Any) -> dict[str, Any]:
 
     if service == "DeviceInfo1" and action == "GetInfo":
         raise FritzServiceError
@@ -380,7 +384,9 @@ def call_action_no_basic_mock(service, action, **_):
     return call_action_responses[(service, action)]
 
 
-def call_action_no_basic_action_error_mock(service, action, **kwargs):
+def call_action_no_basic_action_error_mock(
+    service: str, action: str, **kwargs: Any
+) -> dict[str, Any]:
     _ = kwargs
 
     if service == "DeviceInfo1" and action == "GetInfo":

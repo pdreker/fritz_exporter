@@ -113,7 +113,7 @@ class ProblemState:
         self.problem: _Problem | None = None
 
 
-def report_problem(  # noqa: PLR0913
+def report_problem(
     state: ProblemState | FritzCapability,
     name: str,
     host: str,
@@ -299,7 +299,7 @@ class FritzCapability(ABC):
     def _probe(self, device: FritzDevice, service: str, action: str) -> bool:
         return probe_action(device, service, action)
 
-    def _enumerate(  # noqa: PLR0913
+    def _enumerate(
         self,
         device: FritzDevice,
         service: str,

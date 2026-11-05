@@ -1,4 +1,5 @@
 import logging
+from typing import Any, Never
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,15 +14,17 @@ from fritzconnection.core.exceptions import (
 from prometheus_client import CollectorRegistry, generate_latest
 from prometheus_client.core import Metric
 
-from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
+from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiError
 from fritzexporter.fritzcapabilities import (
     FritzCapabilities,
     ProblemLevel,
     ProblemState,
     report_problem,
 )
-from fritzexporter.fritz_webui import FritzWebUiClient, FritzWebUiError
+from fritzexporter.fritzdevice import FritzCollector, FritzCredentials, FritzDevice
+from fritzexporter.tr064_remote import FritzUnreachableError
 
+from .collect import collect_device, fake_device, sample_map, services
 from .fc_services_mock import (
     call_action_mock,
     call_http_mock,
@@ -29,19 +32,20 @@ from .fc_services_mock import (
     fc_services_capabilities,
     fc_services_devices,
 )
-from .collect import collect_device, fake_device, sample_map, services
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestFritzCapabilitiesMethods:
     """Tests for FritzCapabilities container methods."""
 
-    def test_iter_over_capabilities(self, mock_fritzconnection: MagicMock):
+    def test_iter_over_capabilities(self, mock_fritzconnection: MagicMock) -> None:
         # Prepare
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
-        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        fd = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
 
         # Act - iterate using __iter__
         cap_names = list(fd.capabilities)
@@ -51,12 +55,14 @@ class TestFritzCapabilitiesMethods:
         assert "HomeAutomation" in cap_names
         assert len(cap_names) > 0
 
-    def test_len_of_capabilities(self, mock_fritzconnection: MagicMock):
+    def test_len_of_capabilities(self, mock_fritzconnection: MagicMock) -> None:
         # Prepare
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
-        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        fd = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
 
         # Act - get length using __len__
         num_caps = len(fd.capabilities)
@@ -64,7 +70,9 @@ class TestFritzCapabilitiesMethods:
         # Check
         assert num_caps == 27  # All known capabilities
 
-    def test_empty_capabilities_is_true_when_all_absent(self, mock_fritzconnection: MagicMock):
+    def test_empty_capabilities_is_true_when_all_absent(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         # Prepare - use an empty service set so no capability is present
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = call_action_mock
@@ -82,31 +90,46 @@ class TestFritzCapabilitiesMethods:
             (
                 FritzActionError,
                 logging.INFO,
-                "device FritzMock (somehost) does not support service Hosts1, action GetHostNumberOfEntries",
+                (
+                    "device FritzMock (somehost) does not support service Hosts1, action "
+                    "GetHostNumberOfEntries"
+                ),
             ),
             (
                 FritzServiceError,
                 logging.INFO,
-                "device FritzMock (somehost) does not support service Hosts1, action GetHostNumberOfEntries",
+                (
+                    "device FritzMock (somehost) does not support service Hosts1, action "
+                    "GetHostNumberOfEntries"
+                ),
             ),
             (
                 FritzInternalError,
                 logging.WARNING,
-                "disabling metrics of FritzMock (somehost) at service Hosts1, action GetHostNumberOfEntries",
+                (
+                    "disabling metrics of FritzMock (somehost) at service Hosts1, action "
+                    "GetHostNumberOfEntries"
+                ),
             ),
         ],
     )
     def test_capability_check_disables_when_call_action_raises(
-        self, mock_fritzconnection: MagicMock, caplog, error, level, message
-    ):
+        self,
+        mock_fritzconnection: MagicMock,
+        caplog: pytest.LogCaptureFixture,
+        error: type[Exception],
+        level: int,
+        message: str,
+    ) -> None:
         # Prepare - service is present in services dict but call_action raises
         caplog.set_level(logging.DEBUG)
 
         fc = mock_fritzconnection.return_value
 
-        def error_on_hosts(service, action, **kwargs):
+        def error_on_hosts(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "GetHostNumberOfEntries":
-                raise error("Mock error for HostNumberOfEntries")
+                msg = "Mock error for HostNumberOfEntries"
+                raise error(msg)
             return call_action_mock(service, action, **kwargs)
 
         fc.call_action.side_effect = error_on_hosts
@@ -115,7 +138,9 @@ class TestFritzCapabilitiesMethods:
         fc.services = create_fc_services(services)
 
         # Act
-        fd = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        fd = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
 
         # Check - HostNumberOfEntries capability should be disabled
         assert fd.capabilities["HostNumberOfEntries"].present is False
@@ -129,13 +154,15 @@ class TestFritzCapabilitiesMethods:
 class TestUserInterfaceCapability:
     """Tests for UserInterface capability edge cases."""
 
-    def test_user_interface_no_update_available(self, mock_fritzconnection: MagicMock, caplog):
+    def test_user_interface_no_update_available(
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         # Prepare - return no upgrade available
         caplog.set_level(logging.DEBUG)
 
         fc = mock_fritzconnection.return_value
 
-        def no_update_mock(service, action, **kwargs):
+        def no_update_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "UserInterface1" and action == "GetInfo":
                 return {"NewUpgradeAvailable": 0, "NewX_AVM-DE_Version": ""}
             return call_action_mock(service, action, **kwargs)
@@ -145,7 +172,9 @@ class TestUserInterfaceCapability:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         collector.register(device)
 
         # Act
@@ -164,13 +193,15 @@ class TestUserInterfaceCapability:
 class TestHostInfoCapability:
     """Tests for HostInfo capability edge cases."""
 
-    def test_host_info_with_empty_ip(self, mock_fritzconnection: MagicMock, caplog):
+    def test_host_info_with_empty_ip(
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         # Prepare - host has empty IP address
         caplog.set_level(logging.DEBUG)
 
         fc = mock_fritzconnection.return_value
 
-        def empty_ip_mock(service, action, **kwargs):
+        def empty_ip_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "GetGenericHostEntry":
                 return {
                     "NewIPAddress": "",  # empty IP
@@ -184,7 +215,9 @@ class TestHostInfoCapability:
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
 
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=True
+        )
         collector.register(device)
 
         # Act
@@ -202,8 +235,8 @@ class TestHostInfoCapability:
         assert sample.labels["model"] == "n/a"
 
     def test_host_table_shrinking_mid_scan_keeps_device_reachable(
-        self, mock_fritzconnection: MagicMock, caplog
-    ):
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         # A host leaving mid-scan makes GetGenericHostEntry raise FritzArrayIndexError
         # (UPnP errorCode 713, SpecifiedArrayIndexInvalid). This is a benign race on the
         # DHCP server's host table, not a device outage: the box is fully reachable, the
@@ -214,7 +247,7 @@ class TestHostInfoCapability:
 
         fc = mock_fritzconnection.return_value
 
-        def shrinking_table_mock(service, action, **kwargs):
+        def shrinking_table_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "GetHostNumberOfEntries":
                 return {"NewHostNumberOfEntries": 3}
             if service == "Hosts1" and action == "GetGenericHostEntry":
@@ -258,19 +291,19 @@ class TestHostInfoCapability:
 
         # Check - benign shrink path is logged and no unreachable error is emitted
         assert any(
-            "Hosts1.GetGenericHostEntry on FritzMock (somehost): the table shrank to 2 entries" in record.message
+            "Hosts1.GetGenericHostEntry on FritzMock (somehost): the table shrank to 2 entries"
+            in record.message
             for record in caplog.records
             if record.levelno == logging.DEBUG
         )
         assert not any(
-            "is unreachable, skipping HostInfo metrics for this collection cycle"
-            in record.message
+            "is unreachable, skipping HostInfo metrics for this collection cycle" in record.message
             for record in caplog.records
         )
 
     def test_host_leaving_mid_scan_keeps_device_reachable(
-        self, mock_fritzconnection: MagicMock, caplog
-    ):
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         # A host leaving mid-scan makes X_AVM-DE_GetSpecificHostEntryByIP raise
         # FritzLookUpError (UPnP errorCode 714, NoSuchEntryInArray): the host's IP
         # disappeared from the host table between GetGenericHostEntry and the
@@ -281,7 +314,7 @@ class TestHostInfoCapability:
 
         fc = mock_fritzconnection.return_value
 
-        def host_leaving_mock(service, action, **kwargs):
+        def host_leaving_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "GetHostNumberOfEntries":
                 return {"NewHostNumberOfEntries": 2}
             if service == "Hosts1" and action == "GetGenericHostEntry":
@@ -331,15 +364,14 @@ class TestHostInfoCapability:
         host_active_metrics = [m for m in metrics if m.name == "fritz_host_active"]
         assert len(host_active_metrics) == 1
         assert len(host_active_metrics[0].samples) == 2
-        [info] = [
-            m for m in metrics if m.name == "fritz_host_info"
-        ]
+        [info] = [m for m in metrics if m.name == "fritz_host_info"]
         [vanished] = [s for s in info.samples if s.labels["ip_address"] == "192.168.178.10"]
         assert vanished.labels["interface"] == "n/a"
         assert vanished.labels["port"] == "n/a"
         assert vanished.labels["model"] == "n/a"
         [active] = [
-            s for s in host_active_metrics[0].samples
+            s
+            for s in host_active_metrics[0].samples
             if s.labels["mac_address"] == vanished.labels["mac_address"]
         ]
         assert active.value == 1.0
@@ -351,8 +383,7 @@ class TestHostInfoCapability:
             if record.levelno == logging.DEBUG
         )
         assert not any(
-            "is unreachable, skipping HostInfo metrics for this collection cycle"
-            in record.message
+            "is unreachable, skipping HostInfo metrics for this collection cycle" in record.message
             for record in caplog.records
         )
 
@@ -363,17 +394,20 @@ class TestHomeAutomationCapability:
 
     def _make_device_xml(
         self,
-        ain="123456789012",
-        include_powermeter=True,
-        include_temperature=True,
-        include_switch=True,
-        include_hkr=True,
+        ain: str = "123456789012",
+        *,
+        include_powermeter: bool = True,
+        include_temperature: bool = True,
+        include_switch: bool = True,
+        include_hkr: bool = True,
         battery: str | None = "100",
         batterylow: str | None = "0",
     ) -> str:
         parts = [
-            f'<device identifier="{ain}" id="123" functionbitmask="1" '
-            'fwversion="1.2" manufacturer="AVM" productname="MockDevice">',
+            (
+                f'<device identifier="{ain}" id="123" functionbitmask="1" '
+                'fwversion="1.2" manufacturer="AVM" productname="MockDevice">'
+            ),
             "<present>1</present>",
             "<name>MockDeviceName</name>",
         ]
@@ -398,24 +432,26 @@ class TestHomeAutomationCapability:
     def _make_devicelist_xml(self, *device_xml: str) -> str:
         return f'<devicelist version="1">{"".join(device_xml)}</devicelist>'
 
-    def _setup_ha_device(self, mock_fc, devicelist_xml: str) -> tuple:
+    def _setup_ha_device(self, mock_fc: MagicMock, devicelist_xml: str) -> tuple:
         fc = mock_fc.return_value
 
         fc.call_action.side_effect = call_action_mock
         fc.services = create_fc_services(fc_services_capabilities["HomeAutomation"])
 
         collector = FritzCollector()
-        device = FritzDevice(FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False)
+        device = FritzDevice(
+            FritzCredentials("somehost", "someuser", "password"), "FritzMock", host_info=False
+        )
         # AHA data comes from the web UI client, not from fritzconnection.
         device.webui_client = MagicMock(spec=FritzWebUiClient)
         device.webui_client.fetch_aha.return_value = devicelist_xml
         collector.register(device)
         return collector, device, fc
 
-    def test_homeautomation_with_disabled_multimeter(self, mock_fritzconnection: MagicMock):
+    def test_homeautomation_with_disabled_multimeter(self, mock_fritzconnection: MagicMock) -> None:
         # Prepare
         xml = self._make_devicelist_xml(self._make_device_xml(include_powermeter=False))
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
+        collector, _device, _ = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -425,10 +461,12 @@ class TestHomeAutomationCapability:
         assert len(power_metrics) == 1
         assert len(power_metrics[0].samples) == 0
 
-    def test_homeautomation_with_disabled_temperature(self, mock_fritzconnection: MagicMock):
+    def test_homeautomation_with_disabled_temperature(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         # Prepare
         xml = self._make_devicelist_xml(self._make_device_xml(include_temperature=False))
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
+        collector, _device, _ = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -438,10 +476,10 @@ class TestHomeAutomationCapability:
         assert len(temp_metrics) == 1
         assert len(temp_metrics[0].samples) == 0
 
-    def test_homeautomation_with_disabled_switch(self, mock_fritzconnection: MagicMock):
+    def test_homeautomation_with_disabled_switch(self, mock_fritzconnection: MagicMock) -> None:
         # Prepare
         xml = self._make_devicelist_xml(self._make_device_xml(include_switch=False))
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
+        collector, _device, _ = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -451,10 +489,10 @@ class TestHomeAutomationCapability:
         assert len(switch_metrics) == 1
         assert len(switch_metrics[0].samples) == 0
 
-    def test_homeautomation_with_disabled_heater(self, mock_fritzconnection: MagicMock):
+    def test_homeautomation_with_disabled_heater(self, mock_fritzconnection: MagicMock) -> None:
         # Prepare
         xml = self._make_devicelist_xml(self._make_device_xml(include_hkr=False))
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
+        collector, _device, _ = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -469,11 +507,13 @@ class TestHomeAutomationCapability:
         assert len(valve_metrics) == 1
         assert len(valve_metrics[0].samples) == 0
 
-    def test_homeautomation_heater_includes_valve_state(self, mock_fritzconnection: MagicMock):
+    def test_homeautomation_heater_includes_valve_state(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         # Prepare - a device with an hkr block should also get its valve
         # state via a supplemental TR-064 GetSpecificDeviceInfos call.
         xml = self._make_devicelist_xml(self._make_device_xml())
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
+        collector, _device, _ = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -487,18 +527,19 @@ class TestHomeAutomationCapability:
         assert valve_set[0].samples[0].value == 1  # OPEN
 
     def test_homeautomation_valve_state_lookup_failure_skips_only_the_valve_state(
-        self, mock_fritzconnection: MagicMock, caplog
-    ):
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         # Prepare - GetSpecificDeviceInfos can fail for a device (e.g. it
         # disappeared between the two calls); the heater temperatures from
         # the bulk HTTP call should still be reported.
         caplog.set_level(logging.DEBUG)
         xml = self._make_devicelist_xml(self._make_device_xml())
-        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
+        collector, _device, fc = self._setup_ha_device(mock_fritzconnection, xml)
 
-        def failing_action(service, action, **kwargs):
+        def failing_action(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "X_AVM-DE_Homeauto1" and action == "GetSpecificDeviceInfos":
-                raise FritzArgumentError("unknown ain")
+                msg = "unknown ain"
+                raise FritzArgumentError(msg)
             return call_action_mock(service, action, **kwargs)
 
         fc.call_action.side_effect = failing_action
@@ -514,21 +555,21 @@ class TestHomeAutomationCapability:
         assert len(valve_set[0].samples) == 0
 
         # Reported as a partial read: the valve state of that device is skipped.
-        assert (
-            "valve state of smart home device 0 skipped: FritzArgumentError" in caplog.text
-        )
-        problems = [m for m in metrics if m.name == "fritz_read_problem"][0].samples
+        assert "valve state of smart home device 0 skipped: FritzArgumentError" in caplog.text
+        problems = next(m for m in metrics if m.name == "fritz_read_problem").samples
         assert ("HomeAutomation", "partial") in {
             (s.labels["capability"], s.labels["level"]) for s in problems
         }
 
-    def test_homeautomation_multiple_devices_in_one_response(self, mock_fritzconnection: MagicMock):
+    def test_homeautomation_multiple_devices_in_one_response(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         # Prepare - two devices returned from a single getdevicelistinfos call
         xml = self._make_devicelist_xml(
             self._make_device_xml(ain="111111111111", include_hkr=False),
             self._make_device_xml(ain="222222222222", include_hkr=False),
         )
-        collector, device, _ = self._setup_ha_device(mock_fritzconnection, xml)
+        collector, _device, _ = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -540,11 +581,13 @@ class TestHomeAutomationCapability:
         ains = {s.labels["ain"] for s in device_present[0].samples}
         assert ains == {"111111111111", "222222222222"}
 
-    def test_homeautomation_with_webui_error(self, mock_fritzconnection: MagicMock, caplog):
+    def test_homeautomation_with_webui_error(
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         # Prepare
         caplog.set_level(logging.DEBUG)
         xml = self._make_devicelist_xml(self._make_device_xml())
-        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
+        collector, device, _fc = self._setup_ha_device(mock_fritzconnection, xml)
 
         device.webui_client.fetch_aha.side_effect = FritzWebUiError("AHA request failed")
 
@@ -559,14 +602,17 @@ class TestHomeAutomationCapability:
 
         # Warning should be logged
         assert any(
-            "Could not read HomeAutomation data from FritzMock (somehost), skipping it: AHA request failed"
+            (
+                "Could not read HomeAutomation data from FritzMock (somehost), skipping it: AHA "
+                "request failed"
+            )
             in record.message
             for record in caplog.records
         )
 
-    def test_homeautomation_empty_devicelist(self, mock_fritzconnection: MagicMock):
+    def test_homeautomation_empty_devicelist(self, mock_fritzconnection: MagicMock) -> None:
         # Prepare - a box without any smart home devices
-        collector, device, fc = self._setup_ha_device(
+        collector, _device, _fc = self._setup_ha_device(
             mock_fritzconnection, self._make_devicelist_xml()
         )
 
@@ -578,12 +624,14 @@ class TestHomeAutomationCapability:
         assert len(device_present) == 1
         assert len(device_present[0].samples) == 0
 
-    def test_homeautomation_no_battery_low_in_http_data(self, mock_fritzconnection: MagicMock):
+    def test_homeautomation_no_battery_low_in_http_data(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         # Prepare - device XML without batterylow element
         xml = self._make_devicelist_xml(
             self._make_device_xml(battery="75", batterylow=None, include_hkr=False)
         )
-        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
+        collector, _device, _fc = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -598,12 +646,12 @@ class TestHomeAutomationCapability:
         assert len(battery_low) == 1
         assert len(battery_low[0].samples) == 0
 
-    def test_homeautomation_no_battery_in_xml(self, mock_fritzconnection: MagicMock):
+    def test_homeautomation_no_battery_in_xml(self, mock_fritzconnection: MagicMock) -> None:
         # Prepare - device XML without battery element (but has content)
         xml = self._make_devicelist_xml(
             self._make_device_xml(battery=None, batterylow=None, include_hkr=False)
         )
-        collector, device, fc = self._setup_ha_device(mock_fritzconnection, xml)
+        collector, _device, _fc = self._setup_ha_device(mock_fritzconnection, xml)
 
         # Act
         metrics: list[Metric] = list(collector.collect())
@@ -633,7 +681,7 @@ class TestWanFiberCapabilities:
             name="FritzFiber",
         )
 
-    def test_fiber_optical_and_sfp_metrics(self, mock_fritzconnection: MagicMock):
+    def test_fiber_optical_and_sfp_metrics(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_fiber_metrics(mock_fritzconnection)
 
         assert "fritz_fiber_optical_signal_level_dBm" in by_name
@@ -656,7 +704,7 @@ class TestWanFiberCapabilities:
         assert info.labels["sfp_serial_number"] == "SFP123"
         assert by_name["fritz_fiber_tx_wavelength_nm"].samples[0].value == 1310
 
-    def test_fiber_gpon_metrics_include_serial(self, mock_fritzconnection: MagicMock):
+    def test_fiber_gpon_metrics_include_serial(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_fiber_metrics(mock_fritzconnection)
 
         gpon_info = by_name["fritz_fiber_gpon_info"].samples[0]
@@ -667,35 +715,47 @@ class TestWanFiberCapabilities:
         assert by_name["fritz_fiber_gpon_onu_id"].samples[0].value == 6
         assert by_name["fritz_fiber_gpon_gem_port_count"].samples[0].value == 3
 
-    def test_fiber_statistics_metrics(self, mock_fritzconnection: MagicMock):
+    def test_fiber_statistics_metrics(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_fiber_metrics(mock_fritzconnection)
 
         bytes_map = sample_map(by_name["fritz_fiber_data_bytes"])
-        assert bytes_map[
-            (("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
-        ] == 97008448189
-        assert bytes_map[
-            (("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
-        ] == 123456789
+        assert (
+            bytes_map[
+                (("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
+            ]
+            == 97008448189
+        )
+        assert (
+            bytes_map[
+                (("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
+            ]
+            == 123456789
+        )
 
         rates = sample_map(by_name["fritz_fiber_connection_rate"])
-        assert rates[
-            (("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
-        ] == 2500000
-        assert rates[
-            (("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
-        ] == 1250000
+        assert (
+            rates[(("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))]
+            == 2500000
+        )
+        assert (
+            rates[(("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))]
+            == 1250000
+        )
 
-    def test_layer1_64bit_max_bitrate_from_addon_infos(self, mock_fritzconnection: MagicMock):
+    def test_layer1_64bit_max_bitrate_from_addon_infos(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         by_name = self._collect_fiber_metrics(mock_fritzconnection)
 
         layer1 = sample_map(by_name["fritz_wan_layer1_max_bitrate_bps"])
-        assert layer1[
-            (("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
-        ] == 2500000000
-        assert layer1[
-            (("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))
-        ] == 1250000000
+        assert (
+            layer1[(("direction", "rx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))]
+            == 2500000000
+        )
+        assert (
+            layer1[(("direction", "tx"), ("friendly_name", "FritzFiber"), ("serial", "1234567890"))]
+            == 1250000000
+        )
 
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
@@ -706,13 +766,15 @@ class TestWanCommonInterfaceByteRateCableWan:
     previously crashed metric exposition (the client library does
     float("") to format the sample value)."""
 
-    def test_empty_string_64bit_fields_are_skipped(self, mock_fritzconnection: MagicMock):
+    def test_empty_string_64bit_fields_are_skipped(self, mock_fritzconnection: MagicMock) -> None:
         # Prepare - same as GetAddonInfos in fc_services_mock.py, except the
         # two 64-bit fields come back as empty strings, as observed on a
         # cable WAN connection.
         fc = mock_fritzconnection.return_value
 
-        def call_action_cable_addon_infos(service, action, **kwargs):
+        def call_action_cable_addon_infos(
+            service: str, action: str, **kwargs: Any
+        ) -> dict[str, Any]:
             if (service, action) == ("WANCommonIFC1", "GetAddonInfos"):
                 return {
                     "NewByteReceiveRate": 12345,
@@ -747,12 +809,18 @@ class TestWanCommonInterfaceByteRateCableWan:
 
         # ...and the sibling byte-rate metric from the same call is unaffected.
         byterate = sample_map(by_name["fritz_wan_datarate_bytes"])
-        assert byterate[
-            (("direction", "rx"), ("friendly_name", "FritzCable"), ("serial", "1234567890"))
-        ] == 12345
-        assert byterate[
-            (("direction", "tx"), ("friendly_name", "FritzCable"), ("serial", "1234567890"))
-        ] == 23456
+        assert (
+            byterate[
+                (("direction", "rx"), ("friendly_name", "FritzCable"), ("serial", "1234567890"))
+            ]
+            == 12345
+        )
+        assert (
+            byterate[
+                (("direction", "tx"), ("friendly_name", "FritzCable"), ("serial", "1234567890"))
+            ]
+            == 23456
+        )
 
         # ...and, crucially, rendering the actual exposition text does not
         # raise. add_metric() stores a value as-is with no conversion, so
@@ -768,12 +836,16 @@ class TestWanCommonInterfaceByteRateCableWan:
 class TestManagementServer:
     """Tests for the TR-069 management server metrics."""
 
-    def _collect(self, mock_fritzconnection: MagicMock, overrides=None):
+    def _collect(
+        self, mock_fritzconnection: MagicMock, overrides: dict[tuple[str, str], Any] | None = None
+    ) -> dict[str, Metric]:
         return collect_device(
-            mock_fritzconnection, services("DeviceInfo", "ManagementServerInfo"), overrides=overrides
+            mock_fritzconnection,
+            services("DeviceInfo", "ManagementServerInfo"),
+            overrides=overrides,
         )
 
-    def test_management_server_metrics(self, mock_fritzconnection: MagicMock):
+    def test_management_server_metrics(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect(mock_fritzconnection)
 
         acs = by_name["fritz_tr069_acs_info"].samples
@@ -783,7 +855,9 @@ class TestManagementServer:
         assert by_name["fritz_tr069_periodic_inform_interval_seconds"].samples[0].value == 21600
         assert by_name["fritz_tr069_upgrades_managed"].samples[0].value == 1
 
-    def test_no_credentials_or_identifiers_are_exported(self, mock_fritzconnection: MagicMock):
+    def test_no_credentials_or_identifiers_are_exported(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         by_name = self._collect(mock_fritzconnection)
 
         exposed = " ".join(
@@ -802,7 +876,7 @@ class TestManagementServer:
         ):
             assert secret not in exposed
 
-    def test_empty_acs_url_has_no_info_sample(self, mock_fritzconnection: MagicMock):
+    def test_empty_acs_url_has_no_info_sample(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect(
             mock_fritzconnection,
             {
@@ -823,7 +897,9 @@ class TestManagementServer:
 class TestUspControllers:
     """Tests for the USP controller metrics."""
 
-    def _collect(self, mock_fritzconnection: MagicMock, overrides=None):
+    def _collect(
+        self, mock_fritzconnection: MagicMock, overrides: dict[tuple[str, str], Any] | None = None
+    ) -> dict[str, Metric]:
         return collect_device(
             mock_fritzconnection, services("DeviceInfo", "UspControllers"), overrides=overrides
         )
@@ -831,10 +907,12 @@ class TestUspControllers:
     @pytest.mark.parametrize(
         ("error", "present"), [(FritzArrayIndexError, True), (FritzActionError, False)]
     )
-    def test_controller_lookup_is_probed(self, mock_fritzconnection: MagicMock, error, present):
+    def test_controller_lookup_is_probed(
+        self, mock_fritzconnection: MagicMock, error: type[Exception], *, present: bool
+    ) -> None:
         # No controller at index 0 still shows the action works; an error
         # reply means the device only advertises it.
-        def by_index(**_):
+        def by_index(**_: Any) -> Never:
             raise error
 
         device = fake_device(
@@ -844,7 +922,7 @@ class TestUspControllers:
         )
         assert device.capabilities["UspControllers"].present is present
 
-    def test_usp_controller_flags(self, mock_fritzconnection: MagicMock):
+    def test_usp_controller_flags(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect(mock_fritzconnection)
 
         controllers = {
@@ -862,7 +940,7 @@ class TestUspControllers:
 
     def test_usp_without_controllers_has_no_controller_sample(
         self, mock_fritzconnection: MagicMock
-    ):
+    ) -> None:
         by_name = self._collect(
             mock_fritzconnection,
             {
@@ -880,14 +958,16 @@ class TestUspControllers:
 class TestTelephonyNumbers:
     """Tests for the telephony number count metric."""
 
-    def _collect_numbers_metric(self, mock_fritzconnection: MagicMock, count: int | None):
+    def _collect_numbers_metric(
+        self, mock_fritzconnection: MagicMock, count: int | None
+    ) -> dict[str, Metric]:
         reply = {"NewNumberOfNumbers": count}
         overrides = {("X_VoIP1", "X_AVM-DE_GetNumberOfNumbers"): reply} if count is not None else {}
         return collect_device(
             mock_fritzconnection, services("DeviceInfo", "TelephonyNumbers"), overrides=overrides
         )
 
-    def test_number_count_metric(self, mock_fritzconnection: MagicMock):
+    def test_number_count_metric(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_numbers_metric(mock_fritzconnection, None)
 
         samples = by_name["fritz_telephony_numbers"].samples
@@ -895,7 +975,7 @@ class TestTelephonyNumbers:
         assert samples[0].value == 2
         assert samples[0].labels == {"serial": "1234567890", "friendly_name": "FritzMock"}
 
-    def test_no_numbers_configured_reports_zero(self, mock_fritzconnection: MagicMock):
+    def test_no_numbers_configured_reports_zero(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_numbers_metric(mock_fritzconnection, 0)
 
         samples = by_name["fritz_telephony_numbers"].samples
@@ -907,13 +987,19 @@ class TestTelephonyNumbers:
 class TestWanIPv6Prefix:
     """Tests for the delegated IPv6 prefix info metric."""
 
-    def _collect_prefix_metric(self, mock_fritzconnection: MagicMock, prefix_result: dict | None):
-        overrides = {("WANIPConn1", "X_AVM_DE_GetIPv6Prefix"): lambda **_: prefix_result} if prefix_result else {}
+    def _collect_prefix_metric(
+        self, mock_fritzconnection: MagicMock, prefix_result: dict | None
+    ) -> dict[str, Metric]:
+        overrides = (
+            {("WANIPConn1", "X_AVM_DE_GetIPv6Prefix"): lambda **_: prefix_result}
+            if prefix_result
+            else {}
+        )
         return collect_device(
             mock_fritzconnection, services("DeviceInfo", "WanIPv6Prefix"), overrides=overrides
         )
 
-    def test_prefix_info_metric(self, mock_fritzconnection: MagicMock):
+    def test_prefix_info_metric(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_prefix_metric(mock_fritzconnection, None)
 
         samples = by_name["fritz_wan_ipv6_prefix_info"].samples
@@ -922,7 +1008,7 @@ class TestWanIPv6Prefix:
         assert samples[0].labels["prefix"] == "2001:db8:1234:5600::"
         assert samples[0].labels["prefix_length"] == "56"
 
-    def test_empty_prefix_is_skipped(self, mock_fritzconnection: MagicMock):
+    def test_empty_prefix_is_skipped(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_prefix_metric(
             mock_fritzconnection, {"NewIPv6Prefix": "", "NewPrefixLength": 0}
         )
@@ -930,7 +1016,7 @@ class TestWanIPv6Prefix:
         assert by_name["fritz_wan_ipv6_prefix_info"].samples == []
 
 
-def _argument(kwargs: dict, name: str):
+def _argument(kwargs: dict, name: str) -> Any:
     """An action argument, given as keyword (reads) or in ``arguments`` (probes)."""
     return kwargs.get(name, kwargs.get("arguments", {}).get(name))
 
@@ -938,16 +1024,23 @@ def _argument(kwargs: dict, name: str):
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestProbing:
     @pytest.mark.parametrize("hosts", [0, 1])
-    def test_host_info_works_with_a_small_host_table(self, mock_fritzconnection: MagicMock, hosts):
+    def test_host_info_works_with_a_small_host_table(
+        self, mock_fritzconnection: MagicMock, hosts: int
+    ) -> None:
         # The probe used index 1, which a table of 0 or 1 hosts does not have:
         # the device never came up.
-        def host_table(service, action, **kwargs):
+        def host_table(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
                 return {"NewHostNumberOfEntries": hosts}
             if (service, action) == ("Hosts1", "GetGenericHostEntry"):
                 if _argument(kwargs, "NewIndex") >= hosts:
                     raise FritzArrayIndexError
-                return {"NewIPAddress": "", "NewMACAddress": "AA:BB:CC:DD:EE:00", "NewHostName": "h", "NewActive": 1}
+                return {
+                    "NewIPAddress": "",
+                    "NewMACAddress": "AA:BB:CC:DD:EE:00",
+                    "NewHostName": "h",
+                    "NewActive": 1,
+                }
             return call_action_mock(service, action, **kwargs)
 
         fc = mock_fritzconnection.return_value
@@ -962,14 +1055,16 @@ class TestProbing:
         assert device.capabilities["HostInfo"].present
         assert len(by_name["fritz_host_active"].samples) == hosts
 
-    def test_device_not_answering_a_probe_fails_the_setup(self, mock_fritzconnection: MagicMock):
+    def test_device_not_answering_a_probe_fails_the_setup(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         # A timeout must not disable a capability until restart: the device is
         # set up again later instead.
-        from fritzexporter.tr064_remote import FritzUnreachableError
 
-        def timing_out(service, action, **kwargs):
+        def timing_out(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("LANEthernetInterfaceConfig1", "GetStatistics"):
-                raise FritzUnreachableError("Fritz device did not answer (ReadTimeout)")
+                msg = "Fritz device did not answer (ReadTimeout)"
+                raise FritzUnreachableError(msg)
             return call_action_mock(service, action, **kwargs)
 
         fc = mock_fritzconnection.return_value
@@ -980,16 +1075,26 @@ class TestProbing:
         with pytest.raises(FritzUnreachableError):
             FritzDevice(creds, "FritzMock")
 
-    def test_error_reply_to_an_item_skips_only_that_item(self, mock_fritzconnection: MagicMock):
-        def one_bad_host(service, action, **kwargs):
+    def test_error_reply_to_an_item_skips_only_that_item(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
+        def one_bad_host(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
                 return {"NewHostNumberOfEntries": 2}
             if (service, action) == ("Hosts1", "GetGenericHostEntry"):
                 index = _argument(kwargs, "NewIndex")
-                return {"NewIPAddress": f"192.0.2.{index + 1}", "NewMACAddress": f"AA:BB:CC:DD:EE:0{index}", "NewHostName": "h", "NewActive": 1}
-            if (service, action) == ("Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP"):
-                if _argument(kwargs, "NewIPAddress") == "192.0.2.1":
-                    raise FritzInternalError("820")
+                return {
+                    "NewIPAddress": f"192.0.2.{index + 1}",
+                    "NewMACAddress": f"AA:BB:CC:DD:EE:0{index}",
+                    "NewHostName": "h",
+                    "NewActive": 1,
+                }
+            if (service, action) == (
+                "Hosts1",
+                "X_AVM-DE_GetSpecificHostEntryByIP",
+            ) and _argument(kwargs, "NewIPAddress") == "192.0.2.1":
+                msg = "820"
+                raise FritzInternalError(msg)
             return call_action_mock(service, action, **kwargs)
 
         fc = mock_fritzconnection.return_value
@@ -1003,7 +1108,10 @@ class TestProbing:
 
         hosts = [s.labels["mac_address"] for s in by_name["fritz_host_active"].samples]
         assert hosts == ["AA:BB:CC:DD:EE:01"]
-        problems = {(s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples}
+        problems = {
+            (s.labels["capability"], s.labels["level"])
+            for s in by_name["fritz_read_problem"].samples
+        }
         assert ("HostInfo", "partial") in problems
         assert by_name["fritz_device_reachable"].samples[0].value == 1.0
 
@@ -1012,7 +1120,7 @@ class TestProbing:
 class TestHostInfoKeyedByMac:
     @staticmethod
     def _collect(mock_fritzconnection: MagicMock, hosts: list[dict]) -> tuple[dict, list]:
-        def host_table(service, action, **kwargs):
+        def host_table(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
                 return {"NewHostNumberOfEntries": len(hosts)}
             if (service, action) == ("Hosts1", "GetGenericHostEntry"):
@@ -1026,14 +1134,17 @@ class TestHostInfoKeyedByMac:
         fc.call_action.side_effect = host_table
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
         collector = FritzCollector()
-        collector.register(FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock", host_info=True))
+        collector.register(
+            FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock", host_info=True)
+        )
         by_name = {m.name: m for m in collector.collect()}
         problems = [
-            (s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples
+            (s.labels["capability"], s.labels["level"])
+            for s in by_name["fritz_read_problem"].samples
         ]
         return by_name, problems
 
-    def test_active_and_speed_carry_only_the_mac(self, mock_fritzconnection: MagicMock):
+    def test_active_and_speed_carry_only_the_mac(self, mock_fritzconnection: MagicMock) -> None:
         by_name, _ = self._collect(mock_fritzconnection, [{"NewMACAddress": "AA:BB:CC:DD:EE:01"}])
 
         for name in ("fritz_host_active", "fritz_host_speed"):
@@ -1043,7 +1154,7 @@ class TestHostInfoKeyedByMac:
         assert info.labels["hostname"] == "h"
         assert info.value == 1
 
-    def test_host_without_mac_is_left_out_quietly(self, mock_fritzconnection: MagicMock):
+    def test_host_without_mac_is_left_out_quietly(self, mock_fritzconnection: MagicMock) -> None:
         by_name, problems = self._collect(
             mock_fritzconnection, [{"NewMACAddress": ""}, {"NewMACAddress": "AA:BB:CC:DD:EE:01"}]
         )
@@ -1053,7 +1164,7 @@ class TestHostInfoKeyedByMac:
         ]
         assert ("HostInfo", "partial") not in problems
 
-    def test_mac_listed_twice_keeps_the_first(self, mock_fritzconnection: MagicMock):
+    def test_mac_listed_twice_keeps_the_first(self, mock_fritzconnection: MagicMock) -> None:
         by_name, problems = self._collect(
             mock_fritzconnection,
             [
@@ -1071,7 +1182,9 @@ class TestHostInfoKeyedByMac:
 class TestExitReviewFixes:
     """Values and items the 4.0 exit review found handled wrongly."""
 
-    def test_thermostat_off_and_on_are_no_temperatures(self, mock_fritzconnection: MagicMock):
+    def test_thermostat_off_and_on_are_no_temperatures(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         helper = TestHomeAutomationCapability()
         xml = helper._make_devicelist_xml(helper._make_device_xml()).replace(
             "<tsoll>234</tsoll><absenk>234</absenk><komfort>234</komfort>",
@@ -1085,32 +1198,46 @@ class TestExitReviewFixes:
         assert by_name["fritz_ha_heater_reduced_temperature_C"].samples == []
         assert [s.value for s in by_name["fritz_ha_heater_comfort_temperature_C"].samples] == [21.0]
 
-    def test_error_reply_for_one_host_skips_only_that_host(self, mock_fritzconnection: MagicMock):
-        def host_table(service, action, **kwargs):
+    def test_error_reply_for_one_host_skips_only_that_host(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
+        def host_table(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
                 return {"NewHostNumberOfEntries": 2}
             if (service, action) == ("Hosts1", "GetGenericHostEntry"):
                 index = _argument(kwargs, "NewIndex")
                 if index == 0 and "NewIndex" in kwargs:
-                    raise FritzInternalError("820")
-                return {"NewIPAddress": "", "NewMACAddress": f"AA:BB:CC:DD:EE:0{index}", "NewHostName": "h", "NewActive": 1}
+                    msg = "820"
+                    raise FritzInternalError(msg)
+                return {
+                    "NewIPAddress": "",
+                    "NewMACAddress": f"AA:BB:CC:DD:EE:0{index}",
+                    "NewHostName": "h",
+                    "NewActive": 1,
+                }
             return call_action_mock(service, action, **kwargs)
 
         fc = mock_fritzconnection.return_value
         fc.call_action.side_effect = host_table
         fc.services = create_fc_services(fc_services_devices["FritzBox 7590"])
         collector = FritzCollector()
-        collector.register(FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock", host_info=True))
+        collector.register(
+            FritzDevice(FritzCredentials("somehost", "u", "p"), "FritzMock", host_info=True)
+        )
 
         by_name = {m.name: m for m in collector.collect()}
 
-        assert [s.labels["mac_address"] for s in by_name["fritz_host_active"].samples] == ["AA:BB:CC:DD:EE:01"]
-        problems = {(s.labels["capability"], s.labels["level"]) for s in by_name["fritz_read_problem"].samples}
+        assert [s.labels["mac_address"] for s in by_name["fritz_host_active"].samples] == [
+            "AA:BB:CC:DD:EE:01"
+        ]
+        problems = {
+            (s.labels["capability"], s.labels["level"])
+            for s in by_name["fritz_read_problem"].samples
+        }
         assert ("HostInfo", "partial") in problems
 
 
-
-def test_a_lasting_bug_adds_no_log_lines_of_its_own():
+def test_a_lasting_bug_adds_no_log_lines_of_its_own() -> None:
     # The caller logs a bug with its traceback on every scrape; report_problem
     # only keeps count and must not add an empty line.
     state = ProblemState()
@@ -1128,12 +1255,20 @@ class TestWanDataBytes:
 
     ADDON = ("WANCommonIFC1", "GetAddonInfos")
 
-    def _totals(self, mock_fritzconnection, capabilities, overrides=None):
+    def _totals(
+        self,
+        mock_fritzconnection: MagicMock,
+        capabilities: tuple[str, ...],
+        overrides: dict[tuple[str, str], Any] | None = None,
+    ) -> dict[str, float]:
         by_name = collect_device(mock_fritzconnection, services(*capabilities), overrides=overrides)
         return {s.labels["direction"]: s.value for s in by_name["fritz_wan_data_bytes"].samples}
 
-    def test_64_bit_totals_from_addon_infos(self, mock_fritzconnection: MagicMock):
-        wide = {"NewX_AVM_DE_TotalBytesReceived64": 540473814524, "NewX_AVM_DE_TotalBytesSent64": "6000000000"}
+    def test_64_bit_totals_from_addon_infos(self, mock_fritzconnection: MagicMock) -> None:
+        wide = {
+            "NewX_AVM_DE_TotalBytesReceived64": 540473814524,
+            "NewX_AVM_DE_TotalBytesSent64": "6000000000",
+        }
         totals = self._totals(
             mock_fritzconnection,
             ("DeviceInfo", "WanCommonInterfaceDataBytes", "WanCommonInterfaceByteRate"),
@@ -1141,7 +1276,9 @@ class TestWanDataBytes:
         )
         assert totals == {"rx": 540473814524, "tx": 6000000000}
 
-    def test_empty_64_bit_value_falls_back_to_the_classic_total(self, mock_fritzconnection: MagicMock):
+    def test_empty_64_bit_value_falls_back_to_the_classic_total(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         wide = {"NewX_AVM_DE_TotalBytesReceived64": "", "NewX_AVM_DE_TotalBytesSent64": 6000000000}
         totals = self._totals(
             mock_fritzconnection,
@@ -1150,6 +1287,6 @@ class TestWanDataBytes:
         )
         assert totals == {"rx": 1234567, "tx": 6000000000}
 
-    def test_without_addon_infos_the_classic_totals(self, mock_fritzconnection: MagicMock):
+    def test_without_addon_infos_the_classic_totals(self, mock_fritzconnection: MagicMock) -> None:
         totals = self._totals(mock_fritzconnection, ("DeviceInfo", "WanCommonInterfaceDataBytes"))
         assert totals == {"rx": 1234567, "tx": 234567}

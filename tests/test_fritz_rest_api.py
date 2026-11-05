@@ -6,19 +6,20 @@ parsers (``fritz_rest_generic.py``) and the ``WanSegmentUtilization`` /
 """
 
 import logging
+from collections.abc import Callable
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from prometheus_client.metrics_core import Metric
 
 from fritzexporter.fritz_rest_generic import (
     parse_connections_response,
     parse_monitor_segment,
 )
 from fritzexporter.fritz_webui import FritzWebUiError
-from fritzexporter.reply import DataError, Issues
-
 from fritzexporter.fritzdevice import FritzCollector
+from fritzexporter.reply import DataError, Issues
 
 from .collect import CABLE, collect_device, fake_device, sample_map, services
 
@@ -56,7 +57,7 @@ SEGMENT_RAW = {
 
 
 class TestParseMonitorSegment:
-    def test_parses_series_and_last_sample_time(self):
+    def test_parses_series_and_last_sample_time(self) -> None:
         data = parse_monitor_segment(SEGMENT_RAW, Issues())
 
         assert data["last_sample_time"] == 1789671960
@@ -68,7 +69,7 @@ class TestParseMonitorSegment:
         assert own["downstream"] == [1.0, 2.0, 1.2345]
         assert own["upstream"][-1] == pytest.approx(9.87)
 
-    def test_handles_string_and_null_samples(self):
+    def test_handles_string_and_null_samples(self) -> None:
         raw = {
             "data": [
                 {
@@ -89,7 +90,7 @@ class TestParseMonitorSegment:
         assert series["downstream"][2] is None
         assert series["upstream"] == [1.0]
 
-    def test_handles_empty_response(self):
+    def test_handles_empty_response(self) -> None:
         # What a box on a medium that is not shared (DSL) answers.
         data = parse_monitor_segment({"data": []}, Issues())
         assert data["last_sample_time"] is None
@@ -103,7 +104,9 @@ class TestParseMonitorSegment:
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestWanSegmentUtilization:
-    def _collect(self, mock_fritzconnection: MagicMock, segment_raw: dict | None = None):
+    def _collect(
+        self, mock_fritzconnection: MagicMock, segment_raw: dict | None = None
+    ) -> dict[str, Metric]:
         client = MagicMock()
         client.fetch_page.return_value = {}
         client.fetch_api.return_value = segment_raw or SEGMENT_RAW
@@ -115,7 +118,7 @@ class TestWanSegmentUtilization:
             name="FritzCable",
         )
 
-    def test_exposes_latest_sample_for_all_scopes(self, mock_fritzconnection: MagicMock):
+    def test_exposes_latest_sample_for_all_scopes(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect(mock_fritzconnection)
 
         assert "fritz_cable_segment_utilization_percent" in by_name
@@ -138,7 +141,7 @@ class TestWanSegmentUtilization:
             ("upstream", "total"),
         }
 
-    def test_sample_age_uses_last_sample_time(self, mock_fritzconnection: MagicMock):
+    def test_sample_age_uses_last_sample_time(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect(mock_fritzconnection)
 
         assert "fritz_cable_segment_sample_timestamp_seconds" in by_name
@@ -147,7 +150,7 @@ class TestWanSegmentUtilization:
         assert age.samples[0].value == 1789671960
         assert age.samples[0].labels["friendly_name"] == "FritzCable"
 
-    def test_skips_null_newest_sample(self, mock_fritzconnection: MagicMock):
+    def test_skips_null_newest_sample(self, mock_fritzconnection: MagicMock) -> None:
         raw = {
             "data": [
                 {
@@ -163,7 +166,7 @@ class TestWanSegmentUtilization:
         # downstream newest is null and upstream is empty -> nothing emitted
         assert util.samples == []
 
-    def test_enabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
+    def test_enabled_on_non_cable_box(self, mock_fritzconnection: MagicMock) -> None:
         """The REST API is not cable-specific; present on any box with the
         common WAN interface service."""
         device = fake_device(mock_fritzconnection, WAN_SERVICES, name="FritzCable")
@@ -175,19 +178,23 @@ class TestWanSegmentUtilization:
         assert by_name["fritz_cable_segment_utilization_percent"].samples == []
         assert by_name["fritz_cable_segment_sample_timestamp_seconds"].samples == []
 
-    def test_check_capability_enabled_on_cable(self, mock_fritzconnection: MagicMock):
+    def test_check_capability_enabled_on_cable(self, mock_fritzconnection: MagicMock) -> None:
         device = fake_device(mock_fritzconnection, WAN_SERVICES, overrides=CABLE, name="FritzCable")
         assert device.capabilities["WanSegmentUtilization"].present is True
 
     def test_fetch_error_does_not_break_collection(
-        self, mock_fritzconnection: MagicMock, caplog
-    ):
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         client = MagicMock()
         client.fetch_page.return_value = {}
         client.fetch_api.side_effect = FritzWebUiError("boom")
         with caplog.at_level(logging.ERROR):
             by_name = collect_device(
-                mock_fritzconnection, WAN_SERVICES, overrides=CABLE, webui_client=client, name="FritzCable"
+                mock_fritzconnection,
+                WAN_SERVICES,
+                overrides=CABLE,
+                webui_client=client,
+                name="FritzCable",
             )
         assert by_name["fritz_cable_segment_utilization_percent"].samples == []
         assert "fritz_device_reachable" in by_name
@@ -235,7 +242,7 @@ CONNECTIONS_RAW: dict[str, Any] = {
 
 
 class TestParseConnectionsResponse:
-    def test_parses_entries(self):
+    def test_parses_entries(self) -> None:
         connections = parse_connections_response(CONNECTIONS_RAW, Issues())
 
         assert len(connections) == 2
@@ -256,16 +263,16 @@ class TestParseConnectionsResponse:
         assert disabled["ip4_addr"] == "0.0.0.0"
         assert disabled["ip6_addr"] == ""
 
-    def test_handles_empty_list(self):
+    def test_handles_empty_list(self) -> None:
         assert parse_connections_response({"connection": []}, Issues()) == []
 
     @pytest.mark.parametrize("raw", [[], {"connection": "not a list"}])
-    def test_reply_of_the_wrong_shape_raises(self, raw):
+    def test_reply_of_the_wrong_shape_raises(self, raw: list[Any] | dict[str, Any]) -> None:
         issues = Issues()
         with pytest.raises(DataError):
             parse_connections_response(raw, issues)
 
-    def test_unreadable_connection_is_skipped_and_recorded(self):
+    def test_unreadable_connection_is_skipped_and_recorded(self) -> None:
         issues = Issues()
         raw = {"connection": ["not an object", {"UID": ["x"]}, {"UID": "c3", "name": "ok"}]}
 
@@ -273,11 +280,14 @@ class TestParseConnectionsResponse:
 
         assert [c["uid"] for c in connections] == ["c3"]
         assert issues.messages == [
-            "connections connection[0] skipped: connections connection[0]: expected an object, got str",
+            (
+                "connections connection[0] skipped: connections connection[0]: expected an "
+                "object, got str"
+            ),
             "connection 1 skipped: connections connection[1] UID: expected text, got list",
         ]
 
-    def test_unreadable_uptime_is_none_and_recorded(self):
+    def test_unreadable_uptime_is_none_and_recorded(self) -> None:
         issues = Issues()
 
         connections = parse_connections_response(
@@ -298,10 +308,14 @@ class TestParseConnectionsResponse:
 
 @patch("fritzexporter.tr064_remote.FritzConnection")
 class TestWanConnectionStatus:
-    def _collect(self, mock_fritzconnection: MagicMock, connections_raw: list | None = None):
+    def _collect(
+        self, mock_fritzconnection: MagicMock, connections_raw: list | None = None
+    ) -> dict[str, Metric]:
         client = MagicMock()
         client.fetch_page.return_value = {}
-        client.fetch_api.return_value = connections_raw if connections_raw is not None else CONNECTIONS_RAW
+        client.fetch_api.return_value = (
+            connections_raw if connections_raw is not None else CONNECTIONS_RAW
+        )
         return collect_device(
             mock_fritzconnection,
             WAN_SERVICES,
@@ -310,7 +324,7 @@ class TestWanConnectionStatus:
             name="FritzCable",
         )
 
-    def test_uptime_samples_per_stack(self, mock_fritzconnection: MagicMock):
+    def test_uptime_samples_per_stack(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect(mock_fritzconnection)
 
         assert "fritz_wan_connection_uptime_seconds" in by_name
@@ -330,7 +344,7 @@ class TestWanConnectionStatus:
         # The address is in fritz_wan_connection_info only: it changes on reconnect.
         assert "ip_address" not in sample.labels
 
-    def test_status_samples_per_stack(self, mock_fritzconnection: MagicMock):
+    def test_status_samples_per_stack(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect(mock_fritzconnection)
 
         assert "fritz_wan_connection_status" in by_name
@@ -354,9 +368,13 @@ class TestWanConnectionStatus:
             ("connection0001", "Cable"),
             ("connection0002", "LTE"),
         }
-        assert all("ip_address" not in s.labels for s in by_name["fritz_wan_connection_status"].samples)
+        assert all(
+            "ip_address" not in s.labels for s in by_name["fritz_wan_connection_status"].samples
+        )
 
-    def test_state_and_address_are_in_the_info_metric(self, mock_fritzconnection: MagicMock):
+    def test_state_and_address_are_in_the_info_metric(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         by_name = self._collect(mock_fritzconnection)
 
         info = {
@@ -371,9 +389,12 @@ class TestWanConnectionStatus:
             ("connection0002", "ipv6", "disabled", ""),
         }
         sample = by_name["fritz_wan_connection_info"].samples[0]
-        assert (sample.labels["connection_name"], sample.labels["media_type"]) == ("internet", "Cable")
+        assert (sample.labels["connection_name"], sample.labels["media_type"]) == (
+            "internet",
+            "Cable",
+        )
 
-    def test_no_client_no_samples(self, mock_fritzconnection: MagicMock):
+    def test_no_client_no_samples(self, mock_fritzconnection: MagicMock) -> None:
         """Disabled capability (no web UI client) yields empty metric families."""
         device = fake_device(mock_fritzconnection, WAN_SERVICES, overrides=CABLE, name="FritzCable")
         device.webui_client = None
@@ -383,7 +404,7 @@ class TestWanConnectionStatus:
         assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
         assert by_name["fritz_wan_connection_status"].samples == []
 
-    def test_enabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
+    def test_enabled_on_non_cable_box(self, mock_fritzconnection: MagicMock) -> None:
         """The REST API is not cable-specific; present on any box with the
         common WAN interface service."""
         device = fake_device(mock_fritzconnection, WAN_SERVICES, name="FritzCable")
@@ -396,9 +417,7 @@ class TestWanConnectionStatus:
         assert by_name["fritz_wan_connection_uptime_seconds"].samples == []
         assert by_name["fritz_wan_connection_status"].samples == []
 
-    def test_fetches_connection_status(
-        self, mock_fritzconnection: MagicMock
-    ):
+    def test_fetches_connection_status(self, mock_fritzconnection: MagicMock) -> None:
         """The REST connection status is technology-independent: it is fetched
         and emitted regardless of the WAN access type."""
         # Plain call_action_mock reports NewWANAccessType "PPPoE"; the
@@ -427,8 +446,8 @@ class TestWanConnectionStatus:
         mock_client.fetch_api.assert_any_call("/api/v0/generic/connections")
 
     def test_fetch_error_does_not_break_collection(
-        self, mock_fritzconnection: MagicMock, caplog
-    ):
+        self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture
+    ) -> None:
         mock_client = MagicMock()
         mock_client.fetch_page.return_value = {}
         mock_client.fetch_api.side_effect = FritzWebUiError("boom")
@@ -452,7 +471,9 @@ class TestWanConnectionStatus:
         (parse_connections_response, {"other": []}),
     ],
 )
-def test_reply_without_its_data_container_raises(parse, raw):
+def test_reply_without_its_data_container_raises(
+    parse: Callable[..., object], raw: dict[str, Any]
+) -> None:
     # An empty container means "no data"; a missing one a reply not understood.
     issues = Issues()
     with pytest.raises(DataError, match="missing"):
