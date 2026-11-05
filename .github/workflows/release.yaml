@@ -37,8 +37,14 @@ jobs:
     if: ${{ needs.release.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
     name: Build & publish to PyPI
+    # Trusted Publishing: PyPI accepts an OIDC token issued for this repository, this
+    # workflow file and this environment instead of a stored API token.
+    environment:
+      name: pypi
+      url: https://pypi.org/project/fritz-exporter/
     permissions:
       contents: read
+      id-token: write # to request the OIDC token PyPI exchanges for an upload token
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,6 +54,5 @@ jobs:
         with:
           python-version: "3.14"
       - name: Build and publish
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: uv build && uv publish
+        # "always": fail if the token exchange does not work, rather than falling back.
+        run: uv build && uv publish --trusted-publishing always
