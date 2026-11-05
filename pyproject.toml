@@ -144,11 +144,12 @@ ignore = [
   "ARG001",  # pytest fixtures requested only for their effect
   "ARG002",  # same, in test methods
   "ANN401",  # Any is fine for mocks and fakes
+  "S104",    # tests check the documented bind-all default
+  "S105",    # made-up credentials
+  "S106",    # same, as arguments
 ]
 # Deviation: stand-alone scripts, not part of a package.
 "misc/**" = ["INP001"]
-# Deviation: tests use made-up credentials and check the documented bind-all default.
-"tests/**/*.py" = ["S104", "S105", "S106"]
 # Deviation: Sphinx reads docs/conf.py by path and wants a variable named copyright.
 "docs/conf.py" = ["INP001", "A001"]
 
