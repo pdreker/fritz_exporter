@@ -384,11 +384,11 @@ class TestHomeAutomationCapability:
 
     def _make_device_xml(
         self,
-        ain="123456789012",
-        include_powermeter=True,
-        include_temperature=True,
-        include_switch=True,
-        include_hkr=True,
+        ain: str = "123456789012",
+        include_powermeter: bool = True,
+        include_temperature: bool = True,
+        include_switch: bool = True,
+        include_hkr: bool = True,
         battery: str | None = "100",
         batterylow: str | None = "0",
     ) -> str:
@@ -894,7 +894,7 @@ class TestUspControllers:
     ) -> None:
         # No controller at index 0 still shows the action works; an error
         # reply means the device only advertises it.
-        def by_index(**_) -> Never:
+        def by_index(**_: Any) -> Never:
             raise error
 
         device = fake_device(

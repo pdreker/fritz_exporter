@@ -101,7 +101,7 @@ class TestFritzWebUiClientAuth:
     def test_pbkdf2_huge_iterations_rejected_without_hashing(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        def fail(*_args) -> Never:
+        def fail(*_args: object) -> Never:
             msg = "pbkdf2_hmac must not run"
             raise AssertionError(msg)
 

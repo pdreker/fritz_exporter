@@ -1470,7 +1470,7 @@ class TestFritzCollector:
         assert device_reachable_metrics[0].samples[0].value == 0.0
 
 
-def _mesh_link(**overrides):
+def _mesh_link(**overrides: Any):
     link = {
         "uid": "l1",
         "node_1_uid": "n1",
@@ -1485,7 +1485,7 @@ def _mesh_link(**overrides):
     return link
 
 
-def _mesh_topology(link=None, **node_overrides):
+def _mesh_topology(link=None, **node_overrides: Any):
     master = {
         "uid": "n1",
         "device_name": "fritzbox",
@@ -1919,7 +1919,7 @@ class TestGetConnectionMode:
         # Prepare
         device, fc = self._create_device(mock_fc)
 
-        def raise_missing_service(s, a, **kw):
+        def raise_missing_service(s, a, **kw: Any):
             if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
                 msg = "no WAN service on this device"
                 raise exc(msg)
@@ -1941,7 +1941,7 @@ class TestGetConnectionMode:
         caplog.set_level(logging.DEBUG)
         device, fc = self._create_device(mock_fc)
 
-        def raise_connection_exception(s, a, **kw):
+        def raise_connection_exception(s, a, **kw: Any):
             if (s, a) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
                 msg = "Connection failed"
                 raise FritzUnreachableError(msg)

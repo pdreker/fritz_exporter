@@ -28,7 +28,7 @@ SECRET = "192.0.2.77"
 LAN_STATS = ("LANEthernetInterfaceConfig1", "GetStatistics")
 
 
-def lan_stats(**fields):
+def lan_stats(**fields: Any):
     stats = {
         "NewBytesReceived": 1234,
         "NewBytesSent": 9876,
@@ -39,7 +39,7 @@ def lan_stats(**fields):
     return {k: v for k, v in stats.items() if v is not None}
 
 
-def wlan1_info(**fields):
+def wlan1_info(**fields: Any):
     info = call_action_mock("WLANConfiguration1", "GetInfo")
     return {**info, **fields}
 

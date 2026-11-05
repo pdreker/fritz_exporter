@@ -19,7 +19,7 @@ def create_fc_services(services_mock):
     return services
 
 
-def call_http_mock(action, ain=None, **_):
+def call_http_mock(action, ain=None, **_: Any):
     return {
         "content": """<?xml version="1.0" encoding="utf-8"?>
         <devicelist version="1">
@@ -233,7 +233,7 @@ def call_action_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]
     return call_action_responses[(service, action)]
 
 
-def call_action_no_basic_mock(service, action, **_):
+def call_action_no_basic_mock(service, action, **_: Any):
 
     if service == "DeviceInfo1" and action == "GetInfo":
         raise FritzServiceError
