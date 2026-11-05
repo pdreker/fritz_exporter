@@ -69,7 +69,7 @@ class TestConverters:
             (" on ", True),
         ],
     )
-    def test_to_bool(self, value: bool | int | str, expected: bool) -> None:
+    def test_to_bool(self, *, value: bool | int | str, expected: bool) -> None:
         assert to_bool(value, "x") is expected
 
     @pytest.mark.parametrize("value", [2, -1, "maybe", 1.0, [1]])
@@ -80,7 +80,7 @@ class TestConverters:
     @pytest.mark.parametrize(
         ("value", "expected"), [("a", "a"), (5, "5"), (1.5, "1.5"), (True, "1"), (False, "0")]
     )
-    def test_to_str(self, value: str | int | float | bool, expected: str) -> None:
+    def test_to_str(self, *, value: str | int | float | bool, expected: str) -> None:
         assert to_str(value, "x") == expected
 
     @pytest.mark.parametrize("value", [[1], {"a": 1}, object()])
@@ -115,7 +115,7 @@ class TestReply:
     )
 
     def test_must_be_an_object(self) -> None:
-        with pytest.raises(DataError, match="Svc.Action: expected an object, got list"):
+        with pytest.raises(DataError, match=r"Svc\.Action: expected an object, got list"):
             Reply([], "Svc.Action")
 
     def test_required_reads(self) -> None:
@@ -149,11 +149,11 @@ class TestReply:
             self.reply.text("missing")
 
     def test_present_but_malformed_raises_even_when_optional(self) -> None:
-        with pytest.raises(DataError, match="Svc.Action name: expected a number"):
+        with pytest.raises(DataError, match=r"Svc\.Action name: expected a number"):
             self.reply.opt_num("name")
-        with pytest.raises(DataError, match="Svc.Action nested: expected text"):
+        with pytest.raises(DataError, match=r"Svc\.Action nested: expected text"):
             self.reply.opt_text("nested")
-        with pytest.raises(DataError, match="Svc.Action name: expected an object"):
+        with pytest.raises(DataError, match=r"Svc\.Action name: expected an object"):
             self.reply.opt_obj("name")
 
     def test_empty_containers_of_the_other_kind_are_absent(self) -> None:
@@ -170,7 +170,7 @@ class TestReply:
         assert self.reply.items("none") == []
 
     def test_list_errors_name_the_field(self) -> None:
-        with pytest.raises(DataError, match="Svc.Action name: expected a list"):
+        with pytest.raises(DataError, match=r"Svc\.Action name: expected a list"):
             self.reply.items("name")
 
 
@@ -183,7 +183,7 @@ class TestReadAction:
 
         device.fc.call_action.assert_called_once_with("Hosts1", "GetGenericHostEntry", NewIndex=4)
         assert reply.integer("NewIndex") == 4
-        with pytest.raises(DataError, match="Hosts1.GetGenericHostEntry NewHostName: missing"):
+        with pytest.raises(DataError, match=r"Hosts1\.GetGenericHostEntry NewHostName: missing"):
             reply.text("NewHostName")
 
     def test_non_dict_result_raises(self) -> None:
@@ -191,7 +191,7 @@ class TestReadAction:
         device.fc.call_action.return_value = None
 
         with pytest.raises(
-            DataError, match="DeviceInfo1.GetInfo: expected an object, got NoneType"
+            DataError, match=r"DeviceInfo1\.GetInfo: expected an object, got NoneType"
         ):
             read_action(device, "DeviceInfo1", "GetInfo")
 
@@ -251,7 +251,7 @@ class TestIssues:
     def test_objects_raises_when_the_list_itself_is_wrong(self) -> None:
         issues, reply = Issues(), Reply({"rows": "x"}, "S.A")
         objects = issues.objects(reply, "rows")
-        with pytest.raises(DataError, match="S.A rows: expected a list"):
+        with pytest.raises(DataError, match=r"S\.A rows: expected a list"):
             next(objects)
 
     def test_item_skips_the_rest_of_the_block_and_undoes_it(self) -> None:
@@ -272,7 +272,7 @@ class TestIssues:
         assert issues.messages == ["item 1 skipped: item value: expected a whole number, got str"]
 
     def test_item_lets_other_errors_through(self) -> None:
-        with pytest.raises(KeyError), Issues().item("item"):
+        with pytest.raises(KeyError), Issues().item("item"):  # noqa: PT012 - the error must pass the item
             msg = "x"
             raise KeyError(msg)
 

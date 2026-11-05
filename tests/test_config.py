@@ -55,7 +55,7 @@ class TestFileConfigs:
     def test_malformed_device(self) -> None:
         testfile = "tests/conffiles/malformeddevice.yaml"
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="'username' must be >= 1"):
             _ = get_config(testfile)
 
     def test_nodevices(self) -> None:
@@ -67,7 +67,7 @@ class TestFileConfigs:
     def test_invalidport(self) -> None:
         testfile = "tests/conffiles/invalidport.yaml"
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="'exporter_port' must be <= 65535"):
             _ = get_config(testfile)
 
     def test_valid_file(self) -> None:
@@ -82,7 +82,7 @@ class TestFileConfigs:
                     "prometheus2",
                     None,
                     "Fritz!Box 7590 Router",
-                    False,
+                    host_info=False,
                 ),
                 DeviceConfig(
                     "repeater-Wohnzimmer",
@@ -90,7 +90,7 @@ class TestFileConfigs:
                     "prometheus4",
                     None,
                     "Repeater Wohnzimmer",
-                    False,
+                    host_info=False,
                 ),
             ],
         )
@@ -109,7 +109,7 @@ class TestFileConfigs:
                     None,
                     "tests/conffiles/password.txt",
                     "Fritz!Box 7590 Router",
-                    False,
+                    host_info=False,
                 ),
             ]
         )
@@ -390,14 +390,14 @@ class TestConfigEdgeCases:
 
     def test_password_too_long_error_message(self) -> None:
 
-        try:
+        with pytest.raises(
+            FritzPasswordTooLongError, match=r"Password\ is\ longer\ than\ 32\ characters"
+        ):
             DeviceConfig(
                 hostname="fritz.box",
                 username="user",
                 password="a" * 33,
             )
-        except FritzPasswordTooLongError as e:
-            assert "Password is longer than 32 characters" in str(e)
 
     def test_password_file_not_found_raises_error(self) -> None:
 
@@ -410,14 +410,15 @@ class TestConfigEdgeCases:
 
     def test_password_file_not_found_error_message(self) -> None:
 
-        try:
+        with pytest.raises(
+            FritzPasswordFileDoesNotExistError,
+            match=r"password_file\ /this/does/not/exist/password\.txt\ cannot\ be\ read",
+        ):
             DeviceConfig(
                 hostname="fritz.box",
                 username="user",
                 password_file="/this/does/not/exist/password.txt",
             )
-        except FritzPasswordFileDoesNotExistError as e:
-            assert "password_file /this/does/not/exist/password.txt cannot be read" in str(e)
 
     def test_connection_timeout_parsed_from_config(self) -> None:
         testfile = "tests/conffiles/config_with_timeout.yaml"
@@ -445,7 +446,7 @@ class TestConfigEdgeCases:
         assert config.connection_timeout is None
 
     def test_connection_timeout_must_not_be_negative(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="'connection_timeout' must be >= 1"):
             DeviceConfig(
                 hostname="fritz.box",
                 username="user",
@@ -454,7 +455,7 @@ class TestConfigEdgeCases:
             )
 
     def test_connection_timeout_must_be_numeric(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="connection_timeout: invalid literal"):
             DeviceConfig(
                 hostname="fritz.box",
                 username="user",
@@ -487,7 +488,7 @@ class TestConfigEdgeCases:
         assert config.port is None
 
     def test_port_must_be_in_valid_range(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="'port' must be <= 65535"):
             DeviceConfig(
                 hostname="fritz.box",
                 username="user",
@@ -496,7 +497,7 @@ class TestConfigEdgeCases:
             )
 
     def test_port_must_not_be_negative(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="'port' must be >= 1"):
             DeviceConfig(
                 hostname="fritz.box",
                 username="user",
@@ -629,7 +630,7 @@ class TestConfigChecks:
     def test_numbers_are_not_cut_or_taken_from_booleans(
         self, tmp_path: Path, line: str, value: str
     ) -> None:
-        key = line.split(":")[0].strip()
+        key = line.split(":", maxsplit=1)[0].strip()
         with pytest.raises(
             ConfigError,
             match=rf"^device 1 \(fritz.box\): {key}: expected a whole number, got {value}$",
@@ -661,7 +662,7 @@ class TestConfigChecks:
 
     def test_two_devices_without_name_on_one_host_are_an_error(self, tmp_path: Path) -> None:
 
-        with pytest.raises(DeviceNamesNotUniqueError, match="fritz.box"):
+        with pytest.raises(DeviceNamesNotUniqueError, match=r"fritz\.box"):
             self._load(
                 tmp_path,
                 self.DEVICE + "  - hostname: fritz.box\n    username: v\n    password: q\n",

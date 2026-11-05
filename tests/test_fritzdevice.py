@@ -85,31 +85,31 @@ class TestFritzDevice:
         # Check
         assert fd.model == "Fritz!MockBox 9790"
         assert fd.serial == "1234567890"
-        LOGSOURCE = "fritzexporter.fritzcapability"
+        logsource = "fritzexporter.fritzcapability"
         if capability == "WlanConfigurationInfo":
             assert (
-                LOGSOURCE,
+                logsource,
                 logging.DEBUG,
                 f"Capability {capability} in WLAN 1 set to True on device FritzMock (somehost)",
             ) in caplog.record_tuples
             assert (
-                LOGSOURCE,
+                logsource,
                 logging.DEBUG,
                 f"Capability {capability} in WLAN 2 set to True on device FritzMock (somehost)",
             ) in caplog.record_tuples
             assert (
-                LOGSOURCE,
+                logsource,
                 logging.DEBUG,
                 f"Capability {capability} in WLAN 3 set to False on device FritzMock (somehost)",
             ) in caplog.record_tuples
             assert (
-                LOGSOURCE,
+                logsource,
                 logging.DEBUG,
                 f"Capability {capability} in WLAN 4 set to False on device FritzMock (somehost)",
             ) in caplog.record_tuples
         else:
             assert (
-                LOGSOURCE,
+                logsource,
                 logging.DEBUG,
                 f"Capability {capability} set to True on device FritzMock (somehost)",
             ) in caplog.record_tuples
@@ -769,11 +769,8 @@ class TestFritzCollector:
         collector.register(device2)
         collector.register(device3)
 
-        # TODO: Might be worth to check this for every metric?
-        metrics: list[Metric] = []
-        for m in collector.collect():
-            if m.name == "fritz_uptime_seconds":
-                metrics.append(m)
+        # TODO: Might be worth to check this for every metric?  # noqa: TD002, TD003, FIX002
+        metrics: list[Metric] = [m for m in collector.collect() if m.name == "fritz_uptime_seconds"]
 
         # Check
         assert len(metrics) == 1
@@ -1652,7 +1649,9 @@ class TestMeshTopologyParsing:
 
         output = self._scrape(mock_fritzhosts, mock_fritzconnection, topology)
 
-        [available] = [l for l in output.splitlines() if l.startswith("fritz_mesh_link_available{")]
+        [available] = [
+            line for line in output.splitlines() if line.startswith("fritz_mesh_link_available{")
+        ]
         assert 'interface="AP:5G:0"' in available
         assert 'node="fritzbox"' in available
 
@@ -1670,11 +1669,13 @@ class TestMeshTopologyParsing:
 
         assert (
             'fritz_mesh_link_current_data_rate_kbps{direction="rx",friendly_name="FritzMock",'
-            'interface="AP:5G:0",node="7590",peer="repeater",serial="1234567890",type="WLAN"} 1500.0'
+            'interface="AP:5G:0",node="7590",peer="repeater",serial="1234567890",'
+            'type="WLAN"} 1500.0'
         ) in output
         assert (
             'fritz_mesh_link_max_data_rate_kbps{direction="tx",friendly_name="FritzMock",'
-            'interface="AP:5G:0",node="7590",peer="repeater",serial="1234567890",type="WLAN"} 4000.5'
+            'interface="AP:5G:0",node="7590",peer="repeater",serial="1234567890",'
+            'type="WLAN"} 4000.5'
         ) in output
         assert "Could not read MeshTopology data" not in caplog.text
 

@@ -90,17 +90,26 @@ class TestFritzCapabilitiesMethods:
             (
                 FritzActionError,
                 logging.INFO,
-                "device FritzMock (somehost) does not support service Hosts1, action GetHostNumberOfEntries",
+                (
+                    "device FritzMock (somehost) does not support service Hosts1, action "
+                    "GetHostNumberOfEntries"
+                ),
             ),
             (
                 FritzServiceError,
                 logging.INFO,
-                "device FritzMock (somehost) does not support service Hosts1, action GetHostNumberOfEntries",
+                (
+                    "device FritzMock (somehost) does not support service Hosts1, action "
+                    "GetHostNumberOfEntries"
+                ),
             ),
             (
                 FritzInternalError,
                 logging.WARNING,
-                "disabling metrics of FritzMock (somehost) at service Hosts1, action GetHostNumberOfEntries",
+                (
+                    "disabling metrics of FritzMock (somehost) at service Hosts1, action "
+                    "GetHostNumberOfEntries"
+                ),
             ),
         ],
     )
@@ -386,6 +395,7 @@ class TestHomeAutomationCapability:
     def _make_device_xml(
         self,
         ain: str = "123456789012",
+        *,
         include_powermeter: bool = True,
         include_temperature: bool = True,
         include_switch: bool = True,
@@ -592,7 +602,10 @@ class TestHomeAutomationCapability:
 
         # Warning should be logged
         assert any(
-            "Could not read HomeAutomation data from FritzMock (somehost), skipping it: AHA request failed"
+            (
+                "Could not read HomeAutomation data from FritzMock (somehost), skipping it: AHA "
+                "request failed"
+            )
             in record.message
             for record in caplog.records
         )
@@ -895,7 +908,7 @@ class TestUspControllers:
         ("error", "present"), [(FritzArrayIndexError, True), (FritzActionError, False)]
     )
     def test_controller_lookup_is_probed(
-        self, mock_fritzconnection: MagicMock, error: type[Exception], present: bool
+        self, mock_fritzconnection: MagicMock, error: type[Exception], *, present: bool
     ) -> None:
         # No controller at index 0 still shows the action works; an error
         # reply means the device only advertises it.
@@ -1076,10 +1089,12 @@ class TestProbing:
                     "NewHostName": "h",
                     "NewActive": 1,
                 }
-            if (service, action) == ("Hosts1", "X_AVM-DE_GetSpecificHostEntryByIP"):
-                if _argument(kwargs, "NewIPAddress") == "192.0.2.1":
-                    msg = "820"
-                    raise FritzInternalError(msg)
+            if (service, action) == (
+                "Hosts1",
+                "X_AVM-DE_GetSpecificHostEntryByIP",
+            ) and _argument(kwargs, "NewIPAddress") == "192.0.2.1":
+                msg = "820"
+                raise FritzInternalError(msg)
             return call_action_mock(service, action, **kwargs)
 
         fc = mock_fritzconnection.return_value

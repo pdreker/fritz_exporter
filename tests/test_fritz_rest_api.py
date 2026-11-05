@@ -280,7 +280,10 @@ class TestParseConnectionsResponse:
 
         assert [c["uid"] for c in connections] == ["c3"]
         assert issues.messages == [
-            "connections connection[0] skipped: connections connection[0]: expected an object, got str",
+            (
+                "connections connection[0] skipped: connections connection[0]: expected an "
+                "object, got str"
+            ),
             "connection 1 skipped: connections connection[1] UID: expected text, got list",
         ]
 

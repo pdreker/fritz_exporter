@@ -87,7 +87,7 @@ class TestFritzWebUiClientAuth:
         ],
     )
     def test_pbkdf2_iteration_bounds(
-        self, monkeypatch: pytest.MonkeyPatch, iter1: int, iter2: int, ok: bool
+        self, monkeypatch: pytest.MonkeyPatch, iter1: int, iter2: int, *, ok: bool
     ) -> None:
         calls = []
         monkeypatch.setattr(hashlib, "pbkdf2_hmac", lambda *a: calls.append(a) or b"\0" * 32)
@@ -693,7 +693,7 @@ class TestFritzWebUiErrorTextHasNoUrl:
         return failure
 
     @staticmethod
-    def _tries(failure: BaseException) -> int:
+    def _tries(failure: BaseException) -> int:  # noqa: ARG004 - same signature as the other _tries
         """One request: a 403 right after a login is no permission, not an expired session."""
         return 1
 
@@ -709,7 +709,7 @@ class TestFritzWebUiErrorTextHasNoUrl:
         session.get.side_effect = [self._failing(failure)] * 4
         client = FritzWebUiClient("fritz.box", "exporter", "pass")
 
-        with pytest.raises(FritzWebUiError, match="login_sid.lua request failed") as info:
+        with pytest.raises(FritzWebUiError, match=r"login_sid\.lua request failed") as info:
             client.fetch_aha("getdevicelistinfos")
 
         _log_like_capabilities(info.value)
@@ -751,7 +751,7 @@ class TestFritzWebUiErrorTextHasNoUrl:
         session.post.side_effect = [self._failing(failure)] * 2
         client = FritzWebUiClient("fritz.box", "exporter", "pass")
 
-        with pytest.raises(FritzWebUiError, match="data.lua request failed") as info:
+        with pytest.raises(FritzWebUiError, match=r"data\.lua request failed") as info:
             client.fetch_page("docInfo")
 
         assert session.post.call_count == self._tries(failure)
@@ -1104,7 +1104,7 @@ class TestRequestHandling:
         session.get.return_value = _resp(self.ENTITY_BOMB)
 
         client = FritzWebUiClient("fritz.box", "user", "pass")
-        with pytest.raises(FritzWebUiError, match="could not parse login_sid.lua response"):
+        with pytest.raises(FritzWebUiError, match=r"could not parse login_sid\.lua response"):
             client._login()
 
 

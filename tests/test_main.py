@@ -35,7 +35,7 @@ def test_wait_for_shutdown_returns_on_signal(sig: signal.Signals) -> None:
         timer.cancel()
 
 
-class Test_Main:
+class TestMain:
     def test_cli_args_log_level(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--log-level", "DEBUG"])
 
@@ -73,7 +73,7 @@ class Test_Main:
         assert captured.out == f"{version('fritz-exporter')}\n"
         assert captured.out != "develop\n"
         assert captured.err == ""
-        assert pytest_wrapped_exit.type == SystemExit
+        assert pytest_wrapped_exit.type is SystemExit
         assert pytest_wrapped_exit.value.code == 0
 
     def test_invalid_config_exits_with_code(
@@ -84,7 +84,7 @@ class Test_Main:
         with pytest.raises(SystemExit) as pytest_wrapped_exit:
             main()
 
-        assert pytest_wrapped_exit.type == SystemExit
+        assert pytest_wrapped_exit.type is SystemExit
         assert pytest_wrapped_exit.value.code == 1
         assert "Invalid configuration: config file" in caplog.text
         assert "could not be read" in caplog.text

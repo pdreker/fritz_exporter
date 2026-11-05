@@ -702,7 +702,7 @@ class TestCheckSamples:
         family = GaugeMetricFamily("m", "h", labels=["a"])
         family.add_metric(["x"], 1)
         family.add_metric(["y"], 2.5)
-        family.add_metric(["z"], True)
+        family.add_metric(["z"], value=True)
 
         _check_samples({"m": family}, {"m": 0})
 
