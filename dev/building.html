@@ -679,7 +679,7 @@
 </code></pre></div>
 <p>from inside the source directory.</p>
 <p>To run the resulting image use</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>fritz_exporter<span class="w"> </span>-p<span class="w"> </span>&lt;PORT&gt;:&lt;FRITZ_EXPORTER_PORT&gt;<span class="w"> </span>-e<span class="w"> </span><span class="nv">FRITZ_EXPORTER_CONFIG</span><span class="o">=</span><span class="s2">&quot;192.168.178.1,username,password&quot;</span><span class="w"> </span>fritz_exporter:local
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>fritz_exporter<span class="w"> </span>-p<span class="w"> </span>&lt;PORT&gt;:&lt;FRITZ_EXPORTER_PORT&gt;<span class="w"> </span>-e<span class="w"> </span><span class="nv">FRITZ_EXPORTER_CONFIG</span><span class="o">=</span><span class="s2">"192.168.178.1,username,password"</span><span class="w"> </span>fritz_exporter:local
 </code></pre></div>
 <h3 id="verify-correct-operation">Verify correct operation<a class="headerlink" href="#verify-correct-operation" title="Permanent link">&para;</a></h3>
 <p>To verify correct operation just use curl against the running exporter. It should reply with a Prometheus-style list of metrics:</p>
@@ -687,14 +687,14 @@
 
 <span class="c1"># HELP python_gc_objects_collected_total Objects collected during gc</span>
 <span class="c1"># TYPE python_gc_objects_collected_total counter</span>
-python_gc_objects_collected_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">&quot;0&quot;</span><span class="o">}</span><span class="w"> </span><span class="m">481</span>.0
-python_gc_objects_collected_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="o">}</span><span class="w"> </span><span class="m">112</span>.0
-python_gc_objects_collected_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">&quot;2&quot;</span><span class="o">}</span><span class="w"> </span><span class="m">0</span>.0
+python_gc_objects_collected_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">"0"</span><span class="o">}</span><span class="w"> </span><span class="m">481</span>.0
+python_gc_objects_collected_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">"1"</span><span class="o">}</span><span class="w"> </span><span class="m">112</span>.0
+python_gc_objects_collected_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">"2"</span><span class="o">}</span><span class="w"> </span><span class="m">0</span>.0
 <span class="c1"># HELP python_gc_objects_uncollectable_total Uncollectable object found during GC</span>
 <span class="c1"># TYPE python_gc_objects_uncollectable_total counter</span>
-python_gc_objects_uncollectable_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">&quot;0&quot;</span><span class="o">}</span><span class="w"> </span><span class="m">0</span>.0
-python_gc_objects_uncollectable_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">&quot;1&quot;</span><span class="o">}</span><span class="w"> </span><span class="m">0</span>.0
-python_gc_objects_uncollectable_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">&quot;2&quot;</span><span class="o">}</span><span class="w"> </span><span class="m">0</span>.0
+python_gc_objects_uncollectable_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">"0"</span><span class="o">}</span><span class="w"> </span><span class="m">0</span>.0
+python_gc_objects_uncollectable_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">"1"</span><span class="o">}</span><span class="w"> </span><span class="m">0</span>.0
+python_gc_objects_uncollectable_total<span class="o">{</span><span class="nv">generation</span><span class="o">=</span><span class="s2">"2"</span><span class="o">}</span><span class="w"> </span><span class="m">0</span>.0
 ...
 </code></pre></div>
 <div class="admonition note">

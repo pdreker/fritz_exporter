@@ -741,7 +741,7 @@
 <h2 id="plain-docker-docker-run">plain Docker (docker run)<a class="headerlink" href="#plain-docker-docker-run" title="Permanent link">&para;</a></h2>
 <p>Docker images are automatically pushed to Docker Hub and are built for linux/amd64, linux/arm/v6, linux/arm/v7 and linux/arm64, the latter three being useful for e.g. Raspberry Pi type systems.</p>
 <p>To run simply use</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>-e<span class="w"> </span><span class="nv">FRITZ_USERNAME</span><span class="o">=</span><span class="s2">&quot;prometheus&quot;</span><span class="w"> </span>-e<span class="w"> </span><span class="nv">FRITZ_PASSWORD</span><span class="o">=</span><span class="s2">&quot;monitoring&quot;</span><span class="w"> </span>-p<span class="w"> </span><span class="m">9787</span>:9787<span class="w"> </span>--name<span class="w"> </span>fritz_exporter<span class="w"> </span>pdreker/fritz_exporter
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>-e<span class="w"> </span><span class="nv">FRITZ_USERNAME</span><span class="o">=</span><span class="s2">"prometheus"</span><span class="w"> </span>-e<span class="w"> </span><span class="nv">FRITZ_PASSWORD</span><span class="o">=</span><span class="s2">"monitoring"</span><span class="w"> </span>-p<span class="w"> </span><span class="m">9787</span>:9787<span class="w"> </span>--name<span class="w"> </span>fritz_exporter<span class="w"> </span>pdreker/fritz_exporter
 </code></pre></div>
 <p>This will use the default hostname of <code>fritz.box</code> for the device and name it after the hostname.</p>
 <p>The image runs as user <code>nobody</code> (65534) and sets <code>FRITZ_LISTEN_ADDRESS=0.0.0.0</code>,
@@ -764,11 +764,11 @@ file is used, and the default <code>127.0.0.1</code> is not reachable from outsi
 <span class="w">    </span><span class="nt">container_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fritz-exporter</span>
 <span class="w">    </span><span class="nt">restart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always</span>
 <span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">FRITZ_HOSTNAME</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;fritz.box&#39;</span>
-<span class="w">      </span><span class="nt">FRITZ_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;prometheus&#39;</span>
-<span class="w">      </span><span class="nt">FRITZ_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;prompassword&#39;</span>
+<span class="w">      </span><span class="nt">FRITZ_HOSTNAME</span><span class="p">:</span><span class="w"> </span><span class="s">'fritz.box'</span>
+<span class="w">      </span><span class="nt">FRITZ_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="s">'prometheus'</span>
+<span class="w">      </span><span class="nt">FRITZ_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="s">'prompassword'</span>
 <span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;9787:9787&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"9787:9787"</span>
 </code></pre></div>
 <p>Then run <code>docker compose up -d</code> to start the exporter.</p>
 <h3 id="config-via-config-file">Config via config file<a class="headerlink" href="#config-via-config-file" title="Permanent link">&para;</a></h3>
@@ -780,9 +780,9 @@ file is used, and the default <code>127.0.0.1</code> is not reachable from outsi
 <span class="w">    </span><span class="nt">container_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fritz-exporter</span>
 <span class="w">    </span><span class="nt">restart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always</span>
 <span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;9787:9787&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"9787:9787"</span>
 <span class="w">    </span><span class="nt">volumes</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;/path/to/fritz-exporter.yml:/fritz-exporter.yml&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"/path/to/fritz-exporter.yml:/fritz-exporter.yml"</span>
 </code></pre></div>
 <p>Create a config file for the exporter in this directory named <code>fritz-exporter.yml</code>. See the example config file provided at <a href="configuration.html#config-file">Config file</a>.
 It must set <code>listen_address: 0.0.0.0</code> and be readable by user <code>nobody</code> (65534), see above.</p>

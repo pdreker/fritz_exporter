@@ -674,11 +674,11 @@
 <span class="w">    </span><span class="nt">container_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fritz-exporter</span>
 <span class="w">    </span><span class="nt">restart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">unless-stopped</span>
 <span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
-<span class="w">      </span><span class="nt">FRITZ_HOSTNAME</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;192.168.178.1&#39;</span>
-<span class="w">      </span><span class="nt">FRITZ_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;xxxxx&#39;</span>
-<span class="w">      </span><span class="nt">FRITZ_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;xxxx&#39;</span>
+<span class="w">      </span><span class="nt">FRITZ_HOSTNAME</span><span class="p">:</span><span class="w"> </span><span class="s">'192.168.178.1'</span>
+<span class="w">      </span><span class="nt">FRITZ_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="s">'xxxxx'</span>
+<span class="w">      </span><span class="nt">FRITZ_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="s">'xxxx'</span>
 <span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;9787:9787&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">"9787:9787"</span>
 
 <span class="w">  </span><span class="nt">prometheus</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">container_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prometheus</span>
@@ -701,17 +701,17 @@
 <span class="w">  </span><span class="nt">evaluation_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15s</span>
 
 <span class="nt">scrape_configs</span><span class="p">:</span>
-<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;fritz-exporter&quot;</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">job_name</span><span class="p">:</span><span class="w"> </span><span class="s">"fritz-exporter"</span>
 <span class="w">    </span><span class="nt">scrape_interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60s</span>
 <span class="w">    </span><span class="nt">static_configs</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;fritz-exporter:9787&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">targets</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"fritz-exporter:9787"</span><span class="p p-Indicator">]</span>
 </code></pre></div>
 <p>Next run <code>docker compose up -d</code> which should start the 3 services. Use <code>docker ps -a</code> to check, that all containers are actually running.</p>
 <div class="highlight"><pre><span></span><code>❯<span class="w"> </span>docker<span class="w"> </span>ps<span class="w"> </span>-a
 CONTAINER<span class="w"> </span>ID<span class="w">   </span>IMAGE<span class="w">                           </span>COMMAND<span class="w">                  </span>CREATED<span class="w">         </span>STATUS<span class="w">         </span>PORTS<span class="w">                    </span>NAMES
-2bb64e672ddf<span class="w">   </span>prom/prometheus:v3<span class="w">              </span><span class="s2">&quot;/bin/prometheus --c…&quot;</span><span class="w">   </span><span class="m">3</span><span class="w"> </span>seconds<span class="w"> </span>ago<span class="w">   </span>Up<span class="w"> </span><span class="m">2</span><span class="w"> </span>seconds<span class="w">   </span><span class="m">0</span>.0.0.0:9090-&gt;9090/tcp<span class="w">   </span>prometheus
-3b4a78035327<span class="w">   </span>pdreker/fritz_exporter:4<span class="w">        </span><span class="s2">&quot;python -m fritzexpo…&quot;</span><span class="w">   </span><span class="m">3</span><span class="w"> </span>seconds<span class="w"> </span>ago<span class="w">   </span>Up<span class="w"> </span><span class="m">2</span><span class="w"> </span>seconds<span class="w">   </span><span class="m">0</span>.0.0.0:9787-&gt;9787/tcp<span class="w">   </span>fritz-exporter
-9c7473367721<span class="w">   </span>grafana/grafana:13.1<span class="w">            </span><span class="s2">&quot;/run.sh&quot;</span><span class="w">                </span><span class="m">3</span><span class="w"> </span>seconds<span class="w"> </span>ago<span class="w">   </span>Up<span class="w"> </span><span class="m">2</span><span class="w"> </span>seconds<span class="w">   </span><span class="m">0</span>.0.0.0:3000-&gt;3000/tcp<span class="w">   </span>grafana
+2bb64e672ddf<span class="w">   </span>prom/prometheus:v3<span class="w">              </span><span class="s2">"/bin/prometheus --c…"</span><span class="w">   </span><span class="m">3</span><span class="w"> </span>seconds<span class="w"> </span>ago<span class="w">   </span>Up<span class="w"> </span><span class="m">2</span><span class="w"> </span>seconds<span class="w">   </span><span class="m">0</span>.0.0.0:9090-&gt;9090/tcp<span class="w">   </span>prometheus
+3b4a78035327<span class="w">   </span>pdreker/fritz_exporter:4<span class="w">        </span><span class="s2">"python -m fritzexpo…"</span><span class="w">   </span><span class="m">3</span><span class="w"> </span>seconds<span class="w"> </span>ago<span class="w">   </span>Up<span class="w"> </span><span class="m">2</span><span class="w"> </span>seconds<span class="w">   </span><span class="m">0</span>.0.0.0:9787-&gt;9787/tcp<span class="w">   </span>fritz-exporter
+9c7473367721<span class="w">   </span>grafana/grafana:13.1<span class="w">            </span><span class="s2">"/run.sh"</span><span class="w">                </span><span class="m">3</span><span class="w"> </span>seconds<span class="w"> </span>ago<span class="w">   </span>Up<span class="w"> </span><span class="m">2</span><span class="w"> </span>seconds<span class="w">   </span><span class="m">0</span>.0.0.0:3000-&gt;3000/tcp<span class="w">   </span>grafana
 </code></pre></div>
 <h2 id="checking-prometheus">Checking Prometheus<a class="headerlink" href="#checking-prometheus" title="Permanent link">&para;</a></h2>
 <p>Point your browser to <a href="http://localhost:9090/targets">http://localhost:9090/targets</a> to access the prometheus UI and navigate to Status -&gt; Targets. You should see the fritz-exporter Target (the exporter) being <strong>Up</strong>. If the <code>Last Scrape</code> Column says "never", wait for a minute and reload.</p>
