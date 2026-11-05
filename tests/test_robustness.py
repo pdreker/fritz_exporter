@@ -87,7 +87,7 @@ class Scenario:
     def scrape(self) -> str:
         with self._patched():
             for device in self.collector.devices:
-                for _, capability in device.capabilities.items():
+                for _, capability in device.capabilities.items():  # noqa: PERF102 - FritzCapabilities has items(), no values()
                     if capability.uses_webui:
                         capability.present = False
             output = generate_latest(self.registry).decode()
@@ -129,7 +129,7 @@ def reachable(output: str, name: str) -> float:
 
 
 class TestValueLevel:
-    def test_missing_value_skips_only_its_sample(self, caplog):
+    def test_missing_value_skips_only_its_sample(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({LAN_STATS: lan_stats(NewBytesSent=None)})
 
@@ -145,7 +145,7 @@ class TestValueLevel:
             "LANEthernetInterfaceConfig1.GetStatistics NewBytesSent: missing"
         ) in caplog.text
 
-    def test_wrong_type_is_reported_without_the_value(self, caplog):
+    def test_wrong_type_is_reported_without_the_value(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({LAN_STATS: lan_stats(NewPacketsSent=SECRET)})
 
@@ -160,7 +160,7 @@ class TestValueLevel:
 
 
 class TestItemLevel:
-    def test_unreadable_label_skips_only_that_item(self, caplog):
+    def test_unreadable_label_skips_only_that_item(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({("WLANConfiguration1", "GetInfo"): wlan1_info(NewSSID={"a": 1})})
 
@@ -176,7 +176,7 @@ class TestItemLevel:
             "WLANConfiguration1.GetInfo NewSSID: expected text, got dict"
         ) in caplog.text
 
-    def test_unreadable_value_skips_only_its_sample(self):
+    def test_unreadable_value_skips_only_its_sample(self) -> None:
         scenario = Scenario({("WLANConfiguration1", "GetInfo"): wlan1_info(NewEnable="maybe")})
 
         output = scenario.scrape()
@@ -189,7 +189,7 @@ class TestItemLevel:
 
 
 class TestSingleCases:
-    def test_malformed_acs_url_skips_only_the_acs_host(self, caplog):
+    def test_malformed_acs_url_skips_only_the_acs_host(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         info = {**call_action_mock("ManagementServer1", "GetInfo"), "NewURL": "http://[::1"}
         scenario = Scenario({("ManagementServer1", "GetInfo"): info})
@@ -201,7 +201,7 @@ class TestSingleCases:
         assert samples(output, "fritz_tr069_acs_info", "GOOD")
         assert "ACS host skipped: ManagementServer1.GetInfo NewURL: not a valid URL" in caplog.text
 
-    def test_empty_access_type_keeps_the_wan_metrics(self):
+    def test_empty_access_type_keeps_the_wan_metrics(self) -> None:
         props = {
             **call_action_mock("WANCommonInterfaceConfig1", "GetCommonLinkProperties"),
             "NewWANAccessType": "",
@@ -214,7 +214,7 @@ class TestSingleCases:
         assert len(samples(output, "fritz_wan_phys_link_status", "BAD")) == 1
         assert len(samples(output, "fritz_wan_max_bitrate_bps", "BAD")) == 2
 
-    def test_uptime_uses_the_device_serial(self):
+    def test_uptime_uses_the_device_serial(self) -> None:
         scenario = Scenario()
         # A later GetInfo reply with an odd serial does not change the label.
         scenario.overrides["bad"][("DeviceInfo1", "GetInfo")] = {
@@ -226,7 +226,7 @@ class TestSingleCases:
 
         assert len(samples(output, "fritz_uptime_seconds_total", "BAD")) == 1
 
-    def test_empty_model_name_keeps_the_uptime_metric(self):
+    def test_empty_model_name_keeps_the_uptime_metric(self) -> None:
         info = {
             **call_action_mock("DeviceInfo1", "GetInfo"),
             "NewSerialNumber": "BAD",
@@ -242,7 +242,7 @@ class TestSingleCases:
 
 
 class TestCapabilityLevel:
-    def test_reply_of_the_wrong_shape_skips_the_capability(self, caplog):
+    def test_reply_of_the_wrong_shape_skips_the_capability(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({LAN_STATS: "garbage"})
 
@@ -257,7 +257,7 @@ class TestCapabilityLevel:
             "LANEthernetInterfaceConfig1.GetStatistics: expected an object, got str"
         ) in caplog.text
 
-    def test_bug_is_contained_but_logged_with_traceback_on_every_scrape(self, caplog):
+    def test_bug_is_contained_but_logged_with_traceback_on_every_scrape(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario()
 
@@ -279,14 +279,15 @@ class TestCapabilityLevel:
         assert all(r.levelno == logging.ERROR and r.exc_info for r in bugs)
         assert problems(output, "GOOD") == [("LanInterfaceConfigStatistics", "error")]
 
-    def test_connection_error_drops_the_partial_set(self):
+    def test_connection_error_drops_the_partial_set(self) -> None:
         scenario = Scenario()
         original = scenario.fcs["bad"].call_action.side_effect
 
         def failing(service, action, **kwargs):
             # WLAN 1 and 2 are read, then the device stops answering.
             if (service, action) == ("WLANConfiguration3", "GetInfo"):
-                raise FritzUnreachableError("down")
+                msg = "down"
+                raise FritzUnreachableError(msg)
             return original(service, action, **kwargs)
 
         scenario.fcs["bad"].call_action.side_effect = failing
@@ -298,7 +299,7 @@ class TestCapabilityLevel:
 
 
 class TestDeviceLevel:
-    def test_device_without_serial_is_offline_and_retried(self, caplog):
+    def test_device_without_serial_is_offline_and_retried(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({("DeviceInfo1", "GetInfo"): {"NewModelName": "Fritz!Box"}})
 
@@ -327,7 +328,7 @@ class TestDeviceLevel:
         assert reachable(output, "BAD") == 1.0
         assert samples(output, "fritz_lan_status", "BAD")
 
-    def test_device_without_serial_is_given_up_after_the_retries(self, caplog):
+    def test_device_without_serial_is_given_up_after_the_retries(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({("DeviceInfo1", "GetInfo"): {"NewModelName": "Fritz!Box"}})
         bad_fc = scenario.fcs["bad"]
@@ -353,7 +354,7 @@ class TestDeviceLevel:
         assert bad_fc.call_action.call_count == calls
         assert [d.friendly_name for d in scenario.collector.devices] == ["GOOD"]
 
-    def test_connection_failures_are_retried_without_limit(self):
+    def test_connection_failures_are_retried_without_limit(self) -> None:
         scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
 
         for _ in range(SERIAL_RETRIES + 3):
@@ -368,7 +369,7 @@ class TestDeviceLevel:
         scenario.scrape()
         assert [d.friendly_name for d in scenario.collector.devices] == ["GOOD", "BAD"]
 
-    def test_new_reason_for_staying_offline_is_logged(self, caplog):
+    def test_new_reason_for_staying_offline_is_logged(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         # Unreachable at startup ...
         scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
@@ -386,13 +387,14 @@ class TestDeviceLevel:
         assert len(reasons) == 1
         assert "could not read the serial number of BAD (bad)" in reasons[0]
 
-    def test_connection_errors_still_mark_the_device_unreachable(self):
+    def test_connection_errors_still_mark_the_device_unreachable(self) -> None:
         scenario = Scenario()
         original = scenario.fcs["bad"].call_action.side_effect
 
         def failing(service, action, **kwargs):
             if (service, action) == LAN_STATS:
-                raise FritzUnreachableError("down")
+                msg = "down"
+                raise FritzUnreachableError(msg)
             return original(service, action, **kwargs)
 
         scenario.fcs["bad"].call_action.side_effect = failing
@@ -404,7 +406,7 @@ class TestDeviceLevel:
     @pytest.mark.parametrize(
         "error", [FritzActionError("820"), FritzConnectionException("HTML reply")]
     )
-    def test_an_error_the_device_answers_with_skips_only_the_capability(self, error):
+    def test_an_error_the_device_answers_with_skips_only_the_capability(self, error) -> None:
         scenario = Scenario()
         scenario.overrides["bad"][LAN_STATS] = error
 
@@ -415,7 +417,7 @@ class TestDeviceLevel:
         assert not samples(output, "fritz_lan_data_bytes_total", "BAD")
         assert samples(output, "fritz_lan_status", "BAD")
 
-    def test_connection_mode_is_one_family(self):
+    def test_connection_mode_is_one_family(self) -> None:
         output = Scenario().scrape()
 
         assert output.count("# TYPE fritz_connection_mode gauge") == 1
@@ -426,7 +428,7 @@ class TestDeviceLevel:
 class TestOfflineRetries:
     """Setting up offline devices again must not hold up other scrapes."""
 
-    def test_retry_runs_outside_the_scrape_lock(self, monkeypatch):
+    def test_retry_runs_outside_the_scrape_lock(self, monkeypatch) -> None:
         monkeypatch.setattr("fritzexporter.fritzdevice.SCRAPE_LOCK_TIMEOUT", 0.01)
         scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
         del scenario.overrides["bad"][("DeviceInfo1", "GetInfo")]
@@ -443,12 +445,12 @@ class TestOfflineRetries:
         assert reachable(output, "BAD") == 1.0
         assert samples(output, "fritz_lan_status", "BAD")
 
-    def test_scrapes_do_not_wait_for_the_retry_and_start_it_once(self, monkeypatch):
+    def test_scrapes_do_not_wait_for_the_retry_and_start_it_once(self, monkeypatch) -> None:
         scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
         release = threading.Event()
         calls = []
 
-        def slow_retry():
+        def slow_retry() -> None:
             calls.append(1)
             release.wait(5)
 
@@ -464,7 +466,7 @@ class TestOfflineRetries:
             assert reachable(output, "GOOD") == 1.0
             assert reachable(output, "BAD") == 0.0
 
-    def test_no_retry_when_every_offline_device_is_given_up(self):
+    def test_no_retry_when_every_offline_device_is_given_up(self) -> None:
         scenario = Scenario()
         scenario.collector.offline_devices = []
         scenario.scrape()
@@ -474,7 +476,7 @@ class TestOfflineRetries:
 class TestUnexpectedSetupErrors:
     """An odd reply while setting up a device keeps that device offline, nothing more."""
 
-    def test_at_startup_the_device_is_offline_with_a_traceback(self, caplog):
+    def test_at_startup_the_device_is_offline_with_a_traceback(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({("DeviceInfo1", "GetInfo"): ParseError("not well-formed")})
 
@@ -486,7 +488,7 @@ class TestUnexpectedSetupErrors:
         assert "unexpected; please report this" in error.getMessage()
         assert error.exc_info is not None
 
-    def test_on_retry_every_other_device_is_still_scraped(self, caplog):
+    def test_on_retry_every_other_device_is_still_scraped(self, caplog) -> None:
         scenario = Scenario({("DeviceInfo1", "GetInfo"): FritzUnreachableError("down")})
         scenario.overrides["bad"][("DeviceInfo1", "GetInfo")] = ParseError("not well-formed")
         caplog.set_level(logging.DEBUG)
@@ -512,7 +514,7 @@ def lan_records(caplog, level):
 
 
 class TestProblemMetric:
-    def test_problems_are_exported_per_capability_and_level(self):
+    def test_problems_are_exported_per_capability_and_level(self) -> None:
         scenario = Scenario(
             {
                 LAN_STATS: "garbage",
@@ -528,7 +530,7 @@ class TestProblemMetric:
         ]
         assert problems(output, "GOOD") == []
 
-    def test_problem_series_goes_away_when_it_is_solved(self):
+    def test_problem_series_goes_away_when_it_is_solved(self) -> None:
         scenario = Scenario({LAN_STATS: "garbage"})
         assert problems(scenario.scrape(), "BAD") == [("LanInterfaceConfigStatistics", "skipped")]
 
@@ -538,7 +540,7 @@ class TestProblemMetric:
 
 
 class TestProblemMetricMore:
-    def test_problems_of_an_unreachable_device_are_not_exported(self):
+    def test_problems_of_an_unreachable_device_are_not_exported(self) -> None:
         scenario = Scenario({LAN_STATS: "garbage"})
         assert problems(scenario.scrape(), "BAD") == [("LanInterfaceConfigStatistics", "skipped")]
 
@@ -546,7 +548,8 @@ class TestProblemMetricMore:
 
         def down(service, action, **kwargs):
             if (service, action) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
-                raise FritzUnreachableError("down")
+                msg = "down"
+                raise FritzUnreachableError(msg)
             return original(service, action, **kwargs)
 
         scenario.fcs["bad"].call_action.side_effect = down
@@ -555,7 +558,7 @@ class TestProblemMetricMore:
         assert reachable(output, "BAD") == 0.0
         assert problems(output, "BAD") == []
 
-    def test_connection_mode_problem_is_reported_like_a_capability(self, caplog):
+    def test_connection_mode_problem_is_reported_like_a_capability(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario(
             {
@@ -575,14 +578,16 @@ class TestProblemMetricMore:
             if r.levelno == logging.WARNING and "connection mode" in r.getMessage()
         ]
         assert warnings == [
-            "Could not read the connection mode of BAD (bad): "
-            "WANCommonInterfaceConfig.GetCommonLinkProperties NewPhysicalLinkStatus: "
-            "expected text, got list"
+            (
+                "Could not read the connection mode of BAD (bad): "
+                "WANCommonInterfaceConfig.GetCommonLinkProperties NewPhysicalLinkStatus: "
+                "expected text, got list"
+            )
         ]
 
 
 class TestLogging:
-    def test_lasting_problem_warns_once_and_recovery_is_logged(self, caplog):
+    def test_lasting_problem_warns_once_and_recovery_is_logged(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({LAN_STATS: lan_stats(NewBytesSent=None)})
 
@@ -601,7 +606,7 @@ class TestLogging:
         )
         assert recovered.endswith(", 3 scrapes)")
 
-    def test_lasting_problem_is_reminded_of_with_its_start(self, caplog, monkeypatch):
+    def test_lasting_problem_is_reminded_of_with_its_start(self, caplog, monkeypatch) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({LAN_STATS: lan_stats(NewBytesSent=None)})
         clock = [1000.0]
@@ -624,7 +629,7 @@ class TestLogging:
             in warnings[1]
         )
 
-    def test_changing_item_indexes_do_not_warn_again(self, caplog):
+    def test_changing_item_indexes_do_not_warn_again(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({("WLANConfiguration1", "GetInfo"): wlan1_info(NewEnable="maybe")})
         scenario.scrape()
@@ -643,7 +648,7 @@ class TestLogging:
         ]
         assert len(warnings) == 1
 
-    def test_a_different_problem_warns_again(self, caplog):
+    def test_a_different_problem_warns_again(self, caplog) -> None:
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({LAN_STATS: lan_stats(NewBytesSent=None)})
         scenario.scrape()
@@ -662,7 +667,7 @@ class TestLogging:
 
 
 class TestCheckSamples:
-    def test_numbers_and_flags_pass(self):
+    def test_numbers_and_flags_pass(self) -> None:
         family = GaugeMetricFamily("m", "h", labels=["a"])
         family.add_metric(["x"], 1)
         family.add_metric(["y"], 2.5)
@@ -670,7 +675,7 @@ class TestCheckSamples:
 
         _check_samples({"m": family}, {"m": 0})
 
-    def test_only_new_samples_are_checked(self):
+    def test_only_new_samples_are_checked(self) -> None:
         family = GaugeMetricFamily("m", "h", labels=["a"])
         # Deliberately not a number: only the samples after the count are checked.
         family.add_metric(["x"], "old and not mine")  # ty: ignore[invalid-argument-type]
@@ -679,7 +684,7 @@ class TestCheckSamples:
         _check_samples({"m": family}, {"m": 1})
 
     @pytest.mark.parametrize(("labels", "value"), [(["x"], "1"), (["x"], None), ([5], 1)])
-    def test_unrenderable_samples_raise(self, labels, value):
+    def test_unrenderable_samples_raise(self, labels, value) -> None:
         family = GaugeMetricFamily("m", "h", labels=["a"])
         family.add_metric(labels, value)
 
@@ -696,10 +701,10 @@ class TestDeviceNamesInLogs:
             ("fritz.box", "fritz.box", "fritz.box"),
         ],
     )
-    def test_device_log_name(self, friendly_name, host, expected):
+    def test_device_log_name(self, friendly_name, host, expected) -> None:
         assert device_log_name(friendly_name, host) == expected
 
-    def test_every_device_related_message_names_its_device(self, caplog):
+    def test_every_device_related_message_names_its_device(self, caplog) -> None:
         # With two devices, each message about one of them must say which.
         caplog.set_level(logging.DEBUG)
         scenario = Scenario({("WLANConfiguration1", "GetInfo"): wlan1_info(NewEnable="maybe")})
@@ -716,7 +721,7 @@ class TestDeviceNamesInLogs:
                 assert "GOOD (good)" in message or "BAD (bad)" in message, message
 
 
-def test_registering_the_collector_does_not_scrape(monkeypatch):
+def test_registering_the_collector_does_not_scrape(monkeypatch) -> None:
     # Without describe(), the registry runs a whole scrape at registration:
     # logins to every device before the HTTP server is up.
     scenario = Scenario()

@@ -1,6 +1,7 @@
 """Typed reading of device replies (fritzexporter/reply.py)."""
 
 import math
+from typing import Never
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,32 +23,32 @@ SECRET = "192.0.2.77"
 class TestConverters:
     @pytest.mark.parametrize("absent", [None, "", [], {}])
     @pytest.mark.parametrize("convert", [to_float, to_int, to_bool, to_str])
-    def test_absent_values_are_none(self, convert, absent):
+    def test_absent_values_are_none(self, convert, absent) -> None:
         assert convert(absent, "x") is None
 
     @pytest.mark.parametrize(
         ("value", "expected"), [(1, 1.0), (2.5, 2.5), ("-3.5", -3.5), (" 7 ", 7.0), ("1e3", 1000.0)]
     )
-    def test_to_float(self, value, expected):
+    def test_to_float(self, value, expected) -> None:
         assert to_float(value, "x") == expected
 
-    def test_to_float_keeps_nan_and_inf(self):
+    def test_to_float_keeps_nan_and_inf(self) -> None:
         nan = to_float("nan", "x")
         assert nan is not None
         assert math.isnan(nan)
         assert to_float("1e999", "x") == math.inf
 
     @pytest.mark.parametrize("value", ["abc", True, [1], {"a": 1}, object()])
-    def test_to_float_rejects(self, value):
+    def test_to_float_rejects(self, value) -> None:
         with pytest.raises(DataError, match="x: expected a number"):
             to_float(value, "x")
 
     @pytest.mark.parametrize(("value", "expected"), [(3, 3), (" 42 ", 42), (5.0, 5), ("-1", -1)])
-    def test_to_int(self, value, expected):
+    def test_to_int(self, value, expected) -> None:
         assert to_int(value, "x") == expected
 
     @pytest.mark.parametrize("value", ["4.5", 4.5, math.inf, math.nan, "1e999", False, "abc"])
-    def test_to_int_rejects(self, value):
+    def test_to_int_rejects(self, value) -> None:
         with pytest.raises(DataError, match="x: expected a whole number"):
             to_int(value, "x")
 
@@ -65,26 +66,26 @@ class TestConverters:
             (" on ", True),
         ],
     )
-    def test_to_bool(self, value, expected):
+    def test_to_bool(self, value, expected) -> None:
         assert to_bool(value, "x") is expected
 
     @pytest.mark.parametrize("value", [2, -1, "maybe", 1.0, [1]])
-    def test_to_bool_rejects(self, value):
+    def test_to_bool_rejects(self, value) -> None:
         with pytest.raises(DataError, match="x: expected a flag"):
             to_bool(value, "x")
 
     @pytest.mark.parametrize(
         ("value", "expected"), [("a", "a"), (5, "5"), (1.5, "1.5"), (True, "1"), (False, "0")]
     )
-    def test_to_str(self, value, expected):
+    def test_to_str(self, value, expected) -> None:
         assert to_str(value, "x") == expected
 
     @pytest.mark.parametrize("value", [[1], {"a": 1}, object()])
-    def test_to_str_rejects(self, value):
+    def test_to_str_rejects(self, value) -> None:
         with pytest.raises(DataError, match="x: expected text"):
             to_str(value, "x")
 
-    def test_error_names_the_field_but_never_the_value(self):
+    def test_error_names_the_field_but_never_the_value(self) -> None:
         with pytest.raises(DataError) as exc:
             to_float(SECRET, "Hosts1.GetGenericHostEntry NewIPAddress")
         assert str(exc.value) == (
@@ -110,11 +111,11 @@ class TestReply:
         "Svc.Action",
     )
 
-    def test_must_be_an_object(self):
+    def test_must_be_an_object(self) -> None:
         with pytest.raises(DataError, match="Svc.Action: expected an object, got list"):
             Reply([], "Svc.Action")
 
-    def test_required_reads(self):
+    def test_required_reads(self) -> None:
         assert self.reply.integer("count") == 3
         assert self.reply.num("rate") == 1.5
         assert self.reply.text("name") == "box"
@@ -124,27 +125,27 @@ class TestReply:
         assert nested.integer("inner") == 1
 
     @pytest.mark.parametrize("key", ["empty", "none", "missing"])
-    def test_required_read_of_absent_value_raises(self, key):
+    def test_required_read_of_absent_value_raises(self, key) -> None:
         for read in (self.reply.num, self.reply.integer, self.reply.flag, self.reply.text):
             with pytest.raises(DataError, match=f"Svc.Action {key}: missing"):
                 read(key)
 
     @pytest.mark.parametrize("key", ["empty", "none", "missing"])
-    def test_optional_read_of_absent_value_is_none(self, key):
+    def test_optional_read_of_absent_value_is_none(self, key) -> None:
         assert self.reply.opt_num(key) is None
         assert self.reply.opt_integer(key) is None
         assert self.reply.opt_flag(key) is None
         assert self.reply.opt_text(key) is None
         assert self.reply.opt_obj(key) is None
 
-    def test_text_default_replaces_only_absent_values(self):
+    def test_text_default_replaces_only_absent_values(self) -> None:
         assert self.reply.text("missing", "n/a") == "n/a"
         assert self.reply.text("empty", "") == ""
         assert self.reply.text("name", "n/a") == "box"
         with pytest.raises(DataError):
             self.reply.text("missing")
 
-    def test_present_but_malformed_raises_even_when_optional(self):
+    def test_present_but_malformed_raises_even_when_optional(self) -> None:
         with pytest.raises(DataError, match="Svc.Action name: expected a number"):
             self.reply.opt_num("name")
         with pytest.raises(DataError, match="Svc.Action nested: expected text"):
@@ -152,7 +153,7 @@ class TestReply:
         with pytest.raises(DataError, match="Svc.Action name: expected an object"):
             self.reply.opt_obj("name")
 
-    def test_empty_containers_of_the_other_kind_are_absent(self):
+    def test_empty_containers_of_the_other_kind_are_absent(self) -> None:
         # Lua JSON encoders send an empty list as {} or an empty object as [].
         reply = Reply({"rows": {}, "nested": []}, "S.A")
 
@@ -160,18 +161,18 @@ class TestReply:
         assert reply.opt_obj("nested") is None
         assert list(Issues().objects(reply, "rows")) == []
 
-    def test_lists(self):
+    def test_lists(self) -> None:
         assert self.reply.items("samples") == [1, None, "2"]
         assert self.reply.items("missing") == []
         assert self.reply.items("none") == []
 
-    def test_list_errors_name_the_field(self):
+    def test_list_errors_name_the_field(self) -> None:
         with pytest.raises(DataError, match="Svc.Action name: expected a list"):
             self.reply.items("name")
 
 
 class TestReadAction:
-    def test_wraps_the_result_and_passes_arguments(self):
+    def test_wraps_the_result_and_passes_arguments(self) -> None:
         device = MagicMock()
         device.fc.call_action.return_value = {"NewIndex": "4"}
 
@@ -182,7 +183,7 @@ class TestReadAction:
         with pytest.raises(DataError, match="Hosts1.GetGenericHostEntry NewHostName: missing"):
             reply.text("NewHostName")
 
-    def test_non_dict_result_raises(self):
+    def test_non_dict_result_raises(self) -> None:
         device = MagicMock()
         device.fc.call_action.return_value = None
 
@@ -195,7 +196,7 @@ class TestReadAction:
 class TestIssues:
     reply = Reply({"n": "4", "bad": "x", "empty": "", "flag": "1", "state": "Up"}, "S.A")
 
-    def test_readers_return_values_and_record_nothing(self):
+    def test_readers_return_values_and_record_nothing(self) -> None:
         issues = Issues()
 
         assert issues.num(self.reply, "n") == 4.0
@@ -210,7 +211,7 @@ class TestIssues:
         assert issues.convert("2.5", to_float, "x") == 2.5
         assert issues.messages == []
 
-    def test_defects_give_none_and_are_recorded(self):
+    def test_defects_give_none_and_are_recorded(self) -> None:
         issues = Issues()
 
         assert issues.num(self.reply, "bad") is None
@@ -226,15 +227,16 @@ class TestIssues:
             "item 3: expected a whole number, got str",
         ]
 
-    def test_other_errors_are_not_contained(self):
-        def broken():
-            raise KeyError("x")
+    def test_other_errors_are_not_contained(self) -> None:
+        def broken() -> Never:
+            msg = "x"
+            raise KeyError(msg)
 
         issues = Issues()
         with pytest.raises(KeyError):
             issues.value(broken)
 
-    def test_objects_skips_and_records_elements_that_are_no_objects(self):
+    def test_objects_skips_and_records_elements_that_are_no_objects(self) -> None:
         issues = Issues()
         reply = Reply({"rows": [{"a": 1}, "x", {"a": 2}]}, "S.A")
 
@@ -243,13 +245,13 @@ class TestIssues:
         assert rows == [(0, 1), (2, 2)]
         assert issues.messages == ["S.A rows[1] skipped: S.A rows[1]: expected an object, got str"]
 
-    def test_objects_raises_when_the_list_itself_is_wrong(self):
+    def test_objects_raises_when_the_list_itself_is_wrong(self) -> None:
         issues, reply = Issues(), Reply({"rows": "x"}, "S.A")
         objects = issues.objects(reply, "rows")
         with pytest.raises(DataError, match="S.A rows: expected a list"):
             next(objects)
 
-    def test_item_skips_the_rest_of_the_block_and_undoes_it(self):
+    def test_item_skips_the_rest_of_the_block_and_undoes_it(self) -> None:
         issues = Issues()
         done: list[int | str] = []
 
@@ -266,13 +268,14 @@ class TestIssues:
         assert done == [0, "ok", 2, "ok"]
         assert issues.messages == ["item 1 skipped: item value: expected a whole number, got str"]
 
-    def test_item_lets_other_errors_through(self):
+    def test_item_lets_other_errors_through(self) -> None:
         with pytest.raises(KeyError), Issues().item("item"):
-            raise KeyError("x")
+            msg = "x"
+            raise KeyError(msg)
 
 
 class TestRequireKey:
-    def test_missing_container_is_an_error_an_empty_one_is_not(self):
+    def test_missing_container_is_an_error_an_empty_one_is_not(self) -> None:
         from fritzexporter.reply import Reply
 
         assert Reply({"data": []}, "x").require_key("data").items("data") == []
@@ -282,7 +285,7 @@ class TestRequireKey:
 
 
 class TestNumbersASampleCannotHold:
-    def test_integer_too_large_for_a_float_is_a_data_error(self):
+    def test_integer_too_large_for_a_float_is_a_data_error(self) -> None:
         huge = 10**400
         with pytest.raises(DataError, match="x: expected a number"):
             to_float(huge, "x")
@@ -291,7 +294,7 @@ class TestNumbersASampleCannotHold:
         with pytest.raises(DataError, match="x: expected a whole number"):
             to_int("1" + "0" * 400, "x")
 
-    def test_issues_contain_it_at_the_value(self):
+    def test_issues_contain_it_at_the_value(self) -> None:
         issues = Issues()
         assert issues.opt_num(Reply({"v": 10**400}, "S"), "v") is None
         assert issues.messages == ["S v: expected a number, got int"]

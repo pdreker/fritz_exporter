@@ -70,7 +70,7 @@ DOCSIS_RAW = {
 
 
 class TestParseDocsisResponse:
-    def test_parses_downstream_and_upstream(self):
+    def test_parses_downstream_and_upstream(self) -> None:
         data = parse_docsis_response(DOCSIS_RAW, Issues())
 
         assert data["ready_state"] == "ready"
@@ -100,7 +100,7 @@ class TestParseDocsisResponse:
         assert us31["standard"] == "DOCSIS 3.1"
         assert us31["power_dbmv"] == pytest.approx(4.0)
 
-    def test_empty_channel_list_sent_as_object_is_no_channels(self):
+    def test_empty_channel_list_sent_as_object_is_no_channels(self) -> None:
         # A box without DOCSIS 3.1 channels may send "docsis31": {} (empty Lua table).
         raw = {
             "data": {
@@ -114,13 +114,13 @@ class TestParseDocsisResponse:
         assert [ch["channel_id"] for ch in data["downstream"]] == [7]
         assert data["upstream"] == []
 
-    def test_handles_missing_sections(self):
+    def test_handles_missing_sections(self) -> None:
         data = parse_docsis_response({"data": {}}, Issues())
         assert data["ready_state"] == "unknown"
         assert data["downstream"] == []
         assert data["upstream"] == []
 
-    def test_handles_string_and_number_values(self):
+    def test_handles_string_and_number_values(self) -> None:
         raw = {
             "data": {
                 "channelDs": {
@@ -173,7 +173,7 @@ class TestWanDocsisCable:
             name="FritzCable",
         )
 
-    def test_docsis_power_metrics(self, mock_fritzconnection: MagicMock):
+    def test_docsis_power_metrics(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_docsis_metrics(mock_fritzconnection)
 
         assert "fritz_docsis_power_dBmV" in by_name
@@ -210,7 +210,7 @@ class TestWanDocsisCable:
             )
         ] == pytest.approx(4.0)
 
-    def test_docsis_mer_and_mse_metrics(self, mock_fritzconnection: MagicMock):
+    def test_docsis_mer_and_mse_metrics(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_docsis_metrics(mock_fritzconnection)
 
         mer = sample_map(by_name["fritz_docsis_mer_dB"])
@@ -233,7 +233,7 @@ class TestWanDocsisCable:
             )
         ] == pytest.approx(-38.6)
 
-    def test_docsis_error_and_latency_metrics(self, mock_fritzconnection: MagicMock):
+    def test_docsis_error_and_latency_metrics(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_docsis_metrics(mock_fritzconnection)
 
         corr = sample_map(by_name["fritz_docsis_corrected_errors"])
@@ -272,7 +272,7 @@ class TestWanDocsisCable:
             )
         ] == pytest.approx(0.32)
 
-    def test_docsis_channel_info_labels(self, mock_fritzconnection: MagicMock):
+    def test_docsis_channel_info_labels(self, mock_fritzconnection: MagicMock) -> None:
         by_name = self._collect_docsis_metrics(mock_fritzconnection)
 
         info = by_name["fritz_docsis_channel_info"]
@@ -290,7 +290,7 @@ class TestWanDocsisCable:
         assert us31.labels["modulation"] == "64QAM"
         assert us31.labels["frequency"] == "41.800"
 
-    def test_docsis_disabled_on_non_cable_box(self, mock_fritzconnection: MagicMock):
+    def test_docsis_disabled_on_non_cable_box(self, mock_fritzconnection: MagicMock) -> None:
         """On a non-cable box (WAN access type != Cable), no DOCSIS samples."""
         by_name = collect_device(
             mock_fritzconnection,
@@ -303,7 +303,9 @@ class TestWanDocsisCable:
         assert by_name["fritz_docsis_power_dBmV"].samples == []
         assert by_name["fritz_docsis_channel_info"].samples == []
 
-    def test_docsis_check_capability_disabled_on_non_cable(self, mock_fritzconnection: MagicMock):
+    def test_docsis_check_capability_disabled_on_non_cable(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         """check_capability must not enable DOCSIS on a non-cable box."""
         device = fake_device(
             mock_fritzconnection,
@@ -314,7 +316,9 @@ class TestWanDocsisCable:
         # The mock returns NewWANAccessType "PPPoE", so DOCSIS must stay disabled.
         assert device.capabilities["WanDocsisCable"].present is False
 
-    def test_docsis_check_capability_enabled_on_cable(self, mock_fritzconnection: MagicMock):
+    def test_docsis_check_capability_enabled_on_cable(
+        self, mock_fritzconnection: MagicMock
+    ) -> None:
         """check_capability auto-enables DOCSIS when WAN access type is Cable."""
         device = fake_device(
             mock_fritzconnection,
@@ -329,7 +333,7 @@ class TestWanDocsisCable:
 
     def test_docsis_fetch_error_does_not_break_collection(
         self, mock_fritzconnection: MagicMock, caplog
-    ):
+    ) -> None:
         """If the DOCSIS fetch fails, other metrics still collect."""
         client = MagicMock()
         client.fetch_page.side_effect = FritzWebUiError("boom")
@@ -349,12 +353,12 @@ class TestWanDocsisCable:
 
 
 class TestDocsisChannelId:
-    def test_reply_without_data_raises(self):
+    def test_reply_without_data_raises(self) -> None:
         issues = Issues()
         with pytest.raises(DataError, match="docInfo data: missing"):
             parse_docsis_response({"pid": "docInfo"}, issues)
 
-    def test_channel_without_id_is_skipped_not_numbered_0(self):
+    def test_channel_without_id_is_skipped_not_numbered_0(self) -> None:
         issues = Issues()
         raw = {
             "data": {

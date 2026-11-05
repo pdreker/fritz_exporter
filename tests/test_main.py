@@ -23,7 +23,7 @@ def restore_signal_handlers():
 
 @pytest.mark.usefixtures("restore_signal_handlers")
 @pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGINT])
-def test_wait_for_shutdown_returns_on_signal(sig):
+def test_wait_for_shutdown_returns_on_signal(sig) -> None:
     # Container runtimes stop the exporter with SIGTERM; it must return
     # instead of waiting to be killed.
     timer = threading.Timer(0.1, os.kill, (os.getpid(), sig))
@@ -35,7 +35,7 @@ def test_wait_for_shutdown_returns_on_signal(sig):
 
 
 class Test_Main:
-    def test_cli_args_log_level(self, monkeypatch):
+    def test_cli_args_log_level(self, monkeypatch) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--log-level", "DEBUG"])
 
         args = parse_cmdline()
@@ -43,7 +43,7 @@ class Test_Main:
         assert "log_level" in args
         assert args.log_level == "DEBUG"
 
-    def test_cli_args_config(self, monkeypatch):
+    def test_cli_args_config(self, monkeypatch) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--config", "/some/file.yaml"])
 
         args = parse_cmdline()
@@ -51,14 +51,14 @@ class Test_Main:
         assert "config" in args
         assert args.config == "/some/file.yaml"
 
-    def test_cli_args_version(self, monkeypatch):
+    def test_cli_args_version(self, monkeypatch) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--version"])
 
         args = parse_cmdline()
 
         assert "version" in args
 
-    def test_if_version_prints_version_and_stops(self, monkeypatch, capsys):
+    def test_if_version_prints_version_and_stops(self, monkeypatch, capsys) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--version"])
 
         with pytest.raises(SystemExit) as pytest_wrapped_exit:
@@ -73,7 +73,7 @@ class Test_Main:
         assert pytest_wrapped_exit.type == SystemExit
         assert pytest_wrapped_exit.value.code == 0
 
-    def test_invalid_config_exits_with_code(self, monkeypatch, caplog):
+    def test_invalid_config_exits_with_code(self, monkeypatch, caplog) -> None:
         monkeypatch.setattr("sys.argv", ["fritzexporter", "--config", "/does/not/exist"])
 
         with pytest.raises(SystemExit) as pytest_wrapped_exit:
@@ -89,7 +89,7 @@ class Test_Main:
     @patch("fritzexporter.tr064_remote.FritzConnection")
     def test_valid_args_run_clean(
         self, mock_fc: MagicMock, mock_http: MagicMock, monkeypatch, caplog
-    ):
+    ) -> None:
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -127,7 +127,7 @@ class Test_Main:
         mock_registry: MagicMock,
         monkeypatch,
         caplog,
-    ):
+    ) -> None:
         monkeypatch.setattr(
             "sys.argv",
             [
@@ -160,7 +160,7 @@ class Test_Main:
         mock_registry: MagicMock,
         monkeypatch,
         caplog,
-    ):
+    ) -> None:
         monkeypatch.setattr(
             "sys.argv",
             [

@@ -7,17 +7,17 @@ from fritzexporter.reply import DataError, Issues
 
 
 class TestParseAhaDevicelistXml:
-    def test_should_raise_data_error_on_parse_error(self):
+    def test_should_raise_data_error_on_parse_error(self) -> None:
         issues = Issues()
         with pytest.raises(DataError, match="not valid XML"):
             parse_aha_devicelist_xml("this is not valid xml <<<", issues)
 
-    def test_should_raise_data_error_without_a_devicelist(self):
+    def test_should_raise_data_error_without_a_devicelist(self) -> None:
         issues = Issues()
         with pytest.raises(DataError, match="no <devicelist> element"):
             parse_aha_devicelist_xml("<html><body>login</body></html>", issues)
 
-    def test_should_raise_data_error_on_forbidden_xml(self):
+    def test_should_raise_data_error_on_forbidden_xml(self) -> None:
         # defusedxml refuses entities; that is bad device data, not a bug.
         issues = Issues()
         with pytest.raises(DataError, match="not valid XML"):
@@ -25,7 +25,7 @@ class TestParseAhaDevicelistXml:
                 '<!DOCTYPE x [<!ENTITY a "b">]><devicelist>&a;</devicelist>', issues
             )
 
-    def test_should_record_non_numeric_int_fields_and_skip_the_value(self):
+    def test_should_record_non_numeric_int_fields_and_skip_the_value(self) -> None:
         # Prepare
         deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
         <devicelist version="1">
@@ -45,7 +45,7 @@ class TestParseAhaDevicelistXml:
         assert devices[0]["device_name"] == "Fritz!DECT 200"
         assert issues.messages == ["smart home device 0 battery: expected a whole number, got str"]
 
-    def test_nested_values_name_the_device_by_index_and_the_element(self):
+    def test_nested_values_name_the_device_by_index_and_the_element(self) -> None:
         deviceinfo = """<devicelist version="1">
         <device identifier="0815" id="1" manufacturer="AVM" productname="Fritz!DECT 301">
             <present>1</present><name>x</name><hkr><tsoll>warm</tsoll></hkr>
@@ -58,7 +58,7 @@ class TestParseAhaDevicelistXml:
             "smart home device 0 hkr tsoll: expected a whole number, got str"
         ]
 
-    def test_battery_values_fall_back_to_hkr_one_by_one(self):
+    def test_battery_values_fall_back_to_hkr_one_by_one(self) -> None:
         # A device-level batterylow must not be dropped because the level
         # comes from <hkr>.
         deviceinfo = """<devicelist version="1">
@@ -71,7 +71,7 @@ class TestParseAhaDevicelistXml:
 
         assert (device["battery_level"], device["battery_low"]) == (50, "1")
 
-    def test_empty_battery_low_and_lock_mean_unknown_not_zero(self):
+    def test_empty_battery_low_and_lock_mean_unknown_not_zero(self) -> None:
         # AVM leaves these empty when the value is unknown; exporting 0 would
         # claim "battery fine" / "not locked".
         deviceinfo = """<devicelist version="1">
@@ -87,7 +87,7 @@ class TestParseAhaDevicelistXml:
         assert device["switch"] is not None
         assert device["switch"]["lock"] is None
 
-    def test_should_treat_empty_int_fields_as_absent(self):
+    def test_should_treat_empty_int_fields_as_absent(self) -> None:
         deviceinfo = """<devicelist version="1">
         <device identifier="1" id="1" manufacturer="AVM" productname="Fritz!DECT 200">
             <present>1</present><name>x</name><battery></battery>
@@ -95,7 +95,7 @@ class TestParseAhaDevicelistXml:
 
         assert parse_aha_devicelist_xml(deviceinfo, Issues())[0]["battery_level"] is None
 
-    def test_should_fall_back_to_hkr_battery_when_missing_on_device(self):
+    def test_should_fall_back_to_hkr_battery_when_missing_on_device(self) -> None:
         # Prepare - some firmware versions only report battery data nested
         # inside <hkr> instead of as a direct child of <device>.
         deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
@@ -122,7 +122,7 @@ class TestParseAhaDevicelistXml:
         assert devices[0]["battery_level"] == 80
         assert devices[0]["battery_low"] == "1"
 
-    def test_should_correctly_parse_aha_xml(self):
+    def test_should_correctly_parse_aha_xml(self) -> None:
         # Prepare
         deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
         <devicelist version="1">
@@ -143,7 +143,7 @@ class TestParseAhaDevicelistXml:
         assert devices[0]["battery_level"] == 100
         assert devices[0]["battery_low"] == "0"
 
-    def test_should_correctly_parse_aha_xml_when_empty(self):
+    def test_should_correctly_parse_aha_xml_when_empty(self) -> None:
         # Prepare
         deviceinfo = """<?xml version="1.0" encoding="utf-8"?>
         <devicelist version="1">

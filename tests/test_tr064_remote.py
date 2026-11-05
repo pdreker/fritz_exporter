@@ -12,29 +12,29 @@ from fritzexporter.tr064_remote import (
 
 
 class TestRewriteTr064RemoteUrl:
-    def test_prepends_prefix_to_description(self):
+    def test_prepends_prefix_to_description(self) -> None:
         assert (
             rewrite_tr064_remote_url("https://box.example:11243/tr64desc.xml")
             == "https://box.example:11243/tr064/tr64desc.xml"
         )
 
-    def test_prepends_prefix_to_soap_control_url(self):
+    def test_prepends_prefix_to_soap_control_url(self) -> None:
         assert (
             rewrite_tr064_remote_url("https://box.example:11243/upnp/control/deviceinfo")
             == "https://box.example:11243/tr064/upnp/control/deviceinfo"
         )
 
-    def test_prepends_prefix_to_scpd_path(self):
+    def test_prepends_prefix_to_scpd_path(self) -> None:
         assert (
             rewrite_tr064_remote_url("https://box.example:11243/deviceinfoSCPD.xml")
             == "https://box.example:11243/tr064/deviceinfoSCPD.xml"
         )
 
-    def test_idempotent_when_prefix_already_present(self):
+    def test_idempotent_when_prefix_already_present(self) -> None:
         url = "https://box.example:11243/tr064/tr64desc.xml"
         assert rewrite_tr064_remote_url(url) == url
 
-    def test_preserves_query_string(self):
+    def test_preserves_query_string(self) -> None:
         assert (
             rewrite_tr064_remote_url("https://box.example:11243/foo.xml?x=1")
             == "https://box.example:11243/tr064/foo.xml?x=1"
@@ -42,7 +42,7 @@ class TestRewriteTr064RemoteUrl:
 
 
 class TestTr064RemoteAccessSession:
-    def test_request_rewrites_url(self):
+    def test_request_rewrites_url(self) -> None:
         session = Tr064RemoteAccessSession()
         seen: list[str] = []
 
@@ -57,7 +57,7 @@ class TestTr064RemoteAccessSession:
 
         assert seen == ["https://box.example:11243/tr064/tr64desc.xml"]
 
-    def test_rewrite_survives_fritzconnection_adapter_remount(self):
+    def test_rewrite_survives_fritzconnection_adapter_remount(self) -> None:
         """FritzConnection replaces mounted adapters after Session().
 
         A Session.request override must still rewrite URLs after that remount.
@@ -81,7 +81,7 @@ class TestTr064RemoteAccessSession:
 
 class TestCreateFritzConnection:
     @patch("fritzexporter.tr064_remote.FritzConnection")
-    def test_connection_timeout_applies_to_aha_http_requests(self, mock_fc: MagicMock):
+    def test_connection_timeout_applies_to_aha_http_requests(self, mock_fc: MagicMock) -> None:
         captured_sessions: list[requests.Session] = []
 
         def fake_fc(**_kwargs: object) -> MagicMock:
@@ -104,7 +104,7 @@ class TestCreateFritzConnection:
         assert request.call_args.kwargs["timeout"] == 10
 
     @patch("fritzexporter.tr064_remote.FritzConnection")
-    def test_request_timeout_becomes_fritz_connection_exception(self, mock_fc: MagicMock):
+    def test_request_timeout_becomes_fritz_connection_exception(self, mock_fc: MagicMock) -> None:
         import pytest
         from fritzconnection.core.exceptions import FritzConnectionException
 
@@ -131,7 +131,7 @@ class TestCreateFritzConnection:
             captured_sessions[0].get("https://box.example/webservices/homeautoswitch.lua")
 
     @patch("fritzexporter.tr064_remote.FritzConnection")
-    def test_remote_access_uses_rewriting_session(self, mock_fc: MagicMock):
+    def test_remote_access_uses_rewriting_session(self, mock_fc: MagicMock) -> None:
         captured_sessions: list[requests.Session] = []
 
         def fake_fc(**_kwargs: object) -> MagicMock:
@@ -162,7 +162,7 @@ class TestCreateFritzConnection:
         )
 
     @patch("fritzexporter.tr064_remote.FritzConnection")
-    def test_parse_error_becomes_fritz_connection_exception(self, mock_fc: MagicMock):
+    def test_parse_error_becomes_fritz_connection_exception(self, mock_fc: MagicMock) -> None:
         from xml.etree.ElementTree import ParseError
 
         import pytest

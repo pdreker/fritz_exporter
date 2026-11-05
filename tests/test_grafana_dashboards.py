@@ -52,12 +52,12 @@ TARGET_LABELS = {"job", "instance"}
 
 
 @pytest.mark.parametrize("name", list(BUILDER.DASHBOARDS))
-def test_committed_json_is_current(name):
+def test_committed_json_is_current(name) -> None:
     # Edit build_dashboards.py and run it; do not edit the JSON.
     assert (GRAFANA / name).read_text() == BUILDER.render(BUILDER.DASHBOARDS[name])
 
 
-def test_overview_shows_every_metric():
+def test_overview_shows_every_metric() -> None:
     # A collector without devices still yields every metric family it has.
     families = {family.name for family in FritzCollector().collect()}
     queries = "\n".join(_queries(BUILDER.overview()))
@@ -72,7 +72,7 @@ def test_overview_shows_every_metric():
 
 
 @pytest.mark.parametrize("name", list(BUILDER.DASHBOARDS))
-def test_queries_select_the_device(name):
+def test_queries_select_the_device(name) -> None:
     board = BUILDER.DASHBOARDS[name]()
     exporter_wide = ("fritz_scrapes_timeouts_total", "fritz_scrapes_failed_total")
     for expr in _queries(board):
@@ -83,7 +83,7 @@ def test_queries_select_the_device(name):
 
 
 @pytest.mark.parametrize("name", list(BUILDER.DASHBOARDS))
-def test_queries_use_labels_and_values_the_exporter_sends(name):
+def test_queries_use_labels_and_values_the_exporter_sends(name) -> None:
     # A label moved to an _info metric, or a value spelt differently, leaves a
     # panel empty without any error from Prometheus or Grafana.
     board = BUILDER.DASHBOARDS[name]()
@@ -115,7 +115,7 @@ def test_queries_use_labels_and_values_the_exporter_sends(name):
 
 
 @pytest.mark.parametrize("name", list(BUILDER.DASHBOARDS))
-def test_rate_queries_work_with_a_60s_scrape_interval(name):
+def test_rate_queries_work_with_a_60s_scrape_interval(name) -> None:
     # $__rate_interval follows the query's min step, else the data source's scrape
     # interval (15 s by default): a window of about 1m, one sample of a 60 s
     # scrape. A panel's min interval does not count for it.
@@ -128,10 +128,10 @@ def test_rate_queries_work_with_a_60s_scrape_interval(name):
 
 
 @pytest.mark.parametrize("name", list(BUILDER.DASHBOARDS))
-def test_panels_do_not_overlap(name):
+def test_panels_do_not_overlap(name) -> None:
     board = BUILDER.DASHBOARDS[name]()
 
-    def cells(panels):
+    def cells(panels) -> None:
         taken = {}
         for panel in panels:
             pos = panel["gridPos"]
@@ -147,7 +147,7 @@ def test_panels_do_not_overlap(name):
         cells(row["panels"])
 
 
-def test_dashboards_are_plain_json():
+def test_dashboards_are_plain_json() -> None:
     for name in BUILDER.DASHBOARDS:
         board = json.loads((GRAFANA / name).read_text())
         assert board["uid"].startswith("fritz-exporter-")

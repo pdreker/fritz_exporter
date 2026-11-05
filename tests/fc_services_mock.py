@@ -227,7 +227,8 @@ def call_action_mock(service, action, **kwargs):
     }
 
     if (service, action) not in call_action_responses:
-        raise FritzServiceError(f"Unknown service/action: {service}/{action}")
+        msg = f"Unknown service/action: {service}/{action}"
+        raise FritzServiceError(msg)
     return call_action_responses[(service, action)]
 
 
