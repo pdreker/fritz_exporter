@@ -36,7 +36,7 @@
     {
       "title": "Metrics reference",
       "type": "link",
-      "url": "https://fritz-exporter.readthedocs.io/en/latest/",
+      "url": "https://pdreker.github.io/fritz_exporter/",
       "icon": "doc",
       "targetBlank": true
     }

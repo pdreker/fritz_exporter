@@ -7,7 +7,7 @@ license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://github.com/pdreker/fritz_exporter"
 repository = "https://github.com/pdreker/fritz_exporter"
-documentation = "https://fritz-exporter.readthedocs.io"
+documentation = "https://pdreker.github.io/fritz_exporter/"
 keywords = ["prometheus", "fritz", "router", "grafana"]
 classifiers = [
     "Development Status :: 6 - Mature",
@@ -29,7 +29,7 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/pdreker/fritz_exporter"
 Repository = "https://github.com/pdreker/fritz_exporter"
-Documentation = "https://fritz-exporter.readthedocs.io"
+Documentation = "https://pdreker.github.io/fritz_exporter/"
 
 [project.scripts]
 fritzexporter = "fritzexporter.__main__:main"

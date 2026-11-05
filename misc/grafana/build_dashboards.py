@@ -534,7 +534,7 @@ def dashboard(uid: str, title: str, description: str, layout: Layout, *, refresh
             {
                 "title": "Metrics reference",
                 "type": "link",
-                "url": "https://fritz-exporter.readthedocs.io/en/latest/",
+                "url": "https://pdreker.github.io/fritz_exporter/",
                 "icon": "doc",
                 "targetBlank": True,
             },

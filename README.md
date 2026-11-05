@@ -10,17 +10,17 @@
 > - **Changing labels moved to `_info` metrics.** Labels that change with the device's state (Fritz!OS version, update version, access type, PPP error, WAN connection state and address, WiFi SSID/standard/enabled, WiFi client band and address, host address and name) are no longer labels of the data series, but of new `…_info` metrics (`fritz_device_info`, `fritz_wifi_info`, `fritz_host_info`, …). Update dashboards and alerts that use these labels; the upgrade notes list them all.
 > - **Log messages reworked.** Many messages changed wording, level or frequency, and every message about a device now names it as `<name> (<host>)`. If you match log messages, e.g. for alerts, check your patterns.
 >
-> See the [upgrade notes](https://fritz-exporter.readthedocs.io/en/latest/upgrading.html) for details.
+> See the [upgrade notes](https://pdreker.github.io/fritz_exporter/latest/upgrading.html) for details.
 >
 > **⚠️ v3.0.0 breaking change — action may be required**
 > The default listen address has changed from `0.0.0.0` to `127.0.0.1`.
 > If Prometheus scrapes this exporter over the network and you have not set `listen_address` / `FRITZ_LISTEN_ADDRESS` explicitly, the exporter will no longer be reachable after upgrading.
 > Set `listen_address: 0.0.0.0` in your config or `FRITZ_LISTEN_ADDRESS=0.0.0.0` in your environment to restore the old behaviour.
-> See the [upgrade notes](https://fritz-exporter.readthedocs.io/en/latest/upgrading.html) for full details including the home automation metric label change.
+> See the [upgrade notes](https://pdreker.github.io/fritz_exporter/latest/upgrading.html) for full details including the home automation metric label change.
 
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=coverage)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pdreker_fritz_exporter&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pdreker_fritz_exporter)
 
-![ReadTheDocs](https://readthedocs.org/projects/docs/badge/?version=latest) ![Dependabot](https://img.shields.io/badge/dependabot-025E8C?style=flat&logo=dependabot&logoColor=white) ![Tests](https://img.shields.io/github/actions/workflow/status/pdreker/fritz_exporter/run-tests.yaml?label=Tests) ![Build](https://img.shields.io/github/actions/workflow/status/pdreker/fritz_exporter/build-trunk.yaml?branch=main)
+[![Docs](https://img.shields.io/github/actions/workflow/status/pdreker/fritz_exporter/docs.yaml?branch=main&label=Docs)](https://pdreker.github.io/fritz_exporter/) ![Dependabot](https://img.shields.io/badge/dependabot-025E8C?style=flat&logo=dependabot&logoColor=white) ![Tests](https://img.shields.io/github/actions/workflow/status/pdreker/fritz_exporter/ci.yaml?branch=main&label=Tests) ![Build](https://img.shields.io/github/actions/workflow/status/pdreker/fritz_exporter/build-trunk.yaml?branch=main)
 
 This is a prometheus exporter for AVM Fritz! home network devices commonly found in Europe. This exporter uses the devices builtin TR-064 API via the fritzconnection python module.
 
@@ -30,8 +30,8 @@ It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Box 5690 (fibre)
 
 ## Documentation
 
-Check out the full documentation at [ReadTheDocs](https://fritz-exporter.readthedocs.io/)
-or on [GitHub Pages](https://pdreker.github.io/fritz_exporter/).
+Check out the full documentation on [GitHub Pages](https://pdreker.github.io/fritz_exporter/)
+(also on [Read the Docs](https://fritz-exporter.readthedocs.io/)).
 
 ## Event log: fritz_logextractor
 
@@ -58,7 +58,7 @@ The whole setup required is:
 
 **You cannot connect grafana to the exporter directly. This will not work**.
 
-Please check the "Quickstart" in the documentation at [ReadTheDocs](https://fritz-exporter.readthedocs.io) for a simple setup.
+Please check the "Quickstart" in the [documentation](https://pdreker.github.io/fritz_exporter/latest/quickstart.html) for a simple setup.
 
 ## Disclaimer
 
