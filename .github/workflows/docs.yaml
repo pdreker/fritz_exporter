@@ -1,0 +1,45 @@
+name: Publish docs (dev)
+
+# Every push to main publishes the docs as version "dev". Releases publish
+# "<major>.<minor>" and "latest" from release.yaml, because a release that
+# release-please creates with GITHUB_TOKEN does not trigger other workflows.
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - uv.lock
+      - .github/workflows/docs.yaml
+  workflow_dispatch:
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  publish-dev:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # mike pushes to gh-pages with the credentials the checkout keeps.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: uv sync --only-group docs
+      - name: Publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages --depth=1 || true
+          uv run --only-group docs mike deploy --push --allow-empty dev
+          # Until the first release there is no "latest": let the root lead to "dev".
+          if ! uv run --only-group docs mike list latest > /dev/null 2>&1; then
+            uv run --only-group docs mike set-default --push dev
+          fi
