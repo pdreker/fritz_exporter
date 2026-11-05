@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Any
 
 from fritzconnection.core.exceptions import (
     FritzActionError,
@@ -35,7 +36,7 @@ def call_http_mock(action, ain=None, **_):
     }
 
 
-def call_action_mock(service, action, **kwargs):
+def call_action_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
     _ = kwargs
 
     call_action_responses = {
@@ -383,7 +384,9 @@ def call_action_no_basic_mock(service, action, **_):
     return call_action_responses[(service, action)]
 
 
-def call_action_no_basic_action_error_mock(service, action, **kwargs):
+def call_action_no_basic_action_error_mock(
+    service: str, action: str, **kwargs: Any
+) -> dict[str, Any]:
     _ = kwargs
 
     if service == "DeviceInfo1" and action == "GetInfo":

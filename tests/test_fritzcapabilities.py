@@ -1,5 +1,5 @@
 import logging
-from typing import Never
+from typing import Any, Never
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -116,7 +116,7 @@ class TestFritzCapabilitiesMethods:
 
         fc = mock_fritzconnection.return_value
 
-        def error_on_hosts(service, action, **kwargs):
+        def error_on_hosts(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "GetHostNumberOfEntries":
                 msg = "Mock error for HostNumberOfEntries"
                 raise error(msg)
@@ -152,7 +152,7 @@ class TestUserInterfaceCapability:
 
         fc = mock_fritzconnection.return_value
 
-        def no_update_mock(service, action, **kwargs):
+        def no_update_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "UserInterface1" and action == "GetInfo":
                 return {"NewUpgradeAvailable": 0, "NewX_AVM-DE_Version": ""}
             return call_action_mock(service, action, **kwargs)
@@ -191,7 +191,7 @@ class TestHostInfoCapability:
 
         fc = mock_fritzconnection.return_value
 
-        def empty_ip_mock(service, action, **kwargs):
+        def empty_ip_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "GetGenericHostEntry":
                 return {
                     "NewIPAddress": "",  # empty IP
@@ -237,7 +237,7 @@ class TestHostInfoCapability:
 
         fc = mock_fritzconnection.return_value
 
-        def shrinking_table_mock(service, action, **kwargs):
+        def shrinking_table_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "GetHostNumberOfEntries":
                 return {"NewHostNumberOfEntries": 3}
             if service == "Hosts1" and action == "GetGenericHostEntry":
@@ -304,7 +304,7 @@ class TestHostInfoCapability:
 
         fc = mock_fritzconnection.return_value
 
-        def host_leaving_mock(service, action, **kwargs):
+        def host_leaving_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "GetHostNumberOfEntries":
                 return {"NewHostNumberOfEntries": 2}
             if service == "Hosts1" and action == "GetGenericHostEntry":
@@ -525,7 +525,7 @@ class TestHomeAutomationCapability:
         xml = self._make_devicelist_xml(self._make_device_xml())
         collector, _device, fc = self._setup_ha_device(mock_fritzconnection, xml)
 
-        def failing_action(service, action, **kwargs):
+        def failing_action(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "X_AVM-DE_Homeauto1" and action == "GetSpecificDeviceInfos":
                 msg = "unknown ain"
                 raise FritzArgumentError(msg)
@@ -758,7 +758,9 @@ class TestWanCommonInterfaceByteRateCableWan:
         # cable WAN connection.
         fc = mock_fritzconnection.return_value
 
-        def call_action_cable_addon_infos(service, action, **kwargs):
+        def call_action_cable_addon_infos(
+            service: str, action: str, **kwargs: Any
+        ) -> dict[str, Any]:
             if (service, action) == ("WANCommonIFC1", "GetAddonInfos"):
                 return {
                     "NewByteReceiveRate": 12345,
@@ -1005,7 +1007,7 @@ class TestProbing:
     ) -> None:
         # The probe used index 1, which a table of 0 or 1 hosts does not have:
         # the device never came up.
-        def host_table(service, action, **kwargs):
+        def host_table(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
                 return {"NewHostNumberOfEntries": hosts}
             if (service, action) == ("Hosts1", "GetGenericHostEntry"):
@@ -1038,7 +1040,7 @@ class TestProbing:
         # set up again later instead.
         from fritzexporter.tr064_remote import FritzUnreachableError
 
-        def timing_out(service, action, **kwargs):
+        def timing_out(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("LANEthernetInterfaceConfig1", "GetStatistics"):
                 msg = "Fritz device did not answer (ReadTimeout)"
                 raise FritzUnreachableError(msg)
@@ -1055,7 +1057,7 @@ class TestProbing:
     def test_error_reply_to_an_item_skips_only_that_item(
         self, mock_fritzconnection: MagicMock
     ) -> None:
-        def one_bad_host(service, action, **kwargs):
+        def one_bad_host(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
                 return {"NewHostNumberOfEntries": 2}
             if (service, action) == ("Hosts1", "GetGenericHostEntry"):
@@ -1095,7 +1097,7 @@ class TestProbing:
 class TestHostInfoKeyedByMac:
     @staticmethod
     def _collect(mock_fritzconnection: MagicMock, hosts: list[dict]) -> tuple[dict, list]:
-        def host_table(service, action, **kwargs):
+        def host_table(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
                 return {"NewHostNumberOfEntries": len(hosts)}
             if (service, action) == ("Hosts1", "GetGenericHostEntry"):
@@ -1176,7 +1178,7 @@ class TestExitReviewFixes:
     def test_error_reply_for_one_host_skips_only_that_host(
         self, mock_fritzconnection: MagicMock
     ) -> None:
-        def host_table(service, action, **kwargs):
+        def host_table(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("Hosts1", "GetHostNumberOfEntries"):
                 return {"NewHostNumberOfEntries": 2}
             if (service, action) == ("Hosts1", "GetGenericHostEntry"):

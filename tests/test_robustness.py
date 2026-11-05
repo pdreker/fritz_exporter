@@ -6,6 +6,7 @@ Prometheus gets it, so a failure that would only show while rendering is caught.
 
 import logging
 import threading
+from typing import Any
 from unittest.mock import MagicMock, patch
 from xml.etree.ElementTree import ParseError
 
@@ -60,7 +61,7 @@ class Scenario:
         self.registry.register(self.collector)
 
     def _fake_fc(self, host: str) -> MagicMock:
-        def call_action(service, action, **kwargs):
+        def call_action(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) in self.overrides[host]:
                 override = self.overrides[host][(service, action)]
                 if isinstance(override, Exception):
@@ -291,7 +292,7 @@ class TestCapabilityLevel:
         scenario = Scenario()
         original = scenario.fcs["bad"].call_action.side_effect
 
-        def failing(service, action, **kwargs):
+        def failing(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             # WLAN 1 and 2 are read, then the device stops answering.
             if (service, action) == ("WLANConfiguration3", "GetInfo"):
                 msg = "down"
@@ -405,7 +406,7 @@ class TestDeviceLevel:
         scenario = Scenario()
         original = scenario.fcs["bad"].call_action.side_effect
 
-        def failing(service, action, **kwargs):
+        def failing(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == LAN_STATS:
                 msg = "down"
                 raise FritzUnreachableError(msg)
@@ -566,7 +567,7 @@ class TestProblemMetricMore:
 
         original = scenario.fcs["bad"].call_action.side_effect
 
-        def down(service, action, **kwargs):
+        def down(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
                 msg = "down"
                 raise FritzUnreachableError(msg)

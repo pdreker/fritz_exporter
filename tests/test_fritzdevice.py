@@ -2,6 +2,7 @@ import json
 import logging
 import threading
 from http.client import RemoteDisconnected
+from typing import Any
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -145,7 +146,7 @@ class TestFritzDevice:
 
         identified = []
 
-        def call_action(service, action, **kwargs):
+        def call_action(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             # The first device info call works, so the device is identified, but
             # every advertised capability (DeviceInfo included) fails its probe.
             if (service, action) == ("DeviceInfo1", "GetInfo") and not identified:
@@ -240,7 +241,7 @@ class TestFritzDevice:
     def test_unreadable_serial_skips_the_device(
         self, mock_fritzconnection: MagicMock, caplog: pytest.LogCaptureFixture, info
     ) -> None:
-        def call_action(service, action, **kwargs):
+        def call_action(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("DeviceInfo1", "GetInfo"):
                 return info
             return call_action_mock(service, action, **kwargs)
@@ -254,7 +255,7 @@ class TestFritzDevice:
             FritzDevice(creds, "FritzMock")
 
     def test_missing_model_name_is_not_fatal(self, mock_fritzconnection: MagicMock) -> None:
-        def call_action(service, action, **kwargs):
+        def call_action(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("DeviceInfo1", "GetInfo"):
                 return {"NewSerialNumber": "1234567890"}
             return call_action_mock(service, action, **kwargs)
@@ -492,7 +493,7 @@ class TestFritzDevice:
     ) -> None:
         # Regression for #700: a box that advertises a WAN remote-access port
         # must not have AHA sent there when scraped over local TLS.
-        def remote_port_mock(service, action, **kwargs):
+        def remote_port_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "X_AVM-DE_RemoteAccess1":
                 return {"NewPort": "18228", "NewEnabled": "1"}
             return call_action_mock(service, action, **kwargs)
@@ -842,7 +843,7 @@ class TestFritzCollector:
         collector.register(device)
 
         # Simulate connection failure during metric collection (only after setup)
-        def fail_on_device_info(service, action, **kwargs):
+        def fail_on_device_info(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "DeviceInfo1" and action == "GetInfo":
                 msg = "device unreachable"
                 raise FritzUnreachableError(msg)
@@ -1094,7 +1095,7 @@ class TestFritzCollector:
         # The device answers the connection mode request with an error
         original_side_effect = fc.call_action.side_effect
 
-        def connection_mode_error(service, action, **kwargs):
+        def connection_mode_error(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "WANCommonInterfaceConfig" and action == "GetCommonLinkProperties":
                 msg = "no connection mode"
                 raise FritzConnectionException(msg)
@@ -1136,7 +1137,7 @@ class TestFritzCollector:
 
         # A repeater exposes no WAN service: the connection-mode probe raises a
         # missing-service error (as fritzconnection does for an absent service).
-        def no_wan_service(service, action, **kwargs):
+        def no_wan_service(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "WANCommonInterfaceConfig" and action == "GetCommonLinkProperties":
                 msg = "no such service"
                 raise FritzServiceError(msg)
@@ -1175,7 +1176,7 @@ class TestFritzCollector:
         collector.register(device)
 
         # Two associated clients per radio, with per-index info.
-        def assoc_mock(service, action, **kwargs):
+        def assoc_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if action == "GetTotalAssociations":
                 return {"NewTotalAssociations": 2}
             if action == "GetGenericAssociatedDeviceInfo":
@@ -1241,7 +1242,7 @@ class TestFritzCollector:
         # same pair must stay separate, disambiguated by the `interface` label.
         caplog.set_level(logging.DEBUG)
 
-        def call_with_mesh(service, action, **kwargs):
+        def call_with_mesh(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
                 return {"NewX_AVM-DE_MeshListPath": "/meshlist.lua"}
             return call_action_mock(service, action, **kwargs)
@@ -1501,7 +1502,7 @@ class TestMeshTopologyParsing:
     """Bad mesh data costs only what it affects, and never the scrape."""
 
     def _scrape(self, mock_fritzhosts: MagicMock, mock_fritzconnection: MagicMock, topology):
-        def call_with_mesh(service, action, **kwargs):
+        def call_with_mesh(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
                 return {"NewX_AVM-DE_MeshListPath": "/meshlist.lua"}
             return call_action_mock(service, action, **kwargs)
@@ -1704,7 +1705,7 @@ class TestConcurrentScrapes:
 
         collector = self._create_collector(mock_fritzconnection)
 
-        def wedged_call_action(service, action, **kwargs):
+        def wedged_call_action(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
                 entered_block.set()
                 release.wait()  # the device "hangs" inside the TR-064 call
@@ -1751,7 +1752,7 @@ class TestConcurrentScrapes:
         # finish as well.
         collector = self._create_collector(mock_fritzconnection)
 
-        def timeout_call_action(service, action, **kwargs):
+        def timeout_call_action(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if (service, action) == ("WANCommonInterfaceConfig", "GetCommonLinkProperties"):
                 msg = "device unreachable (timed out)"
                 raise FritzUnreachableError(msg)
@@ -1968,7 +1969,7 @@ class TestFritzDeviceAuthError:
 
         fc = mock_fritzconnection.return_value
 
-        def auth_error_mock(service, action, **kwargs):
+        def auth_error_mock(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "DeviceInfo1" and action == "GetInfo":
                 msg = "Not authorized"
                 raise FritzAuthorizationError(msg)
@@ -2021,7 +2022,7 @@ class TestMeshListFetch:
     def _scrape(
         self, mock_fritzconnection: MagicMock, *, path_error=None, reply=None, get_error=None
     ):
-        def call_with_mesh(service, action, **kwargs):
+        def call_with_mesh(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
             if service == "Hosts1" and action == "X_AVM-DE_GetMeshListPath":
                 if path_error is not None and device_ready:
                     raise path_error
@@ -2147,7 +2148,7 @@ class TestDuplicateSeries:
 @patch("fritzexporter.tr064_remote.FritzConnection")
 def test_wifi_client_read_twice_during_a_scan_is_kept_once(mock_fritzconnection: MagicMock) -> None:
     # A client joined at a lower index mid-scan: the next index repeats the last one.
-    def assoc(service, action, **kwargs):
+    def assoc(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
         if action == "GetTotalAssociations":
             return {"NewTotalAssociations": 2 if service == "WLANConfiguration1" else 0}
         if action == "GetGenericAssociatedDeviceInfo":
@@ -2178,7 +2179,7 @@ def test_wifi_client_read_twice_during_a_scan_is_kept_once(mock_fritzconnection:
 def test_wifi_client_count_that_cannot_be_read_skips_that_wlan_and_says_so(
     mock_fritzconnection: MagicMock,
 ) -> None:
-    def assoc(service, action, **kwargs):
+    def assoc(service: str, action: str, **kwargs: Any) -> dict[str, Any]:
         if action == "GetTotalAssociations" and service == "WLANConfiguration1":
             return {"NewTotalAssociations": ""}
         return call_action_mock(service, action, **kwargs)
