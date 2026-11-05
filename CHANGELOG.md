@@ -15,6 +15,14 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [4.0.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v4.0.1...fritzexporter-v4.0.2) (2026-11-05)
+
+
+### Documentation
+
+* build with MkDocs and publish to GitHub Pages as well ([#799](https://github.com/pdreker/fritz_exporter/issues/799)) ([50ee4e4](https://github.com/pdreker/fritz_exporter/commit/50ee4e445993cef39faca51a1e68f00aef98e948))
+* link to the docs on GitHub Pages ([#802](https://github.com/pdreker/fritz_exporter/issues/802)) ([423cac6](https://github.com/pdreker/fritz_exporter/commit/423cac69bf9a0667afb5d45104ae8764d33b662f))
+
 ## [4.0.1](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v4.0.0...fritzexporter-v4.0.1) (2026-10-31)
 
 
