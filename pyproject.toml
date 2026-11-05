@@ -71,76 +71,89 @@ omit = ["tests/*"]
 [tool.coverage.report]
 show_missing = true
 
+# Shared starting point: pdreker/github-workflows, templates/pyproject-tools.toml.
 [tool.ruff]
 line-length = 100
-target-version = "py314"
-extend-exclude = [
-    "tests",
-    "docs",
-    "AGENTS.md",
-]
 
 [tool.ruff.lint]
 select = [
-    "E", "W", # PyCodeStyle
-    "F", # PyFlakes
-    "C90", # McCabe (Function Complexity)
-    "I", # ISort
-    "N", # PEP8 Naming Conventions
-    # "D", # PyDocStyle
-    "UP", # pyupgrade
-    "YTT", # flake8-2020
-    "ANN", # flake8-annotations
-    "ASYNC", # flake8-async
-    "S", # flake8-bandit
-    "BLE", # blind exceptions
-    "FBT", # boolean traps
-    "B", # bugbear
-    "A", # flake8-builtins
-    "COM", # flake8-commas
-    "C4", # flake8-comprehensions
-    "DTZ", # naive datetime objects
-    "T10", # debugger imports
-    "EM", # error message formatting
-    "FA", # future annotations
-    "ISC", # implicit string concatenation
-    "G", # logging format
-    "INP", # implicit namespace packages
-    "PIE", # various anti-patterns
-    "T20", # print() calls
-    "PT", # pytest style
-    "Q", # quotes
-    "RSE", # raise syntax
-    "RET", # return values
-    "SLF", # private attribute access
-    "SLOT", # __slots__
-    "SIM", # simplify
-    "INT", # gettext
-    "ARG", # unused arguments
-    "PTH", # pathlib
-    "TD", # TODO comments
-    "FIX", # FIXME/XXX
-    "PGH", # pygrep-hooks
-    "PL", # PyLint
-    "TRY", # try/except anti-patterns
-    "FLY", # join vs f-strings
-    "PERF", # performance
-    "FURB", # modernize
-    "LOG", # logging
-    "RUF", # ruff
+  "E", "W", # pycodestyle
+  "F",      # Pyflakes
+  "C90",    # McCabe (function complexity)
+  "I",      # isort
+  "N",      # PEP 8 naming
+  "UP",     # pyupgrade
+  "YTT",    # flake8-2020
+  "ANN",    # flake8-annotations
+  "ASYNC",  # flake8-async
+  "S",      # flake8-bandit
+  "BLE",    # blind except
+  "FBT",    # boolean traps
+  "B",      # bugbear
+  "A",      # flake8-builtins
+  "COM",    # flake8-commas
+  "C4",     # flake8-comprehensions
+  "DTZ",    # naive datetime objects
+  "T10",    # debugger imports
+  "EM",     # error message formatting
+  "FA",     # future annotations
+  "ISC",    # implicit string concatenation
+  "G",      # logging format
+  "INP",    # implicit namespace packages
+  "PIE",    # various anti-patterns
+  "T20",    # print() calls
+  "PT",     # pytest style
+  "Q",      # quotes
+  "RSE",    # raise syntax
+  "RET",    # return values
+  "SLF",    # private member access
+  "SLOT",   # __slots__
+  "SIM",    # simplify
+  "INT",    # gettext
+  "ARG",    # unused arguments
+  "PTH",    # pathlib
+  "TD",     # TODO comments
+  "FIX",    # FIXME/XXX
+  "PGH",    # pygrep-hooks
+  "PL",     # Pylint
+  "TRY",    # try/except anti-patterns
+  "FLY",    # join vs f-strings
+  "PERF",   # performance
+  "FURB",   # refurb (modernize)
+  "LOG",    # logging
+  "RUF",    # ruff's own rules
 ]
-ignore = ["E203", "COM812", "ISC001", "ANN204"]
+ignore = [
+  "E203",   # whitespace before ':', conflicts with the formatter
+  "COM812", # trailing comma, conflicts with the formatter
+  "ISC001", # implicit string concatenation, conflicts with the formatter
+  "ANN204", # return type of __init__ and other special methods
+  "TRY003", # long messages in exception calls; a domain error's message is its content
+  "RUF001", # ambiguous characters: ×, –, ℮, › and the like are written on purpose
+  "RUF002", # same, in docstrings
+  "RUF003", # same, in comments
+]
 
 [tool.ruff.lint.per-file-ignores]
-# Stand-alone scripts, not part of a package.
+# Tests are linted like the rest; only rules that make no sense there are off.
+"tests/**" = [
+  "S101",    # assert is how pytest checks
+  "PLR2004", # expected values are literals
+  "INP001",  # tests/ needs no __init__.py
+  "SLF001",  # tests may check private members
+  "ARG001",  # pytest fixtures requested only for their effect
+  "ARG002",  # same, in test methods
+  "ANN401",  # Any is fine for mocks and fakes
+]
+# Deviation: stand-alone scripts, not part of a package.
 "misc/**" = ["INP001"]
 
-[tool.ruff.lint.pydocstyle]
-convention = "google"
-
-[tool.ty.environment]
-python-version = "3.14"
+[tool.ruff.lint.pylint]
+# Pylint's default of 5 flagged UI builders, drawing helpers and filter functions in every
+# SportShooters repository; up to 8 still reads.
+max-args = 8
 
 [tool.ty.rules]
 possibly-unresolved-reference = "error"
 unused-ignore-comment = "warn"
+
