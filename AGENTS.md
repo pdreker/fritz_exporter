@@ -7,7 +7,7 @@ This document describes project conventions, architecture, and tooling for contr
 **fritz_exporter** is a Prometheus exporter for AVM Fritz! home network devices (routers, repeaters, etc.). It connects to Fritz! devices via the TR-064 API (using the `fritzconnection` Python library), discovers supported capabilities, and exposes metrics in Prometheus format.
 
 - **Entrypoint**: `fritzexporter/__main__.py` → `main()`
-- **Documentation**: [fritz-exporter.readthedocs.io](https://fritz-exporter.readthedocs.io)
+- **Documentation**: MkDocs (Material) in `docs/`, published to [GitHub Pages](https://pdreker.github.io/fritz_exporter/) with mike and to [fritz-exporter.readthedocs.io](https://fritz-exporter.readthedocs.io)
 - **Python version**: 3.14+
 
 ---
@@ -221,7 +221,7 @@ fritzexporter/
 - `num()`, `integer()`, `flag()`, `text(key, default)` for strict reads; `opt_*` for optional ones; `opt_obj()`, `items()` and `issues.objects()` for nesting; `to_float`/`to_int`/`to_bool`/`to_str` for single values.
 - Rule: missing/`None`/`""`/`[]`/`{}` is absent; present but wrong type raises `DataError`. `DataError` messages name the field, never the value.
 
-**Keep failures at the level they affect** (see "Reading Device Data" in `docs/coding.rst`):
+**Keep failures at the level they affect** (see "Reading Device Data" in `docs/coding.md`):
 
 - Value: `self._add(key, labels, self.issues.num(reply, field))` — a defective value costs only its sample.
 - Item (host, channel, WLAN band, ...): `with self._item("host 3"):` — a defective label costs only that item.
@@ -291,7 +291,7 @@ Both paths produce the same `ExporterConfig` / `DeviceConfig` attrs objects and 
 1. Add the field to `DeviceConfig` or `ExporterConfig` (with converter + validator as appropriate). The YAML key is the field name; `from_config()` needs no change.
 2. Add the key and its environment variable to `_DEVICE_ENV` or `_EXPORTER_ENV` in `config.py`.
 3. Add tests for both paths in `tests/test_config.py` (see `TestFileConfigs` and `TestEnvConfig`).
-4. Update `docs/configuration.rst` (the env var table and the YAML example block) and the mapping table above.
+4. Update `docs/configuration.md` (the env var table and the YAML example block) and the mapping table above.
 
 Failure to keep the two paths in sync silently degrades the env-based deployment path, which is the primary path for Docker/container users.
 
@@ -333,7 +333,7 @@ For every pull request, review the following areas in addition to the Python cod
 ### Documentation (`docs/`)
 
 - Check whether any user-facing behaviour, configuration options, CLI flags, metrics, or upgrade steps have changed.
-- If so, update the relevant `.rst` files under `docs/` (e.g. `configuration.rst`, `running.rst`, `quickstart.rst`, `upgrading.rst`, `docker-images.rst`).
+- If so, update the relevant pages under `docs/` (e.g. `configuration.md`, `running.md`, `quickstart.md`, `upgrading.md`, `docker-images.md`) and check them with `uv run mkdocs build --strict`.
 - Commit documentation changes with the `docs` type: `docs: ...`.
 
 ### Dockerfile

@@ -1,0 +1,126 @@
+# Configuration
+
+The exporter supports two methods of configuration:
+
+- via environment variable
+- via config file
+
+## Environment variable { #environment-config }
+
+If you only need a single device this is the easiest way to configure the exporter.
+
+| Env variable | Description | Default |
+|----|----|----|
+| `FRITZ_NAME` | User-friendly name for the device | hostname |
+| `FRITZ_HOSTNAME` | Hostname of the device | fritz.box |
+| `FRITZ_USERNAME` | Username to authenticate on the device | none |
+| `FRITZ_PASSWORD` | Password to use for authentication | none |
+| `FRITZ_PASSWORD_FILE` | File to read the password from |  |
+| `FRITZ_LISTEN_ADDRESS` | Address to listen on. Can be IPv4 or IPv6. | 127.0.0.1 |
+| `FRITZ_PORT` | Listening port for the exporter | 9787 |
+| `FRITZ_LOG_LEVEL` | Application log level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` | INFO |
+| `FRITZ_HOST_INFO` | Enable extended information about all hosts (slow, see the note below). Only "true" or "1" enable it. | False |
+| `FRITZ_WIFI_CLIENT_INFO` | Enable per-client WiFi metrics (signal/speed). Only "true" or "1" will enable this feature. | False |
+| `FRITZ_CONNECTION_TIMEOUT` | Per-device connect/read timeout in seconds for TR-064 and the web interface. `0` disables the timeout. | 10 |
+| `FRITZ_USE_TLS` | Use HTTPS for TR-064 and the web interface. Only `true` or `1` enable this. The exporter does not verify the certificate (Fritz!Box certs are self-signed). | False |
+| `FRITZ_DEVICE_PORT` | Optional device port, see [Ports, TLS and remote access](#ports). Distinct from `FRITZ_PORT` (exporter listen port). `0` or unset = default. |  |
+| `FRITZ_REMOTE_ACCESS` | Scrape over AVM WAN remote access, see [Ports, TLS and remote access](#ports). Requires `FRITZ_USE_TLS=true`. Only `true` or `1` enable this. | False |
+| `FRITZ_ALLOW_UNSAFE_MD5_PASSWORD` | Allow the legacy MD5 web login of Fritz!OS before 7.24, see [Legacy MD5 web login](#md5-login). Only `true` or `1` enable this. | False |
+
+When using the environment vars you can only specify a single device. If you need multiple devices please use the config file.
+
+Example for a device (at 192.168.178.1 username "monitoring" and the password "mysupersecretpassword"):
+
+```bash
+export FRITZ_NAME='My Fritz!Box'
+export FRITZ_HOSTNAME='192.168.178.1'
+export FRITZ_USERNAME='monitoring'
+export FRITZ_PASSWORD='mysupersecretpassword'
+```
+
+## Config file { #config-file }
+
+To use the config file you have to specify the location of the config and mount the appropriate file into the container. The location can be specified by using the `--config` parameter.
+
+```yaml
+# Full example config file for Fritz-Exporter
+exporter_port: 9787 # optional
+listen_address: 0.0.0.0 # optional; default 127.0.0.1, set 0.0.0.0 in a container
+log_level: DEBUG # optional
+devices:
+- name: Fritz!Box 7590 Router # optional; default: the hostname. Must be unique
+  hostname: fritz.box
+  username: prometheus
+  password: prometheus
+  host_info: True # optional, see below
+  wifi_client_info: True # optional, per-client WiFi signal/speed (higher cardinality)
+  connection_timeout: 10 # optional, seconds; 0 disables timeout (default 10)
+  use_tls: false # optional; true = HTTPS for TR-064 and the web interface
+  port: 49000 # optional; TR-064 port locally, shared remote port with remote_access
+  remote_access: false # optional; true = WAN remote access (requires use_tls)
+  allow_unsafe_md5_password: false # optional; true = allow MD5 web login (Fritz!OS < 7.24)
+- name: Repeater Wohnzimmer # optional
+  hostname: repeater-Wohnzimmer
+  username: prometheus
+  password_file: /path/to/password.txt
+```
+
+Every device needs `password` or `password_file`. The exporter refuses to start
+on a key it does not know (e.g. `pasword:`) and on two devices with the same name;
+the error message names the device and the key.
+
+!!! note
+
+    `host_info: true` (env: `FRITZ_HOST_INFO`) collects extended information about every device known to your Fritz device, which can take a long time (20+ seconds). If you want it, set your Prometheus scrape interval and timeout to match.
+
+!!! note
+
+    `wifi_client_info: true` (env: `FRITZ_WIFI_CLIENT_INFO`) exposes per-station WiFi metrics (signal strength and negotiated speed) for every associated client, on the box and on mesh repeaters alike. This adds one time series per connected client, so it is disabled by default — enable it only if you want per-client visibility and are aware of the extra cardinality.
+
+## Ports, TLS and remote access { #ports }
+
+The exporter talks to two interfaces on the device: TR-064 for most metrics, and
+the web interface for smart home (AHA), DOCSIS, fibre and REST API metrics. Which ports
+it uses depends on `use_tls`, `port` and `remote_access`:
+
+| Mode                       | TR-064                | Web interface       |
+|----------------------------|-----------------------|---------------------|
+| Local (default)            | `http`, port `49000`  | `http`, port `80`   |
+| Local, `use_tls: true`     | `https`, port `49443` | `https`, port `443` |
+| `remote_access: true` (requires `use_tls: true`)  | `https`, `port` (default `443`), path prefix `/tr064`        | `https`, `port` (default `443`)      |
+
+In local mode `port` sets the TR-064 port only; the web interface stays on 80 or 443.
+
+In remote mode the device serves TR-064 and the web interface on one port: the
+HTTPS port set for internet access to the device ("Internet \> Permit Access \>
+FRITZ!Box Services"). Set `hostname` to the device's public name (often a MyFRITZ or
+DynDNS name) and `port` to that port. LAN scrapes should leave remote access
+disabled (default).
+
+## Legacy MD5 web login { #md5-login }
+
+Fritz!OS 7.24 and later log in to the web interface with PBKDF2. Older firmware
+only offers an MD5 login. Anyone who can read the traffic between exporter and
+device can recover the password from an MD5 login, and on a hostile network can
+make a newer device ask for one. The exporter therefore refuses the MD5 login by
+default: when a device asks for it, the exporter logs an error and reads no more
+web interface metrics (smart home, DOCSIS, fibre, REST API) from that device until
+it is restarted. Its TR-064 metrics and all other devices keep working;
+`fritz_read_problem{level="skipped"}` shows the metric groups left out.
+
+Upgrade Fritz!OS if you can. If you cannot, set `allow_unsafe_md5_password: true`
+(env: `FRITZ_ALLOW_UNSAFE_MD5_PASSWORD`) for that device to accept the risk. The
+exporter then logs a warning on every MD5 login. TR-064 uses its own login, see
+[Exporter user and password](#exporter-password).
+
+## Exporter user and password { #exporter-password }
+
+TR-064 logs in with HTTP digest authentication, and Fritz!Box devices only offer it
+with MD5. Without TLS, anyone who can read one request between exporter and device
+can try passwords against it offline, fast. Most devices do not offer HTTPS, so the
+password is what protects the account.
+
+Create a separate user for the exporter, give it only the rights it needs, and set a
+random password of at least 20 characters (the device allows at most 32). That puts
+offline guessing out of reach. On a trusted LAN this is little more than good habit;
+it matters when the traffic crosses networks you do not control.

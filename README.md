@@ -31,6 +31,7 @@ It has been tested against an AVM Fritz!Box 7590 (DSL), a Fritz!Box 5690 (fibre)
 ## Documentation
 
 Check out the full documentation at [ReadTheDocs](https://fritz-exporter.readthedocs.io/)
+or on [GitHub Pages](https://pdreker.github.io/fritz_exporter/).
 
 ## Event log: fritz_logextractor
 

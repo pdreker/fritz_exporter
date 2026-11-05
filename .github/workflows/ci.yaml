@@ -16,6 +16,7 @@ jobs:
   ci:
     uses: pdreker/github-workflows/.github/workflows/python-ci.yaml@335ab9f615d4a0cf3d29b86e7bebf44a727ab5ab # v1.0.0
     with:
+      extra-run: uv run mkdocs build --strict
       # Full history for SonarQube Cloud (blame data).
       fetch-depth: 0
       sonar: true

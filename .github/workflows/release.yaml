@@ -56,3 +56,33 @@ jobs:
       - name: Build and publish
         # "always": fail if the token exchange does not work, rather than falling back.
         run: uv build && uv publish --trusted-publishing always
+
+  publish-docs-release:
+    needs: release
+    if: ${{ needs.release.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: gh-pages
+      cancel-in-progress: false
+    steps:
+      # mike pushes to gh-pages with the credentials the checkout keeps.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: uv sync --only-group docs
+      - name: Publish
+        env:
+          VERSION: ${{ needs.release.outputs.major }}.${{ needs.release.outputs.minor }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages --depth=1 || true
+          uv run --only-group docs mike deploy --push --allow-empty --update-aliases "$VERSION" latest
+          uv run --only-group docs mike set-default --push latest

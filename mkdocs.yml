@@ -1,0 +1,62 @@
+site_name: fritz-exporter
+site_description: Prometheus exporter for AVM Fritz! home network devices
+site_url: https://pdreker.github.io/fritz_exporter/
+repo_url: https://github.com/pdreker/fritz_exporter
+repo_name: pdreker/fritz_exporter
+edit_uri: edit/main/docs/
+copyright: Copyright 2019-2026 Patrick Dreker, Apache License 2.0
+
+# Pages end in .html as they did with Sphinx, so links into the Read the Docs copy
+# (e.g. /en/latest/upgrading.html) keep working there.
+use_directory_urls: false
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Upgrade notes: upgrading.md
+  - Configuration: configuration.md
+  - Running: running.md
+  - Docker images: docker-images.md
+  - Contributing: contributing.md
+  - Building: building.md
+  - Code documentation: coding.md
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.footer
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra:
+  version:
+    provider: mike
+    default: latest
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.snippets:
+      base_path: [docs]
+      check_paths: true
+  - pymdownx.superfences
+  - tables
+  - toc:
+      permalink: true
+
+validation:
+  links:
+    absolute_links: relative_to_docs
