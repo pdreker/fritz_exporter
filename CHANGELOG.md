@@ -15,6 +15,13 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [4.0.3](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v4.0.2...fritzexporter-v4.0.3) (2026-11-05)
+
+
+### Bug Fixes
+
+* **helm:** image follows the chart appVersion again ([#803](https://github.com/pdreker/fritz_exporter/issues/803)) ([aa1fd28](https://github.com/pdreker/fritz_exporter/commit/aa1fd281659cdee41ecedfede94d3c46b18926e2))
+
 ## [4.0.2](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v4.0.1...fritzexporter-v4.0.2) (2026-11-05)
 
 
