@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   ci:
-    uses: pdreker/github-workflows/.github/workflows/python-ci.yaml@112f894856e31b36acf99cc2df639234650e64e5 # v1.2.0
+    uses: pdreker/github-workflows/.github/workflows/python-ci.yaml@dcdd01b1d81eb4b072737706a7adc403cad4c2a4 # v1.3.1
     with:
       extra-run: uv run mkdocs build --strict
       # Full history for SonarQube Cloud (blame data).

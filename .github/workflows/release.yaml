@@ -17,12 +17,12 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: pdreker/github-workflows/.github/workflows/release-please.yaml@112f894856e31b36acf99cc2df639234650e64e5 # v1.2.0
+    uses: pdreker/github-workflows/.github/workflows/release-please.yaml@dcdd01b1d81eb4b072737706a7adc403cad4c2a4 # v1.3.1
 
   image:
     needs: release
     if: ${{ needs.release.outputs.release_created == 'true' }}
-    uses: pdreker/github-workflows/.github/workflows/docker-image.yaml@112f894856e31b36acf99cc2df639234650e64e5 # v1.2.0
+    uses: pdreker/github-workflows/.github/workflows/docker-image.yaml@dcdd01b1d81eb4b072737706a7adc403cad4c2a4 # v1.3.1
     with:
       registry: ${{ vars.DOCKER_REGISTRY_HOST }}
       registry-username: ${{ vars.DOCKER_REGISTRY_USERNAME }}
