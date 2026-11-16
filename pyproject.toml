@@ -16,7 +16,7 @@ classifiers = [
 requires-python = ">=3.14"
 dependencies = [
     "prometheus-client>=0.6.0",
-    "fritzconnection>=1.0.0",
+    "fritzconnection>=1.0.0,<2",
     "pyyaml",
     "requests",
     "attrs>=22.2,<27.0",
