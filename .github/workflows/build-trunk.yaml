@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   image:
-    uses: pdreker/github-workflows/.github/workflows/docker-image.yaml@dcdd01b1d81eb4b072737706a7adc403cad4c2a4 # v1.3.1
+    uses: pdreker/github-workflows/.github/workflows/docker-image.yaml@12d47f35046c4ad91c75570b4e9920acb1c34de0 # v1.4.0
     with:
       registry: ${{ vars.DOCKER_REGISTRY_HOST }}
       registry-username: ${{ vars.DOCKER_REGISTRY_USERNAME }}
