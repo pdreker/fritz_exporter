@@ -105,30 +105,19 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
-Key configuration (see `pyproject.toml` `[tool.ruff]`):
+Configuration: `pyproject.toml` `[tool.ruff]` is the source of truth. It is a copy of the shared
+template (`templates/pyproject-tools.toml` in pdreker/github-workflows); a deviation carries a
+comment with its reason.
 - **Line length**: 100 characters
-- **Target**: Python 3.14
-- **Tests and docs are excluded** from linting (`extend-exclude = ["tests", "docs"]`)
-- A large set of rule groups is enabled (see `pyproject.toml` for the full list), including:
-  - `E`, `W` — pycodestyle
-  - `F` — pyflakes
-  - `I` — isort (import ordering)
-  - `N` — PEP8 naming
-  - `ANN` — missing type annotations (all public functions/methods must be annotated)
-  - `S` — bandit security checks
-  - `B`, `BLE`, `FBT` — bugbear and anti-patterns (no boolean traps, no blind exceptions)
-  - `UP` — pyupgrade (use modern Python syntax)
-  - `T20` — no `print()` calls (use logging)
-  - `PTH` — use `pathlib` instead of `os.path`
-  - `PL` — pylint checks
-  - `TRY` — try/except anti-patterns
-  - `RUF` — ruff-specific rules
-- **Ignored rules**: `E203`, `COM812`, `ISC001`, `ANN204`
+- A broad set of rule groups is enabled (see `pyproject.toml`), among them type annotations
+  (`ANN`), bandit (`S`), no `print()` (`T20`), `pathlib` (`PTH`) and pylint (`PL`).
 - Docstring style convention: **Google** (`[tool.ruff.lint.pydocstyle] convention = "google"`)
+- **Tests are linted like the rest.** `per-file-ignores` turns off only the rules that make no
+  sense in tests (`assert`, literal expected values, private members, fixtures used for their
+  effect, made-up credentials).
 - Use `# noqa: <CODE>` to suppress a specific rule where absolutely necessary; avoid blanket `# noqa`.
 - **Follow the boy scout rule.** Do not fix lint in unrelated code. If you are already touching a line or block, clean up lint issues there so you leave it cleaner than you found it.
-- **Adhere to the ruff rules in production code.** Treat `pyproject.toml` as the source of truth for exact lint boundaries, and keep `fritzexporter/` free of new `E501` violations.
-- **Tests and docs stay more flexible.** They are excluded from ruff, but should still remain reasonably readable.
+- **Adhere to the ruff rules**, in tests as in production code; keep the code free of new `E501` violations.
 
 ---
 
@@ -143,7 +132,7 @@ uv run pytest
 - Coverage is measured automatically (branch coverage, XML report). Config in `pyproject.toml` under `[tool.coverage]`.
 - Mocking uses `unittest.mock` (`MagicMock`, `patch`).
 - A shared `fc_services_mock.py` provides mock Fritz device service/action data for tests; `collect.py` sets up one fake device on it and scrapes it (`collect_device()`, `fake_device()`, `sample_map()`).
-- Tests are excluded from ruff linting but should still be readable and well-structured.
+- Tests are linted like production code (see Linting); keep them readable and well-structured.
 - Use `pytest.mark` for test organization where appropriate.
 
 ---
