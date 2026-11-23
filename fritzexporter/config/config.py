@@ -185,7 +185,7 @@ class ExporterConfig:
     devices: list[DeviceConfig] = field(factory=list)
     listen_address: str = field(default="127.0.0.1", validator=_ip_address)
 
-    @devices.validator  # ty: ignore[unresolved-attribute]
+    @devices.validator  # ty: ignore[missing-attribute]
     def check_devices(self, _: attrs.Attribute, value: list[DeviceConfig]) -> None:
         if not value:
             msg = "No devices found in config."
@@ -263,12 +263,12 @@ class DeviceConfig:
         if self.password is None and self.password_file is None:
             raise FritzPasswordMissingError
 
-    @password.validator  # ty: ignore[unresolved-attribute]
+    @password.validator  # ty: ignore[missing-attribute]
     def check_password(self, _: attrs.Attribute, value: str | None) -> None:
         if value is not None and len(value) > FRITZ_MAX_PASSWORD_LENGTH:
             raise FritzPasswordTooLongError
 
-    @password_file.validator  # ty: ignore[unresolved-attribute]
+    @password_file.validator  # ty: ignore[missing-attribute]
     def check_password_file(self, attribute: attrs.Attribute, value: str | None) -> None:
         # Read now, so an unreadable file (e.g. not readable by the container's
         # user) stops the start with a message instead of a traceback later.
@@ -281,7 +281,7 @@ class DeviceConfig:
             return _read_password_file(self.password_file)
         return self.password or ""
 
-    @remote_access.validator  # ty: ignore[unresolved-attribute]
+    @remote_access.validator  # ty: ignore[missing-attribute]
     def check_remote_access(self, _: attrs.Attribute, value: bool) -> None:  # noqa: FBT001
         if value and not self.use_tls:
             raise FritzRemoteAccessRequiresTlsError
