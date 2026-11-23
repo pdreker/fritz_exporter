@@ -15,6 +15,13 @@
 
 * add AGENTS.md with project conventions and architecture guide ([#576](https://github.com/pdreker/fritz_exporter/issues/576)) ([53f3742](https://github.com/pdreker/fritz_exporter/commit/53f37424c42039d62b9e72dd3a3e10e9b82f1036))
 
+## [4.0.4](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v4.0.3...fritzexporter-v4.0.4) (2026-11-23)
+
+
+### Documentation
+
+* AGENTS.md says tests are linted, as pyproject.toml does ([#818](https://github.com/pdreker/fritz_exporter/issues/818)) ([371fa33](https://github.com/pdreker/fritz_exporter/commit/371fa336f7142250eda0ca71f380ac3689b5102c))
+
 ## [4.0.3](https://github.com/pdreker/fritz_exporter/compare/fritzexporter-v4.0.2...fritzexporter-v4.0.3) (2026-11-05)
 
 
