@@ -13,6 +13,6 @@ def web_reply(
     resp = requests.Response()
     resp.status_code = status
     resp._content = text.encode()
-    resp._content_consumed = True  # ty: ignore[unresolved-attribute]
+    resp._content_consumed = True  # ty: ignore[missing-attribute]
     resp.headers.update(headers or {})
     return resp
